@@ -18,12 +18,10 @@ pub enum ExecuteMsg {
         value: Primitive,
     },
     /// If key is not specified the default key will be used.
-    DeleteValue {
-        key: Option<String>,
-    },
-    UpdateRestriction {
-        restriction: PrimitiveRestriction,
-    },
+    #[attrs(nonpayable)]
+    DeleteValue { key: Option<String> },
+    #[attrs(restricted, nonpayable)]
+    UpdateRestriction { restriction: PrimitiveRestriction },
 }
 
 #[andr_query]

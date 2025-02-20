@@ -1,17 +1,21 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError};
+use cosmwasm_std::{ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError};
 
 use crate::{
-    execute::handle_execute,
+    execute::{delete_value, set_value, update_restriction},
     query::{get_data_owner, get_value},
     state::RESTRICTION,
 };
 use andromeda_data_storage::string_storage::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{
+        rates::{Rate, RatesMessage},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    andr_execute_fn,
+    common::encode_binary,
     error::ContractError,
 };
 
@@ -43,19 +47,25 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    let action = msg.as_ref().to_string();
+    match msg.clone() {
+        ExecuteMsg::UpdateRestriction { restriction } => update_restriction(ctx, restriction),
+        ExecuteMsg::SetValue { value } => set_value(ctx, value, action),
+        ExecuteMsg::DeleteValue {} => delete_value(ctx),
+        ExecuteMsg::Rates(rates_message) => match rates_message {
+            RatesMessage::SetRate { rate, .. } => match rate {
+                Rate::Local(local_rate) => {
+                    // Percent rates aren't applicable in this case, so we enforce Flat rates
+                    ensure!(local_rate.value.is_flat(), ContractError::InvalidRate {});
+                    ADOContract::default().execute(ctx, msg)
+                }
+                Rate::Contract(_) => ADOContract::default().execute(ctx, msg),
+            },
+            RatesMessage::RemoveRate { .. } => ADOContract::default().execute(ctx, msg),
+        },
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
@@ -69,8 +79,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

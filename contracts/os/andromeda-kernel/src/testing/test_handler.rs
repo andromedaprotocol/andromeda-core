@@ -12,7 +12,9 @@ use andromeda_std::{
     },
 };
 use cosmwasm_std::{
-    coin, testing::{mock_env, mock_info}, to_json_binary, Addr, BankMsg, Binary, ReplyOn, SubMsg
+    coin,
+    testing::{mock_env, mock_info},
+    to_json_binary, Addr, BankMsg, Binary, ReplyOn, SubMsg,
 };
 
 struct TestHandleLocalCase {
@@ -26,12 +28,11 @@ struct TestHandleLocalCase {
 
 #[test]
 fn test_handle_local() {
-
     fn create_test_msg_with_config(config: AMPMsgConfig) -> AMPMsg {
         let base_msg = AMPMsg::new(MOCK_APP_CONTRACT, to_json_binary(&true).unwrap(), None);
         base_msg.with_config(config)
     }
-    
+
     // Then in tests:
     let config = AMPMsgConfig {
         reply_on: ReplyOn::Error,
@@ -40,7 +41,6 @@ fn test_handle_local() {
         direct: false,
         ibc_config: None,
     };
-
 
     let test_cases = vec![
         TestHandleLocalCase {
@@ -223,7 +223,7 @@ fn test_handle_local() {
             .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
             .unwrap(),
             expected_error: None,
-        }
+        },
     ];
 
     for test in test_cases {

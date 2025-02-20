@@ -1,6 +1,12 @@
+use andromeda_std::andr_execute_fn;
+use std::str::FromStr;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Response, Storage};
+use cosmwasm_std::{
+    attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SignedDecimal,
+    StdError, Storage,
+};
 
 use andromeda_math::graph::{
     Coordinate, CoordinateInfo, ExecuteMsg, GetAllPointsResponse, GetMapInfoResponse,
@@ -11,7 +17,7 @@ use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
@@ -49,32 +55,9 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
         ExecuteMsg::UpdateMap { map_info } => execute_update_map(ctx, map_info),
         ExecuteMsg::StoreCoordinate {
             coordinate,
@@ -85,12 +68,7 @@ fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, 
         } => execute_store_user_coordinate(ctx, user_location_paths),
         ExecuteMsg::DeleteUserCoordinate { user } => execute_delete_user_coordinate(ctx, user),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 pub fn execute_update_map(
@@ -98,10 +76,6 @@ pub fn execute_update_map(
     map_info: MapInfo,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
 
     let map = MAP_INFO
         .load(ctx.deps.storage)
@@ -135,11 +109,6 @@ pub fn execute_store_coordinate(
     is_timestamp_allowed: bool,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
-
     let map = MAP_INFO
         .load(ctx.deps.storage)
         .map_err(|_| ContractError::InvalidParameter {
@@ -151,29 +120,43 @@ pub fn execute_store_coordinate(
         allow_negative,
         map_decimal,
     } = map;
-    let x_length = map_size.x_width as f64;
-    let y_length = map_size.y_width as f64;
-    let z_length = map_size.z_width.map(|z| z as f64);
+
+    let x_length = SignedDecimal::from_ratio(map_size.x_width, 1);
+    let y_length = SignedDecimal::from_ratio(map_size.y_width, 1);
+    let z_length = map_size.z_width.map(|z| SignedDecimal::from_ratio(z, 1));
 
     let is_z_allowed = z_length.is_some();
 
-    let scale = 10_f64.powf(map_decimal as f64);
-    let x_coordinate = (coordinate.x_coordinate * scale)
-        .min(i64::MAX as f64) // Ensuring it doesn't exceed i64 bounds
-        .max(i64::MIN as f64); // Ensuring it doesn't underflow
-    let x_coordinate = (x_coordinate as i64) as f64 / scale;
+    // Convert x-coordinate to map_decimal precision
+    let x_coordinate = coordinate
+        .x_coordinate
+        .checked_mul(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Multiply the x-coordinate by 10 ^ map_decimal
+        .map_err(|_| ContractError::Overflow {})?
+        .floor() // Floor the result
+        .checked_div(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Divide the result by 10 ^ map_decimal
+        .map_err(|_| ContractError::Underflow {})?;
 
-    let y_coordinate = (coordinate.y_coordinate * scale)
-        .min(i64::MAX as f64) // Ensuring it doesn't exceed i64 bounds
-        .max(i64::MIN as f64); // Ensuring it doesn't underflow
-    let y_coordinate = (y_coordinate as i64) as f64 / scale;
+    // Convert y-coordinate to map_decimal precision
+    let y_coordinate = coordinate
+        .y_coordinate
+        .checked_mul(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Multiply the y-coordinate by 10 ^ map_decimal
+        .map_err(|_| ContractError::Overflow {})?
+        .floor() // Floor the result
+        .checked_div(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Divide the result by 10 ^ map_decimal
+        .map_err(|_| ContractError::Underflow {})?;
 
-    let z_coordinate = coordinate.z_coordinate.map(|z| {
-        let z_scaled = (z * scale)
-            .min(i64::MAX as f64) // Clamp the value to prevent overflow
-            .max(i64::MIN as f64); // Clamp the value to prevent underflow
-        (z_scaled as i64) as f64 / scale
-    });
+    // Convert z-coordinate to map_decimal precision
+    let z_coordinate = match coordinate.z_coordinate {
+        Some(z_coordinate) => Some(
+            z_coordinate
+                .checked_mul(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Multiply the z-coordinate by 10 ^ map_decimal
+                .map_err(|_| ContractError::Overflow {})?
+                .floor() // Floor the result
+                .checked_div(SignedDecimal::from_str("10")?.pow(map_decimal as u32)) // Divide the result by 10 ^ map_decimal
+                .map_err(|_| ContractError::Underflow {})?,
+        ),
+        None => None,
+    };
 
     ensure!(
         z_coordinate.is_some() == is_z_allowed,
@@ -188,15 +171,46 @@ pub fn execute_store_coordinate(
 
     match allow_negative {
         true => {
+            // x_ge = - (x_length / 2)
+            let x_ge = SignedDecimal::negative_one()
+                .checked_mul(
+                    x_length
+                        .checked_div(SignedDecimal::from_ratio(2, 1))
+                        .map_err(|_| ContractError::Underflow {})?,
+                )
+                .map_err(|_| ContractError::Underflow {})?;
+
+            // x_le = x_length / 2
+            let x_le = x_length
+                .checked_div(SignedDecimal::from_ratio(2, 1))
+                .map_err(|_| ContractError::Underflow {})?;
+
+            // Validate the x_coordinate
+            // x_coordinate must be between - (x_length / 2) and x_length / 2
             ensure!(
-                x_coordinate >= -(x_length / 2_f64) && x_coordinate <= x_length / 2_f64,
+                validate_coordinate(x_coordinate, x_ge, x_le),
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
+            // y_ge = - (y_length / 2)
+            let y_ge = SignedDecimal::negative_one()
+                .checked_mul(
+                    y_length
+                        .checked_div(SignedDecimal::from_ratio(2, 1))
+                        .map_err(|_| ContractError::Underflow {})?,
+                )
+                .map_err(|_| ContractError::Underflow {})?;
+            // y_le = y_length / 2
+            let y_le = y_length
+                .checked_div(SignedDecimal::from_ratio(2, 1))
+                .map_err(|_| ContractError::Underflow {})?;
+
+            // Validate the y_coordinate
+            // y_coordinate must be between - (y_length / 2) and y_length / 2
             ensure!(
-                y_coordinate >= -(y_length / 2_f64) && y_coordinate <= y_length / 2_f64,
+                validate_coordinate(y_coordinate, y_ge, y_le),
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
@@ -204,9 +218,25 @@ pub fn execute_store_coordinate(
 
             if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
+                    // z_ge = - (z_length / 2)
+                    let z_ge = SignedDecimal::negative_one()
+                        .checked_mul(
+                            z_length
+                                .unwrap()
+                                .checked_div(SignedDecimal::from_ratio(2, 1))
+                                .map_err(|_| ContractError::Underflow {})?,
+                        )
+                        .map_err(|_| ContractError::Underflow {})?;
+                    // z_le = z_length / 2
+                    let z_le = z_length
+                        .unwrap()
+                        .checked_div(SignedDecimal::from_ratio(2, 1))
+                        .map_err(|_| ContractError::Underflow {})?;
+
+                    // Validate the z_coordinate
+                    // z_coordinate must be between - (z_length / 2) and z_length / 2
                     ensure!(
-                        z_coordinate >= -(z_length.unwrap() / 2_f64)
-                            && z_coordinate <= z_length.unwrap() / 2_f64,
+                        validate_coordinate(z_coordinate, z_ge, z_le),
                         ContractError::InvalidParameter {
                             error: Some("Wrong Z Coordinate Range".to_string())
                         }
@@ -215,15 +245,17 @@ pub fn execute_store_coordinate(
             }
         }
         false => {
+            // x_coordinate must be between 0 and x_length
             ensure!(
-                x_coordinate >= 0_f64 && x_coordinate <= x_length,
+                validate_coordinate(x_coordinate, SignedDecimal::zero(), x_length),
                 ContractError::InvalidParameter {
                     error: Some("Wrong X Coordinate Range".to_string())
                 }
             );
 
+            // y_coordinate must be between 0 and y_length
             ensure!(
-                y_coordinate >= 0_f64 && y_coordinate <= y_length,
+                validate_coordinate(y_coordinate, SignedDecimal::zero(), y_length),
                 ContractError::InvalidParameter {
                     error: Some("Wrong Y Coordinate Range".to_string())
                 }
@@ -231,8 +263,9 @@ pub fn execute_store_coordinate(
 
             if is_z_allowed {
                 if let Some(z_coordinate) = z_coordinate {
+                    // z_coordinate must be between 0 and z_length
                     ensure!(
-                        z_coordinate >= 0_f64 && z_coordinate <= z_length.unwrap(),
+                        validate_coordinate(z_coordinate, SignedDecimal::zero(), z_length.unwrap()),
                         ContractError::InvalidParameter {
                             error: Some("Wrong Z Coordinate Range".to_string())
                         }
@@ -276,10 +309,6 @@ pub fn execute_store_user_coordinate(
     user_location_paths: Vec<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     for user_location_path in user_location_paths {
         let address = user_location_path.get_raw_address(&ctx.deps.as_ref())?;
         let contract_info = ctx.deps.querier.query_wasm_contract_info(address.clone());
@@ -307,8 +336,6 @@ pub fn execute_store_user_coordinate(
                 let user: AndrAddr = user_res.owner;
                 let user_addr = user.get_raw_address(&ctx.deps.as_ref())?;
 
-                user_point_coordinate.validate()?;
-
                 USER_COORDINATE.save(ctx.deps.storage, user_addr, &user_point_coordinate)?;
             } else {
                 return Err(ContractError::InvalidADOType {
@@ -331,10 +358,6 @@ pub fn execute_delete_user_coordinate(
     user: AndrAddr,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     let user_addr = user.get_raw_address(&ctx.deps.as_ref())?;
 
     USER_COORDINATE.remove(ctx.deps.storage, user_addr);
@@ -343,6 +366,14 @@ pub fn execute_delete_user_coordinate(
         attr("method", "delete_user_coordinate"),
         attr("sender", sender),
     ]))
+}
+
+pub fn validate_coordinate(
+    coordinate: SignedDecimal,
+    ge: SignedDecimal, // greater equal
+    le: SignedDecimal, // less equal
+) -> bool {
+    coordinate.ge(&ge) && coordinate.le(&le)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -410,13 +441,24 @@ pub fn get_user_coordinate(deps: Deps, user: AndrAddr) -> Result<CoordinateInfo,
     let user_coordinate = USER_COORDINATE.load(deps.storage, user_addr)?;
 
     Ok(CoordinateInfo {
-        x: user_coordinate.x_coordinate,
-        y: user_coordinate.y_coordinate,
-        z: user_coordinate.z_coordinate,
+        x: user_coordinate.x_coordinate.to_string(),
+        y: user_coordinate.y_coordinate.to_string(),
+        z: user_coordinate.z_coordinate.map(|z| z.to_string()),
     })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
 }

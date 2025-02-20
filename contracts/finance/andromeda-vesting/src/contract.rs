@@ -1,8 +1,9 @@
+use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{
-        actions::call_action, context::ExecuteContext, withdraw::WithdrawalType, Milliseconds,
-    },
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary, withdraw::WithdrawalType, Milliseconds},
     error::ContractError,
 };
 #[cfg(not(feature = "library"))]
@@ -12,17 +13,11 @@ use cosmwasm_std::{
     Response, StdError, Uint128,
 };
 use cw_asset::AssetInfo;
-use cw_utils::nonpayable;
 use std::cmp;
 
 use crate::state::{
     batches, get_all_batches_with_ids, get_claimable_batches_with_ids, save_new_batch, Batch,
     CONFIG,
-};
-use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::{
-    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    common::encode_binary,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-vesting";
@@ -61,31 +56,8 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::CreateBatch {
             lockup_duration,
@@ -111,10 +83,6 @@ fn execute_create_batch(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
 
     let config = CONFIG.load(deps.storage)?;
     let current_time = Milliseconds::from_seconds(env.block.time.seconds());
@@ -200,15 +168,7 @@ fn execute_claim(
     number_of_claims: Option<u64>,
     batch_id: u64,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    let contract = ADOContract::default();
-    // Should this be owner or recipient?
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -243,17 +203,7 @@ fn execute_claim_all(
     limit: Option<u32>,
     up_to_time: Option<Milliseconds>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
-
-    let contract = ADOContract::default();
-
-    ensure!(
-        contract.is_contract_owner(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -363,8 +313,8 @@ fn claim_batch(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

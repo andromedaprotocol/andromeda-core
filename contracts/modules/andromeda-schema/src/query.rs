@@ -56,7 +56,7 @@ fn basic_type_matches(schema: &Value, data: &Value) -> bool {
                         let required_fields = schema.get("required").and_then(|r| r.as_array());
                         if let Some(required_fields) = required_fields {
                             if !required_fields.iter().all(|field| {
-                                field.as_str().map_or(false, |f| data_obj.contains_key(f))
+                                field.as_str().is_some_and(|f| data_obj.contains_key(f))
                             }) {
                                 return false;
                             }

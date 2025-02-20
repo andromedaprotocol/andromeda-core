@@ -120,54 +120,56 @@ pub enum ExecuteMsg {
     BatchMint { tokens: Vec<MintMsg> },
 }
 
-impl From<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
-    fn from(msg: ExecuteMsg) -> Self {
+impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
+    type Error = String;
+
+    fn try_from(msg: ExecuteMsg) -> Result<Self, Self::Error> {
         match msg {
             ExecuteMsg::TransferNft {
                 recipient,
                 token_id,
-            } => Cw721ExecuteMsg::TransferNft {
+            } => Ok(Cw721ExecuteMsg::TransferNft {
                 recipient: recipient.to_string(),
                 token_id,
-            },
+            }),
             ExecuteMsg::SendNft {
                 contract,
                 token_id,
                 msg,
-            } => Cw721ExecuteMsg::SendNft {
+            } => Ok(Cw721ExecuteMsg::SendNft {
                 contract: contract.to_string(),
                 token_id,
                 msg,
-            },
+            }),
             ExecuteMsg::Approve {
                 spender,
                 token_id,
                 expires,
-            } => Cw721ExecuteMsg::Approve {
+            } => Ok(Cw721ExecuteMsg::Approve {
                 spender,
                 token_id,
                 expires,
-            },
+            }),
             ExecuteMsg::Revoke { spender, token_id } => {
-                Cw721ExecuteMsg::Revoke { spender, token_id }
+                Ok(Cw721ExecuteMsg::Revoke { spender, token_id })
             }
             ExecuteMsg::ApproveAll { operator, expires } => {
-                Cw721ExecuteMsg::ApproveAll { operator, expires }
+                Ok(Cw721ExecuteMsg::ApproveAll { operator, expires })
             }
-            ExecuteMsg::RevokeAll { operator } => Cw721ExecuteMsg::RevokeAll { operator },
+            ExecuteMsg::RevokeAll { operator } => Ok(Cw721ExecuteMsg::RevokeAll { operator }),
             ExecuteMsg::Mint {
                 extension,
                 token_id,
                 token_uri,
                 owner,
-            } => Cw721ExecuteMsg::Mint {
+            } => Ok(Cw721ExecuteMsg::Mint {
                 extension,
                 token_id,
                 token_uri,
                 owner,
-            },
-            ExecuteMsg::Burn { token_id } => Cw721ExecuteMsg::Burn { token_id },
-            _ => panic!("Unsupported message"),
+            }),
+            ExecuteMsg::Burn { token_id } => Ok(Cw721ExecuteMsg::Burn { token_id }),
+            _ => Err("Unsupported message".to_string()),
         }
     }
 }

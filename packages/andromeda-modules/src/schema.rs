@@ -10,6 +10,7 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(restricted)]
     UpdateSchema { new_schema_json_string: String },
 }
 

@@ -6,7 +6,6 @@ use andromeda_math::graph::{
 };
 use andromeda_math::graph::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::amp::AndrAddr;
-use andromeda_std::error::ContractError;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -37,7 +36,7 @@ impl MockGraph {
                 "Graph Contract",
                 Some(sender.to_string()),
             )
-            .map_err(|e| ContractError::Std(e.into()))?;
+            .unwrap();
         MockGraph(Addr::unchecked(addr))
     }
 
@@ -119,8 +118,13 @@ impl MockGraph {
         res
     }
 
-    pub fn query_all_points(&self, app: &mut MockApp) -> GetAllPointsResponse {
-        let msg = QueryMsg::GetAllPoints {};
+    pub fn query_all_points(
+        &self,
+        app: &mut MockApp,
+        start: Option<u128>,
+        limit: Option<u32>,
+    ) -> GetAllPointsResponse {
+        let msg = QueryMsg::GetAllPoints { start, limit };
         let res: GetAllPointsResponse = self.query(app, msg);
         res
     }

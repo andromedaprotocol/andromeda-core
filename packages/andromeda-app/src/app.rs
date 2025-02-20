@@ -311,6 +311,7 @@ pub struct InstantiateMsg {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(restricted)]
     AddAppComponent {
         component: AppComponent,
     },

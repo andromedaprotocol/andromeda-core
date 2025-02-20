@@ -9,18 +9,15 @@ use andromeda_finance::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    amp::Recipient,
-    common::{
-        actions::call_action, context::ExecuteContext, encode_binary, expiration::Expiry,
-        Milliseconds,
-    },
+    amp::{AndrAddr, Recipient},
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary, expiration::Expiry},
     error::ContractError,
 };
 use cosmwasm_std::{
     attr, ensure, entry_point, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, SubMsg, Uint128,
 };
-use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-weighted-distribution-splitter";
@@ -33,30 +30,22 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let _app_contract = ADOContract::default().get_app_contract(deps.storage)?;
     // Max 100 recipients
     ensure!(
         msg.recipients.len() <= 100,
         ContractError::ReachedRecipientLimit {}
     );
-    let splitter = match msg.lock_time {
-        Some(ref lock_time) => {
-            let time = validate_expiry_duration(lock_time, &env.block)?;
 
-            Splitter {
-                recipients: msg.recipients,
-                lock: time,
-                default_recipient: msg.default_recipient,
-            }
-        }
-        None => {
-            Splitter {
-                recipients: msg.recipients,
-                // If locking isn't desired upon instantiation, it's automatically set to 0
-                lock: Milliseconds::default(),
-                default_recipient: msg.default_recipient,
-            }
-        }
+    let lock = msg
+        .lock_time
+        .map(|lock_time| validate_expiry_duration(&lock_time, &env.block))
+        .transpose()?
+        .unwrap_or_default();
+
+    let splitter = Splitter {
+        recipients: msg.recipients,
+        lock,
+        default_recipient: msg.default_recipient,
     };
 
     SPLITTER.save(deps.storage, &splitter)?;
@@ -78,31 +67,8 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateRecipients { recipients } => execute_update_recipients(ctx, recipients),
         ExecuteMsg::UpdateRecipientWeight { recipient } => {
@@ -124,15 +90,7 @@ pub fn execute_update_recipient_weight(
     ctx: ExecuteContext,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
-    // Only the contract's owner can update a recipient's weight
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     // Can't set weight to 0
     ensure!(
@@ -145,11 +103,10 @@ pub fn execute_update_recipient_weight(
 
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     // Recipients are stored in a vector, we search for the desired recipient's index in the vector
-
     let user_index = splitter
         .recipients
         .clone()
@@ -171,23 +128,14 @@ fn execute_update_default_recipient(
     ctx: ExecuteContext,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     if let Some(ref recipient) = recipient {
@@ -214,26 +162,14 @@ pub fn execute_add_recipient(
     ctx: ExecuteContext,
     recipient: AddressWeight,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
+    let ExecuteContext { deps, env, .. } = ctx;
 
-    // Only the contract's owner can add a recipient
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    // No need to send funds
-
-    // Check if splitter is locked
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't add recipients while the lock isn't expired
-
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     // Can't set weight to 0
@@ -243,11 +179,10 @@ pub fn execute_add_recipient(
     );
 
     // Check for duplicate recipients
-
-    let user_exists = splitter
-        .recipients
-        .iter()
-        .any(|x| x.recipient == recipient.recipient);
+    let user_exists = splitter.recipients.iter().any(|x| {
+        x.recipient.address.get_raw_address(&deps.as_ref())
+            == recipient.recipient.address.get_raw_address(&deps.as_ref())
+    });
 
     ensure!(!user_exists, ContractError::DuplicateRecipient {});
 
@@ -288,6 +223,12 @@ fn execute_send(
     );
     let splitter = SPLITTER.load(deps.storage)?;
     let splitter_recipients = if let Some(config) = config {
+        ensure!(
+            splitter.lock.is_expired(&ctx.env.block),
+            ContractError::ContractLocked {
+                msg: Some("Config isn't allowed while the splitter is locked".to_string())
+            }
+        );
         // Max 100 recipients
         ensure!(config.len() <= 100, ContractError::ReachedRecipientLimit {});
         config
@@ -369,17 +310,7 @@ fn execute_update_recipients(
     ctx: ExecuteContext,
     recipients: Vec<AddressWeight>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
-
-    // Only the owner can use this function
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-    // No need to send funds
+    let ExecuteContext { deps, env, .. } = ctx;
 
     // Recipient list can't be empty
     ensure!(
@@ -392,7 +323,7 @@ fn execute_update_recipients(
     // Can't update recipients while lock isn't expired
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     // Maximum number of recipients is 100
@@ -414,71 +345,42 @@ fn execute_update_recipients(
 
 fn execute_remove_recipient(
     ctx: ExecuteContext,
-    recipient: Recipient,
+    recipient: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
-    // Can't remove recipients while lock isn't expired
-
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
-    // Recipients are stored in a vector, we search for the desired recipient's index in the vector
-
-    let user_index = splitter
+    // Find and remove recipient in one pass
+    let recipient_idx = splitter
         .recipients
-        .clone()
-        .into_iter()
-        .position(|x| x.recipient == recipient);
+        .iter()
+        .position(|x| {
+            x.recipient.address.get_raw_address(&deps.as_ref())
+                == recipient.get_raw_address(&deps.as_ref())
+        })
+        .ok_or(ContractError::UserNotFound {})?;
 
-    // If the index exists, remove the element found in the index
-    // If the index doesn't exist, return an error
-    ensure!(user_index.is_some(), ContractError::UserNotFound {});
-
-    if let Some(i) = user_index {
-        splitter.recipients.swap_remove(i);
-        let new_splitter = Splitter {
-            recipients: splitter.recipients,
-            lock: splitter.lock,
-            default_recipient: splitter.default_recipient,
-        };
-        SPLITTER.save(deps.storage, &new_splitter)?;
-    };
+    splitter.recipients.swap_remove(recipient_idx);
+    SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "removed_recipient")]))
 }
 
 fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, info, env, ..
-    } = ctx;
-
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
     // Can't call this function while the lock isn't expired
-
     ensure!(
         splitter.lock.is_expired(&env.block),
-        ContractError::ContractLocked {}
+        ContractError::ContractLocked { msg: None }
     );
 
     let new_lock_time_expiration = validate_expiry_duration(&lock_time, &env.block)?;
@@ -494,8 +396,8 @@ fn execute_update_lock(ctx: ExecuteContext, lock_time: Expiry) -> Result<Respons
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[entry_point]
@@ -507,11 +409,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightResponse, ContractError> {
+fn query_user_weight(deps: Deps, user: AndrAddr) -> Result<GetUserWeightResponse, ContractError> {
     let splitter = SPLITTER.load(deps.storage)?;
     let recipients = splitter.recipients;
 
-    let addrs = recipients.iter().find(|&x| x.recipient == user);
+    let addrs = recipients
+        .iter()
+        .find(|&x| x.recipient.address.get_raw_address(&deps) == user.get_raw_address(&deps))
+        .ok_or(ContractError::AccountNotFound {})?;
 
     // Calculate the total weight
     let mut total_weight = Uint128::zero();
@@ -519,19 +424,10 @@ fn query_user_weight(deps: Deps, user: Recipient) -> Result<GetUserWeightRespons
         let recipient_weight = recipient_addr.weight;
         total_weight = total_weight.checked_add(recipient_weight)?;
     }
-
-    if let Some(i) = addrs {
-        let weight = i.weight;
-        Ok(GetUserWeightResponse {
-            weight,
-            total_weight,
-        })
-    } else {
-        Ok(GetUserWeightResponse {
-            weight: Uint128::zero(),
-            total_weight,
-        })
-    }
+    Ok(GetUserWeightResponse {
+        weight: addrs.weight,
+        total_weight,
+    })
 }
 
 fn query_splitter(deps: Deps) -> Result<GetSplitterConfigResponse, ContractError> {

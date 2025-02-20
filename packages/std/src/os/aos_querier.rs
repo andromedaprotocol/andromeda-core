@@ -182,7 +182,6 @@ impl AOSQuerier {
             &[ado_type.as_bytes(), action.as_bytes()],
         )?;
         let fee: Option<ActionFee> = AOSQuerier::query_storage(querier, adodb_addr, &key)?;
-
         Ok(fee)
     }
 
@@ -240,6 +239,26 @@ impl AOSQuerier {
         }
     }
 
+    pub fn get_username(
+        querier: &QuerierWrapper,
+        vfs_addr: &Addr,
+        address: &Addr,
+    ) -> Result<Option<String>, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("address_username", &[address.as_bytes()])?;
+        let username: Option<String> = AOSQuerier::query_storage(querier, vfs_addr, key.as_str())?;
+        Ok(username)
+    }
+
+    pub fn get_address_from_username(
+        querier: &QuerierWrapper,
+        vfs_addr: &Addr,
+        username: &str,
+    ) -> Result<Option<Addr>, ContractError> {
+        let key = AOSQuerier::get_map_storage_key("users", &[username.as_bytes()])?;
+        let address: Option<Addr> = AOSQuerier::query_storage(querier, vfs_addr, key.as_str())?;
+        Ok(address)
+    }
+
     #[cfg(feature = "rates")]
     /// Queries the rates contract
     pub fn get_rate(
@@ -261,7 +280,7 @@ impl AOSQuerier {
         denom: &str,
     ) -> Result<DenomInfo, ContractError> {
         let query = IBCRegistryQueryMsg::DenomInfo {
-            denom: denom.to_string(),
+            denom: denom.to_lowercase(),
         };
         let denom_info_response: DenomInfoResponse =
             querier.query_wasm_smart(ibc_registry_addr, &query)?;
@@ -321,5 +340,18 @@ impl AOSQuerier {
             base_denom: denom_trace.base_denom.clone(),
         };
         Ok((new_denom_trace.get_ibc_denom(), new_denom_trace))
+    }
+
+    pub fn get_env_variable<T: DeserializeOwned>(
+        querier: &QuerierWrapper,
+        kernel_addr: &Addr,
+        variable: &str,
+    ) -> Result<Option<T>, ContractError> {
+        let key = AOSQuerier::get_map_storage_key(
+            "kernel_env_variables",
+            &[variable.to_ascii_uppercase().as_bytes()],
+        )?;
+        let verify: Option<T> = AOSQuerier::query_storage(querier, kernel_addr, &key)?;
+        Ok(verify)
     }
 }

@@ -1,12 +1,13 @@
 use crate::{
     ado_base::ownership::OwnershipMessage,
     amp::{
-        messages::{AMPMsg, AMPPkt},
+        messages::{AMPMsg, AMPPkt, CrossChainHop},
         AndrAddr,
     },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Coin};
+use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
 pub struct ChannelInfo {
@@ -39,6 +40,8 @@ pub enum ExecuteMsg {
     /// Receives an AMP Packet for relaying
     #[serde(rename = "amp_receive")]
     AMPReceive(AMPPkt),
+    // Cw20 entry point
+    Receive(Cw20ReceiveMsg),
     /// Constructs an AMPPkt with a given AMPMsg and sends it to the recipient
     Send {
         message: AMPMsg,
@@ -73,10 +76,27 @@ pub enum ExecuteMsg {
     UpdateChainName {
         chain_name: String,
     },
+    /// Sets an environment variable with the given name and value.
+    /// The variable name must be uppercase and can only contain letters, numbers, and underscores.
+    /// The value must be a valid UTF-8 string.
+    SetEnv {
+        variable: String,
+        value: String,
+    },
+    /// Removes an environment variable with the given name.
+    /// Returns success even if the variable doesn't exist.
+    UnsetEnv {
+        variable: String,
+    },
     // Only accessible to key contracts
     Internal(InternalMsg),
     // Base message
     Ownership(OwnershipMessage),
+}
+
+#[cw_serde]
+pub enum Cw20HookMsg {
+    AmpReceive(AMPPkt),
 }
 
 #[cw_serde]
@@ -103,6 +123,22 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct PendingPacketResponse {
+    pub packets: Vec<PacketInfoAndSequence>,
+}
+
+#[cw_serde]
+pub struct PacketInfoAndSequence {
+    pub packet_info: Ics20PacketInfo,
+    pub sequence: u64,
+}
+
+#[cw_serde]
+pub struct EnvResponse {
+    pub value: Option<String>,
+}
+
+#[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -126,6 +162,10 @@ pub enum QueryMsg {
     AdoType {},
     #[returns(crate::ado_base::ownership::ContractOwnerResponse)]
     Owner {},
+    #[returns(PendingPacketResponse)]
+    PendingPackets { channel_id: Option<String> },
+    #[returns(EnvResponse)]
+    GetEnv { variable: String },
 }
 
 #[cw_serde]
@@ -143,6 +183,8 @@ pub enum IbcExecuteMsg {
         message: Binary,
         funds: Coin,
         original_sender: String,
+        original_sender_username: Option<AndrAddr>,
+        previous_hops: Vec<CrossChainHop>,
     },
     CreateADO {
         instantiation_msg: Binary,
@@ -164,6 +206,7 @@ pub struct Ics20PacketInfo {
     pub funds: Coin,
     // The restricted wallet will probably already have access to this
     pub channel: String,
+    pub pending: bool,
 }
 
 #[cw_serde]

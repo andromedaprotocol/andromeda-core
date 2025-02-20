@@ -6,16 +6,15 @@ use andromeda_math::shunting::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    andr_execute_fn,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    attr, entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
     WasmQuery,
 };
 use cw2::set_contract_version;
-use cw_utils::nonpayable;
-
 use serde_cw_value::Value;
 
 use crate::state::EXPRESSIONS;
@@ -52,25 +51,8 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let _contract = ADOContract::default();
-    let ctx = ExecuteContext::new(deps, info, env);
-
-    match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateExpressions { expressions } => {
             execute_update_expression(ctx, expressions)
@@ -83,14 +65,7 @@ fn execute_update_expression(
     ctx: ExecuteContext,
     expressions: Vec<String>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    nonpayable(&info)?;
-
-    ensure!(
-        ADOContract::default().is_owner_or_operator(deps.storage, info.sender.as_str())?,
-        ContractError::Unauthorized {}
-    );
-
+    let ExecuteContext { deps, .. } = ctx;
     EXPRESSIONS.save(deps.storage, &expressions)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", "update_expression")]))
@@ -190,8 +165,8 @@ fn eval(expr: &str) -> Result<f64, ContractError> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

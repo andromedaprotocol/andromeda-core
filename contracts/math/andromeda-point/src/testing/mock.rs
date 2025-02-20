@@ -8,7 +8,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, mock_info, MockApi, MockStorage},
-    Coin, Deps, DepsMut, MessageInfo, OwnedDeps, Response,
+    Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 
 use crate::contract::{execute, instantiate, query};
@@ -45,19 +45,6 @@ pub fn set_point(
         point: point.clone(),
     };
     let info = mock_info(sender, &[]);
-    execute(deps, mock_env(), info, msg)
-}
-
-pub fn set_point_with_funds(
-    deps: DepsMut<'_>,
-    point: &PointCoordinate,
-    sender: &str,
-    coin: Coin,
-) -> Result<Response, ContractError> {
-    let msg = ExecuteMsg::SetPoint {
-        point: point.clone(),
-    };
-    let info = mock_info(sender, &[coin]);
     execute(deps, mock_env(), info, msg)
 }
 

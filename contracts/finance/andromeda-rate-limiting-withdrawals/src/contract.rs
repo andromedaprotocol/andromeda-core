@@ -2,20 +2,22 @@ use crate::state::{ACCOUNTS, ALLOWED_COIN};
 use andromeda_finance::rate_limiting_withdrawals::{
     AccountDetails, CoinAllowance, ExecuteMsg, InstantiateMsg, MinimumFrequency, QueryMsg,
 };
-
-use andromeda_std::ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg};
-use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::common::actions::call_action;
-use andromeda_std::common::context::ExecuteContext;
-use andromeda_std::common::Milliseconds;
-use andromeda_std::{common::encode_binary, error::ContractError};
-
+use andromeda_std::{
+    ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_contract::ADOContract,
+    amp::{
+        messages::{AMPCtx, AMPPkt},
+        Recipient,
+    },
+    andr_execute_fn,
+    common::{context::ExecuteContext, encode_binary, Milliseconds},
+    error::ContractError,
+};
 use cosmwasm_std::{
     ensure, entry_point, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, Uint128,
+    Response, StdError, SubMsg, Uint128,
 };
-
-use cw_utils::{nonpayable, one_coin};
+use cw_utils::one_coin;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-rate-limiting-withdrawals";
@@ -70,41 +72,13 @@ pub fn instantiate(
     Ok(inst_resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
-
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
-    }
-}
-
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
         ExecuteMsg::Deposit { recipient } => execute_deposit(ctx, recipient),
-        ExecuteMsg::Withdraw { amount } => execute_withdraw(ctx, amount),
+        ExecuteMsg::Withdraw { amount, recipient } => execute_withdraw(ctx, amount, recipient),
         _ => ADOContract::default().execute(ctx, msg),
-    }?;
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
+    }
 }
 
 fn execute_deposit(
@@ -164,12 +138,19 @@ fn execute_deposit(
     Ok(res)
 }
 
-fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, ContractError> {
+fn execute_withdraw(
+    ctx: ExecuteContext,
+    amount: Uint128,
+    recipient: Option<Recipient>,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, ..
+        deps,
+        info,
+        env,
+        amp_ctx,
+        contract,
+        ..
     } = ctx;
-
-    nonpayable(&info)?;
 
     // check if sender has an account
     let account = ACCOUNTS
@@ -218,20 +199,42 @@ fn execute_withdraw(ctx: ExecuteContext, amount: Uint128) -> Result<Response, Co
         amount,
     };
 
+    let message: SubMsg = if let Some(recipient) = recipient {
+        let amp_msg = recipient.generate_amp_msg(&deps.as_ref(), Some(vec![coin.clone()]))?;
+        let ctx = if let Some(pkt) = amp_ctx {
+            pkt.ctx
+        } else {
+            AMPCtx::new(
+                info.sender.to_string(),
+                env.contract.address.to_string(),
+                0,
+                None,
+            )
+        };
+        let amp_pkt = AMPPkt::new_with_ctx(ctx, vec![amp_msg]);
+        let kernel_address = contract.get_kernel_address(deps.storage)?;
+        amp_pkt.to_sub_msg(kernel_address, Some(vec![coin.clone()]), 0)?
+    } else {
+        SubMsg::reply_always(
+            CosmosMsg::Bank(BankMsg::Send {
+                to_address: info.sender.to_string(),
+                amount: vec![coin.clone()],
+            }),
+            0,
+        )
+    };
+
     // Transfer funds
     let res = Response::new()
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![coin.clone()],
-        }))
+        .add_submessage(message)
         .add_attribute("action", "withdrew funds")
         .add_attribute("coin", coin.to_string());
     Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[entry_point]

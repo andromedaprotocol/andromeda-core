@@ -1,13 +1,13 @@
 use crate::{
     contract::{execute, instantiate, query},
-    state::{add_pathname, resolve_pathname, PathInfo, ADDRESS_LIBRARY, ADDRESS_USERNAME, USERS},
+    state::{add_pathname, resolve_pathname, ADDRESS_LIBRARY, ADDRESS_USERNAME, USERS},
 };
 
 use andromeda_std::{
     amp::AndrAddr,
     os::{
         kernel::{ExecuteMsg as KernelExecuteMsg, InternalMsg},
-        vfs::{ExecuteMsg, InstantiateMsg},
+        vfs::{ExecuteMsg, InstantiateMsg, PathInfo},
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,

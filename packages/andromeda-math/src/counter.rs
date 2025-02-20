@@ -18,11 +18,17 @@ pub struct State {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable)]
     Increment {},
+    #[attrs(nonpayable)]
     Decrement {},
+    #[attrs(nonpayable)]
     Reset {},
+    #[attrs(nonpayable, restricted)]
     UpdateRestriction { restriction: CounterRestriction },
+    #[attrs(nonpayable, restricted)]
     SetIncreaseAmount { increase_amount: u64 },
+    #[attrs(nonpayable, restricted)]
     SetDecreaseAmount { decrease_amount: u64 },
 }
 

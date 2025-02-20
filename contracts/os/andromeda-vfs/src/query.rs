@@ -1,10 +1,9 @@
-use andromeda_std::os::vfs::{validate_path_name, SubDirBound};
+use andromeda_std::os::vfs::{validate_path_name, PathInfo, SubDirBound};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Deps};
 
 use crate::state::{
-    get_paths, get_subdir, resolve_pathname, resolve_symlink, PathInfo, ADDRESS_LIBRARY,
-    ADDRESS_USERNAME,
+    get_paths, get_subdir, resolve_pathname, resolve_symlink, ADDRESS_LIBRARY, ADDRESS_USERNAME,
 };
 
 pub fn resolve_path(deps: Deps, path: AndrAddr) -> Result<Addr, ContractError> {

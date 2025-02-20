@@ -155,8 +155,6 @@ pub fn register_user(
     username: String,
     address: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    #[cfg(not(test))]
-    ensure!(false, ContractError::TemporarilyDisabled {});
     ensure!(
         username.len() as u64 <= MAX_USERNAME_LENGTH,
         ContractError::InvalidUsername {
@@ -167,10 +165,14 @@ pub fn register_user(
     );
     let username = username.to_lowercase();
     let kernel = &ADOContract::default().get_kernel_address(env.deps.storage)?;
-    let curr_chain = AOSQuerier::get_current_chain(&env.deps.querier, kernel)?;
+    let is_registration_enabled =
+        AOSQuerier::get_env_variable::<String>(&env.deps.querier, kernel, "username_registration")?
+            .unwrap_or("false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false);
     // Can only register username directly on Andromeda chain
     ensure!(
-        curr_chain == "andromeda" || env.info.sender == kernel,
+        is_registration_enabled || env.info.sender == kernel,
         ContractError::Unauthorized {}
     );
     // If address is provided sender must be Kernel

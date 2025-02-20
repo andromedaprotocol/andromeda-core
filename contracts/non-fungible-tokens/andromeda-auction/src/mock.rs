@@ -225,6 +225,7 @@ pub fn mock_update_auction(
     coin_denom: Asset,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
+    buy_now_price: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
 ) -> ExecuteMsg {
@@ -237,6 +238,7 @@ pub fn mock_update_auction(
         whitelist,
         min_bid,
         min_raise,
+        buy_now_price,
         recipient,
     }
 }

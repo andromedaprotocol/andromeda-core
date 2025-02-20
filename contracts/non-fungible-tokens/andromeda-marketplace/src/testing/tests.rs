@@ -14,18 +14,15 @@ use andromeda_std::{
         },
         encode_binary,
         expiration::{expiration_from_milliseconds, Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
-        reply::ReplyId,
         Milliseconds,
     },
     error::ContractError,
-    os::economics::ExecuteMsg as EconomicsExecuteMsg,
     testing::mock_querier::MOCK_CW20_CONTRACT,
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{mock_env, mock_info},
-    to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg,
-    Uint128, WasmMsg,
+    BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
 use cw721::{Cw721ExecuteMsg, Cw721ReceiveMsg};
@@ -229,7 +226,7 @@ fn test_instantiate_with_multiple_authorized_cw20_addresses() {
             ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, raw_addr).unwrap();
         assert_eq!(
             permission,
-            Some(Permission::Local(LocalPermission::Whitelisted(None)))
+            Some(Permission::Local(LocalPermission::whitelisted(None, None)))
         );
     }
 
@@ -962,18 +959,6 @@ fn test_execute_buy_with_tax_and_royalty_works() {
             to_address: "owner".to_string(),
             amount: vec![coin(100, "uusd")],
         })),
-        SubMsg::reply_on_error(
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "economics_contract".to_string(),
-                msg: to_json_binary(&EconomicsExecuteMsg::PayFee {
-                    payee: Addr::unchecked("someone"),
-                    action: "Buy".to_string(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }),
-            ReplyId::PayFee.repr(),
-        ),
     ];
     assert_eq!(res.messages, expected)
 }
@@ -1024,7 +1009,7 @@ fn test_execute_authorize_cw20_contract() {
             .unwrap();
     assert_eq!(
         permission,
-        Some(Permission::Local(LocalPermission::Whitelisted(None)))
+        Some(Permission::Local(LocalPermission::whitelisted(None, None)))
     );
 
     // Test successful authorization with expiration
@@ -1042,7 +1027,7 @@ fn test_execute_authorize_cw20_contract() {
         vec![
             attr("action", "authorize_contract"),
             attr("address", "cw20_contract_with_expiry"),
-            attr("permission", format!("whitelisted:{}", expiration)),
+            attr("permission", format!("whitelisted until:{}", expiration)),
         ]
     );
 
@@ -1055,9 +1040,10 @@ fn test_execute_authorize_cw20_contract() {
     .unwrap();
     assert_eq!(
         permission,
-        Some(Permission::Local(LocalPermission::Whitelisted(Some(
-            expiration
-        ))))
+        Some(Permission::Local(LocalPermission::whitelisted(
+            None,
+            Some(expiration),
+        )))
     );
 }
 
@@ -1081,7 +1067,7 @@ fn test_execute_deauthorize_cw20_contract() {
             .unwrap();
     assert_eq!(
         permission,
-        Some(Permission::Local(LocalPermission::Whitelisted(None)))
+        Some(Permission::Local(LocalPermission::whitelisted(None, None)))
     );
 
     // Now deauthorize the CW20 contract
@@ -1181,7 +1167,7 @@ fn test_authorize_token_contract() {
         vec![
             attr("action", "authorize_contract"),
             attr("address", "nft_contract"),
-            attr("permission", format!("whitelisted:{}", expiration)),
+            attr("permission", format!("whitelisted until:{}", expiration)),
         ]
     );
 

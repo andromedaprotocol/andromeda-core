@@ -1,7 +1,6 @@
 pub mod conditional_splitter;
-pub mod cross_chain_swap;
+pub mod fixed_amount_splitter;
 pub mod rate_limiting_withdrawals;
-pub mod set_amount_splitter;
 pub mod splitter;
 pub mod timelock;
 pub mod validator_staking;

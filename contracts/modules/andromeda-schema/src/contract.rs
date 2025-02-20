@@ -8,14 +8,15 @@ use andromeda_modules::schema::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    common::{context::ExecuteContext, encode_binary},
+    andr_execute_fn,
+    common::encode_binary,
     error::ContractError,
 };
 use cw_json::JSON;
 use serde_json::{from_str, Value};
 
 use crate::{
-    execute::handle_execute,
+    execute::execute_update_schema,
     query::{get_schema, validate_data},
     state::SCHEMA,
 };
@@ -58,19 +59,13 @@ pub fn instantiate(
     Ok(resp)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
-    let ctx = ExecuteContext::new(deps, info, env);
+#[andr_execute_fn]
+pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AMPReceive(pkt) => {
-            ADOContract::default().execute_amp_receive(ctx, pkt, handle_execute)
-        }
-        _ => handle_execute(ctx, msg),
+        ExecuteMsg::UpdateSchema {
+            new_schema_json_string,
+        } => execute_update_schema(ctx, new_schema_json_string),
+        _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
@@ -84,8 +79,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    ADOContract::default().migrate(deps, CONTRACT_NAME, CONTRACT_VERSION)
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

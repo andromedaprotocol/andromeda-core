@@ -1,13 +1,13 @@
-use andromeda_data_storage::form::{ExecuteMsg, SubmissionInfo};
+use andromeda_data_storage::form::SubmissionInfo;
 use andromeda_modules::schema::{QueryMsg as SchemaQueryMsg, ValidateDataResponse};
 use andromeda_std::{
     ado_contract::ADOContract,
     amp::AndrAddr,
-    common::{actions::call_action, context::ExecuteContext, encode_binary, Milliseconds},
+    common::{context::ExecuteContext, encode_binary, Milliseconds},
     error::ContractError,
 };
 use cosmwasm_std::{ensure, Env, QueryRequest, Response, Uint64, WasmQuery};
-use cw_utils::{nonpayable, Expiration};
+use cw_utils::Expiration;
 
 use crate::{
     contract::SUBMIT_FORM_ACTION,
@@ -16,42 +16,10 @@ use crate::{
 
 const MAX_LIMIT: u64 = 100u64;
 
-pub fn handle_execute(mut ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    let action_response = call_action(
-        &mut ctx.deps,
-        &ctx.info,
-        &ctx.env,
-        &ctx.amp_ctx,
-        msg.as_ref(),
-    )?;
-
-    let res = match msg {
-        ExecuteMsg::SubmitForm { data } => execute_submit_form(ctx, data),
-        ExecuteMsg::DeleteSubmission {
-            submission_id,
-            wallet_address,
-        } => execute_delete_submission(ctx, submission_id, wallet_address),
-        ExecuteMsg::EditSubmission {
-            submission_id,
-            wallet_address,
-            data,
-        } => execute_edit_submission(ctx, submission_id, wallet_address, data),
-        ExecuteMsg::OpenForm {} => execute_open_form(ctx),
-        ExecuteMsg::CloseForm {} => execute_close_form(ctx),
-        _ => ADOContract::default().execute(ctx, msg),
-    }?;
-
-    Ok(res
-        .add_submessages(action_response.messages)
-        .add_attributes(action_response.attributes)
-        .add_events(action_response.events))
-}
-
 pub fn execute_submit_form(
     mut ctx: ExecuteContext,
     data: String,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
     ADOContract::default().is_permissioned(
         ctx.deps.branch(),
@@ -141,13 +109,7 @@ pub fn execute_delete_submission(
     submission_id: u64,
     wallet_address: AndrAddr,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
-
     let address = wallet_address.get_raw_address(&ctx.deps.as_ref())?;
     submissions()
         .load(ctx.deps.storage, &(submission_id, address.clone()))
@@ -173,7 +135,6 @@ pub fn execute_edit_submission(
     wallet_address: AndrAddr,
     data: String,
 ) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
 
     let config = CONFIG.load(ctx.deps.storage)?;
@@ -246,13 +207,7 @@ pub fn execute_edit_submission(
 }
 
 pub fn execute_open_form(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
-
     let mut config = CONFIG.load(ctx.deps.storage)?;
 
     let current_time = Milliseconds::from_nanos(ctx.env.block.time.nanos());
@@ -323,12 +278,7 @@ pub fn execute_open_form(ctx: ExecuteContext) -> Result<Response, ContractError>
 }
 
 pub fn execute_close_form(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    nonpayable(&ctx.info)?;
     let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
 
     let current_time = Milliseconds::from_nanos(ctx.env.block.time.nanos());
     let end_time = current_time.plus_milliseconds(Milliseconds(1));

@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use crate::testing::mock_querier::MOCK_POINT_CONTRACT;
 use andromeda_math::graph::{Coordinate, MapInfo, MapSize, StoredDate};
 use andromeda_math::graph::{CoordinateInfo, GetMapInfoResponse};
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
+use cosmwasm_std::SignedDecimal;
 
 use super::mock::{
     delete_user_coordinate, proper_initialization, query_all_points, query_map_info,
@@ -116,9 +119,9 @@ fn test_store_coordinate_with_z_not_allowed() {
     let err_res = store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 9.12345_f64,
-            y_coordinate: 2.12345_f64,
-            z_coordinate: Some(4.12345_f64),
+            x_coordinate: SignedDecimal::from_str("9.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("2.12345").unwrap(),
+            z_coordinate: Some(SignedDecimal::from_str("4.12345").unwrap()),
         },
         false,
         info.sender.as_ref(),
@@ -147,8 +150,8 @@ fn test_store_coordinate_with_z_allowed() {
     let err_res = store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 9.12345_f64,
-            y_coordinate: 2.12345_f64,
+            x_coordinate: SignedDecimal::from_str("9.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("2.12345").unwrap(),
             z_coordinate: None,
         },
         false,
@@ -178,8 +181,8 @@ fn test_store_coordinate_with_wrong_range_disallow_negative_z_not_allowed() {
     let err_res = store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 9.12345_f64,
-            y_coordinate: 12.12345_f64,
+            x_coordinate: SignedDecimal::from_str("9.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("12.12345").unwrap(),
             z_coordinate: None,
         },
         false,
@@ -209,9 +212,9 @@ fn test_store_coordinate_with_wrong_range_disallow_negative_z_allowed() {
     let err_res = store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 9.12345_f64,
-            y_coordinate: 9.12345_f64,
-            z_coordinate: Some(12.12345_f64),
+            x_coordinate: SignedDecimal::from_str("9.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("9.12345").unwrap(),
+            z_coordinate: Some(SignedDecimal::from_str("12.12345").unwrap()),
         },
         false,
         info.sender.as_ref(),
@@ -240,8 +243,8 @@ fn test_store_coordinate_with_wrong_range_allow_negative_z_not_allowed() {
     let err_res = store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: -4.12345_f64,
-            y_coordinate: 5.12345_f64,
+            x_coordinate: SignedDecimal::from_str("-4.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("5.12345").unwrap(),
             z_coordinate: None,
         },
         false,
@@ -271,9 +274,9 @@ fn test_store_coordinate_with_wrong_range_allow_negative_z_allowed() {
     let err_res = store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: -4.12345_f64,
-            y_coordinate: 4.12345_f64,
-            z_coordinate: Some(-12.12345_f64),
+            x_coordinate: SignedDecimal::from_str("-4.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("4.12345").unwrap(),
+            z_coordinate: Some(SignedDecimal::from_str("-12.12345").unwrap()),
         },
         false,
         info.sender.as_ref(),
@@ -302,8 +305,8 @@ fn test_store_coordinate_disallow_negative_and_update_map_timestamp_not_allowed(
     store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 9.123456_f64,
-            y_coordinate: 8.12345_f64,
+            x_coordinate: SignedDecimal::from_str("9.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("8.12345").unwrap(),
             z_coordinate: None,
         },
         false,
@@ -314,8 +317,8 @@ fn test_store_coordinate_disallow_negative_and_update_map_timestamp_not_allowed(
     store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 8.12345_f64,
-            y_coordinate: 8.123458_f64,
+            x_coordinate: SignedDecimal::from_str("8.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("8.12345").unwrap(),
             z_coordinate: None,
         },
         false,
@@ -390,8 +393,8 @@ fn test_store_coordinate_disallow_negative_timestamp_allowed() {
     store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 9.123456_f64,
-            y_coordinate: 8.12345_f64,
+            x_coordinate: SignedDecimal::from_str("9.123456").unwrap(),
+            y_coordinate: SignedDecimal::from_str("8.12345").unwrap(),
             z_coordinate: None,
         },
         true,
@@ -402,8 +405,8 @@ fn test_store_coordinate_disallow_negative_timestamp_allowed() {
     store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 8.12345_f64,
-            y_coordinate: 8.123458_f64,
+            x_coordinate: SignedDecimal::from_str("8.12345").unwrap(),
+            y_coordinate: SignedDecimal::from_str("8.123456").unwrap(),
             z_coordinate: None,
         },
         true,
@@ -414,8 +417,8 @@ fn test_store_coordinate_disallow_negative_timestamp_allowed() {
     store_coordinate(
         deps.as_mut(),
         Coordinate {
-            x_coordinate: 5_f64,
-            y_coordinate: 8_f64,
+            x_coordinate: SignedDecimal::from_str("5").unwrap(),
+            y_coordinate: SignedDecimal::from_str("8").unwrap(),
             z_coordinate: None,
         },
         true,

@@ -49,7 +49,9 @@ impl CurveConfig {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[attrs(nonpayable)]
     UpdateCurveConfig { curve_config: CurveConfig },
+    #[attrs(nonpayable)]
     Reset {},
 }
 
@@ -60,7 +62,7 @@ pub enum QueryMsg {
     #[returns(GetCurveConfigResponse)]
     GetCurveConfig {},
     #[returns(GetPlotYFromXResponse)]
-    GetPlotYFromX { x_value: f64 },
+    GetPlotYFromX { x_value: u64 },
 }
 
 #[cw_serde]

@@ -1,17 +1,11 @@
-use crate::state::{ADO_DESCRIPTORS, ADO_IDX};
-
 use super::{contract::*, state::ADO_ADDRESSES};
+use crate::state::{ADO_DESCRIPTORS, ADO_IDX};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
 use andromeda_std::ado_base::ownership::OwnershipMessage;
-// use andromeda_std::amp::AndrAddr;
-// use andromeda_std::common::reply::ReplyId;
-// use andromeda_std::os::vfs::{convert_component_name, ExecuteMsg as VFSExecuteMsg};
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,
 };
-
 use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
-
 use cosmwasm_std::{
     attr,
     testing::{mock_env, mock_info},

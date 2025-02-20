@@ -1,4 +1,6 @@
-use andromeda_std::{andr_exec, andr_instantiate, andr_query, common::MillisecondsDuration};
+use andromeda_std::{
+    amp::Recipient, andr_exec, andr_instantiate, andr_query, common::MillisecondsDuration,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Timestamp, Uint128};
 
@@ -49,8 +51,14 @@ pub enum MinimumFrequency {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    Deposit { recipient: Option<String> },
-    Withdraw { amount: Uint128 },
+    Deposit {
+        recipient: Option<String>,
+    },
+    #[attrs(nonpayable)]
+    Withdraw {
+        amount: Uint128,
+        recipient: Option<Recipient>,
+    },
 }
 
 #[andr_query]

@@ -6,7 +6,6 @@ use andromeda_std::{
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
 };
-use andromeda_testing::economics_msg::generate_economics_message;
 use cosmwasm_std::{
     attr, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
@@ -184,12 +183,10 @@ fn test_execute_update_lock() {
         .plus_seconds(current_time)
         .plus_milliseconds(Milliseconds(879));
     assert_eq!(
-        Response::default()
-            .add_attributes(vec![
-                attr("action", "update_lock"),
-                attr("locked", "1571970219879".to_string())
-            ])
-            .add_submessage(generate_economics_message(OWNER, "UpdateLock")),
+        Response::default().add_attributes(vec![
+            attr("action", "update_lock"),
+            attr("locked", "1571970219879".to_string())
+        ]),
         res
     );
 
@@ -253,9 +250,7 @@ fn test_execute_update_recipients() {
     let info = mock_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
-        Response::default()
-            .add_attributes(vec![attr("action", "update_recipients")])
-            .add_submessage(generate_economics_message(OWNER, "UpdateRecipients")),
+        Response::default().add_attributes(vec![attr("action", "update_recipients")]),
         res
     );
 
@@ -344,8 +339,7 @@ fn test_execute_send() {
             ),
             amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
-        .add_submessage(generate_economics_message(OWNER, "Send"));
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
     assert_eq!(res, expected_res);
 
@@ -381,8 +375,7 @@ fn test_execute_send() {
             ),
             amp_msg.clone(),
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
-        .add_submessage(generate_economics_message(OWNER, "Send"));
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
     assert_eq!(res, expected_res);
 
@@ -430,8 +423,7 @@ fn test_execute_send() {
             ),
             amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")])
-        .add_submessage(generate_economics_message(OWNER, "Send"));
+        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
 
     assert_eq!(res, expected_res);
 }
@@ -507,8 +499,7 @@ fn test_execute_send_ado_recipient() {
             amp_msg,
         ])
         .add_attribute("action", "send")
-        .add_attribute("sender", "creator")
-        .add_submessage(generate_economics_message(OWNER, "Send"));
+        .add_attribute("sender", "creator");
 
     assert_eq!(res, expected_res);
 }
@@ -655,8 +646,7 @@ fn test_update_app_contract() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract")
-            .add_submessage(generate_economics_message(OWNER, "UpdateAppContract")),
+            .add_attribute("address", "app_contract"),
         res
     );
 }
@@ -681,4 +671,120 @@ fn test_update_app_contract_invalid_recipient() {
     //     res.unwrap_err()
     // );
     assert!(res.is_err())
+}
+
+use rstest::*;
+
+#[fixture]
+fn locked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let lock_time = mock_env().block.time.plus_seconds(86400);
+    let splitter = Splitter {
+        recipients: vec![
+            AddressPercent {
+                recipient: Recipient::from_string("addr1".to_string()),
+                percent: Decimal::percent(40),
+            },
+            AddressPercent {
+                recipient: Recipient::from_string("addr2".to_string()),
+                percent: Decimal::percent(60),
+            },
+        ],
+        lock: Milliseconds::from_seconds(lock_time.seconds()),
+        default_recipient: None,
+    };
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    (deps.as_mut(), splitter)
+}
+
+#[fixture]
+fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
+    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+    let splitter = Splitter {
+        recipients: vec![
+            AddressPercent {
+                recipient: Recipient::from_string("addr1".to_string()),
+                percent: Decimal::percent(40),
+            },
+            AddressPercent {
+                recipient: Recipient::from_string("addr2".to_string()),
+                percent: Decimal::percent(60),
+            },
+        ],
+        lock: Milliseconds::default(),
+        default_recipient: None,
+    };
+    SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
+    (deps.as_mut(), splitter)
+}
+
+#[rstest]
+fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
+
+    let config = vec![AddressPercent {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        percent: Decimal::percent(100),
+    }];
+
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg);
+
+    assert_eq!(
+        ContractError::ContractLocked {
+            msg: Some("Config isn't allowed while the splitter is locked".to_string())
+        },
+        res.unwrap_err()
+    );
+}
+
+#[rstest]
+fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let config = vec![AddressPercent {
+        recipient: Recipient::from_string("new_addr".to_string()),
+        percent: Decimal::percent(100),
+    }];
+
+    let msg = ExecuteMsg::Send {
+        config: Some(config),
+    };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert_eq!(1, res.messages.len());
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = locked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert!(res.attributes.contains(&attr("action", "send")));
+}
+
+#[rstest]
+fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
+    let (deps, _) = unlocked_splitter;
+
+    let msg = ExecuteMsg::Send { config: None };
+
+    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let res = execute(deps, mock_env(), info, msg).unwrap();
+
+    // Verify response contains expected submessages
+    assert!(res.attributes.contains(&attr("action", "send")));
 }
