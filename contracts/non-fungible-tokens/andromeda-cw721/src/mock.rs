@@ -135,9 +135,11 @@ pub fn mock_mint_msg(
     }
 }
 
+/// Creates a batch mint message that mints the specified amount of tokens.
+/// Uses 1-based indexing for token IDs (i.e., tokens will be numbered 1, 2, 3, etc.)
 pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
     let mut mint_msgs: Vec<MintMsg> = Vec::new();
-    for i in 0..amount {
+    for i in 1..=amount {
         let extension = TokenExtension {
             publisher: owner.clone(),
         };
