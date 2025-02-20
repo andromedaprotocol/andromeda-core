@@ -15,12 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Add previous hops to AMP packets [(#796)](https://github.com/andromedaprotocol/andromeda-core/pull/796)
 - feat: Permissionless macro attribute [(#812)](https://github.com/andromedaprotocol/andromeda-core/pull/812)
 
-
 ### Changed
 
 - feat: Improved macros and execution flow for AMP [(#741)](https://github.com/andromedaprotocol/andromeda-core/pull/741)
 - chore: remove unused contracts & code [(#790)](https://github.com/andromedaprotocol/andromeda-core/pull/790)
 - feat: Recipient in rate limiting withdrawals [(#804)](https://github.com/andromedaprotocol/andromeda-core/pull/804)
+- feat: deploy script validate & build steps [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
 
 ### Fixed
 
@@ -28,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: IBC denom casing [(#795)](https://github.com/andromedaprotocol/andromeda-core/pull/795)
 - fix: macro error crate references [(#799)](https://github.com/andromedaprotocol/andromeda-core/pull/799)
 - fix: Prevent duplicate relay in Kernel [(#802)](https://github.com/andromedaprotocol/andromeda-core/pull/802)
-
 
 ## Release 4
 
