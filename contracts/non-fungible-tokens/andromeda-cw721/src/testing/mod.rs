@@ -1,7 +1,7 @@
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg, TokenExtension,
-    TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg,
+    TokenExtension, TransferAgreement,
 };
 use andromeda_std::{
     amp::addresses::AndrAddr,
@@ -11,7 +11,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, coin, from_json,
     testing::{mock_env, mock_info},
-    Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
+    Addr, Binary, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
 
@@ -633,5 +633,86 @@ fn test_batch_mint() {
         let info: AllNftInfoResponse<TokenExtension> = from_json(&query_resp).unwrap();
         assert_eq!(info.access.owner, owner.to_string());
         i += 1;
+    }
+}
+
+#[test]
+fn test_batch_send_nft() {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+    init_setup(deps.as_mut(), env.clone());
+
+    let owner = "owner";
+    let contract_addr = "contract_addr";
+
+    // First mint some tokens that we'll send
+    let mint_msgs: Vec<MintMsg> = (0..5)
+        .map(|i| MintMsg {
+            token_id: i.to_string(),
+            owner: owner.to_string(),
+            token_uri: None,
+            extension: TokenExtension {
+                publisher: owner.to_string(),
+            },
+        })
+        .collect();
+
+    let mint_msg = ExecuteMsg::BatchMint { tokens: mint_msgs };
+    let minter_info = mock_info(MINTER, &[]);
+    execute(deps.as_mut(), env.clone(), minter_info, mint_msg).unwrap();
+
+    // Test empty batch
+    let batch_send_msg = ExecuteMsg::BatchSend { batch: vec![] };
+    let owner_info = mock_info(owner, &[]);
+    let err = execute(
+        deps.as_mut(),
+        env.clone(),
+        owner_info.clone(),
+        batch_send_msg,
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::EmptyBatch {});
+
+    // Test unauthorized sender
+    let batch_send_msgs: Vec<BatchSendMsg> = (0..5)
+        .map(|i| BatchSendMsg {
+            token_id: i.to_string(),
+            contract_addr: AndrAddr::from_string(contract_addr.to_string()),
+            msg: Binary::default(),
+        })
+        .collect();
+
+    let batch_send_msg = ExecuteMsg::BatchSend {
+        batch: batch_send_msgs.clone(),
+    };
+
+    let unauthorized_info = mock_info("unauthorized", &[]);
+    let err = execute(
+        deps.as_mut(),
+        env.clone(),
+        unauthorized_info,
+        batch_send_msg.clone(),
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Test successful batch send
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        owner_info.clone(),
+        batch_send_msg,
+    )
+    .unwrap();
+
+    // Verify tokens were transferred
+    for i in 0..5 {
+        let query_msg = QueryMsg::OwnerOf {
+            token_id: i.to_string(),
+            include_expired: None,
+        };
+        let query_resp = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let resp: OwnerOfResponse = from_json(query_resp).unwrap();
+        assert_eq!(resp.owner, contract_addr.to_string());
     }
 }
