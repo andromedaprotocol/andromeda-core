@@ -5,7 +5,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::queriers::Staking;
 use cw_orch_daemon::queriers::StakingBondStatus;
 use cw_orch_daemon::Daemon;
-use ibc_tests::constants::LOCAL_TERRA;
+use e2e::constants::LOCAL_TERRA;
 
 const TESTNET_MNEMONIC: &str = "across left ignore gold echo argue track joy hire release captain enforce hotel wide flash hotel brisk joke midnight duck spare drop chronic stool";
 

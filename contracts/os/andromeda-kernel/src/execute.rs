@@ -1056,6 +1056,7 @@ impl MsgHandler {
             recipient,
             message,
             funds,
+            config,
             ..
         } = self.message();
         ensure!(
@@ -1074,10 +1075,10 @@ impl MsgHandler {
         }?;
         let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY).unwrap();
         let current_chain = CURR_CHAIN.load(deps.storage)?;
-
         let ctx = ctx.map_or_else(
             || {
-                let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None);
+                let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None)
+                    .with_config(config.clone());
                 let mut ctx = AMPCtx::new(info.sender, env.contract.address, 0, None);
 
                 // Add the orginal sender's username if it exists
@@ -1130,7 +1131,7 @@ impl MsgHandler {
             data: to_json_binary(&kernel_msg)?,
             timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
         };
-
+        println!("message to counter: {:?}", &msg);
         Ok(Response::default()
             .add_attribute(format!("method:{sequence}"), "execute_send_message")
             .add_attribute(format!("channel:{sequence}"), channel)
