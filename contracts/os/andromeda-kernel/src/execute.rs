@@ -1,4 +1,9 @@
 use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
+use crate::query;
+use crate::state::{
+    ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
+    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, CrossChainHop};
@@ -20,12 +25,6 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::nonpayable;
-
-use crate::query;
-use crate::state::{
-    ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
-};
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
     ensure!(
@@ -165,7 +164,7 @@ fn handle_ibc_transfer_funds_reply(
     let mut ctx = AMPCtx::new(
         ics20_packet_info.sender.clone(),
         env.contract.address,
-        0,
+        "0".to_string(),
         None,
     );
 
@@ -252,7 +251,7 @@ pub fn amp_receive(
         ContractError::Unauthorized {}
     );
     ensure!(
-        packet.ctx.id == 0,
+        packet.ctx.id == *"0",
         ContractError::InvalidPacket {
             error: Some("Packet ID cannot be provided from outside the Kernel".into())
         }
@@ -281,6 +280,22 @@ pub fn amp_receive(
     res.events.extend_from_slice(&msg_res.events);
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+
+    let tx_index = env
+        .transaction
+        .map(|tx| tx.index)
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("Transaction index not available".to_string()),
+        })?;
+
+    let id = match packet.id.clone() {
+        // Generate unique ID if the packet doesn't already have one
+        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index)?,
+        // Not using "-" as a separator since chain id can contain it
+        None => format!("{}.{}.{}", env.block.chain_id, env.block.height, tx_index),
+    };
+    // Set the new ID
+    new_pkt.id = Some(id);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -327,7 +342,7 @@ pub fn amp_receive_cw20(
         ContractError::Unauthorized {}
     );
     ensure!(
-        packet.ctx.id == 0,
+        packet.ctx.id == *"0",
         ContractError::InvalidPacket {
             error: Some("Packet ID cannot be provided from outside the Kernel".into())
         }
@@ -713,6 +728,60 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         .add_attribute("variable", variable))
 }
 
+/// Validates the existing ID of a packet
+pub fn validate_id(
+    id: &str,
+    current_chain_id: &str,
+    current_block_height: u64,
+    current_index: u32,
+) -> Result<String, ContractError> {
+    // Split the ID into chain_id, block_height, and index parts
+    let parts: Vec<&str> = id.split('.').collect();
+    if parts.len() != 3 {
+        return Err(ContractError::InvalidPacket {
+            error: Some(
+                "Invalid packet ID format. Expected: chain_id.block_height.index".to_string(),
+            ),
+        });
+    }
+
+    let [chain_id, block_height_str, index_str] = [parts[0], parts[1], parts[2]];
+
+    // Validate chain_id
+    if chain_id.is_empty() {
+        return Err(ContractError::InvalidPacket {
+            error: Some("Chain ID cannot be empty".to_string()),
+        });
+    }
+
+    // Parse and validate block height and index
+    let block_height =
+        block_height_str
+            .parse::<u64>()
+            .map_err(|_| ContractError::InvalidPacket {
+                error: Some("Invalid block height format".to_string()),
+            })?;
+
+    let index = index_str
+        .parse::<u32>()
+        .map_err(|_| ContractError::InvalidPacket {
+            error: Some("Invalid transaction index format".to_string()),
+        })?;
+
+    //TODO discuss validation for cross chain packets
+    if chain_id == current_chain_id
+        && (block_height != current_block_height || index != current_index)
+    {
+        return Err(ContractError::InvalidPacket {
+            error: Some(
+                "Block height or transaction index does not match the current values".to_string(),
+            ),
+        });
+    }
+
+    Ok(id.to_string())
+}
+
 /// Handles a given AMP message and returns a response
 ///
 /// Separated due to common functionality across multiple messages
@@ -1079,7 +1148,7 @@ impl MsgHandler {
             || {
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None)
                     .with_config(config.clone());
-                let mut ctx = AMPCtx::new(info.sender, env.contract.address, 0, None);
+                let mut ctx = AMPCtx::new(info.sender, env.contract.address, "0".to_string(), None);
 
                 // Add the orginal sender's username if it exists
                 let potential_username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
