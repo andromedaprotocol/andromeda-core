@@ -769,15 +769,14 @@ pub fn validate_id(
         })?;
 
     //TODO discuss validation for cross chain packets
-    if chain_id == current_chain_id {
-        if block_height != current_block_height || index != current_index {
-            return Err(ContractError::InvalidPacket {
-                error: Some(
-                    "Block height or transaction index does not match the current values"
-                        .to_string(),
-                ),
-            });
-        }
+    if chain_id == current_chain_id
+        && (block_height != current_block_height || index != current_index)
+    {
+        return Err(ContractError::InvalidPacket {
+            error: Some(
+                "Block height or transaction index does not match the current values".to_string(),
+            ),
+        });
     }
 
     Ok(id.to_string())

@@ -626,7 +626,7 @@ fn test_query_pending_packets(
     "cosmos-1",
     1234,
     5,
-    Err(ContractError::InvalidPacket { 
+    Err(ContractError::InvalidPacket {
         error: Some("Invalid packet ID format. Expected: chain_id.block_height.index".to_string()) 
     })
 )]
@@ -635,7 +635,7 @@ fn test_query_pending_packets(
     "cosmos-1",
     1234,
     5,
-    Err(ContractError::InvalidPacket { 
+    Err(ContractError::InvalidPacket {
         error: Some("Chain ID cannot be empty".to_string()) 
     })
 )]
@@ -644,7 +644,7 @@ fn test_query_pending_packets(
     "cosmos-1",
     1234,
     5,
-    Err(ContractError::InvalidPacket { 
+    Err(ContractError::InvalidPacket {
         error: Some("Invalid block height format".to_string()) 
     })
 )]
@@ -653,7 +653,7 @@ fn test_query_pending_packets(
     "cosmos-1",
     1235,                 // different block height
     5,
-    Err(ContractError::InvalidPacket { 
+    Err(ContractError::InvalidPacket {
         error: Some("Block height or transaction index does not match the current values".to_string()) 
     })
 )]
@@ -662,7 +662,7 @@ fn test_query_pending_packets(
     "cosmos-1",
     1234,
     6,                    // different index
-    Err(ContractError::InvalidPacket { 
+    Err(ContractError::InvalidPacket {
         error: Some("Block height or transaction index does not match the current values".to_string()) 
     })
 )]
