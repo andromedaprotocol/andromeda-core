@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_testing::{
@@ -74,6 +74,16 @@ impl MockCW721 {
             token_id.into(),
             to_json_binary(msg).unwrap(),
         );
+        self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_batch_send_nft(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        batch: Vec<BatchSendMsg>,
+    ) -> ExecuteResult {
+        let msg = mock_batch_send_nft(batch);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -157,6 +167,10 @@ pub fn mock_send_nft(contract: AndrAddr, token_id: String, msg: Binary) -> Execu
         token_id,
         msg,
     }
+}
+
+pub fn mock_batch_send_nft(batch: Vec<BatchSendMsg>) -> ExecuteMsg {
+    ExecuteMsg::BatchSend { batch }
 }
 
 pub fn mock_transfer_nft(recipient: AndrAddr, token_id: String) -> ExecuteMsg {

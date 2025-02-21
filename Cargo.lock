@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.2.0-b.1"
+version = "2.2.0-b.2"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -313,6 +313,7 @@ dependencies = [
  "cw-storage-plus 1.2.0",
  "cw721 0.18.0",
  "cw721-base 0.18.0",
+ "rstest",
 ]
 
 [[package]]

@@ -9,7 +9,7 @@ use cosmwasm_std::{
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
@@ -104,6 +104,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             token_id,
             msg,
         } => execute_send_nft(ctx, token_id, contract, msg),
+        ExecuteMsg::BatchSend { batch } => execute_batch_send_nft(ctx, batch),
         // Attempt to match the message as a cw721 message first, if it fails, fallback to the
         // default ADO execute function.
         _ => match msg.clone().try_into() {
@@ -433,6 +434,25 @@ fn execute_send_nft(
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
     Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
+}
+
+fn execute_batch_send_nft(
+    mut ctx: ExecuteContext,
+    batch: Vec<BatchSendMsg>,
+) -> Result<Response, ContractError> {
+    ensure!(!batch.is_empty(), ContractError::EmptyBatch {});
+
+    let mut resp = Response::default();
+    for item in batch {
+        let mut ctx = ExecuteContext::new(ctx.deps.branch(), ctx.info.clone(), ctx.env.clone());
+        ctx.amp_ctx = ctx.amp_ctx.clone();
+        let send_resp = execute_send_nft(ctx, item.token_id, item.contract_addr, item.msg)?;
+        resp = resp
+            .add_attributes(send_resp.attributes)
+            .add_submessages(send_resp.messages);
+    }
+
+    Ok(resp.add_attribute("action", "batch_send_nft"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
