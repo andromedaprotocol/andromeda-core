@@ -290,9 +290,9 @@ pub fn amp_receive(
 
     let id = match packet.id.clone() {
         // Generate unique ID if the packet doesn't already have one
-        Some(id) => validate_id(&id, &env.block.chain_id, tx_index)?,
+        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index)?,
         // Not using "-" as a separator since chain id can contain it
-        None => format!("{}.{}", env.block.chain_id, tx_index),
+        None => format!("{}.{}.{}", env.block.chain_id, env.block.height, tx_index),
     };
     // Set the new ID
     new_pkt.id = Some(id);
@@ -729,17 +729,23 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
 }
 
 /// Validates the existing ID of a packet
-fn validate_id(
+pub fn validate_id(
     id: &str,
     current_chain_id: &str,
+    current_block_height: u64,
     current_index: u32,
 ) -> Result<String, ContractError> {
-    // Split the ID into chain_id and index parts at first occurrence of '.'
-    let (chain_id, index_str) = id
-        .split_once('.')
-        .ok_or_else(|| ContractError::InvalidPacket {
-            error: Some("Invalid packet ID format. Expected: chain_id.index".to_string()),
-        })?;
+    // Split the ID into chain_id, block_height, and index parts
+    let parts: Vec<&str> = id.split('.').collect();
+    if parts.len() != 3 {
+        return Err(ContractError::InvalidPacket {
+            error: Some(
+                "Invalid packet ID format. Expected: chain_id.block_height.index".to_string(),
+            ),
+        });
+    }
+
+    let [chain_id, block_height_str, index_str] = [parts[0], parts[1], parts[2]];
 
     // Validate chain_id
     if chain_id.is_empty() {
@@ -748,7 +754,14 @@ fn validate_id(
         });
     }
 
-    // Parse and validate index
+    // Parse and validate block height and index
+    let block_height =
+        block_height_str
+            .parse::<u64>()
+            .map_err(|_| ContractError::InvalidPacket {
+                error: Some("Invalid block height format".to_string()),
+            })?;
+
     let index = index_str
         .parse::<u32>()
         .map_err(|_| ContractError::InvalidPacket {
@@ -756,10 +769,15 @@ fn validate_id(
         })?;
 
     //TODO discuss validation for cross chain packets
-    if chain_id == current_chain_id && index != current_index {
-        return Err(ContractError::InvalidPacket {
-            error: Some("Transaction index does not match the current index".to_string()),
-        });
+    if chain_id == current_chain_id {
+        if block_height != current_block_height || index != current_index {
+            return Err(ContractError::InvalidPacket {
+                error: Some(
+                    "Block height or transaction index does not match the current values"
+                        .to_string(),
+                ),
+            });
+        }
     }
 
     Ok(id.to_string())
