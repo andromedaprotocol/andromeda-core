@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- chore: refactored tests to be more readable, fixed ibc direct packet bug and test setup [(#808)](https://github.com/andromedaprotocol/andromeda-core/pull/808)
+
 ### Added
 
 - CW20 support for kernel routing [(#723)](https://github.com/andromedaprotocol/andromeda-core/pull/723)
@@ -28,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: IBC denom casing [(#795)](https://github.com/andromedaprotocol/andromeda-core/pull/795)
 - fix: macro error crate references [(#799)](https://github.com/andromedaprotocol/andromeda-core/pull/799)
 - fix: Prevent duplicate relay in Kernel [(#802)](https://github.com/andromedaprotocol/andromeda-core/pull/802)
+- fix: ibc username not working for ibc send with funds [(#814)](https://github.com/andromedaprotocol/andromeda-core/pull/814)
 
 ## Release 4
 

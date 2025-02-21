@@ -1,4 +1,4 @@
-mod ack;
+pub mod ack;
 pub mod contract;
 mod execute;
 pub mod ibc;
