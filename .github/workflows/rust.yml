@@ -37,7 +37,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        test-type: ["integration-test", "unit-test"]
+        test-type: ["integration-test", "unit-test", "ibc-test"]
     steps:
       - uses: actions/checkout@v4
         with:

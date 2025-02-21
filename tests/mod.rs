@@ -1,7 +1,5 @@
-#[cfg(test)]
 mod app;
 
-#[cfg(test)]
 mod marketplace_app;
 
 #[cfg(test)]
