@@ -78,8 +78,12 @@ andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator
     "testing",
 ] }
 
+andromeda-mint-burn = { path = "../contracts/finance/andromeda-mint-burn", features = [
+    "testing",
+] }
+
 andromeda-rate-limiting-withdrawals = { path = "../contracts/finance/andromeda-rate-limiting-withdrawals", features = [
-    "testing"
+    "testing",
 ] }
 
 
