@@ -475,29 +475,34 @@ fn test_batch_mint() {
 }
 
 #[rstest]
-#[case::empty_batch(vec![], Some(ContractError::EmptyBatch {}), None)]
+#[case::empty_batch("contract_addr", Some(ContractError::EmptyBatch {}), None, 0,5)]
 #[case::unauthorized(
-    (0..5).map(|i| BatchSendMsg {
-        token_id: i.to_string(),
-        contract_addr: AndrAddr::from_string("contract_addr".to_string()),
-        msg: Binary::default(),
-    }).collect(),
+    "contract_addr",
     Some(ContractError::Unauthorized {}),
-    None
+    None,
+    3,
+    5
 )]
 #[case::successful(
-    (0..5).map(|i| BatchSendMsg {
-        token_id: i.to_string(),
-        contract_addr: AndrAddr::from_string("contract_addr".to_string()),
-        msg: Binary::default(),
-    }).collect(),
+    "contract_addr",
     None,
-    Some("contract_addr".to_string())
+    Some("contract_addr".to_string()),
+    4,
+    5
+)]
+#[case::too_many_tokens(
+    "contract_addr",
+    Some(ContractError::Unauthorized {}),
+    None,
+    6,
+    5
 )]
 fn test_batch_send_nft(
-    #[case] batch: Vec<BatchSendMsg>,
+    #[case] contract_addr: &str,
     #[case] expected_error: Option<ContractError>,
     #[case] expected_owner: Option<String>,
+    #[case] num_tokens_to_send: u32,
+    #[case] num_tokens_to_mint: u32,
 ) {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
@@ -507,7 +512,7 @@ fn test_batch_send_nft(
     init_setup(deps.as_mut(), env.clone());
 
     // Mint initial tokens
-    let mint_msgs: Vec<MintMsg> = (0..5)
+    let mint_msgs: Vec<MintMsg> = (0..num_tokens_to_mint)
         .map(|i| MintMsg {
             token_id: i.to_string(),
             owner: owner.to_string(),
@@ -522,8 +527,23 @@ fn test_batch_send_nft(
     let minter_info = mock_info(MINTER, &[]);
     execute(deps.as_mut(), env.clone(), minter_info, mint_msg).unwrap();
 
+    // Create batch from parameters
+    let batch: Vec<BatchSendMsg> = if num_tokens_to_send == 0 {
+        vec![]
+    } else {
+        (0..num_tokens_to_send)
+            .map(|i| BatchSendMsg {
+                token_id: i.to_string(),
+                contract_addr: AndrAddr::from_string(contract_addr.to_string()),
+                msg: Binary::default(),
+            })
+            .collect()
+    };
+
     // Execute batch send
-    let batch_send_msg = ExecuteMsg::BatchSend { batch };
+    let batch_send_msg = ExecuteMsg::BatchSend {
+        batch: batch.clone(),
+    };
     let test_info = mock_info(
         if matches!(expected_error, Some(ContractError::Unauthorized {})) {
             "unauthorized"
@@ -543,7 +563,12 @@ fn test_batch_send_nft(
         None => {
             assert!(result.is_ok());
             // Verify final state
-            for i in 0..5 {
+            assert_eq!(
+                batch.len(),
+                num_tokens_to_send as usize,
+                "Number of sent tokens doesn't match expected amount"
+            );
+            for i in 0..num_tokens_to_send {
                 let query_msg = QueryMsg::OwnerOf {
                     token_id: i.to_string(),
                     include_expired: None,
