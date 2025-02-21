@@ -14,6 +14,7 @@ use cosmwasm_std::{
     Addr, Binary, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
 use cw721::{AllNftInfoResponse, OwnerOfResponse};
+use rstest::rstest;
 
 const MINTER: &str = "minter";
 const SYMBOL: &str = "TT";
@@ -388,169 +389,6 @@ fn test_transfer_agreement() {
     assert_eq!(resp, Some(agreement))
 }
 
-// #[test]
-// fn test_modules() {
-//     let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
-
-//     let token_id = String::from("testtoken");
-//     let creator = String::from("creator");
-//     let env = mock_env();
-//     let agreement = TransferAgreement {
-//         purchaser: String::from("purchaser"),
-//         amount: Coin {
-//             amount: Uint128::from(100u64),
-//             denom: "uusd".to_string(),
-//         },
-//     };
-//     init_setup(deps.as_mut(), env.clone());
-//     mint_token(
-//         deps.as_mut(),
-//         env,
-//         token_id.clone(),
-//         creator.clone(),
-//         TokenExtension {
-//             publisher: creator.clone(),
-//         },
-//     );
-
-//     let rate = Rate::Local(LocalRate {
-//         rate_type: LocalRateType::Deductive,
-//         recipients: vec![Recipient {
-//             address: AndrAddr::from_string("mrc".to_string()),
-//             msg: None,
-//             ibc_recovery_address: None,
-//         }],
-//         value: LocalRateValue::Flat(coin(10_u128, "uusd")),
-//         description: None,
-//     });
-
-//     // Set rates
-//     ADOContract::default()
-//         .set_rates(deps.as_mut().storage, "cw721", rate)
-//         .unwrap();
-
-//     let msg = ExecuteMsg::TransferAgreement {
-//         token_id: token_id.clone(),
-//         agreement: Some(agreement),
-//     };
-
-//     //TODO when address list is implemented
-//     // let not_whitelisted_info = mock_info("not_whitelisted", &[]);
-//     // let res = execute(deps.as_mut(), mock_env(), not_whitelisted_info, msg.clone());
-//     // assert_eq!(
-//     //     ContractError::Std(StdError::generic_err(
-//     //         "Querier contract error: InvalidAddress"
-//     //     )),
-//     //     res.unwrap_err()
-//     // );
-
-//     let info = mock_info("creator", &[]);
-//     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-//     let msg = ExecuteMsg::TransferNft {
-//         token_id: token_id.clone(),
-//         recipient: "purchaser".into(),
-//     };
-
-//     // Tax not added by sender, remember that the contract holds 100 uusd which is enough to cover
-//     // the taxes in this case.
-//     let purchaser = mock_info("purchaser", &coins(100, "uusd"));
-//     let res = execute(deps.as_mut(), mock_env(), purchaser, msg.clone());
-//     assert_eq!(ContractError::InsufficientFunds {}, res.unwrap_err());
-
-//     // Add 10 for tax.
-//     let purchaser = mock_info("purchaser", &coins(100 + 10, "uusd"));
-//     let res = execute(deps.as_mut(), mock_env(), purchaser, msg).unwrap();
-
-//     let sub_msgs: Vec<SubMsg> = vec![
-//         // For royalty.
-//         // bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
-//         // For tax.
-//         bank_sub_msg("mrc", vec![coin(10, "uusd")]),
-//         bank_sub_msg(&creator, vec![coin(80, "uusd")]),
-//     ];
-
-//     assert_eq!(
-//         Response::new()
-//             .add_attribute("action", "transfer")
-//             .add_attribute("recipient", "purchaser")
-//             .add_submessages(sub_msgs)
-//             .add_event(Event::new("Royalty"))
-//             .add_event(Event::new("Tax")),
-//         res
-//     );
-
-//     // Test the hook.
-//     let msg = QueryMsg::AndrHook(AndromedaHook::OnFundsTransfer {
-//         sender: "sender".to_string(),
-//         payload: to_json_binary(&token_id).unwrap(),
-//         amount: Funds::Native(coin(100, "uusd")),
-//     });
-
-//     let res: RatesResponse =
-//         from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-
-//     let expected_response = RatesResponse {
-//         msgs: vec![
-//             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
-//             bank_sub_msg("MOCK_RATES_RECIPIENT", vec![coin(10, "uusd")]),
-//         ],
-//         leftover_funds: Funds::Native(coin(90, "uusd")),
-//         events: vec![Event::new("Royalty"), Event::new("Tax")],
-//     };
-//     assert_eq!(expected_response, res);
-// }
-
-// TODO: IMPLEMENT
-// #[test]
-// fn test_transfer_with_offer() {
-// todo!("Implement with cw721 bids module");
-// let modules: Vec<Module> = vec![Module {
-//     module_name: Some("bids".to_owned()),
-//     address: MOCK_BIDS_CONTRACT.to_owned(),
-//     is_mutable: false,
-// }];
-
-// let mut deps = mock_dependencies_custom(&coins(100, "uusd"));
-
-// let token_id = String::from("testtoken");
-// let creator = String::from("creator");
-// let env = mock_env();
-// init_setup(deps.as_mut(), env.clone(), Some(modules));
-// mint_token(
-//     deps.as_mut(),
-//     env,
-//     token_id.clone(),
-//     creator.clone(),
-//     TokenExtension {
-//         publisher: creator.clone(),
-//     },
-// );
-
-// let msg = ExecuteMsg::TransferNft {
-//     recipient: "purchaser".to_string(),
-//     token_id: token_id.clone(),
-// };
-// let info = mock_info(&creator, &[]);
-// let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-// let msg: SubMsg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//     contract_addr: MOCK_BIDS_CONTRACT.to_owned(),
-//     funds: vec![],
-//     msg: to_json_binary(&BidsExecuteMsg::AcceptBid {
-//         token_id,
-//         recipient: creator,
-//     })
-//     .unwrap(),
-// }));
-// assert_eq!(
-//     Response::new()
-//         .add_submessage(msg)
-//         .add_attribute("action", "transfer")
-//         .add_attribute("recipient", "purchaser"),
-//     res
-// );
-// }
-
 #[test]
 fn test_update_app_contract_invalid_minter() {
     let mut deps = mock_dependencies_custom(&[]);
@@ -636,16 +474,39 @@ fn test_batch_mint() {
     }
 }
 
-#[test]
-fn test_batch_send_nft() {
+#[rstest]
+#[case::empty_batch(vec![], Some(ContractError::EmptyBatch {}), None)]
+#[case::unauthorized(
+    (0..5).map(|i| BatchSendMsg {
+        token_id: i.to_string(),
+        contract_addr: AndrAddr::from_string("contract_addr".to_string()),
+        msg: Binary::default(),
+    }).collect(),
+    Some(ContractError::Unauthorized {}),
+    None
+)]
+#[case::successful(
+    (0..5).map(|i| BatchSendMsg {
+        token_id: i.to_string(),
+        contract_addr: AndrAddr::from_string("contract_addr".to_string()),
+        msg: Binary::default(),
+    }).collect(),
+    None,
+    Some("contract_addr".to_string())
+)]
+fn test_batch_send_nft(
+    #[case] batch: Vec<BatchSendMsg>,
+    #[case] expected_error: Option<ContractError>,
+    #[case] expected_owner: Option<String>,
+) {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
+    let owner = "owner";
+
+    // Setup
     init_setup(deps.as_mut(), env.clone());
 
-    let owner = "owner";
-    let contract_addr = "contract_addr";
-
-    // First mint some tokens that we'll send
+    // Mint initial tokens
     let mint_msgs: Vec<MintMsg> = (0..5)
         .map(|i| MintMsg {
             token_id: i.to_string(),
@@ -661,58 +522,36 @@ fn test_batch_send_nft() {
     let minter_info = mock_info(MINTER, &[]);
     execute(deps.as_mut(), env.clone(), minter_info, mint_msg).unwrap();
 
-    // Test empty batch
-    let batch_send_msg = ExecuteMsg::BatchSend { batch: vec![] };
-    let owner_info = mock_info(owner, &[]);
-    let err = execute(
-        deps.as_mut(),
-        env.clone(),
-        owner_info.clone(),
-        batch_send_msg,
-    )
-    .unwrap_err();
-    assert_eq!(err, ContractError::EmptyBatch {});
+    // Execute batch send
+    let batch_send_msg = ExecuteMsg::BatchSend { batch };
+    let test_info = mock_info(
+        if matches!(expected_error, Some(ContractError::Unauthorized {})) {
+            "unauthorized"
+        } else {
+            owner
+        },
+        &[],
+    );
 
-    // Test unauthorized sender
-    let batch_send_msgs: Vec<BatchSendMsg> = (0..5)
-        .map(|i| BatchSendMsg {
-            token_id: i.to_string(),
-            contract_addr: AndrAddr::from_string(contract_addr.to_string()),
-            msg: Binary::default(),
-        })
-        .collect();
+    let result = execute(deps.as_mut(), env.clone(), test_info, batch_send_msg);
 
-    let batch_send_msg = ExecuteMsg::BatchSend {
-        batch: batch_send_msgs.clone(),
-    };
-
-    let unauthorized_info = mock_info("unauthorized", &[]);
-    let err = execute(
-        deps.as_mut(),
-        env.clone(),
-        unauthorized_info,
-        batch_send_msg.clone(),
-    )
-    .unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized {});
-
-    // Test successful batch send
-    execute(
-        deps.as_mut(),
-        env.clone(),
-        owner_info.clone(),
-        batch_send_msg,
-    )
-    .unwrap();
-
-    // Verify tokens were transferred
-    for i in 0..5 {
-        let query_msg = QueryMsg::OwnerOf {
-            token_id: i.to_string(),
-            include_expired: None,
-        };
-        let query_resp = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let resp: OwnerOfResponse = from_json(query_resp).unwrap();
-        assert_eq!(resp.owner, contract_addr.to_string());
+    match expected_error {
+        Some(error) => {
+            let err = result.unwrap_err();
+            assert_eq!(err, error);
+        }
+        None => {
+            assert!(result.is_ok());
+            // Verify final state
+            for i in 0..5 {
+                let query_msg = QueryMsg::OwnerOf {
+                    token_id: i.to_string(),
+                    include_expired: None,
+                };
+                let query_resp = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+                let resp: OwnerOfResponse = from_json(query_resp).unwrap();
+                assert_eq!(resp.owner, expected_owner.clone().unwrap());
+            }
+        }
     }
 }
