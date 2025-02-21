@@ -152,28 +152,4 @@ fn kernel() {
             &coins(100, "uandr"),
         )
         .unwrap();
-
-    // // So far the kernel is successfully sending a packet to the relevant message bridge using the parser
-    // let res = router
-    //     .execute_contract(owner, andr.kernel.addr(), &send_msg, &coins(100, "uandr"))
-    //     .unwrap();
-    // println!("{:?}", res)
-
-    // let query_balance =
-    //     mock_vault_get_balance(recipient.to_string(), Some("uandr".to_string()), None);
-    // let query_balance2 =
-    //     mock_vault_get_balance(recipient2.to_string(), Some("uandr".to_string()), None);
-
-    // let resp: Vec<Coin> = router
-    //     .wrap()
-    //     .query_wasm_smart(vault_addr.clone(), &query_balance)
-    //     .unwrap();
-    // let resp2: Vec<Coin> = router
-    //     .wrap()
-    //     .query_wasm_smart(vault_addr, &query_balance2)
-    //     .unwrap();
-
-    // assert!(resp.first().is_some());
-    // assert_eq!(resp.first().unwrap().amount, Uint128::from(80u128));
-    // assert_eq!(resp2.first().unwrap().amount, Uint128::from(20u128));
 }
