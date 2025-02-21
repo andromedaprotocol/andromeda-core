@@ -118,8 +118,16 @@ pub enum ExecuteMsg {
     },
     /// Mint multiple tokens at a time
     BatchMint { tokens: Vec<MintMsg> },
+    /// Batch sends multiple NFTs to different contracts
+    BatchSend { batch: Vec<BatchSendMsg> },
 }
 
+#[cw_serde]
+pub struct BatchSendMsg {
+    pub token_id: String,
+    pub contract_addr: AndrAddr,
+    pub msg: Binary,
+}
 impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
     type Error = String;
 

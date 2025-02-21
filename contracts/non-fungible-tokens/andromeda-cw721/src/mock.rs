@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_testing::{
@@ -77,6 +77,16 @@ impl MockCW721 {
         self.execute(app, &msg, sender, &[])
     }
 
+    pub fn execute_batch_send_nft(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        batch: Vec<BatchSendMsg>,
+    ) -> ExecuteResult {
+        let msg = mock_batch_send_nft(batch);
+        self.execute(app, &msg, sender, &[])
+    }
+
     pub fn query_minter(&self, app: &MockApp) -> Addr {
         self.query::<Addr>(app, mock_cw721_minter_query())
     }
@@ -135,9 +145,11 @@ pub fn mock_mint_msg(
     }
 }
 
+/// Creates a batch mint message that mints the specified amount of tokens.
+/// Uses 1-based indexing for token IDs (i.e., tokens will be numbered 1, 2, 3, etc.)
 pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
     let mut mint_msgs: Vec<MintMsg> = Vec::new();
-    for i in 0..amount {
+    for i in 1..=amount {
         let extension = TokenExtension {
             publisher: owner.clone(),
         };
@@ -155,6 +167,10 @@ pub fn mock_send_nft(contract: AndrAddr, token_id: String, msg: Binary) -> Execu
         token_id,
         msg,
     }
+}
+
+pub fn mock_batch_send_nft(batch: Vec<BatchSendMsg>) -> ExecuteMsg {
+    ExecuteMsg::BatchSend { batch }
 }
 
 pub fn mock_transfer_nft(recipient: AndrAddr, token_id: String) -> ExecuteMsg {

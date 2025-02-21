@@ -1,5 +1,5 @@
 [package]
-name = "ibc-tests"
+name = "e2e"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75.0"
@@ -20,27 +20,27 @@ rstest = { workspace = true }
 
 andromeda-testing-e2e = { workspace = true }
 
-andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
+andromeda-app-contract = { path = "../../contracts/app/andromeda-app-contract", features = [
     "testing",
 ] }
 
-andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", features = [
+andromeda-cw20 = { path = "../../contracts/fungible-tokens/andromeda-cw20", features = [
     "testing",
 ] }
 
-andromeda-cw721 = { path = "../contracts/non-fungible-tokens/andromeda-cw721", features = [
+andromeda-cw721 = { path = "../../contracts/non-fungible-tokens/andromeda-cw721", features = [
     "testing",
 ] }
 
-andromeda-crowdfund = { path = "../contracts/non-fungible-tokens/andromeda-crowdfund", features = [
+andromeda-crowdfund = { path = "../../contracts/non-fungible-tokens/andromeda-crowdfund", features = [
     "testing",
 ] }
 
-andromeda-splitter = { path = "../contracts/finance/andromeda-splitter", features = [
+andromeda-splitter = { path = "../../contracts/finance/andromeda-splitter", features = [
     "testing",
 ] }
 
-andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator-staking", features = [
+andromeda-validator-staking = { path = "../../contracts/finance/andromeda-validator-staking", features = [
     "testing",
 ] }
 

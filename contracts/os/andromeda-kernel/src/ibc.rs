@@ -163,7 +163,7 @@ pub fn do_ibc_packet_receive(
                     }
                 }
                 None => {
-                    execute_env.amp_ctx = Some(amp_packet.clone());
+                    execute_env.amp_ctx = None;
                 }
             }
 
@@ -189,29 +189,42 @@ pub fn do_ibc_packet_receive(
                 funds: vec![funds.clone()],
                 sender: env.contract.address.clone(),
             };
-            // Add potential username to the context
-            let mut ctx = AMPCtx::new(
-                original_sender.clone(),
-                env.contract.address,
-                "0".to_string(),
-                original_sender_username,
-            );
-            // Add previous hops to the context
-            for hop in previous_hops {
-                ctx.add_hop(hop);
+            // Attempt to fetch the address for the original sender by their username
+            let vfs_address = KERNEL_ADDRESSES.load(execute_env.deps.storage, VFS_KEY)?;
+            let username_addr = if let Some(username) = original_sender_username.clone() {
+                AOSQuerier::get_address_from_username(
+                    &execute_env.deps.querier,
+                    &vfs_address,
+                    username.as_str(),
+                )?
+            } else {
+                None
+            };
+            let msg = AMPMsg::new(recipient.clone(), message, Some(vec![funds.clone()]));
+            match username_addr {
+                Some(addr) => {
+                    // Add potential username to the context
+                    let mut ctx = AMPCtx::new(
+                        addr,
+                        env.contract.address,
+                        "0".to_string(),
+                        original_sender_username,
+                    );
+                    // Add previous hops to the context
+                    for hop in previous_hops {
+                        ctx.add_hop(hop);
+                    }
+
+                    let amp_packet = AMPPkt::new_with_ctx(ctx, vec![msg.clone()]);
+                    execute_env.amp_ctx = Some(amp_packet.clone());
+                }
+                // If the original sender does not have a username registered on this chain we cannot use AMP
+                None => {
+                    execute_env.amp_ctx = None;
+                }
             }
 
-            let amp_packet = AMPPkt::new_with_ctx(
-                ctx,
-                vec![AMPMsg::new(
-                    recipient.clone(),
-                    message,
-                    Some(vec![funds.clone()]),
-                )],
-            );
-            execute_env.amp_ctx = Some(amp_packet.clone());
-
-            let res = execute::send(execute_env, amp_packet.messages.first().unwrap().clone())?;
+            let res = execute::send(execute_env, msg)?;
 
             // Refunds must be done via the ICS20 channel
             let ics20_channel_id = channel_info
