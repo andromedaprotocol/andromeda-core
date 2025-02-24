@@ -39,3 +39,6 @@ mod macro_tests;
 
 #[cfg(test)]
 mod curve_app;
+
+#[cfg(test)]
+mod mint_burn;
