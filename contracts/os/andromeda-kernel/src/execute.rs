@@ -845,10 +845,6 @@ impl MsgHandler {
             return Ok(res);
         }
 
-        // Handle contract execution
-        let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
-        let previous_sender = info.sender.to_string();
-
         // Verify recipient is a contract
         let ContractInfoResponse { code_id, .. } = deps
             .querier
@@ -866,6 +862,8 @@ impl MsgHandler {
             self.message()
                 .generate_sub_msg_direct(recipient_addr.clone(), ReplyId::AMPMsg.repr())
         } else {
+            let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
+            let previous_sender = info.sender.to_string();
             let amp_msg = AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()))
                 .with_config(config.clone());
             AMPPkt::new(origin, previous_sender, vec![amp_msg]).to_sub_msg(
