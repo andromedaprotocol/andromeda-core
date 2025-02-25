@@ -204,12 +204,7 @@ pub fn do_ibc_packet_receive(
             match username_addr {
                 Some(addr) => {
                     // Add potential username to the context
-                    let mut ctx = AMPCtx::new(
-                        addr,
-                        env.contract.address,
-                        "0".to_string(),
-                        original_sender_username,
-                    );
+                    let mut ctx = AMPCtx::new(addr, env.contract.address, original_sender_username);
                     // Add previous hops to the context
                     for hop in previous_hops {
                         ctx.add_hop(hop);

@@ -161,12 +161,7 @@ fn handle_ibc_transfer_funds_reply(
         );
     }
 
-    let mut ctx = AMPCtx::new(
-        ics20_packet_info.sender.clone(),
-        env.contract.address,
-        "0".to_string(),
-        None,
-    );
+    let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
 
     // Add the orginal sender's username if it exists
     let potential_username = ctx.try_add_origin_username(
@@ -250,12 +245,6 @@ pub fn amp_receive(
             || query::verify_address(deps.as_ref(), info.sender.to_string())?.verify_address,
         ContractError::Unauthorized {}
     );
-    ensure!(
-        packet.ctx.id == *"0",
-        ContractError::InvalidPacket {
-            error: Some("Packet ID cannot be provided from outside the Kernel".into())
-        }
-    );
 
     let mut res = Response::default();
     ensure!(
@@ -280,22 +269,7 @@ pub fn amp_receive(
     res.events.extend_from_slice(&msg_res.events);
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
-
-    let tx_index = env
-        .transaction
-        .map(|tx| tx.index)
-        .ok_or(ContractError::InvalidPacket {
-            error: Some("Transaction index not available".to_string()),
-        })?;
-
-    let id = match packet.id.clone() {
-        // Generate unique ID if the packet doesn't already have one
-        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index)?,
-        // Not using "-" as a separator since chain id can contain it
-        None => format!("{}.{}.{}", env.block.chain_id, env.block.height, tx_index),
-    };
-    // Set the new ID
-    new_pkt.id = Some(id);
+    new_pkt.ctx.id = Some(generate_packet_id(packet.ctx.id.clone(), &env)?);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -341,12 +315,10 @@ pub fn amp_receive_cw20(
         query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
         ContractError::Unauthorized {}
     );
-    ensure!(
-        packet.ctx.id == *"0",
-        ContractError::InvalidPacket {
-            error: Some("Packet ID cannot be provided from outside the Kernel".into())
-        }
-    );
+
+    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+
+    new_pkt.ctx.id = Some(generate_packet_id(packet.ctx.id.clone(), &env)?);
 
     let mut res = Response::default();
     ensure!(
@@ -362,7 +334,7 @@ pub fn amp_receive_cw20(
             deps.branch(),
             info.clone(),
             env.clone(),
-            Some(packet.clone()),
+            Some(new_pkt.clone()),
             idx as u64,
         )?;
         res.messages.extend_from_slice(&msg_res.messages);
@@ -726,6 +698,27 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
     Ok(Response::default()
         .add_attribute("action", "unset_env")
         .add_attribute("variable", variable))
+}
+
+/// Generates or validates a packet ID using chain ID, block height and transaction index
+fn generate_packet_id(existing_id: Option<String>, env: &Env) -> Result<String, ContractError> {
+    let tx_index =
+        env.transaction
+            .as_ref()
+            .map(|tx| tx.index)
+            .ok_or(ContractError::InvalidPacket {
+                error: Some("Transaction index not available".to_string()),
+            })?;
+
+    match existing_id {
+        // Generate unique ID if the packet doesn't already have one
+        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index),
+        // Not using "-" as a separator since chain id can contain it
+        None => Ok(format!(
+            "{}.{}.{}",
+            env.block.chain_id, env.block.height, tx_index
+        )),
+    }
 }
 
 /// Validates the existing ID of a packet
@@ -1148,7 +1141,9 @@ impl MsgHandler {
             || {
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None)
                     .with_config(config.clone());
-                let mut ctx = AMPCtx::new(info.sender, env.contract.address, "0".to_string(), None);
+
+                //TODO: Should an ID be generated here?
+                let mut ctx = AMPCtx::new(info.sender, env.contract.address, None);
 
                 // Add the orginal sender's username if it exists
                 let potential_username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
