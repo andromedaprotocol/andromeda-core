@@ -215,3 +215,119 @@ pub struct RefundData {
     pub funds: Coin,
     pub channel: String,
 }
+
+use crate::common::reply::ReplyId;
+use crate::error::ContractError;
+use cosmwasm_std::{attr, BankMsg, CosmosMsg, DepsMut, SubMsg};
+/// Creates a bank send message and its associated attributes for transferring funds to a recipient.
+///
+/// # Arguments
+///
+/// * `recipient` - The address that will receive the funds
+/// * `funds` - A slice of `Coin`s representing the funds to be sent
+///
+/// # Returns
+///
+/// Returns a tuple containing:
+/// * `SubMsg` - A submessage configured to send the funds with error reply handling
+/// * `Vec<Attribute>` - A vector of attributes documenting the funds transfer, including:
+///   * One attribute per coin showing the amount and denomination
+///   * One attribute showing the recipient address
+pub fn create_bank_send_msg(
+    recipient: &Addr,
+    funds: &[Coin],
+) -> (SubMsg, Vec<cosmwasm_std::Attribute>) {
+    let bank_msg = SubMsg::reply_on_error(
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: funds.to_vec(),
+        }),
+        ReplyId::AMPMsg.repr(),
+    );
+
+    let attrs = funds
+        .iter()
+        .enumerate()
+        .map(|(idx, fund)| attr(format!("funds:{idx}"), fund.to_string()))
+        .chain(std::iter::once(attr("recipient", recipient.to_string())))
+        .collect();
+
+    (bank_msg, attrs)
+}
+
+/// Retrieves the code ID for a given contract address.
+///
+/// This function verifies that the provided address is a valid smart contract by querying
+/// its contract info. If the address is not a contract, it returns an error.
+///
+/// # Arguments
+///
+/// * `deps` - A reference to the contract's dependencies, used for querying contract info
+/// * `recipient` - The address to check and get the code ID for
+///
+/// # Returns
+///
+/// * `Result<u64, ContractError>` - The code ID if successful, or a ContractError if:
+///   * The address is not a contract
+///   * The query fails
+pub fn get_code_id(deps: &DepsMut, recipient: &AndrAddr) -> Result<u64, ContractError> {
+    deps.querier
+        .query_wasm_contract_info(recipient.get_raw_address(&deps.as_ref())?)
+        .ok()
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("Recipient is not a contract".to_string()),
+        })
+        .map(|info| info.code_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(
+        Addr::unchecked("recipient"),
+        vec![Coin::new(100, "uusd")],
+        1
+    )]
+    #[case(
+        Addr::unchecked("recipient2"),
+        vec![Coin::new(100, "uusd"), Coin::new(200, "uluna")],
+        2
+    )]
+    #[case(
+        Addr::unchecked("recipient3"),
+        vec![],
+        0
+    )]
+    fn test_create_bank_send_msg(
+        #[case] recipient: Addr,
+        #[case] funds: Vec<Coin>,
+        #[case] expected_fund_attrs: usize,
+    ) {
+        let (submsg, attrs) = create_bank_send_msg(&recipient, &funds);
+
+        // Check the SubMsg
+        match submsg.msg {
+            CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
+                assert_eq!(to_address, recipient.to_string());
+                assert_eq!(amount, funds);
+            }
+            _ => panic!("Expected BankMsg::Send"),
+        }
+        assert_eq!(submsg.id, ReplyId::AMPMsg.repr());
+        assert_eq!(submsg.reply_on, cosmwasm_std::ReplyOn::Error);
+
+        // Check attributes
+        assert_eq!(attrs.len(), expected_fund_attrs + 1); // +1 for recipient attribute
+        assert_eq!(attrs.last().unwrap().key, "recipient");
+        assert_eq!(attrs.last().unwrap().value, recipient.to_string());
+
+        // Check fund attributes
+        for (idx, fund) in funds.iter().enumerate() {
+            assert_eq!(attrs[idx].key, format!("funds:{idx}"));
+            assert_eq!(attrs[idx].value, fund.to_string());
+        }
+    }
+}
