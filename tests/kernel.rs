@@ -1,15 +1,30 @@
 use andromeda_finance::splitter::AddressPercent;
+use andromeda_fixed_amount_splitter::FixedAmountSplitterContract;
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg, MockSplitter,
 };
-use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::{
+    amp::{AndrAddr, Recipient},
+    error::ContractError,
+};
 use andromeda_testing::{
     mock::mock_app,
     mock_builder::MockAndromedaBuilder,
     mock_contract::{MockADO, MockContract},
 };
+use cosmwasm_std::{coin, Addr, Binary, Decimal};
 
-use cosmwasm_std::{coin, Addr, Decimal};
+use andromeda_std::{amp::messages::AMPMsg, os};
+use andromeda_testing::{ado_deployer, InterchainTestEnv};
+use cosmwasm_std::{to_json_binary, Coin, Uint128};
+use cw_orch::prelude::*;
+use std::vec;
+
+ado_deployer!(
+    deploy_splitter,
+    SplitterContract<MockBase<MockApiBech32>>,
+    &InstantiateMsg
+);
 
 #[test]
 fn kernel() {
@@ -101,4 +116,239 @@ fn kernel() {
     assert_eq!(owner_balance, coin(900, "uandr"));
 
     assert!(res.data.is_none());
+}
+
+#[test]
+fn test_fixed_amount_splitter_local_with_message_and_funds() {
+    let InterchainTestEnv { juno, .. } = InterchainTestEnv::new();
+
+    let recipient = juno.chain.addr_make("recipient");
+
+    // Deploy on Osmosis
+    let splitter_juno = FixedAmountSplitterContract::new(juno.chain.clone());
+    splitter_juno.upload().unwrap();
+
+    splitter_juno
+        .instantiate(
+            &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
+                recipients: vec![andromeda_finance::fixed_amount_splitter::AddressAmount {
+                    recipient: Recipient {
+                        address: AndrAddr::from_string(recipient.clone()),
+                        msg: None,
+                        ibc_recovery_address: None,
+                    },
+                    coins: vec![Coin {
+                        denom: juno.denom.clone(),
+                        amount: Uint128::new(100),
+                    }],
+                }],
+                default_recipient: None,
+                lock_time: None,
+                kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    // Register contract
+    juno.aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: splitter_juno.code_id().unwrap(),
+                ado_type: "fixed-amount-splitter".to_string(),
+                action_fees: None,
+                version: "1.0.0".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
+    let message = AMPMsg::new(
+        AndrAddr::from_string(splitter_juno.address().unwrap().clone()),
+        to_json_binary(
+            &andromeda_finance::fixed_amount_splitter::ExecuteMsg::Send { config: None },
+        )
+        .unwrap(),
+        Some(vec![Coin {
+            amount: Uint128::new(100000000),
+            denom: juno.denom.clone(),
+        }]),
+    );
+
+    // Execute IBC transfer from Juno
+    juno.aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::Send { message },
+            Some(&[Coin {
+                amount: Uint128::new(100000000),
+                denom: juno.denom.clone(),
+            }]),
+        )
+        .unwrap();
+
+    // Check balances
+    let balances = juno.chain.query_all_balances(&recipient).unwrap();
+    assert_eq!(balances.len(), 1);
+    assert_eq!(balances[0].denom, juno.denom);
+    assert_eq!(balances[0].amount.u128(), 100);
+}
+
+#[test]
+fn test_fixed_amount_splitter_local_with_no_message() {
+    let InterchainTestEnv { juno, .. } = InterchainTestEnv::new();
+
+    let recipient = juno.chain.addr_make("recipient");
+
+    // Deploy on Osmosis
+    let splitter_juno = FixedAmountSplitterContract::new(juno.chain.clone());
+    splitter_juno.upload().unwrap();
+
+    splitter_juno
+        .instantiate(
+            &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
+                recipients: vec![andromeda_finance::fixed_amount_splitter::AddressAmount {
+                    recipient: Recipient {
+                        address: AndrAddr::from_string(recipient.clone()),
+                        msg: None,
+                        ibc_recovery_address: None,
+                    },
+                    coins: vec![Coin {
+                        denom: juno.denom.clone(),
+                        amount: Uint128::new(100),
+                    }],
+                }],
+                default_recipient: None,
+                lock_time: None,
+                kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    // Register contract
+    juno.aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: splitter_juno.code_id().unwrap(),
+                ado_type: "fixed-amount-splitter".to_string(),
+                action_fees: None,
+                version: "1.0.0".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
+    let message = AMPMsg::new(
+        AndrAddr::from_string(splitter_juno.address().unwrap().clone()),
+        Binary::default(), // No message
+        Some(vec![Coin {
+            amount: Uint128::new(100000000),
+            denom: juno.denom.clone(),
+        }]),
+    );
+
+    // Execute IBC transfer from Juno
+    juno.aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::Send { message },
+            Some(&[Coin {
+                amount: Uint128::new(100000000),
+                denom: juno.denom.clone(),
+            }]),
+        )
+        .unwrap();
+
+    // Check balances
+    let balances = juno
+        .chain
+        .query_all_balances(&splitter_juno.address().unwrap())
+        .unwrap();
+    assert_eq!(balances.len(), 1);
+    assert_eq!(balances[0].denom, juno.denom);
+    assert_eq!(balances[0].amount.u128(), 100000000);
+}
+
+#[test]
+fn test_fixed_amount_splitter_local_funds_mismatch() {
+    let InterchainTestEnv { juno, .. } = InterchainTestEnv::new();
+
+    let recipient = juno.chain.addr_make("recipient");
+
+    // Deploy on Osmosis
+    let splitter_juno = FixedAmountSplitterContract::new(juno.chain.clone());
+    splitter_juno.upload().unwrap();
+
+    splitter_juno
+        .instantiate(
+            &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
+                recipients: vec![andromeda_finance::fixed_amount_splitter::AddressAmount {
+                    recipient: Recipient {
+                        address: AndrAddr::from_string(recipient.clone()),
+                        msg: None,
+                        ibc_recovery_address: None,
+                    },
+                    coins: vec![Coin {
+                        denom: juno.denom.clone(),
+                        amount: Uint128::new(100),
+                    }],
+                }],
+                default_recipient: None,
+                lock_time: None,
+                kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    // Register contract
+    juno.aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: splitter_juno.code_id().unwrap(),
+                ado_type: "fixed-amount-splitter".to_string(),
+                action_fees: None,
+                version: "1.0.0".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
+    let message = AMPMsg::new(
+        AndrAddr::from_string(splitter_juno.address().unwrap().clone()),
+        Binary::default(), // No message
+        Some(vec![Coin {
+            amount: Uint128::new(100000000),
+            denom: juno.denom.clone(),
+        }]),
+    );
+
+    // Execute IBC transfer from Juno
+    let err: ContractError = juno
+        .aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::Send { message },
+            Some(&[Coin {
+                amount: Uint128::new(2),
+                denom: juno.denom.clone(),
+            }]),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InsufficientFunds {});
 }
