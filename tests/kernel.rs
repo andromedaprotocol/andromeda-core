@@ -1,3 +1,4 @@
+use andromeda_cw20::CW20Contract;
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_fixed_amount_splitter::FixedAmountSplitterContract;
 use andromeda_splitter::mock::{
@@ -14,9 +15,11 @@ use andromeda_testing::{
 };
 use cosmwasm_std::{coin, Addr, Binary, Decimal};
 
+use andromeda_std::os::kernel::Cw20HookMsg;
 use andromeda_std::{amp::messages::AMPMsg, os};
 use andromeda_testing::{ado_deployer, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Coin, Uint128};
+use cw20::{BalanceResponse, Cw20Coin};
 use cw_orch::prelude::*;
 use std::vec;
 
@@ -346,6 +349,242 @@ fn test_fixed_amount_splitter_local_funds_mismatch() {
                 amount: Uint128::new(2),
                 denom: juno.denom.clone(),
             }]),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InsufficientFunds {});
+}
+
+#[test]
+fn test_fixed_amount_splitter_cw20_with_message_and_funds() {
+    let InterchainTestEnv { juno, .. } = InterchainTestEnv::new();
+    let recipient = juno.chain.addr_make("recipient");
+
+    // Deploy CW20 token
+    let mut cw20_token = CW20Contract::new(juno.chain.clone());
+    cw20_token.upload().unwrap();
+    cw20_token
+        .instantiate(
+            &andromeda_fungible_tokens::cw20::InstantiateMsg {
+                name: "Test Token".to_string(),
+                symbol: "TEST".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: juno.aos.kernel.address().unwrap().into_string(),
+                    amount: Uint128::new(1000000000),
+                }],
+                mint: None,
+                marketing: None,
+                kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    // Deploy splitter
+    let splitter_juno = FixedAmountSplitterContract::new(juno.chain.clone());
+    splitter_juno.upload().unwrap();
+
+    splitter_juno
+        .instantiate(
+            &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
+                recipients: vec![andromeda_finance::fixed_amount_splitter::AddressAmount {
+                    recipient: Recipient {
+                        address: AndrAddr::from_string(recipient.clone()),
+                        msg: None,
+                        ibc_recovery_address: None,
+                    },
+                    coins: vec![Coin {
+                        denom: cw20_token.address().unwrap().to_string(),
+                        amount: Uint128::new(100),
+                    }],
+                }],
+                default_recipient: None,
+                lock_time: None,
+                kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    // Register contract
+    juno.aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: splitter_juno.code_id().unwrap(),
+                ado_type: "fixed-amount-splitter".to_string(),
+                action_fees: None,
+                version: "1.0.0".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
+    juno.aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: cw20_token.code_id().unwrap(),
+                ado_type: "cw20".to_string(),
+                action_fees: None,
+                version: "1.0.0".to_string(),
+                publisher: None,
+            },
+            None,
+        )
+        .unwrap();
+
+    // Create the inner message that will be sent to the splitter
+    let inner_msg = to_json_binary(
+        &andromeda_finance::fixed_amount_splitter::Cw20HookMsg::Send { config: None },
+    )
+    .unwrap();
+
+    // Create the AMP message that will be sent through the kernel
+    let message = AMPMsg::new(
+        AndrAddr::from_string(splitter_juno.address().unwrap().clone()),
+        inner_msg,
+        Some(vec![Coin {
+            amount: Uint128::new(100000000),
+            denom: cw20_token.address().unwrap().to_string(),
+        }]),
+    );
+    cw20_token.set_sender(&juno.aos.kernel.address().unwrap());
+    // Execute CW20 send through kernel
+    cw20_token
+        .execute(
+            &andromeda_fungible_tokens::cw20::ExecuteMsg::Send {
+                contract: AndrAddr::from_string(juno.aos.kernel.address().unwrap().into_string()),
+                amount: Uint128::new(100000000),
+                msg: to_json_binary(&Cw20HookMsg::Send { message }).unwrap(),
+            },
+            None,
+        )
+        .unwrap();
+
+    // Check balances
+    let balance: BalanceResponse = cw20_token
+        .query(&andromeda_fungible_tokens::cw20::QueryMsg::Balance {
+            address: recipient.to_string(),
+        })
+        .unwrap();
+    assert_eq!(balance.balance.u128(), 100);
+}
+
+#[test]
+fn test_fixed_amount_splitter_cw20_with_no_message() {
+    let InterchainTestEnv { juno, .. } = InterchainTestEnv::new();
+    let sender = juno.chain.addr_make("sender");
+    // Deploy CW20 token
+    let mut cw20_token = CW20Contract::new(juno.chain.clone());
+    cw20_token.upload().unwrap();
+    cw20_token
+        .instantiate(
+            &andromeda_fungible_tokens::cw20::InstantiateMsg {
+                name: "Test Token".to_string(),
+                symbol: "TEST".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: sender.to_string(),
+                    amount: Uint128::new(1000000000),
+                }],
+                mint: None,
+                marketing: None,
+                kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    let recipient = juno.chain.addr_make("recipient");
+
+    let message = AMPMsg::new(
+        AndrAddr::from_string(recipient.clone()),
+        Binary::default(), // No message
+        Some(vec![Coin {
+            amount: Uint128::new(100000000),
+            denom: cw20_token.address().unwrap().to_string(),
+        }]),
+    );
+    cw20_token.set_sender(&sender);
+    // Execute CW20 send
+    cw20_token
+        .execute(
+            &andromeda_fungible_tokens::cw20::ExecuteMsg::Send {
+                contract: AndrAddr::from_string(juno.aos.kernel.address().unwrap().into_string()),
+                amount: Uint128::new(100000000),
+                msg: to_json_binary(&Cw20HookMsg::Send { message }).unwrap(),
+            },
+            None,
+        )
+        .unwrap();
+
+    // Check balances
+    let balance: BalanceResponse = cw20_token
+        .query(&andromeda_fungible_tokens::cw20::QueryMsg::Balance {
+            address: recipient.to_string(),
+        })
+        .unwrap();
+    assert_eq!(balance.balance.u128(), 100000000);
+}
+
+#[test]
+fn test_fixed_amount_splitter_cw20_funds_mismatch() {
+    let InterchainTestEnv { juno, .. } = InterchainTestEnv::new();
+    let sender = juno.chain.addr_make("sender");
+
+    // Deploy CW20 token
+    let mut cw20_token = CW20Contract::new(juno.chain.clone());
+    cw20_token.upload().unwrap();
+    cw20_token
+        .instantiate(
+            &andromeda_fungible_tokens::cw20::InstantiateMsg {
+                name: "Test Token".to_string(),
+                symbol: "TEST".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: sender.to_string(),
+                    amount: Uint128::new(1000000000),
+                }],
+                mint: None,
+                marketing: None,
+                kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            None,
+        )
+        .unwrap();
+
+    let recipient = juno.chain.addr_make("recipient");
+
+    let message = AMPMsg::new(
+        AndrAddr::from_string(recipient.clone()),
+        Binary::default(), // No message
+        Some(vec![Coin {
+            amount: Uint128::new(100000000),
+            denom: cw20_token.address().unwrap().to_string(),
+        }]),
+    );
+    cw20_token.set_sender(&sender);
+    // Execute CW20 send with insufficient funds
+    let err: ContractError = cw20_token
+        .execute(
+            &andromeda_fungible_tokens::cw20::ExecuteMsg::Send {
+                contract: AndrAddr::from_string(juno.aos.kernel.address().unwrap().into_string()),
+                amount: Uint128::new(2), // Less than required
+                msg: to_json_binary(&Cw20HookMsg::Send { message }).unwrap(),
+            },
+            None,
         )
         .unwrap_err()
         .downcast()

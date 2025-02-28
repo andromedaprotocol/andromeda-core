@@ -207,7 +207,7 @@ fn test_handle_local() {
                 ReplyId::AMPMsg.repr(),
             ),
             expected_error: Some(ContractError::InvalidPacket {
-                error: Some("No message or funds supplied".to_string()),
+                error: Some("No funds supplied".to_string()),
             }),
         },
         TestHandleLocalCase {

@@ -10,6 +10,7 @@ use cosmwasm_std::{
     entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 
+use crate::execute::handle_receive_cw20;
 // use crate::execute::handle_receive_cw20;
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{
@@ -92,7 +93,7 @@ pub fn execute(
             execute_env.env,
             packet,
         ),
-        // ExecuteMsg::Receive(msg) => handle_receive_cw20(execute_env, msg),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(execute_env, msg),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
         ExecuteMsg::TriggerRelay {
             packet_sequence,
@@ -133,9 +134,6 @@ pub fn execute(
             execute_env.info,
             ownership_message,
         ),
-        _ => Err(ContractError::InvalidPacket {
-            error: Some("Invalid message".to_string()),
-        }),
     }
 }
 

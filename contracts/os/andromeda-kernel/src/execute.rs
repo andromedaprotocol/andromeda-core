@@ -11,12 +11,14 @@ use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
-    create_bank_send_msg, get_code_id, ChannelInfo, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+    create_bank_send_msg, create_cw20_send_msg, create_cw20_transfer_msg, get_code_id, ChannelInfo,
+    Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
     IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 use crate::query;
 use crate::state::{
@@ -114,141 +116,118 @@ pub fn handle_local(
         .add_attribute(format!("recipient"), recipient))
 }
 
-// pub fn handle_cw20(
-//     deps: DepsMut,
-//     info: MessageInfo,
-//     env: Env,
-//     ctx: Option<AMPPkt>,
-// ) -> Result<Response, ContractError> {
-//     let resolved_recipient = self.get_resolved_recipient(&deps)?;
-//     self.update_recipient(resolved_recipient);
-//     let protocol = self.message().recipient.get_protocol();
+pub fn handle_receive_cw20(
+    ctx: ExecuteContext,
+    receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        amp_ctx,
+        ..
+    } = ctx;
 
-//     match protocol {
-//         None => self.handle_local_cw20(deps, info, env, ctx.map(|ctx| ctx.ctx), sequence),
-//         Some("ibc") => Err(ContractError::NotImplemented {
-//             msg: Some("CW20 over IBC not supported".to_string()),
-//         }),
-//         _ => Err(ContractError::NotImplemented {
-//             msg: Some("CW20 over IBC not supported".to_string()),
-//         }),
-//     }
-// }
+    let asset_sent = info.sender.clone().into_string();
+    let amount_sent = receive_msg.amount;
 
-// pub fn handle_local_cw20(
-//     deps: DepsMut,
-//     info: MessageInfo,
-//     _env: Env,
-//     ctx: Option<AMPCtx>,
-//     sequence: u64,
-// ) -> Result<Response, ContractError> {
-//     let res = Response::default();
-//     let AMPMsg {
-//         message,
-//         recipient,
-//         funds,
-//         config,
-//         ..
-//     } = self.message();
-//     let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
-//     let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
+    match from_json(&receive_msg.msg)? {
+        Cw20HookMsg::Send { message } => {
+            ensure!(
+                has_coins_merged(
+                    vec![Coin::new(amount_sent.into(), &asset_sent)].as_slice(),
+                    message.funds.as_slice()
+                ),
+                ContractError::InsufficientFunds {}
+            );
 
-//     // Handle empty message (bank transfer)
-//     if &Binary::default() == message {
-//         ensure!(
-//             !funds.is_empty(),
-//             ContractError::InvalidPacket {
-//                 error: Some("No message or funds supplied".to_string())
-//             }
-//         );
+            match message.recipient.get_protocol() {
+                Some(_) => Err(ContractError::NotImplemented {
+                    msg: Some("CW20 over IBC not supported".to_string()),
+                }),
+                _ => handle_local_cw20(deps, info, env, amp_ctx.map(|ctx| ctx.ctx), message),
+            }
+        }
+        Cw20HookMsg::AmpReceive(packet) => amp_receive_cw20(
+            &mut deps,
+            info,
+            env,
+            packet,
+            vec![Coin::new(amount_sent.into(), &asset_sent)],
+        ),
+    }
+}
 
-//         let transfer_msg = Cw20ExecuteMsg::Transfer {
-//             recipient: recipient_addr.to_string(),
-//             amount: funds[0].amount,
-//         };
+pub fn handle_local_cw20(
+    deps: DepsMut,
+    info: MessageInfo,
+    _env: Env,
+    ctx: Option<AMPCtx>,
+    amp_message: AMPMsg,
+) -> Result<Response, ContractError> {
+    let res = Response::default();
+    let AMPMsg {
+        ref message,
+        ref recipient,
+        ref funds,
+        ref config,
+        ..
+    } = amp_message;
 
-//         let sub_msg = SubMsg::reply_on_error(
-//             WasmMsg::Execute {
-//                 contract_addr: funds[0].denom.clone(),
-//                 msg: encode_binary(&transfer_msg)?,
-//                 funds: vec![],
-//             },
-//             ReplyId::AMPMsg.repr(),
-//         );
+    // Handle empty message (bank transfer)
+    if &Binary::default() == message {
+        ensure!(
+            !funds.is_empty(),
+            ContractError::InvalidPacket {
+                error: Some("No message or funds supplied".to_string())
+            }
+        );
 
-//         let attrs = funds
-//             .iter()
-//             .enumerate()
-//             .map(|(idx, fund)| attr(format!("funds:{sequence}:{idx}"), fund.to_string()))
-//             .chain(std::iter::once(attr(
-//                 format!("recipient:{sequence}"),
-//                 recipient_addr,
-//             )))
-//             .collect::<Vec<_>>();
+        let (sub_msg, attrs) = create_cw20_transfer_msg(
+            &recipient.get_raw_address(&deps.as_ref())?,
+            &funds[0].denom,
+            funds[0].amount.u128(),
+        )?;
 
-//         return Ok(res.add_submessage(sub_msg).add_attributes(attrs));
-//     }
+        return Ok(res.add_submessage(sub_msg).add_attributes(attrs));
+    }
 
-//     // Handle message execution
-//     let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
-//     let previous_sender = info.sender.to_string();
+    // Verify recipient is contract
+    let recipient_code_id = get_code_id(&deps, &recipient)?;
+    let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
 
-//     // Verify recipient is contract
-//     let ContractInfoResponse {
-//         code_id: recipient_code_id,
-//         ..
-//     } = deps
-//         .querier
-//         .query_wasm_contract_info(recipient_addr.clone())
-//         .ok()
-//         .ok_or(ContractError::InvalidPacket {
-//             error: Some("Recipient is not a contract".to_string()),
-//         })?;
+    let is_ado =
+        AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?.is_some();
 
-//     let is_ado =
-//         AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, recipient_code_id)?.is_some();
+    let (sub_msg, attrs) = if config.direct || !is_ado {
+        // Direct message
+        create_cw20_send_msg(
+            &recipient.get_raw_address(&deps.as_ref())?,
+            &funds[0].denom,
+            funds[0].amount.u128(),
+            message.clone(),
+            config.clone(),
+        )?
+    } else {
+        let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
+        let previous_sender = info.sender.to_string();
+        // AMP message
 
-//     let sub_msg = if config.direct || !is_ado {
-//         // Direct message
-//         SubMsg {
-//             id: ReplyId::AMPMsg.repr(),
-//             reply_on: config.reply_on.clone(),
-//             gas_limit: config.gas_limit,
-//             msg: CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: funds[0].denom.clone(),
-//                 msg: encode_binary(&Cw20ExecuteMsg::Send {
-//                     contract: recipient_addr.to_string(),
-//                     amount: funds[0].amount,
-//                     msg: message.clone(),
-//                 })?,
-//                 funds: vec![],
-//             }),
-//         }
-//     } else {
-//         // AMP message
-//         let amp_msg = AMPMsg::new(recipient_addr.clone(), message.clone(), Some(funds.clone()));
-//         let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_msg]);
+        // TODO: find a way to inlcude this without getting "unknown variant `amp_receive`, expected `send`"
+        let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]);
 
-//         SubMsg {
-//             id: ReplyId::AMPMsg.repr(),
-//             reply_on: config.reply_on.clone(),
-//             gas_limit: config.gas_limit,
-//             msg: CosmosMsg::Wasm(WasmMsg::Execute {
-//                 contract_addr: funds[0].denom.clone(),
-//                 msg: encode_binary(&Cw20ExecuteMsg::Send {
-//                     contract: recipient_addr.to_string(),
-//                     amount: funds[0].amount,
-//                     msg: encode_binary(&Cw20HookMsg::AmpReceive(new_packet))?,
-//                 })?,
-//                 funds: vec![],
-//             }),
-//         }
-//     };
+        create_cw20_send_msg(
+            &recipient.get_raw_address(&deps.as_ref())?,
+            &funds[0].denom,
+            funds[0].amount.u128(),
+            message.clone(),
+            config.clone(),
+        )?
+    };
 
-//     Ok(res
-//         .add_submessage(sub_msg)
-//         .add_attribute(format!("recipient:{sequence}"), recipient_addr))
-// }
+    println!("the sub_msg is: {:?}", sub_msg);
+    Ok(res.add_submessage(sub_msg).add_attributes(attrs))
+}
 
 pub fn trigger_relay(
     ctx: ExecuteContext,
@@ -528,59 +507,73 @@ pub fn amp_receive(
     Ok(res.add_attribute("action", "handle_amp_packet"))
 }
 
-// pub fn amp_receive_cw20(
-//     deps: &mut DepsMut,
-//     info: MessageInfo,
-//     env: Env,
-//     packet: AMPPkt,
-//     received_funds: Vec<Coin>,
-// ) -> Result<Response, ContractError> {
-//     // Only verified ADOs can access this function
-//     ensure!(
-//         query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
-//         ContractError::Unauthorized {}
-//     );
-//     ensure!(
-//         packet.ctx.id == 0,
-//         ContractError::InvalidPacket {
-//             error: Some("Packet ID cannot be provided from outside the Kernel".into())
-//         }
-//     );
+pub fn handle_cw20(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    ctx: Option<AMPPkt>,
+    message: AMPMsg,
+) -> Result<Response, ContractError> {
+    match message.recipient.get_protocol() {
+        Some(_) => Err(ContractError::NotImplemented {
+            msg: Some("CW20 over IBC not supported".to_string()),
+        }),
+        _ => handle_local_cw20(deps, info, env, ctx.map(|ctx| ctx.ctx), message),
+    }
+}
 
-//     let mut res = Response::default();
-//     ensure!(
-//         !packet.messages.is_empty(),
-//         ContractError::InvalidPacket {
-//             error: Some("No messages supplied".to_string())
-//         }
-//     );
+pub fn amp_receive_cw20(
+    deps: &mut DepsMut,
+    info: MessageInfo,
+    env: Env,
+    packet: AMPPkt,
+    received_funds: Vec<Coin>,
+) -> Result<Response, ContractError> {
+    // Only verified ADOs can access this function
+    ensure!(
+        query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
+        ContractError::Unauthorized {}
+    );
+    ensure!(
+        packet.ctx.id == 0,
+        ContractError::InvalidPacket {
+            error: Some("Packet ID cannot be provided from outside the Kernel".into())
+        }
+    );
 
-//     for (idx, message) in packet.messages.iter().enumerate() {
-//         let mut handler = MsgHandler::new(message.clone());
-//         let msg_res = handler.handle_cw20(
-//             deps.branch(),
-//             info.clone(),
-//             env.clone(),
-//             Some(packet.clone()),
-//             idx as u64,
-//         )?;
-//         res.messages.extend_from_slice(&msg_res.messages);
-//         res.attributes.extend_from_slice(&msg_res.attributes);
-//         res.events.extend_from_slice(&msg_res.events);
-//     }
+    let mut res = Response::default();
+    ensure!(
+        !packet.messages.is_empty(),
+        ContractError::InvalidPacket {
+            error: Some("No messages supplied".to_string())
+        }
+    );
 
-//     let message_funds = packet
-//         .messages
-//         .iter()
-//         .flat_map(|m| m.funds.clone())
-//         .collect::<Vec<Coin>>();
-//     ensure!(
-//         has_coins_merged(received_funds.as_slice(), message_funds.as_slice()),
-//         ContractError::InsufficientFunds {}
-//     );
+    for (idx, message) in packet.messages.iter().enumerate() {
+        let msg_res = handle_cw20(
+            deps.branch(),
+            info.clone(),
+            env.clone(),
+            Some(packet.clone()),
+            message.clone(),
+        )?;
+        res.messages.extend_from_slice(&msg_res.messages);
+        res.attributes.extend_from_slice(&msg_res.attributes);
+        res.events.extend_from_slice(&msg_res.events);
+    }
 
-//     Ok(res.add_attribute("action", "handle_amp_packet"))
-// }
+    let message_funds = packet
+        .messages
+        .iter()
+        .flat_map(|m| m.funds.clone())
+        .collect::<Vec<Coin>>();
+    ensure!(
+        has_coins_merged(received_funds.as_slice(), message_funds.as_slice()),
+        ContractError::InsufficientFunds {}
+    );
+
+    Ok(res.add_attribute("action", "handle_amp_packet"))
+}
 
 pub fn upsert_key_address(
     execute_ctx: ExecuteContext,
