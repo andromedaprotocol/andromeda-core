@@ -422,7 +422,7 @@ impl AMPPkt {
         Ok(sub_msg)
     }
 
-    /// Generates a CW20 Send SubMsg that contains an AMPReceive message inteded for the kernel
+    /// Generates a CW20 Send SubMsg that contains an AMPReceive message inteded for the kernel 
     pub fn to_sub_msg_cw20(
         &self,
         kernel_address: impl Into<String>,
