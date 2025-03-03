@@ -174,20 +174,21 @@ pub fn handle_local_cw20(
         ..
     } = amp_message;
 
+    let token_denom = funds[0].denom.clone();
+    let token_amount = funds[0].amount.u128();
+    let recipient_raw_address = recipient.get_raw_address(&deps.as_ref())?;
+
     // Handle empty message (bank transfer)
-    if &Binary::default() == message {
+    if message == &Binary::default() {
         ensure!(
             !funds.is_empty(),
             ContractError::InvalidPacket {
-                error: Some("No message or funds supplied".to_string())
+                error: Some("No funds supplied".to_string())
             }
         );
 
-        let (sub_msg, attrs) = create_cw20_transfer_msg(
-            &recipient.get_raw_address(&deps.as_ref())?,
-            &funds[0].denom,
-            funds[0].amount.u128(),
-        )?;
+        let (sub_msg, attrs) =
+            create_cw20_transfer_msg(&recipient_raw_address, &token_denom, token_amount)?;
 
         return Ok(res.add_submessage(sub_msg).add_attributes(attrs));
     }
@@ -202,9 +203,9 @@ pub fn handle_local_cw20(
     let (sub_msg, attrs) = if config.direct || !is_ado {
         // Direct message
         create_cw20_send_msg(
-            &recipient.get_raw_address(&deps.as_ref())?,
-            &funds[0].denom,
-            funds[0].amount.u128(),
+            &recipient_raw_address,
+            &token_denom,
+            token_amount,
             message.clone(),
             config.clone(),
         )?
@@ -215,9 +216,9 @@ pub fn handle_local_cw20(
         let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]);
 
         create_cw20_send_msg(
-            &recipient.get_raw_address(&deps.as_ref())?,
-            &funds[0].denom,
-            funds[0].amount.u128(),
+            &recipient_raw_address,
+            &token_denom,
+            token_amount,
             to_json_binary(&ExecuteMsg::AMPReceive(new_packet))?,
             config.clone(),
         )?
