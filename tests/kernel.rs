@@ -259,7 +259,6 @@ fn test_fixed_amount_splitter_local_with_no_message() {
         }]),
     );
 
-    // Execute IBC transfer from Juno
     juno.aos
         .kernel
         .execute(

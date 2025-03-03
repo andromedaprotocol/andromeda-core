@@ -18,7 +18,7 @@ use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
     IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::Cw20ReceiveMsg;
 
 use crate::query;
 use crate::state::{
@@ -90,7 +90,7 @@ pub fn handle_local(
     let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
 
     // Verify recipient is a contract
-    let code_id = get_code_id(&deps, &recipient)?;
+    let code_id = get_code_id(&deps, recipient)?;
     // Check if the recipient is an ADO
     let is_ado = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?.is_some();
 
@@ -113,7 +113,7 @@ pub fn handle_local(
 
     Ok(Response::default()
         .add_submessage(sub_msg)
-        .add_attribute(format!("recipient"), recipient))
+        .add_attribute("recipient", recipient))
 }
 
 pub fn handle_receive_cw20(
@@ -193,7 +193,7 @@ pub fn handle_local_cw20(
     }
 
     // Verify recipient is contract
-    let recipient_code_id = get_code_id(&deps, &recipient)?;
+    let recipient_code_id = get_code_id(&deps, recipient)?;
     let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
 
     let is_ado =
@@ -211,21 +211,18 @@ pub fn handle_local_cw20(
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
         let previous_sender = info.sender.to_string();
-        // AMP message
 
-        // TODO: find a way to inlcude this without getting "unknown variant `amp_receive`, expected `send`"
         let new_packet = AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]);
 
         create_cw20_send_msg(
             &recipient.get_raw_address(&deps.as_ref())?,
             &funds[0].denom,
             funds[0].amount.u128(),
-            message.clone(),
+            to_json_binary(&ExecuteMsg::AMPReceive(new_packet))?,
             config.clone(),
         )?
     };
 
-    println!("the sub_msg is: {:?}", sub_msg);
     Ok(res.add_submessage(sub_msg).add_attributes(attrs))
 }
 
@@ -549,7 +546,7 @@ pub fn amp_receive_cw20(
         }
     );
 
-    for (idx, message) in packet.messages.iter().enumerate() {
+    for message in packet.messages.iter() {
         let msg_res = handle_cw20(
             deps.branch(),
             info.clone(),

@@ -1,13 +1,13 @@
 use std::collections::HashSet;
 
 use andromeda_std::{
-    amp::recipient::Recipient,
+    amp::{messages::AMPPkt, recipient::Recipient},
     andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Coin, Deps};
+use cosmwasm_std::{ensure, Coin, Deps, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
@@ -53,6 +53,7 @@ impl InstantiateMsg {
 #[cw_serde]
 pub enum Cw20HookMsg {
     Send { config: Option<Vec<AddressAmount>> },
+    AmpReceive(AMPPkt),
 }
 
 #[andr_exec]
@@ -74,6 +75,12 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Divides any attached funds to the message amongst the recipients list.
     Send { config: Option<Vec<AddressAmount>> },
+    SendCw20 {
+        sender: String,
+        amount: Uint128,
+        asset: String,
+        config: Option<Vec<AddressAmount>>,
+    },
 }
 
 #[andr_query]

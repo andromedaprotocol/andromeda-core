@@ -422,7 +422,7 @@ impl AMPPkt {
         Ok(sub_msg)
     }
 
-    /// Generates a CW20 Send SubMsg that contains an AMPReceive message inteded for the kernel 
+    /// Generates a CW20 Send SubMsg that contains an AMPReceive message intended for the kernel
     pub fn to_sub_msg_cw20(
         &self,
         kernel_address: impl Into<String>,
@@ -441,10 +441,10 @@ impl AMPPkt {
         let sub_msg = SubMsg::reply_always(
             WasmMsg::Execute {
                 contract_addr,
-                msg: encode_binary(&Cw20ExecuteMsg::Send {
+                msg: to_json_binary(&Cw20ExecuteMsg::Send {
                     contract: kernel_address.into(),
                     amount: total_amount,
-                    msg: encode_binary(&Cw20HookMsg::AmpReceive(self.clone()))?,
+                    msg: to_json_binary(&Cw20HookMsg::AmpReceive(self.clone()))?,
                 })?,
                 funds: vec![],
             },

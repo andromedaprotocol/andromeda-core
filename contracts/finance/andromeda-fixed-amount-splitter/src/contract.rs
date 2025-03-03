@@ -10,15 +10,18 @@ use andromeda_finance::{
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    amp::{messages::AMPPkt, Recipient},
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        Recipient,
+    },
     andr_execute_fn,
     common::{encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, coin, coins, ensure, entry_point, from_json, Binary, Coin, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    attr, coin, coins, ensure, entry_point, from_json, to_json_binary, Binary, Coin, Deps, DepsMut,
+    Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 
@@ -94,6 +97,12 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         }
         ExecuteMsg::Receive(receive_msg) => handle_receive_cw20(ctx, receive_msg),
         ExecuteMsg::Send { config } => execute_send(ctx, config),
+        ExecuteMsg::SendCw20 {
+            sender,
+            amount,
+            asset,
+            config,
+        } => execute_send_cw20(ctx, sender, amount, asset, config),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -105,7 +114,7 @@ pub fn handle_receive_cw20(
     let ExecuteContext { ref info, .. } = ctx;
     let asset_sent = info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
-    let sender = receive_msg.sender;
+    let sender = receive_msg.sender.clone();
 
     ensure!(
         !amount_sent.is_zero(),
@@ -118,7 +127,19 @@ pub fn handle_receive_cw20(
         Cw20HookMsg::Send { config } => {
             execute_send_cw20(ctx, sender, amount_sent, asset_sent, config)
         }
-        
+        Cw20HookMsg::AmpReceive(mut packet) => {
+            let msg = to_json_binary(&ExecuteMsg::SendCw20 {
+                sender: sender.clone(),
+                amount: amount_sent,
+                asset: asset_sent.clone(),
+                // TODO: Enable config
+                config: None,
+            })?;
+            let funds = packet.messages[0].funds.clone();
+            let recipient = packet.messages[0].recipient.clone();
+            packet.messages = vec![AMPMsg::new(recipient, msg, Some(funds))];
+            execute(ctx.deps, ctx.env, ctx.info, ExecuteMsg::AMPReceive(packet))
+        }
     }
 }
 
