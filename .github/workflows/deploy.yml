@@ -19,9 +19,13 @@ on:
         required: false
         type: string
       schema_parser:
-        description: "Schema parser environment variable"
+        description: "Schema parser environment"
         required: false
-        type: string
+        type: choice
+        options:
+          - mainnet
+          - testnet
+          - testnet-staging
 
 jobs:
   build_contracts:
