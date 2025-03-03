@@ -23,7 +23,7 @@ use cw20::Cw20ReceiveMsg;
 use crate::query;
 use crate::state::{
     ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, TRIGGER_KEY,
+    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
 };
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
@@ -43,7 +43,7 @@ pub fn handle(
     message: AMPMsg,
 ) -> Result<Response, ContractError> {
     match message.recipient.get_protocol() {
-        // Some("ibc") => handle_ibc(deps, info, env, ctx, resolved_recipient),
+        Some("ibc") => handle_ibc(deps, info, env, ctx, message),
         _ => handle_local(deps, info, env, ctx.map(|ctx| ctx.ctx), message),
     }
 }
@@ -918,251 +918,260 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         .add_attribute("variable", variable))
 }
 
-// pub fn new(msg: AMPMsg) -> Self {
-//     Self(msg)
-// }
-
-// fn message(&self) -> &AMPMsg {
-//     &self.0
-// }
-
-// fn update_recipient(&mut self, recipient: AndrAddr) -> Self {
-//     self.0.recipient = recipient;
-//     self.clone()
-// }
-
 // /**
 // Handles an IBC AMP Message. An IBC AMP Message is defined by adding the `ibc://<chain>` protocol definition to the start of the VFS path.
 // The `chain` is the chain ID of the destination chain and an appropriate channel must be present for the given chain.
 
 // The VFS path has its protocol stripped and the message is passed via ibc-hooks to the kernel on the receiving chain. The kernel on the receiving chain will receive the message as if it was sent from the local chain and will act accordingly.
 // */
-// fn handle_ibc(
-//     deps: DepsMut,
-//     info: MessageInfo,
-//     env: Env,
-//     ctx: Option<AMPPkt>,
-//     sequence: u64,
-// ) -> Result<Response, ContractError> {
-//     let chain = self
-//         .message()
-//         .recipient
-//         .get_chain()
-//         .ok_or(ContractError::InvalidPacket {
-//             error: Some("Chain not provided".to_string()),
-//         })?;
+fn handle_ibc(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    ctx: Option<AMPPkt>,
+    message: AMPMsg,
+) -> Result<Response, ContractError> {
+    // check if chain is provided
+    let chain = message
+        .recipient
+        .get_chain()
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("Chain not provided".to_string()),
+        })?;
 
-//     let channel_info =
-//         CHAIN_TO_CHANNEL
-//             .may_load(deps.storage, chain)?
-//             .ok_or(ContractError::InvalidPacket {
-//                 error: Some(format!("Channel not found for chain {chain}")),
-//             })?;
+    //check if channel is present
+    let channel_info =
+        CHAIN_TO_CHANNEL
+            .may_load(deps.storage, chain)?
+            .ok_or(ContractError::InvalidPacket {
+                error: Some(format!("Channel not found for chain {chain}")),
+            })?;
 
-//     if self.message().funds.is_empty() {
-//         self.handle_ibc_direct(deps, info, env, ctx, sequence, channel_info)
-//     } else {
-//         self.handle_ibc_transfer_funds(deps, info, env, ctx, sequence, channel_info)
-//     }
-// }
+    //check if funds are present
+    if message.funds.is_empty() {
+        handle_ibc_direct(deps, info, env, ctx, message, channel_info)
+    } else {
+        handle_ibc_transfer_funds(deps, info, env, ctx, message, channel_info)
+    }
+}
 
-// fn create_cross_chain_hop(
-//     &self,
-//     channel: &str,
-//     current_chain: String,
-//     destination_chain: String,
-//     origin_address: String,
-//     username: Option<AndrAddr>,
-// ) -> CrossChainHop {
-//     CrossChainHop {
-//         username,
-//         address: origin_address,
-//         from_chain: current_chain,
-//         to_chain: destination_chain,
-//         funds: self.message().funds.to_vec(),
-//         channel: channel.to_string(),
-//     }
-// }
+/// Builds an AMP packet for cross-chain communication via IBC
+///
+/// This function prepares a message to be sent across chains by:
+/// 1. Setting up the message content
+/// 2. Creating or updating the message context with routing information
+/// 3. Adding username data and hop information for cross-chain tracking
+fn build_ibc_context(
+    deps: &DepsMut,
+    info: &MessageInfo,
+    env: &Env,
+    channel: &str,
+    existing_packet: Option<AMPPkt>,
+    current_chain: String,
+    message: AMPMsg,
+    destination_chain: &String,
+) -> Result<AMPPkt, ContractError> {
+    // Get VFS address for username lookups
+    let vfs_address =
+        KERNEL_ADDRESSES
+            .may_load(deps.storage, VFS_KEY)?
+            .ok_or(ContractError::Std(StdError::not_found(
+                "VFSAddressNotFound",
+            )))?;
 
-// fn build_ibc_context(
-//     deps: &DepsMut,
-//     info: &MessageInfo,
-//     env: &Env,
-//     channel: &str,
-//     existing_packet: Option<AMPPkt>,
-//     current_chain: String,
-//     destination_chain: String,
-// ) -> Result<AMPPkt, ContractError> {
-//     let vfs_address = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?;
+    // Prepare message with appropriate content and config
+    let amp_msg = AMPMsg::new(
+        message.recipient.get_raw_path(),
+        message.message.clone(),
+        None,
+    )
+    .with_config(message.config.clone());
 
-//     match existing_packet {
-//         None => {
-//             // Create new packet
-//             let amp_msg = AMPMsg::new(
-//                 self.message().recipient.clone().get_raw_path(),
-//                 self.message().message.clone(),
-//                 None,
-//             )
-//             .with_config(self.message().config.clone());
+    // Set up the context - either create new or use existing
+    let mut ctx = if let Some(mut packet) = existing_packet {
+        // Update existing packet's recipient
+        packet.messages[0].recipient =
+            AndrAddr::from_string(message.recipient.get_raw_path().to_string());
+        packet.ctx
+    } else {
+        // Create new context with origin information
+        AMPCtx::new(info.sender.clone(), env.contract.address.clone(), 0, None)
+    };
 
-//             let mut ctx = AMPCtx::new(info.sender.clone(), env.contract.address.clone(), 0, None);
-//             let username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
+    // Add username information if available
+    let username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
 
-//             let hop = self.create_cross_chain_hop(
-//                 channel,
-//                 current_chain,
-//                 destination_chain,
-//                 ctx.get_origin(),
-//                 username.map(AndrAddr::from_string),
-//             );
-//             ctx.add_hop(hop);
+    // Create and add routing information
+    let hop = create_cross_chain_hop(
+        channel,
+        current_chain,
+        destination_chain,
+        ctx.get_origin(),
+        username.map(AndrAddr::from_string),
+    );
+    ctx.add_hop(hop);
 
-//             Ok(AMPPkt::new_with_ctx(ctx, vec![amp_msg]))
-//         }
-//         Some(mut amp_packet) => {
-//             // Update existing context
-//             let username = amp_packet
-//                 .ctx
-//                 .try_add_origin_username(&deps.querier, &vfs_address);
+    // Assemble the final packet
+    Ok(AMPPkt::new_with_ctx(ctx, vec![amp_msg]))
+}
 
-//             let hop = self.create_cross_chain_hop(
-//                 channel,
-//                 current_chain,
-//                 destination_chain,
-//                 amp_packet.ctx.get_origin(),
-//                 username.map(AndrAddr::from_string),
-//             );
-//             amp_packet.ctx.add_hop(hop);
+fn create_cross_chain_hop(
+    channel: &str,
+    current_chain: String,
+    destination_chain: &String,
+    origin_address: String,
+    username: Option<AndrAddr>,
+) -> CrossChainHop {
+    CrossChainHop {
+        username,
+        address: origin_address,
+        from_chain: current_chain,
+        to_chain: destination_chain.clone(),
+        funds: vec![], // Assuming funds are not handled here as per the given instructions
+        channel: channel.to_string(),
+    }
+}
 
-//             // Remove chain reference from recipient
-//             amp_packet.messages[0].recipient =
-//                 AndrAddr::from_string(self.message().recipient.clone().get_raw_path().to_string());
+pub(crate) fn handle_ibc_direct(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    ctx: Option<AMPPkt>,
+    message: AMPMsg,
+    channel_info: ChannelInfo,
+) -> Result<Response, ContractError> {
+    println!("Starting handle_ibc_direct function");
 
-//             Ok(amp_packet)
-//         }
-//     }
-// }
+    // Validate that the message is not empty
+    if message.message.is_empty() {
+        println!("Message is empty, returning error");
+        return Err(ContractError::InvalidPacket {
+            error: Some("Cannot send an empty message without funds via IBC".to_string()),
+        });
+    }
 
-// fn handle_ibc_direct(
-//     deps: DepsMut,
-//     info: MessageInfo,
-//     env: Env,
-//     ctx: Option<AMPPkt>,
-//     sequence: u64,
-//     channel_info: ChannelInfo,
-// ) -> Result<Response, ContractError> {
-//     // Validate message is not empty
-//     ensure!(
-//         !Binary::default().eq(&self.message().message),
-//         ContractError::InvalidPacket {
-//             error: Some("Cannot send an empty message without funds via IBC".to_string())
-//         }
-//     );
+    println!("Message is not empty, proceeding");
 
-//     // Get destination chain and channel
-//     let destination_chain = self.message().recipient.get_chain().unwrap();
-//     let channel = channel_info
-//         .direct_channel_id
-//         .ok_or(ContractError::InvalidPacket {
-//             error: Some(format!("Channel not found for chain {destination_chain}")),
-//         })?;
+    // Extract the destination chain from the recipient
+    let destination_chain = message
+        .recipient
+        .get_chain()
+        .expect("Destination chain not found in recipient");
+    println!("Extracted destination chain: {}", destination_chain);
 
-//     // Build IBC context
-//     let current_chain = CURR_CHAIN.load(deps.storage)?;
-//     let amp_ctx = self.build_ibc_context(
-//         &deps,
-//         &info,
-//         &env,
-//         &channel,
-//         ctx,
-//         current_chain,
-//         destination_chain.to_string(),
-//     )?;
+    // Retrieve the direct channel ID for the destination chain
+    let channel = channel_info.direct_channel_id.expect(&format!(
+        "Channel not found for chain {}",
+        &destination_chain
+    ));
 
-//     // Create and send IBC message
-//     let kernel_msg = IbcExecuteMsg::SendMessage {
-//         amp_packet: amp_ctx,
-//     };
-//     let msg = IbcMsg::SendPacket {
-//         channel_id: channel.clone(),
-//         data: to_json_binary(&kernel_msg)?,
-//         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
-//     };
+    // Build IBC context
+    let current_chain = CURR_CHAIN.load(deps.storage)?;
+    println!("Loaded current chain: {}", current_chain);
 
-//     Ok(Response::default()
-//         .add_attribute(format!("method:{sequence}"), "execute_send_message")
-//         .add_attribute(format!("channel:{sequence}"), channel)
-//         .add_attribute("receiving_kernel_address", channel_info.kernel_address)
-//         .add_attribute("chain", destination_chain)
-//         .add_message(msg))
-// }
+    let amp_ctx = build_ibc_context(
+        &deps,
+        &info,
+        &env,
+        &channel,
+        ctx,
+        current_chain,
+        message.clone(),
+        &destination_chain.to_string(),
+    )?;
+    println!("Built IBC context for direct send");
 
-// fn handle_ibc_transfer_funds(
-//     deps: DepsMut,
-//     info: MessageInfo,
-//     env: Env,
-//     _ctx: Option<AMPPkt>,
-//     sequence: u64,
-//     channel_info: ChannelInfo,
-// ) -> Result<Response, ContractError> {
-//     let AMPMsg {
-//         recipient,
-//         message,
-//         funds,
-//         ..
-//     } = self.message();
-//     let chain = recipient.get_chain().unwrap();
-//     let channel = if let Some(ics20_channel) = channel_info.ics20_channel_id {
-//         Ok::<String, ContractError>(ics20_channel)
-//     } else {
-//         return Err(ContractError::InvalidPacket {
-//             error: Some(format!("Channel not found for chain {chain}")),
-//         });
-//     }?;
-//     deps.api.debug(&format!("info.funds: {:?}", info.funds));
-//     deps.api.debug(&format!("funds: {:?}", funds));
-//     ensure!(
-//         funds.len() == 1,
-//         ContractError::InvalidFunds {
-//             msg: "Number of funds should be exactly one".to_string()
-//         }
-//     );
-//     let coin = funds
-//         .first()
-//         .ok_or(ContractError::InvalidPacket {
-//             error: Some("Transfer funds must contain funds in the AMPMsg".to_string()),
-//         })?
-//         .clone();
+    // Create and send IBC message
+    let kernel_msg = IbcExecuteMsg::SendMessage {
+        amp_packet: amp_ctx,
+    };
+    println!("Created kernel message for sending");
 
-//     let msg = IbcMsg::Transfer {
-//         channel_id: channel.clone(),
-//         to_address: channel_info.kernel_address.clone(),
-//         amount: coin.clone(),
-//         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
-//     };
-//     let mut resp = Response::default();
+    let msg = IbcMsg::SendPacket {
+        channel_id: channel.clone(),
+        data: to_json_binary(&kernel_msg)?,
+        timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+    };
+    println!("Created IBC message for sending");
 
-//     // Save execute msg, to be loaded in the reply
-//     PENDING_MSG_AND_FUNDS.save(
-//         deps.storage,
-//         &Ics20PacketInfo {
-//             sender: info.sender.into_string(),
-//             recipient: recipient.clone(),
-//             message: message.clone(),
-//             funds: coin,
-//             channel: channel.clone(),
-//             pending: false,
-//         },
-//     )?;
-//     resp = resp.add_submessage(SubMsg {
-//         id: ReplyId::IBCTransfer.repr(),
-//         msg: CosmosMsg::Ibc(msg),
-//         gas_limit: None,
-//         reply_on: cosmwasm_std::ReplyOn::Always,
-//     });
-//     Ok(resp
-//         .add_attribute(format!("method:{sequence}"), "execute_transfer_funds")
-//         .add_attribute(format!("channel:{sequence}"), channel)
-//         .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
-//         .add_attribute("chain:{}", chain))
-// }
+    Ok(Response::default()
+        .add_attribute(format!("method"), "execute_send_message")
+        .add_attribute(format!("channel"), channel)
+        .add_attribute("receiving_kernel_address", channel_info.kernel_address)
+        .add_attribute("chain", destination_chain)
+        .add_message(msg))
+}
+
+pub(crate) fn handle_ibc_transfer_funds(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    _ctx: Option<AMPPkt>,
+    message: AMPMsg,
+    channel_info: ChannelInfo,
+) -> Result<Response, ContractError> {
+    let AMPMsg {
+        recipient,
+        message,
+        funds,
+        ..
+    } = message;
+
+    //check if chain is provided
+    let chain = recipient.get_chain().ok_or(ContractError::InvalidPacket {
+        error: Some("Chain not provided in recipient".to_string()),
+    })?;
+    //check if channel is present
+    let channel = channel_info
+        .ics20_channel_id
+        .ok_or_else(|| ContractError::InvalidPacket {
+            error: Some(format!("Channel not found for chain {chain}")),
+        })?;
+
+    //check if funds are present
+    ensure!(
+        funds.len() == 1,
+        ContractError::InvalidFunds {
+            msg: "Number of funds should be exactly one".to_string()
+        }
+    );
+    let coin = funds
+        .first()
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("Transfer funds must contain funds in the AMPMsg".to_string()),
+        })?
+        .clone();
+
+    let msg = IbcMsg::Transfer {
+        channel_id: channel.clone(),
+        to_address: channel_info.kernel_address.clone(),
+        amount: coin.clone(),
+        timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+    };
+    let mut resp = Response::default();
+
+    // Save execute msg, to be loaded in the reply
+    PENDING_MSG_AND_FUNDS.save(
+        deps.storage,
+        &Ics20PacketInfo {
+            sender: info.sender.into_string(),
+            recipient: recipient.clone(),
+            message: message.clone(),
+            funds: coin,
+            channel: channel.clone(),
+            pending: false,
+        },
+    )?;
+    resp = resp.add_submessage(SubMsg {
+        id: ReplyId::IBCTransfer.repr(),
+        msg: CosmosMsg::Ibc(msg),
+        gas_limit: None,
+        reply_on: cosmwasm_std::ReplyOn::Always,
+    });
+
+    Ok(resp
+        .add_attribute(format!("method"), "execute_transfer_funds")
+        .add_attribute(format!("channel"), channel)
+        .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
+        .add_attribute("chain:{}", chain))
+}
