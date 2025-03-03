@@ -97,12 +97,6 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         }
         ExecuteMsg::Receive(receive_msg) => handle_receive_cw20(ctx, receive_msg),
         ExecuteMsg::Send { config } => execute_send(ctx, config),
-        ExecuteMsg::SendCw20 {
-            sender,
-            amount,
-            asset,
-            config,
-        } => execute_send_cw20(ctx, sender, amount, asset, config),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -128,13 +122,11 @@ pub fn handle_receive_cw20(
             execute_send_cw20(ctx, sender, amount_sent, asset_sent, config)
         }
         Cw20HookMsg::AmpReceive(mut packet) => {
-            let msg = to_json_binary(&ExecuteMsg::SendCw20 {
+            let msg = to_json_binary(&ExecuteMsg::Receive(Cw20ReceiveMsg {
                 sender: sender.clone(),
                 amount: amount_sent,
-                asset: asset_sent.clone(),
-                // TODO: Enable config
-                config: None,
-            })?;
+                msg: to_json_binary(&Cw20HookMsg::Send { config: None })?,
+            }))?;
             let funds = packet.messages[0].funds.clone();
             let recipient = packet.messages[0].recipient.clone();
             packet.messages = vec![AMPMsg::new(recipient, msg, Some(funds))];

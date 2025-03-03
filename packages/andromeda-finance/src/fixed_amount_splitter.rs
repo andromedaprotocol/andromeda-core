@@ -7,7 +7,7 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ensure, Coin, Deps, Uint128};
+use cosmwasm_std::{ensure, Coin, Deps};
 use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
@@ -75,12 +75,6 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Divides any attached funds to the message amongst the recipients list.
     Send { config: Option<Vec<AddressAmount>> },
-    SendCw20 {
-        sender: String,
-        amount: Uint128,
-        asset: String,
-        config: Option<Vec<AddressAmount>>,
-    },
 }
 
 #[andr_query]
