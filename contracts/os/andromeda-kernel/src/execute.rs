@@ -269,7 +269,7 @@ pub fn amp_receive(
     res.events.extend_from_slice(&msg_res.events);
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
-    new_pkt.ctx.id = Some(generate_packet_id(packet.ctx.id.clone(), &env)?);
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -318,7 +318,7 @@ pub fn amp_receive_cw20(
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
 
-    new_pkt.ctx.id = Some(generate_packet_id(packet.ctx.id.clone(), &env)?);
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
 
     let mut res = Response::default();
     ensure!(
@@ -701,7 +701,10 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
 }
 
 /// Generates or validates a packet ID using chain ID, block height and transaction index
-fn generate_packet_id(existing_id: Option<String>, env: &Env) -> Result<String, ContractError> {
+fn generate_or_validate_packet_id(
+    existing_id: Option<String>,
+    env: &Env,
+) -> Result<String, ContractError> {
     let tx_index =
         env.transaction
             .as_ref()
@@ -1142,8 +1145,7 @@ impl MsgHandler {
                 let amp_msg = AMPMsg::new(recipient.clone().get_raw_path(), message.clone(), None)
                     .with_config(config.clone());
 
-                //TODO: Should an ID be generated here?
-                let mut ctx = AMPCtx::new(info.sender, env.contract.address, None);
+                let mut ctx = AMPCtx::new(info.sender, env.contract.address.clone(), None);
 
                 // Add the orginal sender's username if it exists
                 let potential_username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
@@ -1160,6 +1162,9 @@ impl MsgHandler {
 
                 // Add the new hop to the context
                 ctx.add_hop(hop);
+
+                // Add new ID
+                ctx.id = generate_or_validate_packet_id(None, &env).ok();
 
                 AMPPkt::new_with_ctx(ctx, vec![amp_msg])
             },
