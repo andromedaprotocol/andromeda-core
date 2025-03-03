@@ -128,11 +128,13 @@ pub enum ExecuteMsg {
         recipient: Option<Recipient>,
     },
     /// Release funds all held in Escrow for the given recipient
+    #[attrs(permissionless)]
     ReleaseFunds {
         recipient_addr: Option<String>,
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[attrs(permissionless)]
     ReleaseSpecificFunds {
         owner: String,
         recipient_addr: Option<String>,
