@@ -106,8 +106,7 @@ impl Escrow {
     ///
     /// ## Arguments
     /// * `&mut self`    - Mutable reference to an instance of Escrow
-    /// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the
-    ///                    same denom
+    /// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the same denom
     ///
     /// Returns nothing as it is done in place.
     pub fn add_funds(&mut self, coins_to_add: Vec<Coin>) {

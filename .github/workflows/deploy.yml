@@ -28,43 +28,6 @@ on:
           - testnet-staging
 
 jobs:
-  # build_contracts:
-  #   if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Set up Rust toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #     - name: Build Contracts
-  #       run: |
-  #         make version-map
-  #         make build
-
-  # build_schemas:
-  #   if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     schema_url: ${{ steps.upload-schemas.outputs.artifact-url }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Build Schemas
-  #       run: |
-  #         set -eo pipefail
-  #         make schemas || {
-  #           echo "Schema build failed"
-  #           exit 1
-  #         }
-  #     - name: Upload Schemas to Temp
-  #       id: upload-schemas
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: temp-schemas
-  #         path: ./schemas/
-  #         retention-days: 1
-  #         if-no-files-found: error
-
   build_deploy_script:
     if: contains('["crnbarr93", "SlayerAnsh", "joemonem", "DimitrijeDragasevic", "cowboy0015"]', github.actor)
     runs-on: ubuntu-latest
@@ -94,7 +57,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: 1.76.0
+          toolchain: 1.81.0
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
       - name: Install Binaryen
