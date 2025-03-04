@@ -295,6 +295,25 @@ pub struct CrossChainHop {
     pub channel: String,
 }
 
+impl CrossChainHop {
+    pub fn new(
+        channel: &str,
+        current_chain: String,
+        destination_chain: String,
+        origin_address: String,
+        username: Option<AndrAddr>,
+    ) -> Self {
+        Self {
+            username,
+            address: origin_address,
+            from_chain: current_chain,
+            to_chain: destination_chain,
+            funds: vec![],
+            channel: channel.to_string(),
+        }
+    }
+}
+
 #[cw_serde]
 /// An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating
 /// It contains an original sender, if used for authorisation the sender must be authorised

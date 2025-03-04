@@ -1,3 +1,4 @@
+#[cfg(test)]
 use crate::{
     contract::{execute, instantiate, query},
     ibc::PACKET_LIFETIME,
