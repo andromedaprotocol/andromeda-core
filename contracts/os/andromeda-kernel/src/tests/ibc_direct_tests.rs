@@ -314,9 +314,7 @@ fn test_handle_ibc_direct_with_complex_path() {
 
     // Create message with a complex recipient path
     let message = AMPMsg {
-        recipient: AndrAddr::from_string(
-            "ibc://juno-1/apps/marketplace/listings/123".to_string(),
-        ),
+        recipient: AndrAddr::from_string("ibc://juno-1/apps/marketplace/listings/123".to_string()),
         message: Binary::from(b"{\"execute_something\":{}}"),
         funds: vec![],
         config: AMPMsgConfig {
@@ -489,4 +487,3 @@ fn test_handle_ibc_direct_with_funds_attempt() {
     // Verify the response (funds are ignored in direct IBC messages)
     assert_eq!(response.messages.len(), 1);
 }
-
