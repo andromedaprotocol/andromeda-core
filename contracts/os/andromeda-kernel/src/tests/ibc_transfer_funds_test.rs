@@ -121,7 +121,7 @@ mod ibc_transfer_tests {
             Err(ContractError::InvalidPacket { error }) => {
                 assert_eq!(
                     error,
-                    Some("Channel not found for chain juno-1".to_string())
+                    Some("ICS20 channel not found for chain juno-1".to_string())
                 );
             }
             _ => panic!("Expected InvalidPacket error"),

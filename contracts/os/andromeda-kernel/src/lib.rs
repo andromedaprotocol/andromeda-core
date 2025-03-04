@@ -10,9 +10,6 @@ pub mod reply;
 mod state;
 mod sudo;
 
-#[cfg(test)]
-mod testing;
-
 #[cfg(not(target_arch = "wasm32"))]
 mod interface;
 #[cfg(not(target_arch = "wasm32"))]

@@ -1,3 +1,4 @@
+#[cfg(test)]
 use crate::{execute::handle_local, state::KERNEL_ADDRESSES};
 use andromeda_std::{
     amp::{
