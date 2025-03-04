@@ -174,7 +174,10 @@ fn test_transfer_permission(
     assert_eq!(owner, andr.get_wallet(sender).to_string());
 
     // Attempt to transfer token #1 to the recipient
-    let transfer_msg = mock_transfer_nft(AndrAddr::from_string(recipient), expected_token_id.to_string());
+    let transfer_msg = mock_transfer_nft(
+        AndrAddr::from_string(recipient),
+        expected_token_id.to_string(),
+    );
     let res = andr.kernel.execute_send(
         &mut router,
         andr.get_wallet(sender).clone(),
