@@ -11,7 +11,7 @@ andromeda-app = { workspace = true }
 andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
     "testing",
 ] }
-rstest = "0.24.0"
+rstest = "0.25.0"
 
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { workspace = true }
