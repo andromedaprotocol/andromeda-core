@@ -367,14 +367,13 @@ fn handle_ibc_transfer_funds_reply(
     );
 
     // Create a new hop to be appended to the context
-    let hop = CrossChainHop {
-        username: potential_username.as_ref().map(AndrAddr::from_string),
-        address: ics20_packet_info.sender.clone(),
-        from_chain: CURR_CHAIN.load(deps.storage)?,
-        to_chain: chain.to_string(),
-        funds: vec![adjusted_funds.clone()],
-        channel: channel.clone(),
-    };
+    let hop = CrossChainHop::new(
+        &channel,
+        CURR_CHAIN.load(deps.storage)?,
+        chain.to_string(),
+        ics20_packet_info.sender.clone(),
+        potential_username.clone().map(AndrAddr::from_string),
+    );
 
     // Add the new hop to the context
     ctx.add_hop(hop);
@@ -918,12 +917,24 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         .add_attribute("variable", variable))
 }
 
-// /**
-// Handles an IBC AMP Message. An IBC AMP Message is defined by adding the `ibc://<chain>` protocol definition to the start of the VFS path.
-// The `chain` is the chain ID of the destination chain and an appropriate channel must be present for the given chain.
-
-// The VFS path has its protocol stripped and the message is passed via ibc-hooks to the kernel on the receiving chain. The kernel on the receiving chain will receive the message as if it was sent from the local chain and will act accordingly.
-// */
+/// Handles an Inter-Blockchain Communication (IBC) message.
+///
+/// This function routes messages to different chains based on the protocol specified in the recipient's
+/// VFS path (ibc://<chain>/path). It performs the following checks:
+/// 1. Verifies that a destination chain is specified
+/// 2. Confirms a valid channel configuration exists for that chain
+/// 3. Routes to the appropriate handler based on whether funds are included
+///
+/// # Parameters
+/// * `deps` - Mutable access to contract storage and APIs
+/// * `info` - Information about the message sender
+/// * `env` - Environment information (contract address, block height, etc.)
+/// * `ctx` - Optional context from previous message handling
+/// * `message` - The AMP message to be sent across chains
+///
+/// # Returns
+/// * `Ok(Response)` - Response with the prepared IBC message
+/// * `Err(ContractError)` - Error if chain validation fails or appropriate channel not found
 fn handle_ibc(
     deps: DepsMut,
     info: MessageInfo,
@@ -1001,13 +1012,17 @@ fn build_ibc_packet(
     // Add username information if available
     let username = ctx.try_add_origin_username(&deps.querier, &vfs_address);
 
-    let destination_chain = amp_message
-        .recipient
-        .get_chain()
-        .expect("Destination chain not found in recipient");
+    // Extract the destination chain from the recipient with proper error handling
+    let destination_chain =
+        amp_message
+            .recipient
+            .get_chain()
+            .ok_or(ContractError::InvalidPacket {
+                error: Some("Destination chain not found in recipient".to_string()),
+            })?;
 
-    // Create and add routing information
-    let hop = create_cross_chain_hop(
+    // Create and add routing information using the constructor directly
+    let hop = CrossChainHop::new(
         channel,
         current_chain,
         destination_chain.to_string(),
@@ -1020,23 +1035,27 @@ fn build_ibc_packet(
     Ok(AMPPkt::new_with_ctx(ctx, vec![amp_msg]))
 }
 
-fn create_cross_chain_hop(
-    channel: &str,
-    current_chain: String,
-    destination_chain: String,
-    origin_address: String,
-    username: Option<AndrAddr>,
-) -> CrossChainHop {
-    CrossChainHop {
-        username,
-        address: origin_address,
-        from_chain: current_chain,
-        to_chain: destination_chain.clone(),
-        funds: vec![], // Assuming funds are not handled here as per the given instructions
-        channel: channel.to_string(),
-    }
-}
-
+/// Handles direct IBC message sending without funds transfer.
+///
+/// This function processes messages that need to be sent to other chains but don't
+/// involve token transfers. It performs the following steps:
+/// 1. Validates that the message is not empty
+/// 2. Extracts the destination chain from the recipient
+/// 3. Retrieves the direct channel ID for the destination chain
+/// 4. Builds an IBC packet with routing information
+/// 5. Creates and sends the IBC message via the appropriate channel
+///
+/// # Parameters
+/// * `deps` - Mutable access to contract storage and APIs
+/// * `info` - Information about the message sender
+/// * `env` - Environment information (contract address, block height, etc.)
+/// * `pkt` - Optional existing packet context
+/// * `amp_message` - The AMP message to be sent
+/// * `channel_info` - Information about the channel to the destination chain
+///
+/// # Returns
+/// * `Ok(Response)` - Response with the IBC message
+/// * `Err(ContractError)` - Error if validation fails or required channel not found
 pub(crate) fn handle_ibc_direct(
     deps: DepsMut,
     info: MessageInfo,
@@ -1053,16 +1072,24 @@ pub(crate) fn handle_ibc_direct(
         }
     );
 
-    // Extract the destination chain from the recipient
-    let destination_chain = amp_message
-        .recipient
-        .get_chain()
-        .expect("Destination chain not found in recipient");
+    // Extract the destination chain from the recipient with proper error handling
+    let destination_chain =
+        amp_message
+            .recipient
+            .get_chain()
+            .ok_or(ContractError::InvalidPacket {
+                error: Some("Destination chain not found in recipient".to_string()),
+            })?;
 
     // Retrieve the direct channel ID for the destination chain
     let channel = channel_info
         .direct_channel_id
-        .unwrap_or_else(|| panic!("Channel not found for chain {}", &destination_chain));
+        .ok_or(ContractError::InvalidPacket {
+            error: Some(format!(
+                "Direct channel not found for chain {}",
+                &destination_chain
+            )),
+        })?;
 
     // Build IBC context
     let current_chain = CURR_CHAIN.load(deps.storage)?;
@@ -1096,6 +1123,30 @@ pub(crate) fn handle_ibc_direct(
         .add_message(msg))
 }
 
+/// Handles IBC messages that include funds transfer.
+///
+/// This function processes cross-chain messages that involve token transfers.
+/// It performs the following steps:
+/// 1. Extracts the destination chain and validates it exists
+/// 2. Finds the appropriate ICS20 channel for funds transfer
+/// 3. Validates the funds (must be exactly one coin)
+/// 4. Creates an IBC transfer message
+/// 5. Stores the message details for later processing in a reply handler
+///
+/// The funds are first transferred via ICS20, and upon successful transfer,
+/// the associated message is sent in a follow-up transaction.
+///
+/// # Parameters
+/// * `deps` - Mutable access to contract storage and APIs
+/// * `info` - Information about the message sender
+/// * `env` - Environment information (contract address, block height, etc.)
+/// * `_ctx` - Optional context from previous message handling
+/// * `message` - The AMP message containing funds to be sent
+/// * `channel_info` - Information about the channels to the destination chain
+///
+/// # Returns
+/// * `Ok(Response)` - Response with the IBC transfer submessage
+/// * `Err(ContractError)` - Error if validation fails or required channel not found
 pub(crate) fn handle_ibc_transfer_funds(
     deps: DepsMut,
     info: MessageInfo,

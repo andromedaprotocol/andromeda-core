@@ -38,19 +38,19 @@ fn test_handle_ibc_direct_success() {
     // Set up test state with mocked storage values
     setup_test_state(&mut deps);
 
-    // Create message without funds
-    let message = AMPMsg {
-        recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
-        message: Binary::from(b"{\"execute_something\":{}}"),
-        funds: vec![],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+    // Create message without funds using AMPMsg::new
+    let message = AMPMsg::new(
+        AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
+        Binary::from(b"{\"execute_something\":{}}"),
+        None,
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     // Create channel info
     let channel_info = ChannelInfo {
@@ -137,20 +137,18 @@ fn test_handle_ibc_direct_empty_message() {
 
     // Set up test state
     setup_test_state(&mut deps);
-
-    // Create message with empty binary
-    let message = AMPMsg {
-        recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
-        message: Binary::default(), // Empty message
-        funds: vec![],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+    let message = AMPMsg::new(
+        AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
+        Binary::default(), // Empty message
+        None,
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     let channel_info = ChannelInfo {
         direct_channel_id: Some("channel-direct".to_string()),
@@ -175,7 +173,6 @@ fn test_handle_ibc_direct_empty_message() {
 }
 
 #[test]
-#[should_panic(expected = "Channel not found for chain juno-1")]
 fn test_handle_ibc_direct_no_direct_channel() {
     let mut deps = mock_dependencies();
     let env = mock_env();
@@ -185,18 +182,18 @@ fn test_handle_ibc_direct_no_direct_channel() {
     setup_test_state(&mut deps);
 
     // Create message
-    let message = AMPMsg {
-        recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
-        message: Binary::from(b"{\"execute_something\":{}}"),
-        funds: vec![],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+    let message = AMPMsg::new(
+        AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
+        Binary::from(b"{\"execute_something\":{}}"),
+        None,
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     // Channel info without direct channel
     let channel_info = ChannelInfo {
@@ -206,10 +203,22 @@ fn test_handle_ibc_direct_no_direct_channel() {
         supported_modules: vec![],
     };
 
-    // This should panic with the expected message
-    let _ = handle_ibc_direct(deps.as_mut(), info, env, None, message, channel_info);
+    // Execute the function and check for the expected error
+    let result = handle_ibc_direct(deps.as_mut(), info, env, None, message, channel_info);
 
-    // No need for assertions since we expect a panic
+    // Assert that the function returns an error
+    assert!(result.is_err());
+
+    // Verify it's the correct error type with the expected message
+    match result {
+        Err(ContractError::InvalidPacket { error }) => {
+            assert_eq!(
+                error,
+                Some("Direct channel not found for chain juno-1".to_string())
+            );
+        }
+        err => panic!("Unexpected error: {:?}", err),
+    }
 }
 
 #[test]
@@ -222,32 +231,32 @@ fn test_handle_ibc_direct_with_existing_context() {
     setup_test_state(&mut deps);
 
     // Create a message
-    let message = AMPMsg {
-        recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
-        message: Binary::from(b"{\"execute_something\":{}}"),
-        funds: vec![],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+    let message = AMPMsg::new(
+        AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
+        Binary::from(b"{\"execute_something\":{}}"),
+        None,
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     // Create an existing context
-    let existing_msg = AMPMsg {
-        recipient: AndrAddr::from_string("original_recipient".to_string()),
-        message: Binary::from(b"{\"original_action\":{}}"),
-        funds: vec![],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+    let existing_msg = AMPMsg::new(
+        AndrAddr::from_string("original_recipient".to_string()),
+        Binary::from(b"{\"original_action\":{}}"),
+        None,
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     let ctx = Some(AMPPkt::new(
         "origin_account".to_string(),
@@ -313,18 +322,18 @@ fn test_handle_ibc_direct_with_complex_path() {
     setup_test_state(&mut deps);
 
     // Create message with a complex recipient path
-    let message = AMPMsg {
-        recipient: AndrAddr::from_string("ibc://juno-1/apps/marketplace/listings/123".to_string()),
-        message: Binary::from(b"{\"execute_something\":{}}"),
-        funds: vec![],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+    let message = AMPMsg::new(
+        "ibc://juno-1/apps/marketplace/listings/123".to_string(),
+        Binary::from(b"{\"execute_something\":{}}"),
+        None,
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     let channel_info = ChannelInfo {
         direct_channel_id: Some("channel-direct".to_string()),
@@ -381,18 +390,18 @@ fn test_handle_ibc_direct_with_custom_config() {
     setup_test_state(&mut deps);
 
     // Create message with custom config
-    let message = AMPMsg {
-        recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
-        message: Binary::from(b"{\"execute_something\":{}}"),
-        funds: vec![],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+    let message = AMPMsg::new(
+        AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
+        Binary::from(b"{\"execute_something\":{}}"),
+        None,
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     let channel_info = ChannelInfo {
         direct_channel_id: Some("channel-direct".to_string()),
@@ -450,21 +459,21 @@ fn test_handle_ibc_direct_with_funds_attempt() {
 
     // Create message with funds (which should be handled by handle_ibc_transfer_funds,
     // but we test handle_ibc_direct in isolation here)
-    let message = AMPMsg {
-        recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
-        message: Binary::from(b"{\"execute_something\":{}}"),
-        funds: vec![Coin {
+    let message = AMPMsg::new(
+        AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
+        Binary::from(b"{\"execute_something\":{}}"),
+        Some(vec![Coin {
             denom: "uatom".to_string(),
             amount: Uint128::new(100),
-        }],
-        config: AMPMsgConfig {
-            direct: true,
-            reply_on: ReplyOn::Always,
-            exit_at_error: false,
-            gas_limit: None,
-            ibc_config: None,
-        },
-    };
+        }]),
+    )
+    .with_config(AMPMsgConfig {
+        direct: true,
+        reply_on: ReplyOn::Always,
+        exit_at_error: false,
+        gas_limit: None,
+        ibc_config: None,
+    });
 
     let channel_info = ChannelInfo {
         direct_channel_id: Some("channel-direct".to_string()),
