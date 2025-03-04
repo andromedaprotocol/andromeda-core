@@ -148,6 +148,8 @@ fn test_transfer_permission(
 
     let recipient = andr.get_wallet(RANDOM_USER);
 
+    let expected_token_id = "1";
+
     // First mint a token to the sender
     let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string());
     let cw721_path = format!(
@@ -167,8 +169,12 @@ fn test_transfer_permission(
         )
         .unwrap();
 
+    // Verify initial ownership is with sender
+    let owner = cw721.query_owner_of(&router, expected_token_id);
+    assert_eq!(owner, andr.get_wallet(sender).to_string());
+
     // Attempt to transfer token #1 to the recipient
-    let transfer_msg = mock_transfer_nft(AndrAddr::from_string(recipient), "0".to_string());
+    let transfer_msg = mock_transfer_nft(AndrAddr::from_string(recipient), expected_token_id.to_string());
     let res = andr.kernel.execute_send(
         &mut router,
         andr.get_wallet(sender).clone(),
@@ -183,10 +189,10 @@ fn test_transfer_permission(
 
     // If the transfer was expected to succeed, verify ownership changed
     if expected_success {
-        let owner = cw721.query_owner_of(&router, "0");
+        let owner = cw721.query_owner_of(&router, expected_token_id);
         assert_eq!(owner, recipient.to_string());
     } else {
-        let owner = cw721.query_owner_of(&router, "0");
+        let owner = cw721.query_owner_of(&router, expected_token_id);
         assert_eq!(owner, andr.get_wallet(sender).to_string());
     }
 }
