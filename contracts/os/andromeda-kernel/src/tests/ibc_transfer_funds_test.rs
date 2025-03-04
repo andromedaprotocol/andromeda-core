@@ -49,24 +49,21 @@ mod ibc_transfer_tests {
 
         // Check submessage
         assert_eq!(response.messages.len(), 1);
-        match &response.messages[0] {
-            SubMsg { id, msg, .. } => {
-                assert_eq!(*id, ReplyId::IBCTransfer.repr());
-                match msg {
-                    CosmosMsg::Ibc(IbcMsg::Transfer {
-                        channel_id,
-                        to_address,
-                        amount,
-                        ..
-                    }) => {
-                        assert_eq!(channel_id, "channel-0");
-                        assert_eq!(to_address, "juno_kernel");
-                        assert_eq!(amount.denom, "uatom");
-                        assert_eq!(amount.amount, Uint128::new(100));
-                    }
-                    _ => panic!("Expected IBC Transfer message"),
-                }
+        let SubMsg { id, msg, .. } = &response.messages[0];
+        assert_eq!(*id, ReplyId::IBCTransfer.repr());
+        match msg {
+            CosmosMsg::Ibc(IbcMsg::Transfer {
+                channel_id,
+                to_address,
+                amount,
+                ..
+            }) => {
+                assert_eq!(channel_id, "channel-0");
+                assert_eq!(to_address, "juno_kernel");
+                assert_eq!(amount.denom, "uatom");
+                assert_eq!(amount.amount, Uint128::new(100));
             }
+            _ => panic!("Expected IBC Transfer message"),
         }
 
         // Check attributes
