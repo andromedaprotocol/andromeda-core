@@ -29,6 +29,7 @@ pub enum ExecuteMsg {
         dst_validator: Addr,
         amount: Option<Uint128>,
     },
+    #[attrs(permissionless)]
     Claim {
         validator: Option<Addr>,
         /// Defaults to false

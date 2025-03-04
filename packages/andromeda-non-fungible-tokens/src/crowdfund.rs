@@ -50,6 +50,7 @@ pub enum ExecuteMsg {
     #[attrs(restricted, nonpayable)]
     EndCampaign {},
     /// Claim tiers or get refunded based on the campaign result
+    #[attrs(permissionless)]
     Claim {},
     /// Discard the campaign
     #[attrs(restricted, nonpayable)]

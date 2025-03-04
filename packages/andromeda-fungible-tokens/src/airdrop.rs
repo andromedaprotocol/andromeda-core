@@ -22,7 +22,7 @@ pub enum ExecuteMsg {
         total_amount: Option<Uint128>,
     },
     /// Claim does not check if contract has enough funds, owner must ensure it.
-    #[attrs(nonpayable)]
+    #[attrs(nonpayable, permissionless)]
     Claim {
         stage: u8,
         amount: Uint128,

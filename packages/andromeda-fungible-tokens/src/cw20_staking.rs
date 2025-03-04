@@ -38,9 +38,10 @@ pub enum ExecuteMsg {
 
     /// Unstakes the specified amount of assets, or all if not specified. The user's pending
     /// rewards and indexes are updated for each additional reward token.
-    #[attrs(nonpayable)]
+    #[attrs(nonpayable, permissionless)]
     UnstakeTokens { amount: Option<Uint128> },
     /// Claims any outstanding rewards from the addtional reward tokens.
+    #[attrs(permissionless)]
     ClaimRewards {},
     /// Updates the global reward index for the specified reward tokens or all of the specified ones if
     /// None. Funds may be sent along with this.
