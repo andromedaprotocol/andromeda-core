@@ -1218,6 +1218,6 @@ pub(crate) fn handle_ibc_transfer_funds(
     Ok(resp
         .add_attribute("method", "execute_transfer_funds")
         .add_attribute("channel", channel)
-        .add_attribute("receiving_kernel_address:{}", channel_info.kernel_address)
-        .add_attribute("chain:{}", chain))
+        .add_attribute("receiving_kernel_address", channel_info.kernel_address)
+        .add_attribute("chain", chain))
 }
