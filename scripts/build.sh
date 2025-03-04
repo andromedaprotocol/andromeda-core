@@ -30,7 +30,7 @@ build_contract () {
     
     local IN_FILE="./target/wasm32-unknown-unknown/release/$BUILD_TARGET.wasm"
     local OUT_FILE="./artifacts/$BUILD_TARGET.wasm"
-    local OUT_FILE_IBC_TEST="./ibc-tests/artifacts/$BUILD_TARGET.wasm"
+    local OUT_FILE_IBC_TEST="./tests/ibc-tests/artifacts/$BUILD_TARGET.wasm"
     local OUT_FILE_PACKAGE="./packages/andromeda-testing-e2e/artifacts/$BUILD_TARGET.wasm"
 
     wasm-opt -Os $IN_FILE -o $OUT_FILE
@@ -90,10 +90,10 @@ export RUSTFLAGS="-C link-arg=-s"
 rm -rf ./target
 rm -rf ./artifacts
 rm -rf ./packages/andromeda-testing-e2e/artifacts
-rm -rf ./ibc-tests/artifacts
+rm -rf ./tests/ibc-tests/artifacts
 mkdir artifacts
 mkdir packages/andromeda-testing-e2e/artifacts
-mkdir ibc-tests/artifacts
+mkdir tests/ibc-tests/artifacts
 
 set -e
 for target in "$@"; do
