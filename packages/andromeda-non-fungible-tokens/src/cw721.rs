@@ -81,13 +81,11 @@ pub enum ExecuteMsg {
         extension: TokenExtension,
     },
     /// Transfers ownership of a token
-    #[attrs(permissionless)]
     TransferNft {
         recipient: AndrAddr,
         token_id: String,
     },
     /// Sends a token to another contract
-    #[attrs(permissionless)]
     SendNft {
         contract: AndrAddr,
         token_id: String,

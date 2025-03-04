@@ -45,7 +45,6 @@ pub enum ExecuteMsg {
     Burn { amount: Uint128 },
     /// Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
-    #[attrs(permissionless)]
     Send {
         contract: AndrAddr,
         amount: Uint128,
