@@ -44,7 +44,6 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     // Set up wallets
     let owner = andr.get_wallet(CW721_OWNER);
     let user = andr.get_wallet(CW721_USER);
-    let random_user = andr.get_wallet(RANDOM_USER);
     // Create the CW721 App
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
