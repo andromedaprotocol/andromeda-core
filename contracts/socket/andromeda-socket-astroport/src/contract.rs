@@ -248,7 +248,6 @@ fn query_simulate_swap_operation(
     query_simulate_astro_swap_operation(deps, offer_amount, swap_operation)
 }
 
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)

@@ -3,4 +3,8 @@ use andromeda_std::{ado_base::MigrateMsg, contract_interface, deploy::ADOMetadat
 
 pub const CONTRACT_ID: &str = "socket_astroport";
 
-contract_interface!(SocketAstroportContract, CONTRACT_ID, "andromeda_socket_astroport.wasm");
+contract_interface!(
+    SocketAstroportContract,
+    CONTRACT_ID,
+    "andromeda_socket_astroport.wasm"
+);
