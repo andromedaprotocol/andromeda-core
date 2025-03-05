@@ -218,6 +218,7 @@ pub struct AMPCtx {
     origin_username: Option<AndrAddr>,
     pub previous_sender: String,
     pub id: u64,
+    #[serde(default)]
     pub previous_hops: Vec<CrossChainHop>,
 }
 
