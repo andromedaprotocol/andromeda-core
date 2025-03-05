@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Permissionless macro attribute [(#812)](https://github.com/andromedaprotocol/andromeda-core/pull/812)
 - feat: Add ID to AMP packets [(#813)](https://github.com/andromedaprotocol/andromeda-core/pull/813)
 - feat: Batch send NFTs [(#816)](https://github.com/andromedaprotocol/andromeda-core/pull/816)
+- feat: Apply Serde default to previous_hops [(#829)](https://github.com/andromedaprotocol/andromeda-core/pull/829)
 
 ### Changed
 
