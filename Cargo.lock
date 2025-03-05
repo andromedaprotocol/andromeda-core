@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.6"
+version = "1.5.1-b.7"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
