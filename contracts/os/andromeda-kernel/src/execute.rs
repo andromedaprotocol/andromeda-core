@@ -402,33 +402,6 @@ fn handle_ibc_transfer_funds_reply(
         .add_attribute("receiving_kernel_address", channel_info.kernel_address))
 }
 
-// pub fn handle_receive_cw20(
-//     mut ctx: ExecuteContext,
-//     receive_msg: Cw20ReceiveMsg,
-// ) -> Result<Response, ContractError> {
-//     let ExecuteContext { ref info, .. } = ctx;
-//     nonpayable(info)?;
-
-//     let asset_sent = info.sender.clone().into_string();
-//     let amount_sent = receive_msg.amount;
-//     let _sender = receive_msg.sender;
-
-//     ensure!(
-//         !amount_sent.is_zero(),
-//         ContractError::InvalidFunds {
-//             msg: "Cannot send a 0 amount".to_string()
-//         }
-//     );
-
-//     let received_funds = vec![Coin::new(amount_sent.u128(), asset_sent)];
-
-//     match from_json(&receive_msg.msg)? {
-//         Cw20HookMsg::AmpReceive(packet) => {
-//             amp_receive_cw20(&mut ctx.deps, ctx.info, ctx.env, packet, received_funds)
-//         }
-//     }
-// }
-
 pub fn amp_receive(
     deps: &mut DepsMut,
     info: MessageInfo,
