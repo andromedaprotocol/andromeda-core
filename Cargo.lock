@@ -845,6 +845,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-socket-osmosis"
+version = "0.1.0"
+dependencies = [
+ "andromeda-socket",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std 1.5.10",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-orch-daemon",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20",
+ "schemars",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "andromeda-splitter"
 version = "2.3.1-b.1"
 dependencies = [

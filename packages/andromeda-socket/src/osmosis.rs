@@ -3,7 +3,7 @@ use andromeda_std::{
     andr_exec, andr_instantiate,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Coin, Decimal, Uint128};
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
 // use swaprouter::Slippage as OsmosisSlippage;
 
@@ -35,6 +35,16 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+pub enum OsmosisExecuteMsg {
+    Swap {
+        input_coin: Coin,
+        output_denom: String,
+        slippage: Slippage,
+        route: Option<Vec<SwapAmountInRoute>>,
+    },
+}
+
+#[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -42,6 +52,16 @@ pub enum QueryMsg {
     GetRoute {
         from_denom: String,
         to_denom: String,
+    },
+}
+
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum OsmosisQueryMsg {
+    #[returns(GetRouteResponse)]
+    GetRoute {
+        input_denom: String,
+        output_denom: String,
     },
 }
 
