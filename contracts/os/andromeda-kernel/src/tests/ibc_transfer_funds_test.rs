@@ -282,15 +282,14 @@ mod ibc_transfer_tests {
         assert!(attributes
             .iter()
             .any(|attr| attr.key == "channel" && attr.value == "channel-5"));
-        assert!(
-            attributes
-                .iter()
-                .any(|attr| attr.key == "receiving_kernel_address:{}"
-                    && attr.value == "cosmos_kernel")
-        );
+
+        // Fix the attribute keys to match what the function actually produces
         assert!(attributes
             .iter()
-            .any(|attr| attr.key == "chain:{}" && attr.value == "cosmos-hub"));
+            .any(|attr| attr.key == "receiving_kernel_address" && attr.value == "cosmos_kernel"));
+        assert!(attributes
+            .iter()
+            .any(|attr| attr.key == "chain" && attr.value == "cosmos-hub"));
     }
 
     #[test]
