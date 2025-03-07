@@ -11,8 +11,7 @@ use cw20::Cw20ExecuteMsg;
 ///
 /// * `msgs` - The vector of submessages containing fund transfers
 /// * `base_amount` - The amount paid before tax.
-/// * `remaining_amount_after_royalties` - The amount remaining of the base_amount after royalties
-///                                        are applied
+/// * `remaining_amount_after_royalties` - The amount remaining of the base_amount after royalties are applied
 ///
 /// Returns the amount of tax necessary to be paid on top of the `base_amount`.
 pub fn get_tax_amount(
