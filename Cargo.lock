@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.1-b.3"
+version = "1.2.1-b.4"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -568,6 +568,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde-json-wasm 1.0.1",
+ "sha2 0.10.8",
 ]
 
 [[package]]

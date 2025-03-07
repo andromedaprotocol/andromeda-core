@@ -207,7 +207,6 @@ fn execute_withdraw(
             AMPCtx::new(
                 info.sender.to_string(),
                 env.contract.address.to_string(),
-                0,
                 None,
             )
         };
