@@ -24,7 +24,7 @@ jobs:
           fi
 
       - name: Add Std Label
-        if: env.std_changed == 'true' && !contains(github.event.pull_request.labels.*.name, 'ci: skip-add-labels')
+        if: env.std_changed == 'true' && github.event.pull_request.user.login != 'dependabot'
         uses: actions-ecosystem/action-add-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
