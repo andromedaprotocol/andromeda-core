@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.6-b.1"
+version = "2.2.6-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.2.1-b.1"
+version = "2.2.1-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-staking"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.1-b.3"
+version = "1.2.1-b.4"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -568,11 +568,12 @@ dependencies = [
  "schemars",
  "serde",
  "serde-json-wasm 1.0.1",
+ "sha2 0.10.8",
 ]
 
 [[package]]
 name = "andromeda-lockdrop"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -598,7 +599,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "2.3.0"
+version = "2.3.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -641,7 +642,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-merkle-airdrop"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -809,7 +810,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.6"
+version = "1.5.1-b.7"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -921,7 +922,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-timelock"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -937,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "1.1.1-b.1"
+version = "1.1.1-b.2"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -1070,9 +1071,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.96"
+version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b964d184e89d9b6b67dd2715bc8e74cf3107fb2b529990c90cf517326150bf4"
+checksum = "dcfed56ad506cb2c684a14971b8861fdc3baaaae314b9e5f9bb532cbe3ba7a4f"
 
 [[package]]
 name = "async-recursion"

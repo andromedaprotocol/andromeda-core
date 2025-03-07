@@ -110,7 +110,7 @@ impl ActionFee {
                 asset: self.asset.clone()
             }
         );
-        match self.asset.split(':').last() {
+        match self.asset.split(':').next_back() {
             Some(asset) => Ok(asset),
             None => Err(ContractError::InvalidAsset {
                 asset: self.asset.clone(),
