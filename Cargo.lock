@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.6-b.1"
+version = "2.2.6-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.2.1-b.1"
+version = "2.2.1-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-staking"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -572,7 +572,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-lockdrop"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -598,7 +598,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "2.3.0"
+version = "2.3.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -641,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-merkle-airdrop"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -921,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-timelock"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -937,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "1.1.1-b.1"
+version = "1.1.1-b.2"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",

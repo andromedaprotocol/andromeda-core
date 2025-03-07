@@ -32,11 +32,13 @@ pub enum ExecuteMsg {
     /// TOKEN.
     DepositNative {},
     /// Function to withdraw native fund from the lockup position.
+    #[attrs(permissionless)]
     WithdrawNative { amount: Option<Uint128> },
     /// Facilitates reward claim after claims are enabled.
+    #[attrs(permissionless)]
     ClaimRewards {},
     /// Called by the bootstrap contract when liquidity is added to the TOKEN-NATIVE Pool to enable TOKEN withdrawals by users.
-    #[attrs(nonpayable)]
+    #[attrs(nonpayable, permissionless)]
     EnableClaims {},
     // Called by the owner after the phase is over to withdraw all of the NATIVE token to the
     // given recipient, or themselves if not specified.
