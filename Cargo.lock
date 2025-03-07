@@ -955,6 +955,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-vdf-mint"
+version = "0.1.0-b.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-modules",
+ "andromeda-non-fungible-tokens",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-storage-plus 1.2.0",
+ "test-case",
+]
+
+[[package]]
 name = "andromeda-vesting"
 version = "3.1.0"
 dependencies = [
