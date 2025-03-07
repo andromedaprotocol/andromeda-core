@@ -3,6 +3,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, CrossChainHop};
 use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
+use andromeda_std::common::code_id::get_code_id;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::has_coins_merged;
 use andromeda_std::common::reply::ReplyId;
@@ -11,8 +12,8 @@ use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
-    create_bank_send_msg, create_cw20_send_msg, create_cw20_transfer_msg, get_code_id, ChannelInfo,
-    Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+    create_bank_send_msg, create_cw20_send_msg, create_cw20_transfer_msg, ChannelInfo, Cw20HookMsg,
+    ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
@@ -78,8 +79,11 @@ pub fn handle_local(
             }
         );
 
-        let (bank_msg, attrs) =
-            create_bank_send_msg(&recipient.get_raw_address(&deps.as_ref())?, funds);
+        let (bank_msg, attrs) = create_bank_send_msg(
+            &recipient.get_raw_address(&deps.as_ref())?,
+            funds,
+            ReplyId::AMPMsg.repr(),
+        );
 
         return Ok(Response::default()
             .add_submessage(bank_msg)
@@ -187,8 +191,12 @@ pub fn handle_local_cw20(
             }
         );
 
-        let (sub_msg, attrs) =
-            create_cw20_transfer_msg(&recipient_raw_address, &token_denom, token_amount)?;
+        let (sub_msg, attrs) = create_cw20_transfer_msg(
+            &recipient_raw_address,
+            &token_denom,
+            token_amount,
+            ReplyId::AMPMsg.repr(),
+        )?;
 
         return Ok(res.add_submessage(sub_msg).add_attributes(attrs));
     }
@@ -208,6 +216,7 @@ pub fn handle_local_cw20(
             token_amount,
             message.clone(),
             config.clone(),
+            ReplyId::AMPMsg.repr(),
         )?
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
@@ -221,6 +230,7 @@ pub fn handle_local_cw20(
             token_amount,
             to_json_binary(&ExecuteMsg::AMPReceive(new_packet))?,
             config.clone(),
+            ReplyId::AMPMsg.repr(),
         )?
     };
 

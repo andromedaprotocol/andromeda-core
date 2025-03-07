@@ -217,9 +217,8 @@ pub struct RefundData {
     pub channel: String,
 }
 
-use crate::common::reply::ReplyId;
 use crate::error::ContractError;
-use cosmwasm_std::{attr, BankMsg, CosmosMsg, DepsMut, SubMsg, WasmMsg};
+use cosmwasm_std::{attr, BankMsg, CosmosMsg, SubMsg, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 
 /// Creates a CW20 send message with an attached message payload and its associated attributes.
@@ -246,6 +245,7 @@ pub fn create_cw20_send_msg(
     amount: u128,
     msg: Binary,
     config: AMPMsgConfig,
+    id: u64,
 ) -> Result<(SubMsg, Vec<cosmwasm_std::Attribute>), ContractError> {
     let send_msg = Cw20ExecuteMsg::Send {
         contract: contract.to_string(),
@@ -254,7 +254,7 @@ pub fn create_cw20_send_msg(
     };
 
     let sub_msg = SubMsg {
-        id: ReplyId::AMPMsg.repr(),
+        id,
         reply_on: config.reply_on,
         gas_limit: config.gas_limit,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
@@ -267,7 +267,6 @@ pub fn create_cw20_send_msg(
     let attrs = vec![
         attr("token_send", format!("{amount} {token_addr}")),
         attr("contract", contract.to_string()),
-        attr("msg_length", msg.len().to_string()),
     ];
 
     Ok((sub_msg, attrs))
@@ -290,13 +289,14 @@ pub fn create_cw20_send_msg(
 pub fn create_bank_send_msg(
     recipient: &Addr,
     funds: &[Coin],
+    id: u64,
 ) -> (SubMsg, Vec<cosmwasm_std::Attribute>) {
     let bank_msg = SubMsg::reply_on_error(
         CosmosMsg::Bank(BankMsg::Send {
             to_address: recipient.to_string(),
             amount: funds.to_vec(),
         }),
-        ReplyId::AMPMsg.repr(),
+        id,
     );
 
     let attrs = funds
@@ -307,31 +307,6 @@ pub fn create_bank_send_msg(
         .collect();
 
     (bank_msg, attrs)
-}
-
-/// Retrieves the code ID for a given contract address.
-///
-/// This function verifies that the provided address is a valid smart contract by querying
-/// its contract info. If the address is not a contract, it returns an error.
-///
-/// # Arguments
-///
-/// * `deps` - A reference to the contract's dependencies, used for querying contract info
-/// * `recipient` - The address to check and get the code ID for
-///
-/// # Returns
-///
-/// * `Result<u64, ContractError>` - The code ID if successful, or a ContractError if:
-///   * The address is not a contract
-///   * The query fails
-pub fn get_code_id(deps: &DepsMut, recipient: &AndrAddr) -> Result<u64, ContractError> {
-    deps.querier
-        .query_wasm_contract_info(recipient.get_raw_address(&deps.as_ref())?)
-        .ok()
-        .ok_or(ContractError::InvalidPacket {
-            error: Some("Recipient is not a contract".to_string()),
-        })
-        .map(|info| info.code_id)
 }
 
 /// Creates a CW20 token transfer message and its associated attributes.
@@ -351,6 +326,7 @@ pub fn create_cw20_transfer_msg(
     recipient: &Addr,
     token_addr: &str,
     amount: u128,
+    id: u64,
 ) -> Result<(SubMsg, Vec<cosmwasm_std::Attribute>), ContractError> {
     let transfer_msg = Cw20ExecuteMsg::Transfer {
         recipient: recipient.to_string(),
@@ -363,7 +339,7 @@ pub fn create_cw20_transfer_msg(
             msg: to_json_binary(&transfer_msg)?,
             funds: vec![],
         }),
-        ReplyId::AMPMsg.repr(),
+        id,
     );
 
     let attrs = vec![
@@ -377,6 +353,7 @@ pub fn create_cw20_transfer_msg(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::reply::ReplyId;
     use cosmwasm_std::ReplyOn;
     use rstest::rstest;
 
@@ -401,7 +378,7 @@ mod tests {
         #[case] funds: Vec<Coin>,
         #[case] expected_fund_attrs: usize,
     ) {
-        let (submsg, attrs) = create_bank_send_msg(&recipient, &funds);
+        let (submsg, attrs) = create_bank_send_msg(&recipient, &funds, ReplyId::AMPMsg.repr());
 
         // Check the SubMsg
         match submsg.msg {
@@ -434,7 +411,9 @@ mod tests {
         #[case] token_addr: &str,
         #[case] amount: u128,
     ) {
-        let (submsg, attrs) = create_cw20_transfer_msg(&recipient, token_addr, amount).unwrap();
+        let (submsg, attrs) =
+            create_cw20_transfer_msg(&recipient, token_addr, amount, ReplyId::AMPMsg.repr())
+                .unwrap();
 
         // Check the SubMsg
         match submsg.msg {
@@ -505,9 +484,15 @@ mod tests {
         #[case] msg: Binary,
         #[case] config: AMPMsgConfig,
     ) {
-        let (submsg, attrs) =
-            create_cw20_send_msg(&contract, token_addr, amount, msg.clone(), config.clone())
-                .unwrap();
+        let (submsg, attrs) = create_cw20_send_msg(
+            &contract,
+            token_addr,
+            amount,
+            msg.clone(),
+            config.clone(),
+            ReplyId::AMPMsg.repr(),
+        )
+        .unwrap();
 
         // Check the SubMsg configuration
         assert_eq!(submsg.id, ReplyId::AMPMsg.repr());

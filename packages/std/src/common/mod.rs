@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod code_id;
 pub mod context;
 pub mod denom;
 #[cfg(feature = "distribution")]
