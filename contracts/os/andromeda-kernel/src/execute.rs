@@ -950,12 +950,10 @@ fn handle_ibc(
 }
 
 /// Builds an AMP packet for cross-chain communication via IBC
-///
 /// This function prepares a message to be sent across chains by:
 /// 1. Setting up the message content
 /// 2. Creating or updating the message context with routing information
 /// 3. Adding username data and hop information for cross-chain tracking
-
 fn build_ibc_packet(
     deps: &DepsMut,
     info: &MessageInfo,

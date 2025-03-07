@@ -441,7 +441,7 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
         .map(|i| {
             env.juno
                 .chain
-                .addr_make(&format!("recipient{}", i))
+                .addr_make(format!("recipient{}", i))
                 .to_string()
         })
         .collect();
