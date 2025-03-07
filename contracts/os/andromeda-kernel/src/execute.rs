@@ -1,4 +1,9 @@
 use crate::ibc::{get_counterparty_denom, PACKET_LIFETIME};
+use crate::query;
+use crate::state::{
+    ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
+    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+};
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_std::amp::messages::{AMPCtx, AMPMsg, AMPPkt, CrossChainHop};
@@ -20,12 +25,6 @@ use cosmwasm_std::{
     IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
-
-use crate::query;
-use crate::state::{
-    ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
-    ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
-};
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
     ensure!(
@@ -363,12 +362,7 @@ fn handle_ibc_transfer_funds_reply(
         );
     }
 
-    let mut ctx = AMPCtx::new(
-        ics20_packet_info.sender.clone(),
-        env.contract.address,
-        0,
-        None,
-    );
+    let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
 
     // Add the orginal sender's username if it exists
     let potential_username = ctx.try_add_origin_username(
@@ -424,12 +418,6 @@ pub fn amp_receive(
             || query::verify_address(deps.as_ref(), info.sender.to_string())?.verify_address,
         ContractError::Unauthorized {}
     );
-    ensure!(
-        packet.ctx.id == 0,
-        ContractError::InvalidPacket {
-            error: Some("Packet ID cannot be provided from outside the Kernel".into())
-        }
-    );
 
     let mut res = Response::default();
     ensure!(
@@ -454,6 +442,7 @@ pub fn amp_receive(
     res.events.extend_from_slice(&msg_res.events);
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -514,12 +503,10 @@ pub fn amp_receive_cw20(
         query::verify_address(deps.as_ref(), info.sender.to_string(),)?.verify_address,
         ContractError::Unauthorized {}
     );
-    ensure!(
-        packet.ctx.id == 0,
-        ContractError::InvalidPacket {
-            error: Some("Packet ID cannot be provided from outside the Kernel".into())
-        }
-    );
+
+    let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
+
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
 
     let mut res = Response::default();
     ensure!(
@@ -900,8 +887,86 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
         .add_attribute("variable", variable))
 }
 
+/// Generates or validates a packet ID using chain ID, block height and transaction index
+fn generate_or_validate_packet_id(
+    existing_id: Option<String>,
+    env: &Env,
+) -> Result<String, ContractError> {
+    let tx_index =
+        env.transaction
+            .as_ref()
+            .map(|tx| tx.index)
+            .ok_or(ContractError::InvalidPacket {
+                error: Some("Transaction index not available".to_string()),
+            })?;
+
+    match existing_id {
+        // Generate unique ID if the packet doesn't already have one
+        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index),
+        // Not using "-" as a separator since chain id can contain it
+        None => Ok(format!(
+            "{}.{}.{}",
+            env.block.chain_id, env.block.height, tx_index
+        )),
+    }
+}
+
+/// Validates the existing ID of a packet
+pub fn validate_id(
+    id: &str,
+    current_chain_id: &str,
+    current_block_height: u64,
+    current_index: u32,
+) -> Result<String, ContractError> {
+    // Split the ID into chain_id, block_height, and index parts
+    let parts: Vec<&str> = id.split('.').collect();
+    if parts.len() != 3 {
+        return Err(ContractError::InvalidPacket {
+            error: Some(
+                "Invalid packet ID format. Expected: chain_id.block_height.index".to_string(),
+            ),
+        });
+    }
+
+    let [chain_id, block_height_str, index_str] = [parts[0], parts[1], parts[2]];
+
+    // Validate chain_id
+    if chain_id.is_empty() {
+        return Err(ContractError::InvalidPacket {
+            error: Some("Chain ID cannot be empty".to_string()),
+        });
+    }
+
+    // Parse and validate block height and index
+    let block_height =
+        block_height_str
+            .parse::<u64>()
+            .map_err(|_| ContractError::InvalidPacket {
+                error: Some("Invalid block height format".to_string()),
+            })?;
+
+    let index = index_str
+        .parse::<u32>()
+        .map_err(|_| ContractError::InvalidPacket {
+            error: Some("Invalid transaction index format".to_string()),
+        })?;
+
+    //TODO discuss validation for cross chain packets
+    if chain_id == current_chain_id
+        && (block_height != current_block_height || index != current_index)
+    {
+        return Err(ContractError::InvalidPacket {
+            error: Some(
+                "Block height or transaction index does not match the current values".to_string(),
+            ),
+        });
+    }
+
+    Ok(id.to_string())
+}
+
 /// Handles an Inter-Blockchain Communication (IBC) message.
-///
+/// Handles a given AMP message and returns a response
 /// This function routes messages to different chains based on the protocol specified in the recipient's
 /// VFS path (ibc://<chain>/path). It performs the following checks:
 /// 1. Verifies that a destination chain is specified
@@ -987,7 +1052,7 @@ fn build_ibc_packet(
         packet.ctx
     } else {
         // Create new context with origin information
-        AMPCtx::new(info.sender.clone(), env.contract.address.clone(), 0, None)
+        AMPCtx::new(info.sender.clone(), env.contract.address.clone(), None)
     };
 
     // Add username information if available

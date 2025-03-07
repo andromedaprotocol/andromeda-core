@@ -58,5 +58,5 @@ andromeda-non-fungible-tokens = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.3.0"
-rstest = "0.24.0"
+rstest = "0.25.0"
 

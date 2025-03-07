@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.6-b.1"
+version = "2.2.6-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.2.1-b.1"
+version = "2.2.1-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-staking"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -395,7 +395,7 @@ dependencies = [
  "reqwest 0.12.12",
  "serde",
  "serde_json",
- "thiserror 2.0.11",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.1-b.3"
+version = "1.2.1-b.4"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -568,11 +568,12 @@ dependencies = [
  "schemars",
  "serde",
  "serde-json-wasm 1.0.1",
+ "sha2 0.10.8",
 ]
 
 [[package]]
 name = "andromeda-lockdrop"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -598,7 +599,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "2.3.0"
+version = "2.3.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -641,7 +642,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-merkle-airdrop"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -809,7 +810,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.6"
+version = "1.5.1-b.7"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
@@ -837,7 +838,7 @@ dependencies = [
  "serde-json-wasm 1.0.1",
  "sha2 0.10.8",
  "strum_macros",
- "thiserror 2.0.11",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -921,7 +922,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-timelock"
-version = "2.1.0"
+version = "2.1.1-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -937,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "1.1.1-b.1"
+version = "1.1.1-b.2"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -1053,9 +1054,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.96"
+version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b964d184e89d9b6b67dd2715bc8e74cf3107fb2b529990c90cf517326150bf4"
+checksum = "dcfed56ad506cb2c684a14971b8861fdc3baaaae314b9e5f9bb532cbe3ba7a4f"
 
 [[package]]
 name = "async-recursion"
@@ -4182,9 +4183,9 @@ dependencies = [
 
 [[package]]
 name = "rstest"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03e905296805ab93e13c1ec3a03f4b6c4f35e9498a3d5fa96dc626d22c03cd89"
+checksum = "6fc39292f8613e913f7df8fa892b8944ceb47c247b78e1b1ae2f09e019be789d"
 dependencies = [
  "futures-timer",
  "futures-util",
@@ -4194,9 +4195,9 @@ dependencies = [
 
 [[package]]
 name = "rstest_macros"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef0053bbffce09062bee4bcc499b0fbe7a57b879f1efe088d6d8d4c7adcdef9b"
+checksum = "1f168d99749d307be9de54d23fd226628d99768225ef08f6ffb52e0182a27746"
 dependencies = [
  "cfg-if",
  "glob",
@@ -4352,9 +4353,9 @@ dependencies = [
 
 [[package]]
 name = "schemars"
-version = "0.8.21"
+version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09c024468a378b7e36765cd36702b7a90cc3cba11654f6685c8f233408e89e92"
+checksum = "3fbf2ae1b8bc8e02df939598064d22402220cd5bbcca1c76f7d6a310974d5615"
 dependencies = [
  "dyn-clone",
  "schemars_derive",
@@ -4364,9 +4365,9 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "0.8.21"
+version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1eee588578aff73f856ab961cd2f79e36bc45d7ded33a7562adba4667aecc0e"
+checksum = "32e265784ad618884abaea0600a9adf15393368d840e0222d101a072f3f7534d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5098,11 +5099,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.11"
+version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d452f284b73e6d76dd36758a0c8684b1d5be31f92b89d07fd5822175732206fc"
+checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
 dependencies = [
- "thiserror-impl 2.0.11",
+ "thiserror-impl 2.0.12",
 ]
 
 [[package]]
@@ -5118,9 +5119,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.11"
+version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26afc1baea8a989337eeb52b6e72a039780ce45c3edfcc9c5b9d112feeb173c2"
+checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -66,7 +66,7 @@ fn test_handle_local() {
             name: "Valid message to ADO (no funds)",
             sender: "sender",
             msg: AMPMsg::new(MOCK_APP_CONTRACT, to_json_binary(&true).unwrap(), None),
-            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, 1, None)),
+            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
                 "sender",
@@ -88,7 +88,7 @@ fn test_handle_local() {
                 to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
-            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, 1, None)),
+            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
                 "sender",

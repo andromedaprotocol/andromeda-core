@@ -115,8 +115,7 @@ pub fn merge_sub_msgs(msgs: Vec<SubMsg>) -> Vec<SubMsg> {
 ///
 /// ## Arguments
 /// * `coins`        - Mutable reference to a vec of coins which will be modified in-place.
-/// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the
-///                    same denom
+/// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the same denom
 ///
 /// Returns nothing as it is done in place.
 pub fn merge_coins(coins: Vec<Coin>, coins_to_add: Vec<Coin>) -> Vec<Coin> {

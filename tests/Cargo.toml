@@ -11,7 +11,7 @@ andromeda-app = { workspace = true }
 andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
     "testing",
 ] }
-rstest = "0.24.0"
+rstest = "0.25.0"
 
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { workspace = true }
@@ -152,6 +152,10 @@ name = "app"
 path = "app.rs"
 
 [[test]]
+name = "amp"
+path = "amp/mod.rs"
+
+[[test]]
 name = "crowdfund_app"
 path = "crowdfund_app.rs"
 
@@ -204,7 +208,7 @@ name = "kernel"
 path = "kernel.rs"
 
 [[test]]
-name = "cruve"
+name = "curve"
 path = "curve_app.rs"
 
 [[test]]

@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
         token_address: String,
     },
     /// Updates the sale's price, demomination, and whitelist
-    #[attrs(nonpayable)]
+    #[attrs(nonpayable, permissionless)]
     UpdateSale {
         token_id: String,
         token_address: String,
@@ -41,7 +41,7 @@ pub enum ExecuteMsg {
         coin_denom: Asset,
         recipient: Option<Recipient>,
     },
-    #[attrs(nonpayable)]
+    #[attrs(nonpayable, permissionless)]
     CancelSale {
         token_id: String,
         token_address: String,
