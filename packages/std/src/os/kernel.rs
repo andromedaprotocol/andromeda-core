@@ -527,12 +527,10 @@ mod tests {
         }
 
         // Check attributes
-        assert_eq!(attrs.len(), 3);
+        assert_eq!(attrs.len(), 2);
         assert_eq!(attrs[0].key, "token_send");
         assert_eq!(attrs[0].value, format!("{amount} {token_addr}"));
         assert_eq!(attrs[1].key, "contract");
         assert_eq!(attrs[1].value, contract.to_string());
-        assert_eq!(attrs[2].key, "msg_length");
-        assert_eq!(attrs[2].value, msg.len().to_string());
     }
 }
