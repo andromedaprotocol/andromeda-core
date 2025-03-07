@@ -300,6 +300,25 @@ pub struct CrossChainHop {
     pub channel: String,
 }
 
+impl CrossChainHop {
+    pub fn new(
+        channel: &str,
+        current_chain: String,
+        destination_chain: String,
+        origin_address: String,
+        username: Option<AndrAddr>,
+    ) -> Self {
+        Self {
+            username,
+            address: origin_address,
+            from_chain: current_chain,
+            to_chain: destination_chain,
+            funds: vec![],
+            channel: channel.to_string(),
+        }
+    }
+}
+
 #[cw_serde]
 /// An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating
 /// It contains an original sender, if used for authorisation the sender must be authorised
@@ -427,7 +446,7 @@ impl AMPPkt {
         Ok(sub_msg)
     }
 
-    /// Generates a CW20 Send SubMsg that contains an AMPReceive message inteded for the kernel
+    /// Generates a CW20 Send SubMsg that contains an AMPReceive message intended for the kernel
     pub fn to_sub_msg_cw20(
         &self,
         kernel_address: impl Into<String>,
@@ -446,10 +465,10 @@ impl AMPPkt {
         let sub_msg = SubMsg::reply_always(
             WasmMsg::Execute {
                 contract_addr,
-                msg: encode_binary(&Cw20ExecuteMsg::Send {
+                msg: to_json_binary(&Cw20ExecuteMsg::Send {
                     contract: kernel_address.into(),
                     amount: total_amount,
-                    msg: encode_binary(&Cw20HookMsg::AmpReceive(self.clone()))?,
+                    msg: to_json_binary(&Cw20HookMsg::AmpReceive(self.clone()))?,
                 })?,
                 funds: vec![],
             },

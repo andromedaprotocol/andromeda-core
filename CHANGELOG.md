@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore: remove unused contracts & code [(#790)](https://github.com/andromedaprotocol/andromeda-core/pull/790)
 - feat: Recipient in rate limiting withdrawals [(#804)](https://github.com/andromedaprotocol/andromeda-core/pull/804)
 - feat: deploy script validate & build steps [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
+- ref: Simplify the kernel's handling of its Send ExecuteMsg [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
 
 ### Fixed
 
