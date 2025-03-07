@@ -1,7 +1,8 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_cw721::mock::{
-    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_quick_mint_msg, MockCW721,
+    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_quick_mint_msg, mock_transfer_nft,
+    MockCW721,
 };
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg;
 use andromeda_std::{
@@ -19,6 +20,7 @@ const FALSE_USER: &str = "false_user";
 
 const CW721_OWNER: &str = "owner";
 const CW721_USER: &str = "user1";
+const RANDOM_USER: &str = "random_user";
 const CW721_APP_NAME: &str = "app";
 const CW721_COMPONENT_NAME: &str = "cw721";
 const CW721_MINT_ACTION: &str = "Mint";
@@ -31,6 +33,7 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
             (CW721_OWNER, vec![coin(1000, "uandr")]),
             (CW721_USER, vec![]),
             (FALSE_USER, vec![]),
+            (RANDOM_USER, vec![]),
         ])
         .with_contracts(vec![
             ("cw721", mock_andromeda_cw721()),
@@ -41,7 +44,6 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     // Set up wallets
     let owner = andr.get_wallet(CW721_OWNER);
     let user = andr.get_wallet(CW721_USER);
-
     // Create the CW721 App
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
@@ -124,6 +126,75 @@ fn test_mint_permission(
     // If the mint was expected to succeed, verify ownership
     if expected_success {
         let owner = cw721.query_owner_of(&router, "1");
+        assert_eq!(owner, andr.get_wallet(sender).to_string());
+    }
+}
+
+// Tests permission-based access control for NFT transfer operations via the Kernel using AMP
+// Tests three scenarios:
+// 1. Owner attempts to transfer (should succeed)
+// 2. Whitelisted user attempts to transfer (should succeed)
+// 3. Non-whitelisted user attempts to transfer (should fail)
+#[rstest]
+#[case::owner(CW721_OWNER, true)]
+#[case::user(CW721_USER, true)]
+fn test_transfer_permission(
+    setup_cw721: (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721),
+    #[case] sender: &str,           // The address attempting to transfer
+    #[case] expected_success: bool, // Whether the transfer operation should succeed
+) {
+    let (mut router, andr, cw721) = setup_cw721;
+
+    let recipient = andr.get_wallet(RANDOM_USER);
+
+    let expected_token_id = "1";
+
+    // First mint a token to the sender
+    let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string());
+    let cw721_path = format!(
+        "/home/{}/{}/{}",
+        andr.get_wallet(CW721_OWNER),
+        CW721_APP_NAME,
+        CW721_COMPONENT_NAME,
+    );
+    andr.kernel
+        .execute_send(
+            &mut router,
+            andr.get_wallet(CW721_OWNER).clone(),
+            cw721_path.clone(),
+            mint_msg,
+            vec![],
+            None,
+        )
+        .unwrap();
+
+    // Verify initial ownership is with sender
+    let owner = cw721.query_owner_of(&router, expected_token_id);
+    assert_eq!(owner, andr.get_wallet(sender).to_string());
+
+    // Attempt to transfer token #1 to the recipient
+    let transfer_msg = mock_transfer_nft(
+        AndrAddr::from_string(recipient),
+        expected_token_id.to_string(),
+    );
+    let res = andr.kernel.execute_send(
+        &mut router,
+        andr.get_wallet(sender).clone(),
+        cw721_path,
+        transfer_msg,
+        vec![],
+        None,
+    );
+
+    // Verify the operation succeeded/failed as expected
+    assert_eq!(res.is_ok(), expected_success);
+
+    // If the transfer was expected to succeed, verify ownership changed
+    if expected_success {
+        let owner = cw721.query_owner_of(&router, expected_token_id);
+        assert_eq!(owner, recipient.to_string());
+    } else {
+        let owner = cw721.query_owner_of(&router, expected_token_id);
         assert_eq!(owner, andr.get_wallet(sender).to_string());
     }
 }
