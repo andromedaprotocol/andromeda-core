@@ -67,7 +67,7 @@ pub fn instantiate(
                 });
             }
             Some(ado_type) => {
-                if ado_type != "cw721".to_string() {
+                if ado_type != *"cw721" {
                     return Err(ContractError::InvalidADOType {
                         msg: Some(format!("ADO Type must be cw721: {:?}", ado_type)),
                     });
