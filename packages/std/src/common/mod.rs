@@ -5,6 +5,7 @@ pub mod denom;
 #[cfg(feature = "distribution")]
 pub mod distribution;
 pub mod expiration;
+pub mod message_generators;
 pub mod migration;
 pub mod milliseconds;
 pub mod rates;

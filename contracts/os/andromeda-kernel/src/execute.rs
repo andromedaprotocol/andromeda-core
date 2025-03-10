@@ -11,14 +11,16 @@ use andromeda_std::amp::{ADO_DB_KEY, VFS_KEY};
 use andromeda_std::common::code_id::get_code_id;
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::has_coins_merged;
+use andromeda_std::common::message_generators::{
+    create_bank_send_msg, create_cw20_send_msg, create_cw20_transfer_msg,
+};
 use andromeda_std::common::reply::ReplyId;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
-    create_bank_send_msg, create_cw20_send_msg, create_cw20_transfer_msg, ChannelInfo, Cw20HookMsg,
-    ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+    ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
