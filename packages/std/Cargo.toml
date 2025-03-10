@@ -17,7 +17,7 @@ distribution = ["prost", "osmosis-std-derive"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["ibc3", "cosmwasm_1_2"] }
+cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 schemars = "0.8.22"

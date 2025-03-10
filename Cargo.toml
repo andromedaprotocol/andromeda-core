@@ -48,24 +48,24 @@ andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
 
 strum_macros = "0.24.3"
-cosmwasm-std = "1.5.10"
-cw-utils = "1.0.3"
-cw-storage-plus = "1.2.0"
-cw2 = "1.1.2"
-cw20 = "1.1.2"
-cw20-base = "1.1.2"
-cw3 = "1.1.2"
-cw4 = "1.1.2"
-cw721 = "0.18.0"
-cw721-base = { version = "0.18.0", features = ["library"] }
-cw-asset = "=3.0.0"
-cosmwasm-schema = "1.5.10"
+cosmwasm-std = "2.2.2"
+cw-utils = "2.0.0"
+cw-storage-plus = "2.0.0"
+cw2 = "2.0.0"
+cw20 = "2.0.0"
+cw20-base = "2.0.0"
+cw3 = "2.0.0"
+cw4 = "2.0.0"
+cw721 = { git = "https://github.com/public-awesome/cw-nfts.git" }
+cw721-base = { git = "https://github.com/public-awesome/cw-nfts.git" }
+cw-asset = "4.0.0"
+cosmwasm-schema = "2.2.2"
 semver = "1.0.25"
 enum-repr = "0.2.6"
-cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
+cw-multi-test = "2.3.2"
 serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
-cw-orch = "=0.24.1"
+cw-orch = "0.27.0"
 jsonschema-valid = { version = "0.5.2" }
 serde_json = { version = "1.0.138" }
 rstest = "0.25.0"
