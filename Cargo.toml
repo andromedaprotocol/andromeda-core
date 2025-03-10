@@ -48,7 +48,7 @@ andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
 
 strum_macros = "0.24.3"
-cosmwasm-std = "1.5.10"
+cosmwasm-std = "1.5.11"
 cw-utils = "1.0.3"
 cw-storage-plus = "1.2.0"
 cw2 = "1.1.2"
