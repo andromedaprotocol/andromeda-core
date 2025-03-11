@@ -174,7 +174,7 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
                 token_id,
                 token_uri,
                 owner,
-                extension,
+                extension: None,
             }),
             ExecuteMsg::Burn { token_id } => Ok(Cw721ExecuteMsg::Burn { token_id }),
             _ => Err("Unsupported message".to_string()),

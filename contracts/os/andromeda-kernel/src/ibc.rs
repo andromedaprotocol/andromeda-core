@@ -372,10 +372,14 @@ pub fn generate_ibc_hook_transfer_message(
 
     let ts = time.plus_seconds(PACKET_LIFETIME);
 
+    let osmosis_coin = osmosis_std::types::cosmos::base::v1beta1::Coin {
+        denom: fund.denom.to_string(),
+        amount: fund.amount.to_string(),
+    };
     Ok(MsgTransfer {
         source_port: TRANSFER_PORT.into(),
         source_channel: channel.to_string(),
-        token: Some(fund.clone()),
+        token: Some(osmosis_coin),
         sender: from_addr.to_string(),
         receiver: to_addr.to_string(),
         timeout_height: None,

@@ -174,7 +174,7 @@ fn test_pay_fee() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+// let info = message_info(&creator, &[]);
 //     let payee = "payee";
 
 //     let msg = ExecuteMsg::PayFee {
@@ -212,7 +212,7 @@ fn test_pay_fee() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+// let info = message_info(&creator, &[]);
 //     let payee = "payee";
 
 //     let msg = ExecuteMsg::PayFee {
@@ -251,7 +251,7 @@ fn test_pay_fee() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+// let info = message_info(&creator, &[]);
 //     let payee = "payee";
 
 //     let msg = ExecuteMsg::PayFee {

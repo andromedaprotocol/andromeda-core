@@ -25,7 +25,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, from_json,
-    testing::{mock_dependencies, mock_env, message_info, MockApi, MockQuerier, MockStorage},
+    testing::{message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage},
     to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps,
 };
 use rstest::*;
@@ -67,7 +67,7 @@ fn test_update_chain_name() {
         chain_name: chain_name.clone(),
     };
 
-    let fake_info = message_info("fake", &[]);
+    let fake_info = message_info(&Addr::unchecked("fake"), &[]);
 
     let err = execute(
         deps.as_mut(),
@@ -166,7 +166,7 @@ fn test_register_user_cross_chain() {
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 
-    let info = message_info(MOCK_VFS_CONTRACT, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_VFS_CONTRACT), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(res.messages.len(), 1);
 
@@ -296,7 +296,8 @@ fn test_assign_channels_unauthorized() {
     )
     .unwrap();
 
-    let unauth_info = message_info("attacker", &[]);
+    let attacker = deps.api.addr_make("attacker");
+    let unauth_info = message_info(&attacker, &[]);
     let msg = ExecuteMsg::AssignChannels {
         ics20_channel_id: None,
         direct_channel_id: Some("3".to_string()),
@@ -310,7 +311,7 @@ fn test_assign_channels_unauthorized() {
 #[test]
 fn test_send_cross_chain_no_channel() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info(MOCK_VFS_CONTRACT, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_VFS_CONTRACT), &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -355,7 +356,8 @@ fn test_send_cross_chain_no_channel() {
 #[test]
 fn test_handle_ibc_direct() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("user", &[]);
+    let user = deps.api.addr_make("user");
+    let info = message_info(&user, &[]);
     let env = mock_env();
     let chain = "andromeda";
     instantiate(
@@ -469,7 +471,8 @@ fn test_set_unset_env(
     #[case] expected_unset_error: Option<ContractError>,
 ) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info(CREATOR, &[]);
+    let creator = deps.api.addr_make(CREATOR);
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -481,7 +484,8 @@ fn test_set_unset_env(
         },
     )
     .unwrap();
-    let send_info = message_info(sender, &[]);
+    let sender = deps.api.addr_make(sender);
+    let send_info = message_info(&sender, &[]);
 
     if let Some(value) = value {
         // Set environment variable
@@ -527,7 +531,8 @@ fn test_set_unset_env(
 fn setup_pending_packets() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env) {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = message_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Instantiate contract
     instantiate(

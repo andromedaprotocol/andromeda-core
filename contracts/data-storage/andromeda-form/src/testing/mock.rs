@@ -6,9 +6,10 @@ use andromeda_data_storage::form::{
 use andromeda_std::{
     amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
+use cosmwasm_std::Addr;
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, message_info, MockApi, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response, Timestamp,
 };
 
@@ -74,7 +75,7 @@ pub fn submit_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SubmitForm { data };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)
@@ -90,7 +91,8 @@ pub fn delete_submission(
         submission_id,
         wallet_address,
     };
-    let info = message_info(sender, &[]);
+
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let env = mock_env();
     execute(deps, env, info, msg)
 }
@@ -107,7 +109,7 @@ pub fn edit_submission(
         wallet_address,
         data,
     };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let env = mock_env();
     execute(deps, env, info, msg)
 }
@@ -118,7 +120,7 @@ pub fn open_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::OpenForm {};
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)
@@ -130,7 +132,7 @@ pub fn close_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::CloseForm {};
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)

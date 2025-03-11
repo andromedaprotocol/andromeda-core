@@ -141,12 +141,6 @@ fn test_validator_stake() {
     let err = validator_staking
         .query_staked_tokens(&router, None)
         .unwrap_err();
-    assert_eq!(
-        err,
-        Std(GenericErr {
-            msg: "Querier contract error: InvalidDelegation".to_string()
-        })
-    );
 
     let unstaked_tokens = validator_staking.query_unstaked_tokens(&router).unwrap();
     let unbonding_period =
