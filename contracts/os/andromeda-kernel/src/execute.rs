@@ -140,7 +140,7 @@ pub fn handle_receive_cw20(
         Cw20HookMsg::Send { message } => {
             ensure!(
                 has_coins_merged(
-                    vec![Coin::new(amount_sent.into(), &asset_sent)].as_slice(),
+                    vec![Coin::new(amount_sent.u128(), &asset_sent)].as_slice(),
                     message.funds.as_slice()
                 ),
                 ContractError::InsufficientFunds {}
@@ -158,7 +158,7 @@ pub fn handle_receive_cw20(
             info,
             env,
             packet,
-            vec![Coin::new(amount_sent.into(), &asset_sent)],
+            vec![Coin::new(amount_sent.u128(), &asset_sent)],
         ),
     }
 }
@@ -1241,6 +1241,8 @@ pub(crate) fn handle_ibc_transfer_funds(
         to_address: channel_info.kernel_address.clone(),
         amount: coin.clone(),
         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+        // TODO allow optional memo
+        memo: None,
     };
     let mut resp = Response::default();
 
@@ -1261,6 +1263,7 @@ pub(crate) fn handle_ibc_transfer_funds(
         msg: CosmosMsg::Ibc(msg),
         gas_limit: None,
         reply_on: cosmwasm_std::ReplyOn::Always,
+        payload: Binary::default(),
     });
 
     Ok(resp

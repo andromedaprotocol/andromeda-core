@@ -123,6 +123,8 @@ pub fn on_reply_ibc_transfer(
     if let Reply {
         id: 106,
         result: SubMsgResult::Ok(SubMsgResponse { events, .. }),
+        payload,
+        gas_used,
     } = msg.clone()
     {
         if let Some(send_packet_event) = events.iter().find(|e| e.ty == "send_packet") {
@@ -204,6 +206,7 @@ pub fn on_reply_refund_ibc_transfer_with_msg(
         to_address: refund_data.original_sender.clone(),
         amount: refund_data.funds.clone(),
         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+        memo: None,
     };
     REFUND_DATA.remove(deps.storage);
     Ok(Response::default()
