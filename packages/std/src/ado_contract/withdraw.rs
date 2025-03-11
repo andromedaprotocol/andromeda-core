@@ -136,7 +136,7 @@ mod tests {
     use super::*;
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT};
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env, mock_info},
+        testing::{message_info, mock_dependencies, mock_env},
         to_json_binary, Addr, BankMsg, Coin, CosmosMsg, WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
@@ -149,7 +149,7 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
-        let info = mock_info("not_owner", &[]);
+        let info = message_info("not_owner", &[]);
         let res = ADOContract::default().execute_withdraw(
             ExecuteContext::new(deps.as_mut(), info, mock_env()),
             Some(Recipient::from_string("address".to_string())),
@@ -166,7 +166,7 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
-        let info = mock_info(owner, &[]);
+        let info = message_info(owner, &[]);
         let res = ADOContract::default().execute_withdraw(
             ExecuteContext::new(deps.as_mut(), info, mock_env()),
             Some(Recipient::from_string("address".to_string())),
@@ -188,7 +188,7 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
-        let info = mock_info(owner, &[]);
+        let info = message_info(owner, &[]);
         ADOContract::default()
             .withdrawable_tokens
             .save(
@@ -224,7 +224,7 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
-        let info = mock_info("owner", &[]);
+        let info = message_info("owner", &[]);
         ADOContract::default()
             .withdrawable_tokens
             .save(
@@ -266,7 +266,7 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
-        let info = mock_info(owner, &[]);
+        let info = message_info(owner, &[]);
         ADOContract::default()
             .withdrawable_tokens
             .save(

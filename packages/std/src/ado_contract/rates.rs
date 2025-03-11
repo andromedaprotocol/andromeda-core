@@ -8,11 +8,11 @@ use cw_storage_plus::Map;
 
 use super::ADOContract;
 
-pub fn rates<'a>() -> Map<'a, &'a str, Rate> {
+pub fn rates() -> Map<String, Rate> {
     Map::new("rates")
 }
 
-impl ADOContract<'_> {
+impl ADOContract {
     /// Sets rates
     pub fn set_rates(
         &self,
@@ -21,7 +21,7 @@ impl ADOContract<'_> {
         rate: Rate,
     ) -> Result<(), ContractError> {
         let action: String = action.into();
-        self.rates.save(store, &action, &rate)?;
+        self.rates.save(store, action, &rate)?;
         Ok(())
     }
     pub fn execute_rates(
@@ -57,7 +57,7 @@ impl ADOContract<'_> {
         action: impl Into<String>,
     ) -> Result<(), ContractError> {
         let action: String = action.into();
-        self.rates.remove(store, &action);
+        self.rates.remove(store, action);
         Ok(())
     }
     pub fn execute_remove_rates(
@@ -84,7 +84,7 @@ impl ADOContract<'_> {
         action: impl Into<String>,
     ) -> Result<Option<Rate>, ContractError> {
         let action: String = action.into();
-        Ok(rates().may_load(deps.storage, &action)?)
+        Ok(rates().may_load(deps.storage, action)?)
     }
 
     pub fn get_all_rates(&self, deps: Deps) -> Result<AllRatesResponse, ContractError> {
@@ -110,7 +110,7 @@ impl ADOContract<'_> {
         funds: Funds,
     ) -> Result<Option<RatesResponse>, ContractError> {
         let action: String = action.into();
-        let rate = self.rates.may_load(deps.storage, &action)?;
+        let rate = self.rates.may_load(deps.storage, action.clone())?;
         match rate {
             Some(rate) => {
                 let (coin, is_native): (Coin, bool) = match funds {
@@ -209,7 +209,7 @@ mod tests {
 
         let rate = ADOContract::default()
             .rates
-            .load(&deps.storage, action)
+            .load(&deps.storage, action.to_string())
             .unwrap();
 
         assert_eq!(rate, expected_rate);

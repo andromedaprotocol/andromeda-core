@@ -93,22 +93,22 @@ pub fn mock_dependencies_custom(
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
     // Add IBC Channels to mock querier
-    custom_querier.base.update_ibc(
-        TRANSFER_PORT,
-        &[IbcChannel::new(
-            IbcEndpoint {
-                port_id: TRANSFER_PORT.to_string(),
-                channel_id: MOCK_ANDR_TO_OSMO_IBC_CHANNEL.to_string(),
-            },
-            IbcEndpoint {
-                port_id: TRANSFER_PORT.to_string(),
-                channel_id: MOCK_OSMO_TO_ANDR_IBC_CHANNEL.to_string(),
-            },
-            IbcOrder::Unordered,
-            IBC_VERSION.to_string(),
-            String::from("connection-0"),
-        )],
-    );
+    // custom_querier.base.update_ibc(
+    //     TRANSFER_PORT,
+    //     &[IbcChannel::new(
+    //         IbcEndpoint {
+    //             port_id: TRANSFER_PORT.to_string(),
+    //             channel_id: MOCK_ANDR_TO_OSMO_IBC_CHANNEL.to_string(),
+    //         },
+    //         IbcEndpoint {
+    //             port_id: TRANSFER_PORT.to_string(),
+    //             channel_id: MOCK_OSMO_TO_ANDR_IBC_CHANNEL.to_string(),
+    //         },
+    //         IbcOrder::Unordered,
+    //         IBC_VERSION.to_string(),
+    //         String::from("connection-0"),
+    //     )],
+    // );
     let storage = MockStorage::default();
     let mut deps = OwnedDeps {
         storage,
@@ -161,16 +161,7 @@ impl WasmMockQuerier {
 
 // NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
 // https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
-#[cw_serde(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    JsonSchema
-)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub struct SupplyResponse {
@@ -231,7 +222,8 @@ impl MockAndromedaQuerier {
                         "Not a valid contract".to_string(),
                     ));
                 }
-                let mut resp = ContractInfoResponse::default();
+                let mut resp =
+                    ContractInfoResponse::new(1, Addr::unchecked("creator"), None, false, None);
                 resp.code_id = match contract_addr.as_str() {
                     MOCK_APP_CONTRACT => 3,
                     INVALID_CONTRACT => 2,
@@ -243,8 +235,9 @@ impl MockAndromedaQuerier {
                 if *code_id == 2u64 {
                     return SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string()));
                 }
-                let mut resp = CodeInfoResponse::default();
-                resp.checksum = HexBinary::from_hex(MOCK_CHECKSUM).unwrap();
+                let mut resp =
+                    ContractInfoResponse::new(1, Addr::unchecked("creator"), None, false, None);
+                // resp.checksum = HexBinary::from_hex(MOCK_CHECKSUM).unwrap();
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
             }
             _ => querier.handle_query(request),

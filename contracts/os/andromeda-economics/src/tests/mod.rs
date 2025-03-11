@@ -14,12 +14,12 @@ use crate::state::BALANCES;
 
 use andromeda_std::os::economics::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
 
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
 
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies();
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -36,13 +36,13 @@ fn test_deposit() {
     let env = mock_env();
 
     //Test No Coin Deposit
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = ExecuteMsg::Deposit { address: None };
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_err());
 
     // Test Single Coin Deposit
-    let info = mock_info("creator", &[coin(100, "uandr")]);
+    let info = message_info("creator", &[coin(100, "uandr")]);
     let msg = ExecuteMsg::Deposit { address: None };
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -56,7 +56,7 @@ fn test_deposit() {
     assert_eq!(balance, Uint128::from(100u128));
 
     // Test Multiple Coin Deposit
-    let info = mock_info("creator", &[coin(100, "uandr"), coin(100, "uusd")]);
+    let info = message_info("creator", &[coin(100, "uandr"), coin(100, "uusd")]);
     let msg = ExecuteMsg::Deposit { address: None };
     execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -122,7 +122,7 @@ fn test_spend_balance() {
 fn test_pay_fee() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let payee = "payee";
 
     let msg = ExecuteMsg::PayFee {
@@ -168,7 +168,7 @@ fn test_pay_fee() {
 // fn test_pay_fee_contract() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = mock_info("creator", &[]);
+//     let info = message_info("creator", &[]);
 //     let payee = "payee";
 
 //     let msg = ExecuteMsg::PayFee {
@@ -205,7 +205,7 @@ fn test_pay_fee() {
 // fn test_pay_fee_app() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = mock_info("creator", &[]);
+//     let info = message_info("creator", &[]);
 //     let payee = "payee";
 
 //     let msg = ExecuteMsg::PayFee {
@@ -243,7 +243,7 @@ fn test_pay_fee() {
 // fn test_pay_fee_joint() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = mock_info("creator", &[]);
+//     let info = message_info("creator", &[]);
 //     let payee = "payee";
 
 //     let msg = ExecuteMsg::PayFee {
@@ -339,7 +339,7 @@ fn test_pay_fee() {
 fn test_withdraw() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let asset = "uusd";
 
     //Withdraw all funds
@@ -441,7 +441,7 @@ fn test_cw20_deposit() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let asset = "cw20asset";
-    let info = mock_info(asset, &[]);
+    let info = message_info(asset, &[]);
     let depositee = "depositee";
     let recipient = AndrAddr::from_string("recipient");
 
@@ -490,7 +490,7 @@ fn test_cw20_deposit() {
 fn test_withdraw_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let asset = "uusd";
 
     //Withdraw all funds

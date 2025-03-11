@@ -12,7 +12,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     BankMsg, Coin, Response, Timestamp,
 };
 
@@ -25,7 +25,7 @@ fn test_execute_hold_funds() {
     let condition = EscrowCondition::Expiration(Expiry::AtTime(Milliseconds::from_seconds(
         env.block.time.seconds() + 1,
     )));
-    let info = mock_info(owner, &funds);
+    let info = message_info(owner, &funds);
 
     let msg = ExecuteMsg::HoldFunds {
         condition: Some(condition.clone()),
@@ -67,7 +67,7 @@ fn test_execute_hold_funds_escrow_updated() {
     let mut env = mock_env();
 
     let owner = "owner";
-    let info = mock_info(owner, &coins(100, "uusd"));
+    let info = message_info(owner, &coins(100, "uusd"));
 
     let msg = ExecuteMsg::HoldFunds {
         condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
@@ -89,7 +89,7 @@ fn test_execute_hold_funds_escrow_updated() {
         .plus_seconds(1)
         .into();
 
-    let info = mock_info(owner, &[coin(100, "uusd"), coin(100, "uluna")]);
+    let info = message_info(owner, &[coin(100, "uusd"), coin(100, "uluna")]);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let query_msg = QueryMsg::GetLockedFunds {
@@ -119,7 +119,7 @@ fn test_execute_release_funds_no_condition() {
     let env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[coin(100, "uusd")]);
+    let info = message_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
         condition: None,
         recipient: None,
@@ -155,10 +155,10 @@ fn test_execute_release_multiple_escrows() {
         condition: None,
         recipient: Some(recipient),
     };
-    let info = mock_info("sender1", &coins(100, "uusd"));
+    let info = message_info("sender1", &coins(100, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
 
-    let info = mock_info("sender2", &coins(200, "uusd"));
+    let info = message_info("sender2", &coins(200, "uusd"));
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::ReleaseFunds {
@@ -194,7 +194,7 @@ fn test_execute_release_funds_time_condition() {
     let mut env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[coin(100, "uusd")]);
+    let info = message_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
         condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
             Milliseconds::from_seconds(100),
@@ -231,7 +231,7 @@ fn test_execute_release_funds_locked() {
     let mut env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[coin(100, "uusd")]);
+    let info = message_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
         condition: Some(EscrowCondition::Expiration(Expiry::FromNow(
             Milliseconds::from_seconds(100),
@@ -257,7 +257,7 @@ fn test_execute_release_funds_min_funds_condition() {
     let env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[coin(100, "uusd")]);
+    let info = message_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
         condition: Some(EscrowCondition::MinimumFunds(vec![
             coin(200, "uusd"),
@@ -281,7 +281,7 @@ fn test_execute_release_funds_min_funds_condition() {
         condition: None,
         recipient: None,
     };
-    let info = mock_info(owner, &[coin(110, "uusd"), coin(120, "uluna")]);
+    let info = message_info(owner, &[coin(110, "uusd"), coin(120, "uluna")]);
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     // Now try to release funds.
@@ -312,7 +312,7 @@ fn test_execute_release_specific_funds_no_funds_locked() {
     let env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[]);
+    let info = message_info(owner, &[]);
     let msg = ExecuteMsg::ReleaseSpecificFunds {
         recipient_addr: None,
         owner: owner.into(),
@@ -327,7 +327,7 @@ fn test_execute_release_specific_funds_no_condition() {
     let env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[coin(100, "uusd")]);
+    let info = message_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
         condition: None,
         recipient: None,
@@ -358,7 +358,7 @@ fn test_execute_release_specific_funds_time_condition() {
     let mut env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[coin(100, "uusd")]);
+    let info = message_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
         condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
             Milliseconds::from_seconds(100),
@@ -394,7 +394,7 @@ fn test_execute_release_specific_funds_min_funds_condition() {
     let env = mock_env();
     let owner = "owner";
 
-    let info = mock_info(owner, &[coin(100, "uusd")]);
+    let info = message_info(owner, &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
         condition: Some(EscrowCondition::MinimumFunds(vec![
             coin(200, "uusd"),
@@ -417,7 +417,7 @@ fn test_execute_release_specific_funds_min_funds_condition() {
         condition: None,
         recipient: None,
     };
-    let info = mock_info(owner, &[coin(110, "uusd"), coin(120, "uluna")]);
+    let info = message_info(owner, &[coin(110, "uusd"), coin(120, "uluna")]);
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     // Now try to release funds.
@@ -447,7 +447,7 @@ fn test_execute_release_specific_funds_min_funds_condition() {
 //     let env = mock_env();
 //     let owner = "owner";
 //     let funds = vec![Coin::new(1000, "uusd")];
-//     let info = mock_info(owner, &funds);
+//     let info = message_info(owner, &funds);
 
 //     let msg_struct = ExecuteMsg::HoldFunds {
 //         condition: None,

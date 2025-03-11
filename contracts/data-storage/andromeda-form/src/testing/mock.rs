@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{mock_env, message_info, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response, Timestamp,
 };
 
@@ -25,7 +25,7 @@ pub fn valid_initialization(
     timestamp_nanos: u64,
 ) -> (MockDeps, MessageInfo, Response) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -49,7 +49,7 @@ pub fn invalid_initialization(
     timestamp_nanos: u64,
 ) -> (MockDeps, MessageInfo, ContractError) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -72,7 +72,7 @@ pub fn submit_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SubmitForm { data };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)
@@ -88,7 +88,7 @@ pub fn delete_submission(
         submission_id,
         wallet_address,
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     let env = mock_env();
     execute(deps, env, info, msg)
 }
@@ -105,7 +105,7 @@ pub fn edit_submission(
         wallet_address,
         data,
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     let env = mock_env();
     execute(deps, env, info, msg)
 }
@@ -116,7 +116,7 @@ pub fn open_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::OpenForm {};
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)
@@ -128,7 +128,7 @@ pub fn close_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::CloseForm {};
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)

@@ -21,7 +21,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
-    testing::{mock_env, mock_info},
+    testing::{message_info, mock_env},
     BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
@@ -53,7 +53,7 @@ fn start_sale(deps: DepsMut, coin_denom: Asset) {
     });
     let env = mock_env();
 
-    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let info = message_info(MOCK_TOKEN_ADDR, &[]);
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
@@ -74,7 +74,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: Asset) {
     });
     let env = mock_env();
 
-    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let info = message_info(MOCK_TOKEN_ADDR, &[]);
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
@@ -96,7 +96,7 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
     });
     let env = mock_env();
 
-    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let info = message_info(MOCK_TOKEN_ADDR, &[]);
     let _res = execute(deps, env, info, msg).unwrap();
 }
 
@@ -112,7 +112,7 @@ fn init(
         authorized_token_addresses,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -201,7 +201,7 @@ fn test_sale_instantiate() {
 fn test_instantiate_with_multiple_authorized_cw20_addresses() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
 
     let authorized_cw20_addresses = vec![
         AndrAddr::from_string("cw20_contract_1"),
@@ -279,12 +279,12 @@ fn test_authorized_cw721() {
     });
     let env = mock_env();
 
-    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let info = message_info(MOCK_TOKEN_ADDR, &[]);
     let err = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, err);
 
     // Now let's set mock cw721 addr as the message sender
-    let info = mock_info(MOCK_CW721_ADDR, &[]);
+    let info = message_info(MOCK_CW721_ADDR, &[]);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     // Add one to the current time to have it set in the future
@@ -353,7 +353,7 @@ fn test_execute_buy_non_existing_sale() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    let info = mock_info("buyer", &coins(100, "uusd"));
+    let info = message_info("buyer", &coins(100, "uusd"));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::SaleDoesNotExist {}, res.unwrap_err());
 }
@@ -372,7 +372,7 @@ fn test_execute_buy_sale_not_open_already_bought() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    let info = message_info("sender", &coins(100, "uusd".to_string()));
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -382,7 +382,7 @@ fn test_execute_buy_sale_not_open_already_bought() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    let info = message_info("sender", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleExecuted {})
 }
@@ -402,14 +402,14 @@ fn test_execute_buy_sale_not_open_cancelled() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let info = mock_info(MOCK_TOKEN_OWNER, &[]);
+    let info = message_info(MOCK_TOKEN_OWNER, &[]);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
-    let info = mock_info("sender", &coins(100, "uusd".to_string()));
+    let info = message_info("sender", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleCancelled {})
 }
@@ -431,7 +431,7 @@ fn test_execute_buy_token_owner_cannot_buy() {
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
 
-    let info = mock_info(MOCK_TOKEN_OWNER, &coins(100, "uusd".to_string()));
+    let info = message_info(MOCK_TOKEN_OWNER, &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::TokenOwnerCannotBuy {}, res.unwrap_err());
 }
@@ -469,7 +469,7 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
+    let info = message_info(MOCK_CW20_CONTRACT, &[]);
 
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
@@ -497,19 +497,19 @@ fn test_execute_buy_invalid_coins_sent() {
     };
 
     // No coins sent
-    let info = mock_info("sender", &[]);
+    let info = message_info("sender", &[]);
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(error, res.unwrap_err());
 
     // Multiple coins sent
-    let info = mock_info("sender", &[coin(100, "uusd"), coin(100, "uluna")]);
+    let info = message_info("sender", &[coin(100, "uusd"), coin(100, "uluna")]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(error, res.unwrap_err());
 
     // Invalid denom sent
-    let info = mock_info("sender", &[coin(100, "uluna")]);
+    let info = message_info("sender", &[coin(100, "uluna")]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(
         ContractError::InvalidFunds {
@@ -519,7 +519,7 @@ fn test_execute_buy_invalid_coins_sent() {
     );
 
     // Correct denom but empty
-    let info = mock_info("sender", &[coin(0, "uusd")]);
+    let info = message_info("sender", &[coin(0, "uusd")]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert!(matches!(res, ContractError::InvalidFunds { .. }));
 }
@@ -558,7 +558,7 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
+    let info = message_info(MOCK_CW20_CONTRACT, &[]);
 
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
@@ -580,7 +580,7 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
     // Invalid denom sent
-    let info = mock_info("invalid_cw20", &[]);
+    let info = message_info("invalid_cw20", &[]);
 
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -605,7 +605,7 @@ fn test_execute_buy_works() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    let info = message_info("someone", &coins(100, "uusd".to_string()));
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -644,7 +644,7 @@ fn test_execute_buy_works_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
+    let info = message_info(MOCK_CW20_CONTRACT, &[]);
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -669,7 +669,7 @@ fn test_execute_buy_future_start() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    let info = message_info("someone", &coins(100, "uusd".to_string()));
     // The start time is ahead of the current block time, so it should return a Sale Not Started error.
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::SaleNotOpen {})
@@ -689,7 +689,7 @@ fn test_execute_buy_sale_expired() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
-    let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    let info = message_info("someone", &coins(100, "uusd".to_string()));
     // Forward block time so that the end time expires
     env.block.time = env.block.time.plus_days(100);
 
@@ -715,7 +715,7 @@ fn test_execute_update_sale_unauthorized() {
         recipient: None,
     };
 
-    let info = mock_info("someone", &[]);
+    let info = message_info("someone", &[]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {})
 }
@@ -738,7 +738,7 @@ fn test_execute_update_sale_invalid_price() {
         recipient: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::InvalidZeroAmount {})
 }
@@ -762,7 +762,7 @@ fn test_execute_start_sale_invalid_price() {
     });
     let env = mock_env();
 
-    let info = mock_info(MOCK_TOKEN_ADDR, &[]);
+    let info = message_info(MOCK_TOKEN_ADDR, &[]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::InvalidZeroAmount {})
 }
@@ -800,7 +800,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut env = mock_env();
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
-    let info = mock_info("someone", &coins(100, "uusd".to_string()));
+    let info = message_info("someone", &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(
         err,
@@ -859,7 +859,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
         msg: encode_binary(&hook_msg).unwrap(),
     });
 
-    let info = mock_info(MOCK_CW20_CONTRACT, &[]);
+    let info = message_info(MOCK_CW20_CONTRACT, &[]);
 
     let mut env = mock_env();
     // Add one second so that the start_time expires
@@ -889,7 +889,7 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
 
-    let info = mock_info("someone", &[coin(200, "uusd"), coin(100, "uandr")]);
+    let info = message_info("someone", &[coin(200, "uusd"), coin(100, "uandr")]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidFunds { .. }));
 }
@@ -926,7 +926,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         .set_rates(deps.as_mut().storage, "Buy", rate)
         .unwrap();
 
-    let info = mock_info("someone", &coins(150, "uusd".to_string()));
+    let info = message_info("someone", &coins(150, "uusd".to_string()));
     let mut env = mock_env();
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
@@ -968,7 +968,7 @@ fn test_execute_authorize_cw20_contract() {
     let _res = init(deps.as_mut(), None, None);
 
     // Test unauthorized attempt
-    let unauthorized_info = mock_info("unauthorized", &[]);
+    let unauthorized_info = message_info("unauthorized", &[]);
     let unauthorized_msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
@@ -986,7 +986,7 @@ fn test_execute_authorize_cw20_contract() {
     );
 
     // Test successful authorization without expiration
-    let owner_info = mock_info("owner", &[]);
+    let owner_info = message_info("owner", &[]);
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
@@ -1013,7 +1013,7 @@ fn test_execute_authorize_cw20_contract() {
     );
 
     // Test successful authorization with expiration
-    let owner_info = mock_info("owner", &[]);
+    let owner_info = message_info("owner", &[]);
     let expiration = Expiry::FromNow(Milliseconds(10000));
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
@@ -1053,7 +1053,7 @@ fn test_execute_deauthorize_cw20_contract() {
     let _res = init(deps.as_mut(), None, None);
 
     // First, authorize a CW20 contract
-    let owner_info = mock_info("owner", &[]);
+    let owner_info = message_info("owner", &[]);
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
@@ -1094,7 +1094,7 @@ fn test_execute_deauthorize_cw20_contract() {
     assert_eq!(permission, None);
 
     // Test deauthorization by non-owner (should fail)
-    let non_owner_info = mock_info("not_owner", &[]);
+    let non_owner_info = message_info("not_owner", &[]);
     let msg = ExecuteMsg::DeauthorizeContract {
         action: PermissionAction::SendCw20,
         addr: AndrAddr::from_string("cw20_contract"),
@@ -1151,7 +1151,7 @@ fn test_authorize_token_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(deps.as_mut(), None, None);
 
-    let owner_info = mock_info("owner", &[]);
+    let owner_info = message_info("owner", &[]);
     let token_address = AndrAddr::from_string("nft_contract");
     let expiration = Expiry::FromNow(Milliseconds(100));
 
@@ -1172,7 +1172,7 @@ fn test_authorize_token_contract() {
     );
 
     // Test unauthorized attempt
-    let non_owner_info = mock_info("non_owner", &[]);
+    let non_owner_info = message_info("non_owner", &[]);
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendNft,
         addr: token_address.clone(),
@@ -1202,7 +1202,7 @@ fn test_deauthorize_token_contract() {
         Some(vec![AndrAddr::from_string("nft_contract")]),
     );
 
-    let owner_info = mock_info("owner", &[]);
+    let owner_info = message_info("owner", &[]);
     let token_address = AndrAddr::from_string("nft_contract");
 
     // Test successful deauthorization
@@ -1221,7 +1221,7 @@ fn test_deauthorize_token_contract() {
     );
 
     // Test unauthorized attempt
-    let non_owner_info = mock_info("non_owner", &[]);
+    let non_owner_info = message_info("non_owner", &[]);
     let msg = ExecuteMsg::DeauthorizeContract {
         action: PermissionAction::SendNft,
         addr: token_address.clone(),

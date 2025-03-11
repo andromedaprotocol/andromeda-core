@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, from_json,
-    testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, message_info, MOCK_CONTRACT_ADDR},
     to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
     Uint128,
 };
@@ -52,7 +52,7 @@ fn init(deps: DepsMut) -> Response {
         lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -79,7 +79,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
 
     assert_eq!(err, ContractError::LockTimeTooShort {});
@@ -114,7 +114,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
 
@@ -129,7 +129,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::LockTimeTooShort {});
 
@@ -143,7 +143,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::LockTimeTooLong {});
 
@@ -163,7 +163,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
 }
@@ -193,7 +193,7 @@ fn test_execute_update_lock() {
         lock_time: lock_time.clone(),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     assert_eq!(
@@ -215,7 +215,7 @@ fn test_execute_update_lock() {
     let msg = ExecuteMsg::UpdateLock {
         lock_time: new_lock_2.clone(),
     };
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
     assert_eq!(err, ContractError::ContractLocked { msg: None });
 }
@@ -271,7 +271,7 @@ fn test_execute_update_thresholds() {
         thresholds: duplicate_recipients,
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
@@ -307,11 +307,11 @@ fn test_execute_update_thresholds() {
         thresholds: new_threshold.clone(),
     };
 
-    let info = mock_info("incorrect_owner", &[]);
+    let info = message_info("incorrect_owner", &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::default().add_attributes(vec![attr("action", "update_thresholds")]),
@@ -383,7 +383,7 @@ fn test_execute_send() {
         lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // First batch will test first threshold
@@ -396,7 +396,7 @@ fn test_execute_send() {
     let third_batch = 100u128;
 
     // First batch
-    let info = mock_info(OWNER, &[Coin::new(first_batch, "uandr")]);
+    let info = message_info(OWNER, &[Coin::new(first_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -437,7 +437,7 @@ fn test_execute_send() {
     assert_eq!(res, expected_res);
 
     // Second batch
-    let info = mock_info(OWNER, &[Coin::new(second_batch, "uandr")]);
+    let info = message_info(OWNER, &[Coin::new(second_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -478,7 +478,7 @@ fn test_execute_send() {
     assert_eq!(res, expected_res);
 
     // Third batch
-    let info = mock_info(OWNER, &[Coin::new(third_batch, "uandr")]);
+    let info = message_info(OWNER, &[Coin::new(third_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -554,14 +554,14 @@ fn test_execute_send_threshold_not_found() {
         lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // This batch is lower than the lowest threshold which is 7
     let first_batch = 6u128;
 
     // First batch
-    let info = mock_info(OWNER, &[Coin::new(first_batch, "uandr")]);
+    let info = message_info(OWNER, &[Coin::new(first_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
 
@@ -579,7 +579,7 @@ fn test_execute_send_ado_recipient() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 10000u128;
-    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
     let recip_address1 = "address1".to_string();
     let recip_address2 = "address2".to_string();
@@ -655,7 +655,7 @@ fn test_handle_packet_exit_with_error_true() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 0u128;
-    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
     let recip_address1 = "address1".to_string();
     let recip_percent1 = 10; // 10%
@@ -731,7 +731,7 @@ fn test_execute_send_error() {
 
     let sender_funds_amount = 10000u128;
     let owner = "creator";
-    let info = mock_info(
+    let info = message_info(
         owner,
         &vec![
             Coin::new(sender_funds_amount, "uluna"),
@@ -782,7 +782,7 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "app_contract".to_string(),
@@ -803,7 +803,7 @@ fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "z".to_string(),
@@ -856,11 +856,11 @@ fn test_execute_send_with_multiple_thresholds() {
         lock_time: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Test sending 7 tokens (should use the 5 token threshold)
-    let info = mock_info(OWNER, &[Coin::new(7, "uandr")]);
+    let info = message_info(OWNER, &[Coin::new(7, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -904,7 +904,7 @@ fn test_execute_send_with_multiple_thresholds() {
     assert_eq!(res, expected_res);
 
     // Test sending 15 tokens (should use the 10 token threshold)
-    let info = mock_info(OWNER, &[Coin::new(15, "uandr")]);
+    let info = message_info(OWNER, &[Coin::new(15, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -945,7 +945,7 @@ fn test_execute_send_with_multiple_thresholds() {
     assert_eq!(res, expected_res);
 
     // Test sending 6 tokens (should use the 5 token threshold)
-    let info = mock_info(OWNER, &[Coin::new(6, "uandr")]);
+    let info = message_info(OWNER, &[Coin::new(6, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 

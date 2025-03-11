@@ -24,7 +24,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 type ExecuteContextFunction<M, E> = fn(ExecuteContext, M) -> Result<Response, E>;
 
-impl ADOContract<'_> {
+impl ADOContract {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
@@ -421,7 +421,7 @@ macro_rules! unwrap_amp_msg {
 mod tests {
     use super::*;
     use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     mod app_contract {
         use super::*;
@@ -431,7 +431,8 @@ mod tests {
             let contract = ADOContract::default();
             let mut deps = mock_dependencies();
 
-            let info = mock_info("owner", &[]);
+            let owner = deps.api.addr_validate("owner").unwrap();
+            let info = message_info(&owner, &[]);
             let deps_mut = deps.as_mut();
             contract
                 .instantiate(
@@ -480,7 +481,8 @@ mod tests {
             let mut deps = mock_dependencies();
 
             // Setup initial contract state
-            let info = mock_info("owner", &[]);
+            let owner = deps.api.addr_validate("owner").unwrap();
+            let info = message_info(&owner, &[]);
             let deps_mut = deps.as_mut();
             contract
                 .instantiate(
@@ -511,7 +513,11 @@ mod tests {
             // Save the rate in storage
             contract
                 .rates
-                .save(deps.as_mut().storage, "Claim", &Rate::Local(rate))
+                .save(
+                    deps.as_mut().storage,
+                    "Claim".to_string(),
+                    &Rate::Local(rate),
+                )
                 .unwrap();
 
             // Verify rate is saved
@@ -539,7 +545,8 @@ mod tests {
             let mut deps = mock_dependencies();
 
             // Setup initial contract state
-            let info = mock_info("owner", &[]);
+            let owner = deps.api.addr_validate("owner").unwrap();
+            let info = message_info(&owner, &[]);
             let deps_mut = deps.as_mut();
             contract
                 .instantiate(

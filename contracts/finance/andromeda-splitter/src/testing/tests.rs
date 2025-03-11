@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, from_json,
-    testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, message_info, MOCK_CONTRACT_ADDR},
     to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
 };
 pub const OWNER: &str = "creator";
@@ -37,7 +37,7 @@ fn init(deps: DepsMut) -> Response {
         default_recipient: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -65,7 +65,7 @@ fn test_different_lock_times() {
         default_recipient: None,
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
 
     assert_eq!(err, ContractError::LockTimeTooShort {});
@@ -99,7 +99,7 @@ fn test_different_lock_times() {
         default_recipient: None,
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
 
@@ -115,7 +115,7 @@ fn test_different_lock_times() {
         default_recipient: None,
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::LockTimeTooShort {});
 
@@ -130,7 +130,7 @@ fn test_different_lock_times() {
         default_recipient: None,
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::LockTimeTooLong {});
 
@@ -148,7 +148,7 @@ fn test_different_lock_times() {
         default_recipient: None,
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
 }
@@ -177,7 +177,7 @@ fn test_execute_update_lock() {
         lock_time: Expiry::FromNow(Milliseconds(lock_time)),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let new_lock = Milliseconds(lock_time)
         .plus_seconds(current_time)
@@ -225,7 +225,7 @@ fn test_execute_update_recipients() {
         recipients: duplicate_recipients,
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
@@ -243,11 +243,11 @@ fn test_execute_update_recipients() {
         recipients: recipients.clone(),
     };
 
-    let info = mock_info("incorrect_owner", &[]);
+    let info = message_info("incorrect_owner", &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::default().add_attributes(vec![attr("action", "update_recipients")]),
@@ -267,7 +267,7 @@ fn test_execute_send() {
 
     let sender_funds_amount = 10000u128;
 
-    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
     let recip_address1 = "address1".to_string();
     let recip_percent1 = 10; // 10%
@@ -435,7 +435,7 @@ fn test_execute_send_ado_recipient() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 10000u128;
-    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
     let recip_address1 = "address1".to_string();
     let recip_percent1 = 10; // 10%
@@ -511,7 +511,7 @@ fn test_handle_packet_exit_with_error_true() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 0u128;
-    let info = mock_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
 
     let recip_address1 = "address1".to_string();
     let recip_percent1 = 10; // 10%
@@ -585,7 +585,7 @@ fn test_execute_send_error() {
 
     let sender_funds_amount = 10000u128;
     let owner = "creator";
-    let info = mock_info(
+    let info = message_info(
         owner,
         &vec![
             Coin::new(sender_funds_amount, "uluna"),
@@ -635,7 +635,7 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "app_contract".to_string(),
@@ -656,7 +656,7 @@ fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "z".to_string(),
@@ -731,7 +731,7 @@ fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
         config: Some(config),
     };
 
-    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
     let res = execute(deps, mock_env(), info, msg);
 
     assert_eq!(
@@ -755,7 +755,7 @@ fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter
         config: Some(config),
     };
 
-    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages
@@ -769,7 +769,7 @@ fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages
@@ -782,7 +782,7 @@ fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Split
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = mock_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages

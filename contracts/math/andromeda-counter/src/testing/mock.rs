@@ -9,7 +9,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{mock_env, message_info, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 
@@ -22,7 +22,7 @@ pub fn proper_initialization(
     initial_state: State,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -37,19 +37,19 @@ pub fn proper_initialization(
 
 pub fn increment(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Increment {};
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
 pub fn decrement(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Decrement {};
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
 pub fn reset(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Reset {};
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -59,7 +59,7 @@ pub fn update_restriction(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateRestriction { restriction };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -69,7 +69,7 @@ pub fn set_increase_amount(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SetIncreaseAmount { increase_amount };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -79,7 +79,7 @@ pub fn set_decrease_amount(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SetDecreaseAmount { decrease_amount };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 

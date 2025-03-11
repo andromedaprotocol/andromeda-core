@@ -7,7 +7,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{mock_env, message_info, MockApi, MockStorage},
     Coin, Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 
@@ -17,7 +17,7 @@ pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(restriction: PrimitiveRestriction) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -46,7 +46,7 @@ pub fn set_value(
         key: key.clone(),
         value: value.clone(),
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -61,7 +61,7 @@ pub fn set_value_with_funds(
         key: key.clone(),
         value: value.clone(),
     };
-    let info = mock_info(sender, &[coin]);
+    let info = message_info(sender, &[coin]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -71,6 +71,6 @@ pub fn delete_value(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::DeleteValue { key: key.clone() };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }

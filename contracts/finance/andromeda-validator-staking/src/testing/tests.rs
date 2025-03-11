@@ -6,7 +6,7 @@ use crate::{
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{
     coin,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     Addr, DepsMut, Response, StakingMsg,
 };
 
@@ -21,7 +21,7 @@ fn init(deps: DepsMut, default_validator: Addr) -> Result<Response, ContractErro
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info(OWNER, &[]);
+    let info = message_info(OWNER, &[]);
     instantiate(deps, mock_env(), info, msg)
 }
 
@@ -46,7 +46,7 @@ fn test_stake_with_invalid_funds() {
 
     let msg = ExecuteMsg::Stake { validator: None };
 
-    let info = mock_info(OWNER, &[coin(100, "uandr"), coin(100, "usdc")]);
+    let info = message_info(OWNER, &[coin(100, "uandr"), coin(100, "usdc")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -61,7 +61,7 @@ fn test_stake_with_default_validator() {
 
     let msg = ExecuteMsg::Stake { validator: None };
 
-    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(OWNER, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -89,7 +89,7 @@ fn test_stake_with_validator() {
         validator: Some(valid_validator),
     };
 
-    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(OWNER, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -117,7 +117,7 @@ fn test_stake_with_invalid_validator() {
         validator: Some(fake_validator),
     };
 
-    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(OWNER, &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -135,7 +135,7 @@ fn test_unauthorized_unstake() {
         validator: Some(valid_validator.clone()),
     };
 
-    let info = mock_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(OWNER, &[coin(100, "uandr")]);
 
     execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -144,7 +144,7 @@ fn test_unauthorized_unstake() {
         amount: None,
     };
 
-    let info = mock_info("other", &[coin(100, "uandr")]);
+    let info = message_info("other", &[coin(100, "uandr")]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 }

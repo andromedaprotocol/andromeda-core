@@ -11,7 +11,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_json,
-    testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, message_info, MOCK_CONTRACT_ADDR},
     BankMsg, Decimal, DepsMut, Response, Uint128,
 };
 
@@ -26,7 +26,7 @@ fn init(deps: DepsMut) -> Response {
         owner: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -43,7 +43,7 @@ fn create_batch(
         release_amount,
     };
 
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
     execute(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -81,7 +81,7 @@ fn test_instantiate_invalid_denom() {
         owner: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(
         err,
@@ -102,7 +102,7 @@ fn test_instantiate_invalid_address() {
         owner: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(err, ContractError::InvalidAddress {})
 }
@@ -112,7 +112,7 @@ fn test_create_batch_unauthorized() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("not_owner", &[]);
+    let info = message_info("not_owner", &[]);
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -131,7 +131,7 @@ fn test_create_batch_no_funds() {
 
     init(deps.as_mut());
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -154,7 +154,7 @@ fn test_create_batch_invalid_denom() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("owner", &coins(500, "uluna"));
+    let info = message_info("owner", &coins(500, "uluna"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -177,7 +177,7 @@ fn test_create_batch_valid_denom_zero_amount() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("owner", &coins(0, "uusd"));
+    let info = message_info("owner", &coins(0, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -195,7 +195,7 @@ fn test_create_batch_release_duration_zero() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -213,7 +213,7 @@ fn test_create_batch_release_amount_zero() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -231,7 +231,7 @@ fn test_create_batch() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -315,7 +315,7 @@ fn test_claim_batch_unauthorized() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("not_owner", &[]);
+    let info = message_info("not_owner", &[]);
 
     let msg = ExecuteMsg::Claim {
         number_of_claims: None,
@@ -331,7 +331,7 @@ fn test_claim_batch_unauthorized() {
 fn test_claim_batch_still_locked() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
@@ -348,7 +348,7 @@ fn test_claim_batch_still_locked() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg);
+    let res = execute(deps.as_mut(), mock_env(), message_info("owner", &[]), msg);
 
     assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
 }
@@ -357,7 +357,7 @@ fn test_claim_batch_still_locked() {
 fn test_claim_batch_no_funds_available() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
@@ -374,7 +374,7 @@ fn test_claim_batch_no_funds_available() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg);
+    let res = execute(deps.as_mut(), mock_env(), message_info("owner", &[]), msg);
 
     // This is because, the first payment becomes available after 10 seconds.
     assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
@@ -384,7 +384,7 @@ fn test_claim_batch_no_funds_available() {
 fn test_claim_batch_single_claim() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -432,7 +432,7 @@ fn test_claim_batch_single_claim() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info("owner", &[]), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -465,7 +465,7 @@ fn test_claim_batch_single_claim() {
 fn test_claim_batch_not_nice_numbers_single_release() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(10, "uusd"));
+    let info = message_info("owner", &coins(10, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -493,7 +493,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info("owner", &[]), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -527,7 +527,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
     let vesting_amount = 1_000_000_000_000_000_000u128;
-    let info = mock_info("owner", &coins(vesting_amount, "uusd"));
+    let info = message_info("owner", &coins(vesting_amount, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(1); // 1 second
     let duration: u64 = 60 * 60 * 24 * 365 * 5; // 5 years
@@ -560,7 +560,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
     let res = execute(
         deps.as_mut(),
         env.clone(),
-        mock_info("owner", &[]),
+        message_info("owner", &[]),
         msg.clone(),
     )
     .unwrap();
@@ -593,7 +593,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
     env.block.time = env.block.time.plus_seconds(duration);
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info("owner", &[]), msg).unwrap();
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
@@ -624,7 +624,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 fn test_claim_batch_middle_of_interval() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -654,7 +654,7 @@ fn test_claim_batch_middle_of_interval() {
     let res = execute(
         deps.as_mut(),
         env.clone(),
-        mock_info("owner", &[]),
+        message_info("owner", &[]),
         msg.clone(),
     );
 
@@ -662,7 +662,7 @@ fn test_claim_batch_middle_of_interval() {
 
     // First release available and halfway to second -> result is rounding down.
     env.block.time = env.block.time.plus_seconds(release_duration.seconds());
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info("owner", &[]), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -695,7 +695,7 @@ fn test_claim_batch_middle_of_interval() {
 fn test_claim_batch_multiple_claims() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -722,7 +722,7 @@ fn test_claim_batch_multiple_claims() {
         number_of_claims: Some(1),
         batch_id: 1,
     };
-    let res = execute(deps.as_mut(), env.clone(), mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), message_info("owner", &[]), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -755,7 +755,7 @@ fn test_claim_batch_multiple_claims() {
         number_of_claims: None,
         batch_id: 1,
     };
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info("owner", &[]), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -788,7 +788,7 @@ fn test_claim_batch_multiple_claims() {
 fn test_claim_batch_all_releases() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -819,7 +819,7 @@ fn test_claim_batch_all_releases() {
     let res = execute(
         deps.as_mut(),
         env.clone(),
-        mock_info("owner", &[]),
+        message_info("owner", &[]),
         msg.clone(),
     )
     .unwrap();
@@ -851,7 +851,7 @@ fn test_claim_batch_all_releases() {
     );
 
     // Try to claim again.
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg);
+    let res = execute(deps.as_mut(), env, message_info("owner", &[]), msg);
 
     assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
 }
@@ -860,7 +860,7 @@ fn test_claim_batch_all_releases() {
 fn test_claim_batch_too_high_of_claim() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let info = message_info("owner", &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -887,7 +887,7 @@ fn test_claim_batch_too_high_of_claim() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info("owner", &[]), msg).unwrap();
 
     assert_eq!(
         Response::new()
@@ -922,7 +922,7 @@ fn test_claim_all_unauthorized() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     init(deps.as_mut());
 
-    let info = mock_info("not_owner", &[]);
+    let info = message_info("not_owner", &[]);
 
     let msg = ExecuteMsg::ClaimAll {
         up_to_time: None,
@@ -1047,7 +1047,7 @@ fn test_claim_all() {
         limit: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(

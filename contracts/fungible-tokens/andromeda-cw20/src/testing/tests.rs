@@ -10,7 +10,7 @@ use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     to_json_binary, Addr, DepsMut, Response, Uint128,
 };
 
@@ -45,7 +45,7 @@ fn init(deps: DepsMut) -> Response {
         owner: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -114,11 +114,11 @@ fn test_transfer() {
     let permission = Permission::Local(LocalPermission::blacklisted(None, None));
     let actors = vec![AndrAddr::from_string("sender")];
     let action = "Transfer";
-    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
+    let ctx = ExecuteContext::new(deps.as_mut(), message_info("owner", &[]), mock_env());
     ADOContract::default()
         .execute_set_permission(ctx, actors, action, permission)
         .unwrap();
-    let info = mock_info("sender", &[]);
+    let info = message_info("sender", &[]);
     let err = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap_err();
 
     assert_eq!(err, ContractError::Unauthorized {});
@@ -127,7 +127,7 @@ fn test_transfer() {
     let permission = Permission::Local(LocalPermission::whitelisted(None, None));
     let actors = vec![AndrAddr::from_string("sender")];
     let action = "Transfer";
-    let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());
+    let ctx = ExecuteContext::new(deps.as_mut(), message_info("owner", &[]), mock_env());
     ADOContract::default()
         .execute_set_permission(ctx, actors, action, permission)
         .unwrap();
@@ -171,7 +171,7 @@ fn test_transfer() {
 #[test]
 fn test_send() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("sender", &[]);
+    let info = message_info("sender", &[]);
 
     let res = init(deps.as_mut());
 

@@ -22,8 +22,8 @@ pub struct PermissionsIndices<'a> {
     pub action: MultiIndex<'a, String, PermissionInfo, String>,
 }
 
-impl IndexList<PermissionInfo> for PermissionsIndices<'_> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<PermissionInfo>> + '_> {
+impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
+    fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<PermissionInfo>> + '_> {
         let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.action, &self.actor];
         Box::new(v.into_iter())
     }
@@ -32,7 +32,7 @@ impl IndexList<PermissionInfo> for PermissionsIndices<'_> {
 /// Permissions for the ADO contract
 ///
 /// Permissions are stored in a multi-indexed map with the primary key being the action and actor
-pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsIndices<'a>> {
+pub fn permissions<'a>() -> IndexedMap<&'a str, PermissionInfo, PermissionsIndices<'a>> {
     let indexes = PermissionsIndices {
         actor: MultiIndex::new(|_pk: &[u8], r| r.actor.clone(), "andr_permissions", "actor"),
         action: MultiIndex::new(
@@ -44,7 +44,7 @@ pub fn permissions<'a>() -> IndexedMap<'a, &'a str, PermissionInfo, PermissionsI
     IndexedMap::new("andr_permissions", indexes)
 }
 
-impl ADOContract<'_> {
+impl ADOContract {
     pub fn execute_permissioning(
         &self,
         ctx: ExecuteContext,
@@ -708,7 +708,7 @@ pub mod migrate {
             permissions()
                 .save(
                     deps.as_mut().storage,
-                    modern_permission.actor.as_str(),
+                    &modern_permission.actor,
                     &modern_permission,
                 )
                 .unwrap();
@@ -719,7 +719,7 @@ pub mod migrate {
             // Check that the permissions have been migrated
             for permission in old_permissions {
                 let migrated_permission = permissions()
-                    .load(deps.as_ref().storage, permission.actor.as_str())
+                    .load(deps.as_ref().storage, &permission.actor)
                     .unwrap();
                 assert_eq!(migrated_permission.action, permission.action);
                 assert_eq!(migrated_permission.actor, permission.actor);
@@ -731,7 +731,7 @@ pub mod migrate {
 
             // Check that modern permission is not affected
             let post_modern_permission = permissions()
-                .load(deps.as_ref().storage, modern_permission.actor.as_str())
+                .load(deps.as_ref().storage, &modern_permission.actor)
                 .unwrap();
             assert_eq!(post_modern_permission, modern_permission);
         }
@@ -741,8 +741,8 @@ pub mod migrate {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env, mock_info},
-        Addr,
+        testing::{message_info, mock_dependencies, mock_env},
+        Addr, Api,
     };
 
     use crate::{
@@ -917,7 +917,8 @@ mod tests {
                 expiration: None,
             }),
         });
-        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let attacker = deps.api.addr_validate("attacker").unwrap();
+        let ctx = ExecuteContext::new(deps.as_mut(), message_info(&attacker, &[]), env);
         let res = contract.execute(ctx, msg);
 
         assert!(res.is_err());
@@ -936,7 +937,8 @@ mod tests {
         let msg = AndromedaMsg::Permissioning(PermissioningMessage::PermissionAction {
             action: "action".to_string(),
         });
-        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let attacker = deps.api.addr_validate("attacker").unwrap();
+        let ctx = ExecuteContext::new(deps.as_mut(), message_info(&attacker, &[]), env);
         let res = contract.execute(ctx, msg);
 
         assert!(res.is_err());
@@ -955,7 +957,8 @@ mod tests {
         let msg = AndromedaMsg::Permissioning(PermissioningMessage::DisableActionPermissioning {
             action: "action".to_string(),
         });
-        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let attacker = deps.api.addr_validate("attacker").unwrap();
+        let ctx = ExecuteContext::new(deps.as_mut(), message_info(&attacker, &[]), env);
         let res = contract.execute(ctx, msg);
 
         assert!(res.is_err());
@@ -975,7 +978,8 @@ mod tests {
             action: "action".to_string(),
             actors: vec![AndrAddr::from_string("actor")],
         });
-        let ctx = ExecuteContext::new(deps.as_mut(), mock_info("attacker", &[]), env);
+        let attacker = deps.api.addr_validate("attacker").unwrap();
+        let ctx = ExecuteContext::new(deps.as_mut(), message_info(&attacker, &[]), env);
         let res = contract.execute(ctx, msg);
 
         assert!(res.is_err());
@@ -1132,7 +1136,8 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let actor = "actor";
-        let info = mock_info(actor, &[]);
+        let actor_addr = deps.api.addr_validate(actor).unwrap();
+        let info = message_info(&actor_addr, &[]);
         let action = "action";
 
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
@@ -1182,7 +1187,8 @@ mod tests {
         )
         .unwrap());
 
-        let unauth_info = mock_info("mock_actor", &[]);
+        let mock_actor = deps.api.addr_validate("mock_actor").unwrap();
+        let unauth_info = message_info(&mock_actor, &[]);
         let mut context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
 
         assert!(!is_context_permissioned(
@@ -1302,7 +1308,8 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let actor = "actor";
-        let info = mock_info(actor, &[]);
+        let actor_addr = deps.api.addr_validate(actor).unwrap();
+        let info = message_info(&actor_addr, &[]);
         let action = "action";
 
         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
@@ -1335,7 +1342,8 @@ mod tests {
         )
         .unwrap());
 
-        let unauth_info = mock_info("mock_actor", &[]);
+        let mock_actor = deps.api.addr_validate("mock_actor").unwrap();
+        let unauth_info = message_info(&mock_actor, &[]);
         let context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
 
         assert!(!is_context_permissioned_strict(
@@ -1445,7 +1453,8 @@ mod tests {
     fn test_query_permissioned_actions() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("owner", &[]);
+        let owner = deps.api.addr_validate("owner").unwrap();
+        let info = message_info(&owner, &[]);
         let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env);
 
         let contract = ADOContract::default();
@@ -1474,7 +1483,8 @@ mod tests {
     fn test_query_permissioned_actors() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("owner", &[]);
+        let owner = deps.api.addr_validate("owner").unwrap();
+        let info = message_info(&owner, &[]);
         let ctx = ExecuteContext::new(deps.as_mut(), info.clone(), env);
 
         let contract = ADOContract::default();

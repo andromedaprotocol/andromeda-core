@@ -14,7 +14,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     to_json_binary, Addr, BankMsg, Binary, ReplyOn, SubMsg,
 };
 
@@ -229,7 +229,7 @@ fn test_handle_local() {
 
     for test in test_cases {
         let mut deps = mock_dependencies_custom(&[]);
-        let info = mock_info(test.sender, &[]);
+        let info = message_info(test.sender, &[]);
 
         KERNEL_ADDRESSES
             .save(

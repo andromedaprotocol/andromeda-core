@@ -4,7 +4,7 @@ pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use andromeda_math::shunting::{EvaluateParam, InstantiateMsg, QueryMsg, ShuntingResponse};
 use cosmwasm_std::{
     from_json,
-    testing::{mock_dependencies, mock_env, mock_info},
+    testing::{mock_dependencies, mock_env, message_info},
 };
 
 #[test]
@@ -12,7 +12,7 @@ fn test_instantiate_query() {
     let mut deps = mock_dependencies();
     let env = mock_env();
     let owner = "owner";
-    let info = mock_info(owner, &[]);
+    let info = message_info(owner, &[]);
     let expressions = vec![
         "cos({x0})".to_string(),
         "sin({x0})".to_string(),

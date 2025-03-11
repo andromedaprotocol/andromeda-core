@@ -17,7 +17,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_json,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     to_json_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
 };
 
@@ -29,7 +29,7 @@ const WITHDRAWAL_WINDOW: u64 = 4;
 
 fn init(deps: DepsMut) -> Result<Response, ContractError> {
     let env = mock_env();
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -94,7 +94,7 @@ fn test_instantiate() {
 fn test_instantiate_init_timestamp_past() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -122,7 +122,7 @@ fn test_instantiate_init_timestamp_past() {
 fn test_instantiate_init_deposit_window_zero() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -144,7 +144,7 @@ fn test_instantiate_init_deposit_window_zero() {
 fn test_instantiate_init_withdrawal_window_zero() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -166,7 +166,7 @@ fn test_instantiate_init_withdrawal_window_zero() {
 fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -196,7 +196,7 @@ fn test_increase_incentives() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -227,7 +227,7 @@ fn test_increase_incentives_invalid_token() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = mock_info("invalid_token", &[]);
+    let info = message_info("invalid_token", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
         ContractError::InvalidFunds {
@@ -254,7 +254,7 @@ fn test_increase_incentives_after_phase_ends() {
         .block
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
-    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(
         ContractError::TokenAlreadyBeingDistributed {},
@@ -274,7 +274,7 @@ fn test_increase_incentives_zero_amount() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
@@ -291,7 +291,7 @@ fn test_deposit_native() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(100, "uusd"));
+    let info = message_info("sender", &coins(100, "uusd"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -331,7 +331,7 @@ fn test_deposit_native_zero_amount() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(0, "uusd"));
+    let info = message_info("sender", &coins(0, "uusd"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -349,7 +349,7 @@ fn test_deposit_native_wrong_denom() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(100, "uluna"));
+    let info = message_info("sender", &coins(100, "uluna"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -367,7 +367,7 @@ fn test_deposit_native_multiple_denoms() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &[coin(100, "uluna"), coin(100, "uusd")]);
+    let info = message_info("sender", &[coin(100, "uluna"), coin(100, "uusd")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -385,7 +385,7 @@ fn test_deposit_native_deposit_window_closed() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(100, "uusd"));
+    let info = message_info("sender", &coins(100, "uusd"));
 
     let mut env = mock_env();
     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW + 1);
@@ -400,7 +400,7 @@ fn test_withdraw_native() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("sender", &coins(100, "uusd"));
+    let info = message_info("sender", &coins(100, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -448,7 +448,7 @@ fn test_withdraw_native() {
 //     init(deps.as_mut()).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
-//     let info = mock_info("sender", &coins(100, "uusd"));
+//     let info = message_info("sender", &coins(100, "uusd"));
 
 //     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -512,7 +512,7 @@ fn test_withdraw_native() {
 //     init(deps.as_mut()).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
-//     let info = mock_info("sender", &coins(100, "uusd"));
+//     let info = message_info("sender", &coins(100, "uusd"));
 
 //     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -577,7 +577,7 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = mock_info("not owner", &[]);
+//     let info = message_info("not owner", &[]);
 //     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
 //     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -590,7 +590,7 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = mock_info("owner", &[]);
+//     let info = message_info("owner", &[]);
 //     let mut env = mock_env();
 //     env.block.time = env.block.time.minus_seconds(1);
 //     let res = execute(deps.as_mut(), env, info, msg);
@@ -610,7 +610,7 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = mock_info("owner", &[]);
+//     let info = message_info("owner", &[]);
 //     let mut env = mock_env();
 //     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW);
 //     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -632,7 +632,7 @@ fn test_withdraw_native() {
 //     init(deps.as_mut()).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
-//     let info = mock_info("sender", &coins(amount, "uusd"));
+//     let info = message_info("sender", &coins(amount, "uusd"));
 
 //     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -643,7 +643,7 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = mock_info("owner", &[]);
+//     let info = message_info("owner", &[]);
 //     let mut env = mock_env();
 //     env.block.time = env
 //         .block
@@ -693,7 +693,7 @@ fn test_enable_claims_no_bootstrap_specified() {
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
 
-    let info = mock_info("sender", &[]);
+    let info = message_info("sender", &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(
@@ -730,7 +730,7 @@ fn test_enable_claims_no_bootstrap_specified() {
 //         native_denom: "uusd".to_string(),
 //     };
 
-//     let info = mock_info("owner", &[]);
+//     let info = message_info("owner", &[]);
 //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
 //     let msg = ExecuteMsg::EnableClaims {};
@@ -741,12 +741,12 @@ fn test_enable_claims_no_bootstrap_specified() {
 //         .time
 //         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
 
-//     let info = mock_info("not_bootstrap_contract", &[]);
+//     let info = message_info("not_bootstrap_contract", &[]);
 //     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
 
 //     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-//     let info = mock_info(MOCK_BOOTSTRAP_CONTRACT, &[]);
+//     let info = message_info(MOCK_BOOTSTRAP_CONTRACT, &[]);
 //     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
 //     assert_eq!(
@@ -779,7 +779,7 @@ fn test_enable_claims_phase_not_ended() {
     let mut env = mock_env();
     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW - 1);
 
-    let info = mock_info("sender", &[]);
+    let info = message_info("sender", &[]);
     let res = execute(deps.as_mut(), env, info, msg);
 
     assert_eq!(ContractError::PhaseOngoing {}, res.unwrap_err());
@@ -797,18 +797,18 @@ fn test_claim_rewards() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User1 deposits
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("user1", &coins(75, "uusd"));
+    let info = message_info("user1", &coins(75, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User2 deposits
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("user2", &coins(25, "uusd"));
+    let info = message_info("user2", &coins(25, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -831,12 +831,12 @@ fn test_claim_rewards() {
     // Enable claims
     let msg = ExecuteMsg::EnableClaims {};
 
-    let info = mock_info("sender", &[]);
+    let info = message_info("sender", &[]);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // User 1 claims rewards
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = mock_info("user1", &[]);
+    let info = message_info("user1", &[]);
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -874,7 +874,7 @@ fn test_claim_rewards() {
 
     // User 2 claims rewards
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = mock_info("user2", &[]);
+    let info = message_info("user2", &[]);
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -912,14 +912,14 @@ fn test_claim_rewards() {
 
     // User 3 tries to claim rewards
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = mock_info("user3", &[]);
+    let info = message_info("user3", &[]);
 
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::NoLockup {}, res.unwrap_err());
 
     // User 2 tries to claim again
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = mock_info("user2", &[]);
+    let info = message_info("user2", &[]);
 
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::LockdropAlreadyClaimed {}, res.unwrap_err());
@@ -937,12 +937,12 @@ fn test_claim_rewards_not_available() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = mock_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User1 deposits
     let msg = ExecuteMsg::DepositNative {};
-    let info = mock_info("user1", &coins(75, "uusd"));
+    let info = message_info("user1", &coins(75, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -1002,7 +1002,7 @@ fn test_query_withdrawable_percent() {
 //     let msg = ExecuteMsg::DepositToBootstrap {
 //         amount: Uint128::new(100),
 //     };
-//     let info = mock_info("owner", &[]);
+//     let info = message_info("owner", &[]);
 
 //     let mut env = mock_env();
 //     env.block.time = env

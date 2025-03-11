@@ -12,7 +12,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, from_json,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     Addr, DepsMut, MessageInfo, Response,
 };
 
@@ -36,7 +36,7 @@ fn init(deps: DepsMut, info: MessageInfo) {
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
 
     init(deps.as_mut(), info);
 }
@@ -44,7 +44,7 @@ fn test_instantiate() {
 // #[test]
 // fn test_instantiate_contract_permission() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     let info = mock_info("creator", &[]);
+//     let info = message_info("creator", &[]);
 
 //     let err = instantiate(
 //         deps.as_mut(),
@@ -74,7 +74,7 @@ fn test_add_remove_actor() {
     let env = mock_env();
 
     let operator = "creator";
-    let info = mock_info(operator, &[]);
+    let info = message_info(operator, &[]);
 
     let actor = Addr::unchecked("actor");
     let permission = LocalPermission::default();
@@ -99,7 +99,7 @@ fn test_add_remove_actor() {
     assert_eq!(new_permission, permission);
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let unauth_info = message_info("anyone", &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
@@ -126,7 +126,7 @@ fn test_add_remove_actor() {
     assert!(permission.is_none());
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let unauth_info = message_info("anyone", &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
@@ -145,7 +145,7 @@ fn test_add_remove_multiple_actors() {
     let env = mock_env();
 
     let operator = "creator";
-    let info = mock_info(operator, &[]);
+    let info = message_info(operator, &[]);
 
     let actors = vec![
         AndrAddr::from_string("actor1"),
@@ -185,7 +185,7 @@ fn test_add_remove_multiple_actors() {
     assert_eq!(new_permission, permission);
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let unauth_info = message_info("anyone", &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
@@ -224,7 +224,7 @@ fn test_add_remove_multiple_actors() {
     assert!(permission.is_none());
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let unauth_info = message_info("anyone", &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 

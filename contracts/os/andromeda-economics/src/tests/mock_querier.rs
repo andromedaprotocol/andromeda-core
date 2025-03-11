@@ -9,7 +9,7 @@ use andromeda_std::{
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    testing::{mock_env, message_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult, QueryRequest,
     SystemError, SystemResult, Uint128, WasmQuery,
 };
@@ -45,7 +45,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &deps.querier,
-            mock_info("sender", &[]),
+            message_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "vault".to_string(),
                 ado_version: "test".to_string(),

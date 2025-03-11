@@ -148,6 +148,7 @@ impl AMPMsg {
                 msg,
                 funds: self.funds.to_vec(),
             }),
+            payload: Binary::default(),
         })
     }
 
@@ -163,6 +164,7 @@ impl AMPMsg {
             reply_on: self.config.reply_on.clone(),
             gas_limit: self.config.gas_limit,
             msg: CosmosMsg::Wasm(message),
+            payload: Binary::default(),
         }
     }
 
@@ -275,7 +277,7 @@ impl AMPCtx {
     ) -> Option<String> {
         let origin = Addr::unchecked(self.get_origin());
         if let Ok(Some(username)) = AOSQuerier::get_username(querier, vfs_address, &origin) {
-            if username != origin {
+            if username != origin.as_str() {
                 self.add_username(AndrAddr::from_string(username.clone()));
                 return Some(username);
             }
@@ -393,7 +395,8 @@ impl AMPPkt {
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
 
-        if (info.sender == self.ctx.origin && info.sender == self.ctx.previous_sender)
+        if (info.sender == deps.api.addr_validate(&self.ctx.origin)?
+            && info.sender == deps.api.addr_validate(&self.ctx.previous_sender)?)
             || info.sender == kernel_address
         {
             Ok(())
@@ -524,7 +527,7 @@ impl AMPPkt {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies};
 
     use crate::testing::mock_querier::{mock_dependencies_custom, INVALID_CONTRACT};
 
@@ -605,11 +608,13 @@ mod tests {
 
         let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
 
-        let info = mock_info("validaddress", &[]);
+        let valid_address = deps.api.addr_make("validaddress");
+        let info = message_info(&valid_address, &[]);
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_ok());
 
-        let info = mock_info(INVALID_CONTRACT, &[]);
+        let invalid_address = deps.api.addr_make(INVALID_CONTRACT);
+        let info = message_info(&invalid_address, &[]);
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_err());
 

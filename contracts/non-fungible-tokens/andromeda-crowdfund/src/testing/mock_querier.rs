@@ -10,7 +10,7 @@ use andromeda_std::{
     testing::mock_querier::{WasmMockQuerier, MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage},
     Coin, OwnedDeps, QuerierWrapper, Uint128, Uint64,
 };
 
@@ -98,7 +98,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),

@@ -7,7 +7,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{mock_env, message_info, MockApi, MockStorage},
     Addr, BlockInfo, Deps, DepsMut, Env, MessageInfo, OwnedDeps, Response, Timestamp,
 };
 use cw_utils::Expiration;
@@ -22,7 +22,7 @@ pub fn proper_initialization(
     time_interval: Option<u64>,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -47,7 +47,7 @@ pub fn update_cycle_start_time(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateCycleStartTime { cycle_start_time };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     let mut env = mock_env();
     env.block = BlockInfo {
         height: 100,
@@ -65,7 +65,7 @@ pub fn update_gate_addresses(
     let msg = ExecuteMsg::UpdateGateAddresses {
         new_gate_addresses: gate_addresses,
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -75,7 +75,7 @@ pub fn update_time_interval(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateTimeInterval { time_interval };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 

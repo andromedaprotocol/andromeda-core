@@ -6,7 +6,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{mock_env, message_info, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 
@@ -18,7 +18,7 @@ pub fn proper_initialization(
     authorized_operator_addresses: Option<Vec<AndrAddr>>,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let info = message_info("creator", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -39,7 +39,7 @@ pub fn store_matrix(
         key: key.clone(),
         data: data.clone(),
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -49,7 +49,7 @@ pub fn delete_matrix(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::DeleteMatrix { key: key.clone() };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 

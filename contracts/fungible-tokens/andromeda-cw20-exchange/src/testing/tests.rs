@@ -13,7 +13,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Empty, Response, SubMsg,
     Timestamp, Uint128,
 };
@@ -29,7 +29,7 @@ use crate::{
 };
 
 fn init(deps: DepsMut) -> Result<Response, ContractError> {
-    let info = mock_info("owner", &[]);
+    let info = message_info("owner", &[]);
 
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -55,7 +55,7 @@ pub fn test_start_sale_invalid_token() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
     let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let info = message_info(owner.as_str(), &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
     init(deps.as_mut()).unwrap();
@@ -91,7 +91,7 @@ pub fn test_start_sale_unauthorised() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
     let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let info = message_info(owner.as_str(), &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
     init(deps.as_mut()).unwrap();
@@ -120,7 +120,7 @@ pub fn test_start_sale_zero_amount() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let info = message_info(owner.as_str(), &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
     init(deps.as_mut()).unwrap();
@@ -155,8 +155,8 @@ pub fn test_start_sale() {
 
     let owner = Addr::unchecked("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    //     let info = message_info(owner.as_str(), &[]);
+    let token_info = message_info(MOCK_TOKEN_ADDRESS, &[]);
 
     init(deps.as_mut()).unwrap();
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
@@ -202,8 +202,8 @@ pub fn test_start_sale_no_start_no_duration() {
 
     let owner = Addr::unchecked("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    //     let info = message_info(owner.as_str(), &[]);
+    let token_info = message_info(MOCK_TOKEN_ADDRESS, &[]);
 
     init(deps.as_mut()).unwrap();
     let exchange_rate = Uint128::from(10u128);
@@ -248,7 +248,7 @@ pub fn test_start_sale_invalid_start_time() {
 
     let owner = Addr::unchecked("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    let token_info = message_info(MOCK_TOKEN_ADDRESS, &[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -285,8 +285,8 @@ pub fn test_start_sale_ongoing() {
 
     let owner = Addr::unchecked("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    //     let info = message_info(owner.as_str(), &[]);
+    let token_info = message_info(MOCK_TOKEN_ADDRESS, &[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -320,7 +320,7 @@ pub fn test_start_sale_zero_exchange_rate() {
 
     let owner = Addr::unchecked("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    let token_info = message_info(MOCK_TOKEN_ADDRESS, &[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -350,8 +350,8 @@ pub fn test_purchase_no_sale() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
     let purchaser = Addr::unchecked("purchaser");
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info("invalid_token", &[]);
+    //     let info = message_info(owner.as_str(), &[]);
+    let token_info = message_info("invalid_token", &[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -397,7 +397,7 @@ pub fn test_purchase_not_enough_sent() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info("exchanged_asset", &[]);
     let purchase_amount = Uint128::from(1u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -444,7 +444,7 @@ pub fn test_purchase_no_tokens_left() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info("exchanged_asset", &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -487,7 +487,7 @@ pub fn test_purchase_not_enough_tokens() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info("exchanged_asset", &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -531,7 +531,7 @@ pub fn test_purchase() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info("exchanged_asset", &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -617,7 +617,7 @@ pub fn test_purchase_with_start_and_duration() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info("exchanged_asset", &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -701,7 +701,7 @@ pub fn test_purchase_sale_not_started() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info("exchanged_asset", &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -744,7 +744,7 @@ pub fn test_purchase_sale_duration_ended() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info("exchanged_asset", &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -768,7 +768,7 @@ pub fn test_purchase_no_sale_native() {
     // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let info = message_info("purchaser", &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -803,7 +803,7 @@ pub fn test_purchase_not_enough_sent_native() {
     // Purchase Tokens
     let purchase_amount = coins(1, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let info = message_info("purchaser", &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -843,7 +843,7 @@ pub fn test_purchase_no_tokens_left_native() {
     // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let info = message_info("purchaser", &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -856,7 +856,7 @@ pub fn test_purchase_not_enough_tokens_native() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = Addr::unchecked("owner");
-    //     let info = mock_info(owner.as_str(), &[]);
+    //     let info = message_info(owner.as_str(), &[]);
 
     init(deps.as_mut()).unwrap();
 
@@ -879,7 +879,7 @@ pub fn test_purchase_not_enough_tokens_native() {
     // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let info = message_info("purchaser", &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -917,7 +917,7 @@ pub fn test_purchase_native() {
     // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let info = message_info("purchaser", &purchase_amount);
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -995,7 +995,7 @@ pub fn test_purchase_refund() {
     // Purchase Tokens
     let purchase_amount = coins(105, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let info = message_info("purchaser", &purchase_amount);
 
     let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
     let refund_attribute = res.attributes.first().unwrap();
@@ -1020,7 +1020,7 @@ pub fn test_cancel_sale_unauthorised() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = Addr::unchecked("owner");
-    //     let info = mock_info(owner.as_str(), &[]);
+    //     let info = message_info(owner.as_str(), &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
     init(deps.as_mut()).unwrap();
@@ -1045,7 +1045,7 @@ pub fn test_cancel_sale_unauthorised() {
     let msg = ExecuteMsg::CancelSale {
         asset: exchange_asset,
     };
-    let unauthorised_info = mock_info("anyone", &[]);
+    let unauthorised_info = message_info("anyone", &[]);
 
     let err = execute(deps.as_mut(), env, unauthorised_info, msg).unwrap_err();
 
@@ -1058,7 +1058,7 @@ pub fn test_cancel_sale_no_sale() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let info = message_info(owner.as_str(), &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
     init(deps.as_mut()).unwrap();
@@ -1078,7 +1078,7 @@ pub fn test_cancel_sale() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let info = message_info(owner.as_str(), &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
     init(deps.as_mut()).unwrap();
@@ -1243,7 +1243,7 @@ fn test_purchase_native_invalid_coins() {
     let purchaser = Addr::unchecked("purchaser");
     let msg = ExecuteMsg::Purchase { recipient: None };
 
-    let empty_coin_info = mock_info(purchaser.as_str(), &coins(0u128, "test"));
+    let empty_coin_info = message_info(purchaser.as_str(), &coins(0u128, "test"));
     let err = execute(deps.as_mut(), env.clone(), empty_coin_info, msg.clone()).unwrap_err();
 
     assert_eq!(
@@ -1251,7 +1251,7 @@ fn test_purchase_native_invalid_coins() {
         ContractError::Payment(cw_utils::PaymentError::NoFunds {})
     );
 
-    let two_coin_info = mock_info(
+    let two_coin_info = message_info(
         purchaser.as_str(),
         &[coin(100u128, "test"), coin(10u128, "testtwo")],
     );
@@ -1262,7 +1262,7 @@ fn test_purchase_native_invalid_coins() {
         ContractError::Payment(cw_utils::PaymentError::MultipleDenoms {})
     );
 
-    let no_coin_info = mock_info(purchaser.as_str(), &[]);
+    let no_coin_info = message_info(purchaser.as_str(), &[]);
     let err = execute(deps.as_mut(), env, no_coin_info, msg).unwrap_err();
 
     assert_eq!(
@@ -1323,7 +1323,7 @@ fn test_query_sale_assets() {
 #[test]
 fn test_start_sale_same_asset() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_info = mock_info("cw20", &[]);
+    let token_info = message_info("cw20", &[]);
 
     init(deps.as_mut()).unwrap();
 

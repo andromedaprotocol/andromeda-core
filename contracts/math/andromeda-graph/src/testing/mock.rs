@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{mock_env, message_info, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 
@@ -19,7 +19,7 @@ pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(map_info: MapInfo) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("sender", &[]);
+    let info = message_info("sender", &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -36,7 +36,7 @@ pub fn update_map(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateMap { map_info };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -50,7 +50,7 @@ pub fn store_coordinate(
         coordinate,
         is_timestamp_allowed,
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -62,7 +62,7 @@ pub fn store_user_coordinate(
     let msg = ExecuteMsg::StoreUserCoordinate {
         user_location_paths,
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -72,7 +72,7 @@ pub fn delete_user_coordinate(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::DeleteUserCoordinate { user };
-    let info = mock_info(sender, &[]);
+    let info = message_info(sender, &[]);
     execute(deps, mock_env(), info, msg)
 }
 

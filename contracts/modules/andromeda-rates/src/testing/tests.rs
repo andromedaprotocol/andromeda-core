@@ -11,7 +11,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, coins,
-    testing::{mock_env, mock_info},
+    testing::{mock_env, message_info},
     BankMsg, CosmosMsg, Event, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -21,7 +21,7 @@ fn test_instantiate_query() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let owner = "owner";
-    let info = mock_info(owner, &[]);
+    let info = message_info(owner, &[]);
     let action = "deposit".to_string();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
@@ -57,7 +57,7 @@ fn test_andr_receive() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let owner = "owner";
-    let info = mock_info(owner, &[]);
+    let info = message_info(owner, &[]);
     let action: String = "deposit".to_string();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
@@ -90,7 +90,7 @@ fn test_andr_receive() {
 fn test_query_deducted_funds_native() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = mock_info(MOCK_OWNER, &[coin(1000, "uusd")]);
+    let info = message_info(MOCK_OWNER, &[coin(1000, "uusd")]);
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();
     let rate = LocalRate {
@@ -145,7 +145,7 @@ fn test_query_deducted_funds_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let owner = "owner";
-    let info = mock_info(owner, &[]);
+    let info = message_info(owner, &[]);
 
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();

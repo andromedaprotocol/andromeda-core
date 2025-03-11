@@ -6,7 +6,7 @@ pub use andromeda_std::testing::mock_querier::{MOCK_APP_CONTRACT, MOCK_KERNEL_CO
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coin, from_json,
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     to_json_binary, BankQuery, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
     QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
@@ -41,7 +41,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info("sender", &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),
