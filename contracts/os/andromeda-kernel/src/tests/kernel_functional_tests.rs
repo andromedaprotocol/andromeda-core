@@ -33,7 +33,8 @@ use rstest::*;
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         owner: None,
         chain_name: "test".to_string(),
@@ -47,7 +48,8 @@ fn proper_initialization() {
 #[test]
 fn test_update_chain_name() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -83,7 +85,8 @@ fn test_update_chain_name() {
 #[test]
 fn test_create_ado() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -121,7 +124,8 @@ fn test_create_ado() {
 #[test]
 fn test_register_user_cross_chain() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     let chain = "chain";
     instantiate(
@@ -182,7 +186,8 @@ fn test_register_user_cross_chain() {
 #[test]
 fn test_assign_channels() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     let chain = "chain";
     instantiate(
@@ -276,7 +281,8 @@ fn test_assign_channels() {
 #[test]
 fn test_assign_channels_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     let chain = "chain";
     instantiate(

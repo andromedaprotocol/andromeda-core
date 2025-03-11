@@ -117,7 +117,8 @@ fn test_instantiate() {
         cosmwasm_std::testing::MockQuerier,
     > = mock_dependencies();
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         recipients: vec![AddressWeight {
             recipient: Recipient::from_string(MOCK_RECIPIENT1.to_string()),

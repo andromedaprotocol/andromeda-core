@@ -36,7 +36,8 @@ fn init(deps: DepsMut, info: MessageInfo) {
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
     init(deps.as_mut(), info);
 }
@@ -44,7 +45,8 @@ fn test_instantiate() {
 // #[test]
 // fn test_instantiate_contract_permission() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     let info = message_info("creator", &[]);
+//     let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
 //     let err = instantiate(
 //         deps.as_mut(),

@@ -201,7 +201,8 @@ fn test_sale_instantiate() {
 fn test_instantiate_with_multiple_authorized_cw20_addresses() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
     let authorized_cw20_addresses = vec![
         AndrAddr::from_string("cw20_contract_1"),

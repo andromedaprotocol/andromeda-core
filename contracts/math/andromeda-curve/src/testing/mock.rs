@@ -22,7 +22,8 @@ pub fn proper_initialization(
     authorized_operator_addresses: Option<Vec<AndrAddr>>,
 ) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -40,7 +41,8 @@ pub fn error_initialization(
     authorized_operator_addresses: Option<Vec<AndrAddr>>,
 ) -> ContractError {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

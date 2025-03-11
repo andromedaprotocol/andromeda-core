@@ -25,7 +25,8 @@ pub fn valid_initialization(
     timestamp_nanos: u64,
 ) -> (MockDeps, MessageInfo, Response) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -49,7 +50,8 @@ pub fn invalid_initialization(
     timestamp_nanos: u64,
 ) -> (MockDeps, MessageInfo, ContractError) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

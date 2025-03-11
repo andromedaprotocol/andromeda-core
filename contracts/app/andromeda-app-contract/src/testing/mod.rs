@@ -24,7 +24,8 @@ fn test_empty_instantiation() {
         owner: None,
         chain_info: None,
     };
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -48,7 +49,8 @@ fn test_empty_instantiation() {
 //         owner: None,
 //         chain_info: None,
 //     };
-//     let info = message_info("creator", &[]);
+//     let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
 //     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 //     assert_eq!(3, res.messages.len());
@@ -130,7 +132,8 @@ fn test_empty_instantiation() {
 //         owner: None,
 //         chain_info: None,
 //     };
-//     let info = message_info("creator", &[]);
+//     let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
 //     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
 //     assert_eq!(ContractError::NameAlreadyTaken {}, res.unwrap_err());
@@ -140,7 +143,8 @@ fn test_empty_instantiation() {
 fn test_add_app_component_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -168,7 +172,8 @@ fn test_add_app_component_unauthorized() {
 // fn test_add_app_component_duplicate_name() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = message_info("creator", &[]);
+//     let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 //     let inst_msg = InstantiateMsg {
 //         app_components: vec![AppComponent {
 //             name: "token".to_string(),
@@ -206,7 +211,8 @@ fn test_add_app_component_unauthorized() {
 // fn test_add_app_component() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = message_info("creator", &[]);
+//     let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 //     let inst_msg = InstantiateMsg {
 //         app_components: vec![],
 //         name: String::from("Some App"),
@@ -259,7 +265,8 @@ fn test_add_app_component_unauthorized() {
 fn test_claim_ownership_unauth() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -284,7 +291,8 @@ fn test_claim_ownership_unauth() {
 fn test_claim_ownership_not_found() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -308,7 +316,8 @@ fn test_claim_ownership_not_found() {
 fn test_claim_ownership_empty() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -332,7 +341,8 @@ fn test_claim_ownership_empty() {
 fn test_claim_ownership_all() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -370,7 +380,8 @@ fn test_claim_ownership_all() {
 fn test_claim_ownership() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -428,7 +439,8 @@ fn test_claim_ownership() {
 fn test_proxy_message_unauth() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -453,7 +465,8 @@ fn test_proxy_message_unauth() {
 fn test_proxy_message_not_found() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -478,7 +491,8 @@ fn test_proxy_message_not_found() {
 fn test_proxy_message() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -526,7 +540,8 @@ fn test_proxy_message() {
 fn test_update_address_unauth() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -558,7 +573,8 @@ fn test_update_address_unauth() {
 fn test_update_address_not_found() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -585,7 +601,8 @@ fn test_update_address_not_found() {
 fn test_update_address() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -618,7 +635,8 @@ fn test_update_address() {
 fn test_add_app_component_limit() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
     let msg = InstantiateMsg {
         app_components: vec![],

@@ -50,7 +50,8 @@ fn test_instantiate_works() {
 #[test]
 fn test_deposit_zero_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let _res = init(deps.as_mut());
 
     let exec = ExecuteMsg::Deposit { recipient: None };
@@ -205,7 +206,8 @@ fn test_withdraw_funds_locked() {
 fn test_withdraw_over_allowed_limit() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         allowed_coin: CoinAndLimit {
             coin: "junox".to_string(),
@@ -241,7 +243,8 @@ fn test_withdraw_over_allowed_limit() {
 fn test_withdraw_works(#[case] recipient: Option<Recipient>, #[case] expected_recipient: &str) {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         allowed_coin: CoinAndLimit {
             coin: "junox".to_string(),
