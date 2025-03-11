@@ -1,7 +1,7 @@
 use andromeda_std::{amp::AndrAddr, andr_exec, andr_instantiate, andr_query, error::ContractError};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, Api, Binary, Coin, Decimal, StdError, Uint128};
-use std::fmt;
+use std::{backtrace::Backtrace, fmt};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -112,6 +112,7 @@ fn parse_error(type_name: String) -> StdError {
     StdError::ParseErr {
         target_type: type_name.clone(),
         msg: format!("Primitive is not a {type_name}"),
+        backtrace: Backtrace::capture(),
     }
 }
 

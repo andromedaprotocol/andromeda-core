@@ -154,7 +154,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-storage-plus 2.0.0",
@@ -315,7 +315,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-storage-plus 2.0.0",
@@ -333,7 +333,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-storage-plus 2.0.0",
@@ -551,7 +551,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-controllers 1.1.2",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
@@ -624,7 +624,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-storage-plus 2.0.0",
@@ -693,7 +693,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-storage-plus 2.0.0",
@@ -858,7 +858,7 @@ dependencies = [
  "andromeda-macros",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 3.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-storage-plus 2.0.0",
@@ -1008,7 +1008,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-storage-plus 2.0.0",
@@ -1917,34 +1917,11 @@ dependencies = [
 
 [[package]]
 name = "cw-address-like"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "451a4691083a88a3c0630a8a88799e9d4cd6679b7ce8ff22b8da2873ff31d380"
-dependencies = [
- "cosmwasm-std 1.5.10",
-]
-
-[[package]]
-name = "cw-address-like"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73553ee4dad5b1678977ff603e72c3fdd41518ca2b0bd9b245b21e4c72eafa9e"
 dependencies = [
  "cosmwasm-std 2.2.2",
-]
-
-[[package]]
-name = "cw-asset"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64e2cf17accdcafe71859a683b6ed3f18311634a769550aacf4829b50151b221"
-dependencies = [
- "cosmwasm-schema 1.5.10",
- "cosmwasm-std 1.5.10",
- "cw-address-like 1.0.4",
- "cw-storage-plus 1.2.0",
- "cw20 1.1.2",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1955,7 +1932,7 @@ checksum = "7eaa5ed63f1d767d92c7bada3b883aa6ec90ff09e3f5bf72ff4514dcbeb9c4f2"
 dependencies = [
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-address-like 2.0.0",
+ "cw-address-like",
  "cw-storage-plus 2.0.0",
  "cw20 2.0.0",
  "thiserror 1.0.69",
@@ -2329,7 +2306,7 @@ checksum = "ed2f8ee96ac5342c795a0610410998fc075a95af8c796b6d16479cdffd2471f1"
 dependencies = [
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-address-like 2.0.0",
+ "cw-address-like",
  "cw-ownable-derive",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
@@ -5731,7 +5708,7 @@ dependencies = [
  "andromeda-vfs",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test 2.3.2",
  "cw-orch 0.27.0",
  "cw-orch-interchain",

@@ -4,7 +4,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, CustomMsg};
 use cw721::Expiration;
 
-use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
+use cw721_base::{msg::ExecuteMsg as Cw721ExecuteMsg, msg::QueryMsg as Cw721QueryMsg};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -128,7 +128,7 @@ pub struct BatchSendMsg {
     pub contract_addr: AndrAddr,
     pub msg: Binary,
 }
-impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
+impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
     type Error = String;
 
     fn try_from(msg: ExecuteMsg) -> Result<Self, Self::Error> {
@@ -171,10 +171,10 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 token_uri,
                 owner,
             } => Ok(Cw721ExecuteMsg::Mint {
-                extension,
                 token_id,
                 token_uri,
                 owner,
+                extension,
             }),
             ExecuteMsg::Burn { token_id } => Ok(Cw721ExecuteMsg::Burn { token_id }),
             _ => Err("Unsupported message".to_string()),
@@ -187,13 +187,13 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Owner of the given token by ID
-    #[returns(cw721::OwnerOfResponse)]
+    #[returns(cw721::msg::OwnerOfResponse)]
     OwnerOf {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
-    #[returns(cw721::OperatorsResponse)]
+    #[returns(cw721::msg::OperatorsResponse)]
     AllOperators {
         owner: String,
         include_expired: Option<bool>,
@@ -201,26 +201,26 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Amount of tokens minted by the contract
-    #[returns(cw721::NumTokensResponse)]
+    #[returns(cw721::msg::NumTokensResponse)]
     NumTokens {},
     /// The data of a token
-    #[returns(cw721::NftInfoResponse<TokenExtension>)]
+    #[returns(cw721::msg::NftInfoResponse<TokenExtension>)]
     NftInfo { token_id: String },
     /// The data of a token and any approvals assigned to it
-    #[returns(cw721::AllNftInfoResponse<TokenExtension>)]
+    #[returns(cw721::msg::AllNftInfoResponse<TokenExtension>)]
     AllNftInfo {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// All tokens minted by the contract owned by a given address (paginated)
-    #[returns(cw721::TokensResponse)]
+    #[returns(cw721::msg::TokensResponse)]
     Tokens {
         owner: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// All tokens minted by the contract (paginated)
-    #[returns(cw721::TokensResponse)]
+    #[returns(cw721::msg::TokensResponse)]
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -232,11 +232,11 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(cw721::ContractInfoResponse)]
+    #[returns(cw721::msg::CollectionInfoAndExtensionResponse<cw721::DefaultOptionalCollectionExtension>)]
     ContractInfo {},
-    #[returns(cw721_base::MinterResponse)]
+    #[returns(cw721::msg::MinterResponse)]
     Minter {},
-    #[returns(cw721::ApprovalResponse)]
+    #[returns(cw721::msg::ApprovalResponse)]
     Approval {
         token_id: String,
         spender: String,
@@ -244,7 +244,7 @@ pub enum QueryMsg {
     },
     /// Return approvals that a token has
     /// Return type: `ApprovalsResponse`
-    #[returns(cw721::ApprovalsResponse)]
+    #[returns(cw721::msg::ApprovalsResponse)]
     Approvals {
         token_id: String,
         include_expired: Option<bool>,
@@ -255,7 +255,7 @@ pub struct IsArchivedResponse {
     pub is_archived: bool,
 }
 
-impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
+impl From<QueryMsg> for Cw721QueryMsg {
     fn from(msg: QueryMsg) -> Self {
         match msg {
             QueryMsg::OwnerOf {
