@@ -9,8 +9,8 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr,
-    testing::{mock_dependencies, mock_env, message_info},
-    BankMsg, Coin, CosmosMsg, DepsMut, QuerierWrapper, Response, SubMsg, Uint128,
+    testing::{message_info, mock_dependencies, mock_env},
+    Addr, BankMsg, Coin, CosmosMsg, DepsMut, QuerierWrapper, Response, SubMsg, Uint128,
 };
 
 use crate::{
@@ -27,6 +27,7 @@ fn init(deps: DepsMut) -> Response {
         recipient: Recipient::from_string(String::from("some_address")),
         weight: Uint128::new(100),
     }];
+    let owner = Addr::unchecked("owner");
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -35,14 +36,14 @@ fn init(deps: DepsMut) -> Response {
         default_recipient: None,
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&owner, &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 #[test]
 fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-
-    let info = message_info("owner", &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let msg = InstantiateMsg {
         recipients: vec![
             AddressWeight {
@@ -143,7 +144,7 @@ fn test_execute_update_lock() {
     // 2 days in milliseconds
     let lock_time = Milliseconds(172800000);
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
@@ -163,7 +164,7 @@ fn test_execute_update_lock() {
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -174,7 +175,7 @@ fn test_execute_update_lock() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let new_lock = lock_time
@@ -201,7 +202,7 @@ fn test_execute_update_lock_too_short() {
     let current_time = env.block.time.seconds();
     let lock_time = Milliseconds(1);
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
@@ -221,7 +222,7 @@ fn test_execute_update_lock_too_short() {
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -232,7 +233,7 @@ fn test_execute_update_lock_too_short() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(ContractError::LockTimeTooShort {}, res);
 }
@@ -246,7 +247,7 @@ fn test_execute_update_lock_too_long() {
     // 25 months
     let lock_time = Milliseconds(65_743_650_000);
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     // Start off with an expiration that's behind current time (expired)
     let splitter = Splitter {
@@ -267,7 +268,7 @@ fn test_execute_update_lock_too_long() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -278,7 +279,7 @@ fn test_execute_update_lock_too_long() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(ContractError::LockTimeTooLong {}, res);
 }
@@ -292,7 +293,7 @@ fn test_execute_update_lock_already_locked() {
 
     let lock_time = Milliseconds(172800000);
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     // Start off with an expiration that's ahead current time (unexpired)
     let splitter = Splitter {
@@ -313,7 +314,7 @@ fn test_execute_update_lock_already_locked() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -324,7 +325,7 @@ fn test_execute_update_lock_already_locked() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(ContractError::ContractLocked { msg: None }, res);
 }
@@ -337,7 +338,7 @@ fn test_execute_update_lock_unauthorized() {
     let current_time = env.block.time.seconds();
     let lock_time = Milliseconds(100_000);
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
     let new_lock = Milliseconds(current_time - 1);
 
     let splitter = Splitter {
@@ -358,7 +359,7 @@ fn test_execute_update_lock_unauthorized() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -369,7 +370,8 @@ fn test_execute_update_lock_unauthorized() {
         )
         .unwrap();
 
-    let info = message_info("incorrect_owner", &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -379,7 +381,7 @@ fn test_execute_remove_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -403,7 +405,7 @@ fn test_execute_remove_recipient() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -414,7 +416,7 @@ fn test_execute_remove_recipient() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -473,7 +475,7 @@ fn test_execute_remove_recipient_not_on_list() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -497,7 +499,7 @@ fn test_execute_remove_recipient_not_on_list() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -508,7 +510,7 @@ fn test_execute_remove_recipient_not_on_list() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -537,7 +539,7 @@ fn test_execute_remove_recipient_contract_locked() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -561,7 +563,7 @@ fn test_execute_remove_recipient_contract_locked() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -572,7 +574,7 @@ fn test_execute_remove_recipient_contract_locked() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -608,7 +610,7 @@ fn test_execute_remove_recipient_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -635,7 +637,7 @@ fn test_execute_remove_recipient_unauthorized() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -646,7 +648,8 @@ fn test_execute_remove_recipient_unauthorized() {
         )
         .unwrap();
 
-    let info = message_info("incorrect_owner", &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -655,7 +658,7 @@ fn test_execute_remove_recipient_unauthorized() {
 fn test_update_recipient_weight() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -682,7 +685,7 @@ fn test_update_recipient_weight() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -693,11 +696,12 @@ fn test_update_recipient_weight() {
         )
         .unwrap();
 
-    let info = message_info("incorrect_owner", &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -757,7 +761,8 @@ fn test_update_recipient_weight() {
 fn test_update_recipient_weight_locked_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let owner = "creator";
+
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -781,7 +786,7 @@ fn test_update_recipient_weight_locked_contract() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -792,7 +797,7 @@ fn test_update_recipient_weight_locked_contract() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -830,7 +835,7 @@ fn test_update_recipient_weight_locked_contract() {
 fn test_update_recipient_weight_user_not_found() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -857,7 +862,7 @@ fn test_update_recipient_weight_user_not_found() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -868,11 +873,12 @@ fn test_update_recipient_weight_user_not_found() {
         )
         .unwrap();
 
-    let info = message_info("incorrect_owner", &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -903,7 +909,7 @@ fn test_update_recipient_weight_user_not_found() {
 fn test_update_recipient_weight_invalid_weight() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -930,7 +936,7 @@ fn test_update_recipient_weight_invalid_weight() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -941,11 +947,12 @@ fn test_update_recipient_weight_invalid_weight() {
         )
         .unwrap();
 
-    let info = message_info("incorrect_owner", &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -975,7 +982,7 @@ fn test_execute_add_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -999,7 +1006,7 @@ fn test_execute_add_recipient() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1010,7 +1017,7 @@ fn test_execute_add_recipient() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -1082,7 +1089,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -1106,7 +1113,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1117,7 +1124,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -1161,7 +1168,7 @@ fn test_execute_add_recipient_invalid_weight() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -1185,7 +1192,7 @@ fn test_execute_add_recipient_invalid_weight() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1196,7 +1203,7 @@ fn test_execute_add_recipient_invalid_weight() {
         )
         .unwrap();
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
@@ -1229,7 +1236,7 @@ fn test_execute_add_recipient_locked_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -1256,7 +1263,7 @@ fn test_execute_add_recipient_locked_contract() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1266,7 +1273,7 @@ fn test_execute_add_recipient_locked_contract() {
             },
         )
         .unwrap();
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let current_time = env.block.time.seconds();
     let splitter = Splitter {
         recipients: recipient,
@@ -1287,7 +1294,7 @@ fn test_execute_add_recipient_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -1314,7 +1321,7 @@ fn test_execute_add_recipient_unauthorized() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1324,7 +1331,8 @@ fn test_execute_add_recipient_unauthorized() {
             },
         )
         .unwrap();
-    let info = message_info("incorrect_owner", &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -1334,7 +1342,7 @@ fn test_execute_update_recipients() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let splitter = Splitter {
         recipients: vec![],
@@ -1351,7 +1359,7 @@ fn test_execute_update_recipients() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1375,7 +1383,7 @@ fn test_execute_update_recipients() {
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipient.clone(),
     };
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::default().add_attributes(vec![attr("action", "update_recipients")]),
@@ -1392,7 +1400,7 @@ fn test_execute_update_recipients_invalid_weight() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -1423,7 +1431,7 @@ fn test_execute_update_recipients_invalid_weight() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1436,7 +1444,7 @@ fn test_execute_update_recipients_invalid_weight() {
 
     // Invalid weight
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(res, ContractError::InvalidWeight {});
 }
@@ -1446,7 +1454,7 @@ fn test_execute_update_recipients_contract_locked() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -1479,7 +1487,7 @@ fn test_execute_update_recipients_contract_locked() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1492,7 +1500,7 @@ fn test_execute_update_recipients_contract_locked() {
 
     // Invalid weight
 
-    let info = message_info(owner, &[]);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(res, ContractError::ContractLocked { msg: None });
 }
@@ -1502,7 +1510,7 @@ fn test_execute_update_recipients_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let owner = "creator";
+    let owner = deps.api.addr_make("owner");
 
     let recipient = vec![
         AddressWeight {
@@ -1533,7 +1541,7 @@ fn test_execute_update_recipients_unauthorized() {
             mock_env(),
             deps_mut.api,
             &deps_mut.querier,
-            message_info(owner, &[]),
+            message_info(&owner, &[]),
             BaseInstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: CONTRACT_VERSION.to_string(),
@@ -1546,7 +1554,8 @@ fn test_execute_update_recipients_unauthorized() {
 
     // Unauthorized
 
-    let info = message_info("incorrect_owner", &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 }
@@ -1559,7 +1568,8 @@ fn test_execute_send() {
 
     let sender_funds_amount = 10000u128;
 
-    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[Coin::new(sender_funds_amount, "uluna")]);
 
     let recip_address1 = "address1".to_string();
     let recip_weight1 = 10; // 10%
@@ -1607,21 +1617,21 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: recip_address1.clone(),
-                    amount: vec![Coin::new(3333, "uluna")],
+                    amount: vec![Coin::new(3333_u128, "uluna")],
                 }),
             ),
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: recip_address2.clone(),
-                    amount: vec![Coin::new(6666, "uluna")],
+                    amount: vec![Coin::new(6666_u128, "uluna")],
                 }),
             ),
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(1, "uluna")],
+                    amount: vec![Coin::new(1_u128, "uluna")],
                 }),
             ),
         ])
@@ -1641,7 +1651,7 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: recip_address3,
-                    amount: vec![Coin::new(10000, "uluna")],
+                    amount: vec![Coin::new(10000_u128, "uluna")],
                 }),
             ),
             // amp_msg,
@@ -1677,7 +1687,8 @@ fn locked_splitter() -> (DepsMut<'static>, Splitter) {
         default_recipient: None,
     };
 
-    let info = message_info("owner", &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -1706,7 +1717,8 @@ fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
         default_recipient: None,
     };
 
-    let info = message_info("owner", &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -1726,7 +1738,7 @@ fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
         config: Some(config),
     };
 
-    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg);
 
     assert_eq!(
@@ -1750,7 +1762,7 @@ fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter
         config: Some(config),
     };
 
-    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund
@@ -1764,7 +1776,7 @@ fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages
@@ -1778,7 +1790,7 @@ fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Split
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = message_info("owner", &[Coin::new(10000, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages
