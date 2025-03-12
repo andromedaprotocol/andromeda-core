@@ -5,7 +5,6 @@ use andromeda_std::{
     ado_base::InstantiateMsg, ado_contract::ADOContract,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
-use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
     testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -13,6 +12,7 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{to_json_binary, Binary, ContractResult};
+use cosmwasm_std::{Addr, QuerierWrapper};
 
 pub const MOCK_POINT_CONTRACT: &str = "point_contract";
 
@@ -108,8 +108,8 @@ impl WasmMockQuerier {
     }
 
     fn handle_point_contract_info_query(&self) -> QuerierResult {
-        let mut msg_response = ContractInfoResponse::default();
-        msg_response.code_id = 5;
+        let msg_response =
+            ContractInfoResponse::new(5, Addr::unchecked("creator"), None, false, None);
         SystemResult::Ok(ContractResult::Ok(to_json_binary(&msg_response).unwrap()))
     }
 

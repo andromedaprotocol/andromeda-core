@@ -10,7 +10,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     from_json,
     testing::{message_info, mock_env, MockApi, MockStorage},
-    Deps, DepsMut, MessageInfo, OwnedDeps, Response,
+    Addr, Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 
 use crate::contract::{execute, instantiate, query};
@@ -60,13 +60,13 @@ pub fn update_curve_config(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateCurveConfig { curve_config };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
 pub fn reset(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Reset {};
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 

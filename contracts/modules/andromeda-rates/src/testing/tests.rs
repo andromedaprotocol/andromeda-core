@@ -21,7 +21,8 @@ fn test_instantiate_query() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let owner = "owner";
-    let info = message_info(owner, &[]);
+    let owner = deps.api.addr_make(owner);
+    let info = message_info(&owner, &[]);
     let action = "deposit".to_string();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
@@ -56,8 +57,8 @@ fn test_instantiate_query() {
 fn test_andr_receive() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let owner = "owner";
-    let info = message_info(owner, &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let action: String = "deposit".to_string();
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
@@ -90,7 +91,8 @@ fn test_andr_receive() {
 fn test_query_deducted_funds_native() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info(MOCK_OWNER, &[coin(1000, "uusd")]);
+    let mock_owner = deps.api.addr_make(MOCK_OWNER);
+    let info = message_info(&mock_owner, &[coin(1000, "uusd")]);
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();
     let rate = LocalRate {
@@ -144,8 +146,8 @@ fn test_query_deducted_funds_native() {
 fn test_query_deducted_funds_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let owner = "owner";
-    let info = message_info(owner, &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();

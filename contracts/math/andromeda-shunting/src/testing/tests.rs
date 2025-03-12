@@ -11,8 +11,8 @@ use cosmwasm_std::{
 fn test_instantiate_query() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let owner = "owner";
-    let info = message_info(owner, &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let expressions = vec![
         "cos({x0})".to_string(),
         "sin({x0})".to_string(),

@@ -7,6 +7,7 @@ use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier, MOCK_KERNEL_CONTRACT},
 };
+use cosmwasm_std::Addr;
 use cosmwasm_std::{
     from_json,
     testing::{message_info, mock_env, MockApi, MockStorage},
@@ -38,19 +39,19 @@ pub fn proper_initialization(
 
 pub fn increment(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Increment {};
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
 pub fn decrement(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Decrement {};
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
 pub fn reset(deps: DepsMut<'_>, sender: &str) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::Reset {};
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -60,7 +61,7 @@ pub fn update_restriction(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateRestriction { restriction };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -70,7 +71,7 @@ pub fn set_increase_amount(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SetIncreaseAmount { increase_amount };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -80,7 +81,7 @@ pub fn set_decrease_amount(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SetDecreaseAmount { decrease_amount };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 

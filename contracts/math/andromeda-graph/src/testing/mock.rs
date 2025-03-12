@@ -6,6 +6,7 @@ use andromeda_math::graph::{
 use andromeda_std::{
     amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
+use cosmwasm_std::Addr;
 use cosmwasm_std::{
     from_json,
     testing::{message_info, mock_env, MockApi, MockStorage},
@@ -36,7 +37,7 @@ pub fn update_map(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::UpdateMap { map_info };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -50,7 +51,7 @@ pub fn store_coordinate(
         coordinate,
         is_timestamp_allowed,
     };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -62,7 +63,7 @@ pub fn store_user_coordinate(
     let msg = ExecuteMsg::StoreUserCoordinate {
         user_location_paths,
     };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -72,7 +73,7 @@ pub fn delete_user_coordinate(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::DeleteUserCoordinate { user };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
