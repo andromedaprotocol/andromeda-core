@@ -725,11 +725,11 @@ fn update_staker_reward_info(
     reward_token: RewardToken,
 ) {
     let staker_share = Uint256::from(staker.share);
-    let rewards = (reward_token.index - staker_reward_info.index).checked_mul(staker_share)?;
+    let rewards = staker_share.mul_floor(reward_token.index - staker_reward_info.index);
 
     staker_reward_info.index = reward_token.index;
     //TODO check if this is correct
-    staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards.to_uint_floor(), 1u128);
+    staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
 }
 
 pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {

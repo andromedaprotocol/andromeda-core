@@ -8,6 +8,7 @@ use cosmwasm_std::testing::{
     message_info, mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
 
+use cosmwasm_std::Addr;
 use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json, to_json_binary, Coin, ContractResult, Empty, OwnedDeps, Querier, QuerierResult,

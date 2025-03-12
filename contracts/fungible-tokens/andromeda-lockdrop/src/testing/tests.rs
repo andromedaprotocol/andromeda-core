@@ -196,7 +196,7 @@ fn test_increase_incentives() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -227,7 +227,7 @@ fn test_increase_incentives_invalid_token() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info("invalid_token", &[]);
+    let info = message_info(&Addr::unchecked("invalid_token"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
         ContractError::InvalidFunds {
@@ -254,7 +254,7 @@ fn test_increase_incentives_after_phase_ends() {
         .block
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
-    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(
         ContractError::TokenAlreadyBeingDistributed {},
@@ -274,7 +274,7 @@ fn test_increase_incentives_zero_amount() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
@@ -367,7 +367,10 @@ fn test_deposit_native_multiple_denoms() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info(&Addr::unchecked("sender"), &[coin(100, "uluna"), coin(100, "uusd")]);
+    let info = message_info(
+        &Addr::unchecked("sender"),
+        &[coin(100, "uluna"), coin(100, "uusd")],
+    );
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -797,18 +800,20 @@ fn test_claim_rewards() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User1 deposits
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("user1", &coins(75, "uusd"));
+    let user1 = deps.api.addr_make("user1");
+    let info = message_info(&user1, &coins(75, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User2 deposits
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("user2", &coins(25, "uusd"));
+    let user2 = deps.api.addr_make("user2");
+    let info = message_info(&user2, &coins(25, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -836,7 +841,8 @@ fn test_claim_rewards() {
 
     // User 1 claims rewards
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = message_info("user1", &[]);
+    let user1 = deps.api.addr_make("user1");
+    let info = message_info(&user1, &[]);
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -874,7 +880,8 @@ fn test_claim_rewards() {
 
     // User 2 claims rewards
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = message_info("user2", &[]);
+    let user2 = deps.api.addr_make("user2");
+    let info = message_info(&user2, &[]);
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -912,14 +919,15 @@ fn test_claim_rewards() {
 
     // User 3 tries to claim rewards
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = message_info("user3", &[]);
+    let user3 = deps.api.addr_make("user3");
+    let info = message_info(&user3, &[]);
 
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::NoLockup {}, res.unwrap_err());
 
     // User 2 tries to claim again
     let msg = ExecuteMsg::ClaimRewards {};
-    let info = message_info("user2", &[]);
+    let info = message_info(&user2, &[]);
 
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(ContractError::LockdropAlreadyClaimed {}, res.unwrap_err());
@@ -937,12 +945,13 @@ fn test_claim_rewards_not_available() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User1 deposits
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("user1", &coins(75, "uusd"));
+    let user1 = deps.api.addr_make("user1");
+    let info = message_info(&user1, &coins(75, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 

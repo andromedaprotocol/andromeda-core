@@ -35,7 +35,8 @@ fn proper_instantiation() {
     };
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -67,12 +68,14 @@ fn register_merkle_root() {
     };
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     // register new merkle root
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
         expiration: None,
@@ -137,11 +140,13 @@ fn test_claim() {
     };
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
         expiration: None,
@@ -157,7 +162,8 @@ fn test_claim() {
     };
 
     let env = mock_env();
-    let info = message_info(test_data.account.as_str(), &[]);
+    let user = deps.api.addr_make(test_data.account.as_str());
+    let info = message_info(&user, &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_CW20_CONTRACT.to_string(),
@@ -221,7 +227,8 @@ fn test_claim() {
 
     // register new drop
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
         expiration: None,
@@ -238,7 +245,8 @@ fn test_claim() {
     };
 
     let env = mock_env();
-    let info = message_info(test_data.account.as_str(), &[]);
+    let user = deps.api.addr_make(test_data.account.as_str());
+    let info = message_info(&user, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let expected: SubMsg<_> = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_CW20_CONTRACT.to_string(),
@@ -300,11 +308,13 @@ fn test_claim_native() {
     };
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
         expiration: None,
@@ -319,7 +329,8 @@ fn test_claim_native() {
     };
 
     let env = mock_env();
-    let info = message_info(test_data.account.as_str(), &[]);
+    let user = deps.api.addr_make(test_data.account.as_str());
+    let info = message_info(&user, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let expected = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
         to_address: test_data.account.clone(),
@@ -386,11 +397,13 @@ fn test_multiple_claim() {
     };
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
         expiration: None,
@@ -407,7 +420,8 @@ fn test_multiple_claim() {
         };
 
         let env = mock_env();
-        let info = message_info(account.account.as_str(), &[]);
+        let user = deps.api.addr_make(account.account.as_str());
+        let info = message_info(&user, &[]);
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: MOCK_CW20_CONTRACT.to_string(),
@@ -455,12 +469,14 @@ fn test_stage_expires() {
     };
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     // can register merkle root
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
         expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
@@ -496,12 +512,14 @@ fn test_cant_burn() {
     };
 
     let env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
     // can register merkle root
     let mut env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
         expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
@@ -534,10 +552,12 @@ fn test_can_burn() {
     };
 
     let mut env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
         expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
@@ -552,7 +572,8 @@ fn test_can_burn() {
         proof: test_data.proofs,
     };
     env.block.time = Timestamp::from_nanos(100_000_000 - 1);
-    let info = message_info(test_data.account.as_str(), &[]);
+    let user = deps.api.addr_make(test_data.account.as_str());
+    let info = message_info(&user, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: MOCK_CW20_CONTRACT.to_string(),
@@ -581,7 +602,8 @@ fn test_can_burn() {
     // Can burn after expired stage
     let msg = ExecuteMsg::Burn { stage: 1u8 };
 
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let expected = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -617,10 +639,12 @@ fn test_can_burn_native() {
     };
 
     let mut env = mock_env();
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: test_data.root,
         expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
@@ -635,7 +659,8 @@ fn test_can_burn_native() {
         proof: test_data.proofs,
     };
 
-    let info = message_info(test_data.account.as_str(), &[]);
+    let user = deps.api.addr_make(test_data.account.as_str());
+    let info = message_info(&user, &[]);
     env.block.time = Timestamp::from_nanos(100_000_000 - 1);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -645,7 +670,8 @@ fn test_can_burn_native() {
     // Can burn after expired stage
     let msg = ExecuteMsg::Burn { stage: 1u8 };
 
-    let info = message_info("owner0000", &[]);
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let expected = SubMsg::new(CosmosMsg::Bank(BankMsg::Burn {

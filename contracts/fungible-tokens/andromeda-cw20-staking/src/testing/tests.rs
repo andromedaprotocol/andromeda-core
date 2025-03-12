@@ -316,7 +316,7 @@ fn test_receive_cw20_zero_amount() {
         msg: to_json_binary(&"").unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
@@ -344,7 +344,7 @@ fn test_stake_unstake_tokens() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -382,7 +382,7 @@ fn test_stake_unstake_tokens() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -515,7 +515,7 @@ fn test_stake_invalid_token() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info("invalid_token", &[]);
+    let info = message_info(&Addr::unchecked("invalid_token"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
@@ -840,7 +840,7 @@ fn test_update_global_indexes_cw20_deposit() {
         msg: to_json_binary(&Cw20HookMsg::UpdateGlobalIndex {}).unwrap(),
     });
 
-    let info = message_info(MOCK_INCENTIVE_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -906,7 +906,7 @@ fn test_claim_rewards() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     deps.querier.with_token_balances(&[(
@@ -920,7 +920,7 @@ fn test_claim_rewards() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -936,7 +936,7 @@ fn test_claim_rewards() {
         STAKERS.load(deps.as_ref().storage, "user2").unwrap()
     );
 
-    let info = message_info("user1", &[]);
+    let info = message_info(&Addr::unchecked("user1"), &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -945,6 +945,7 @@ fn test_claim_rewards() {
 
     deps.querier
         .base
+        .bank
         .update_balance(mock_env().contract.address, coins(100, "uusd"));
 
     // Update the global index for uusd by depositing 100 uusd
@@ -996,7 +997,7 @@ fn test_claim_rewards() {
         res
     );
 
-    let info = message_info("user1", &[]);
+    let info = message_info(&Addr::unchecked("user1"), &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -1037,9 +1038,10 @@ fn test_claim_rewards() {
 
     deps.querier
         .base
+        .bank
         .update_balance(mock_env().contract.address, coins(34, "uusd"));
 
-    let info = message_info("user2", &[]);
+    let info = message_info(&Addr::unchecked("user2"), &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -1081,6 +1083,7 @@ fn test_claim_rewards() {
 
     deps.querier
         .base
+        .bank
         .update_balance(mock_env().contract.address, coins(1, "uusd"));
 
     // Verify that the queries return the correct pending rewards.
@@ -1149,7 +1152,7 @@ fn test_claim_rewards_allocated() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -1180,7 +1183,7 @@ fn test_claim_rewards_allocated() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -1201,7 +1204,7 @@ fn test_claim_rewards_allocated() {
     env.block.time = env.block.time.plus_seconds(50);
 
     // User 1 claims rewards.
-    let info = message_info("user1", &[]);
+    let info = message_info(&Addr::unchecked("user1"), &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -1257,7 +1260,7 @@ fn test_claim_rewards_allocated() {
     );
 
     // User 2 claims rewards.
-    let info = message_info("user2", &[]);
+    let info = message_info(&Addr::unchecked("user2"), &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1325,7 +1328,7 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -1356,7 +1359,7 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -1378,7 +1381,8 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
     env.block.time = env.block.time.plus_seconds(50 + 10);
 
     // User 1 claims rewards.
-    let info = message_info("user1", &[]);
+    let user1 = deps.api.addr_make("user1");
+    let info = message_info(&user1, &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -1433,7 +1437,8 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
     );
 
     // User 2 claims rewards.
-    let info = message_info("user2", &[]);
+    let user2 = deps.api.addr_make("user2");
+    let info = message_info(&user2, &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -1514,7 +1519,7 @@ fn test_stake_rewards_update() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     deps.querier.with_token_balances(&[
@@ -1588,7 +1593,7 @@ fn test_stake_rewards_update() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(
@@ -1699,7 +1704,7 @@ fn test_unstake_rewards_update() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     deps.querier.with_token_balances(&[
@@ -1737,7 +1742,8 @@ fn test_unstake_rewards_update() {
     // Unstake all.
     let msg = ExecuteMsg::UnstakeTokens { amount: None };
 
-    let info = message_info("user1", &[]);
+    let user1 = deps.api.addr_make("user1");
+    let info = message_info(&user1, &[]);
 
     // Speed time up to halfway through cycle.
     let mut env = mock_env();
@@ -2024,7 +2030,8 @@ fn test_remove_reward_token_unauthorized() {
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
     };
-    let info = message_info("owner1", &[]);
+    let owner1 = deps.api.addr_make("owner1");
+    let info = message_info(&owner1, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -2088,7 +2095,7 @@ fn test_claim_rewards_after_remove() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     deps.querier.with_token_balances(&[(
@@ -2102,7 +2109,7 @@ fn test_claim_rewards_after_remove() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -2118,7 +2125,8 @@ fn test_claim_rewards_after_remove() {
         STAKERS.load(deps.as_ref().storage, "user2").unwrap()
     );
 
-    let info = message_info("user1", &[]);
+    let user1 = deps.api.addr_make("user1");
+    let info = message_info(&user1, &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -2127,6 +2135,7 @@ fn test_claim_rewards_after_remove() {
 
     deps.querier
         .base
+        .bank
         .update_balance(mock_env().contract.address, coins(100, "uusd"));
 
     // Update the global index for uusd by depositing 100 uusd
@@ -2152,7 +2161,8 @@ fn test_claim_rewards_after_remove() {
             .unwrap()
     );
 
-    let info = message_info("user1", &[]);
+    let user1 = deps.api.addr_make("user1");
+    let info = message_info(&user1, &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -2193,6 +2203,7 @@ fn test_claim_rewards_after_remove() {
 
     deps.querier
         .base
+        .bank
         .update_balance(mock_env().contract.address, coins(34, "uusd"));
 
     let msg = ExecuteMsg::RemoveRewardToken {
@@ -2201,7 +2212,8 @@ fn test_claim_rewards_after_remove() {
     let info = message_info(&Addr::unchecked("owner"), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let info = message_info("user2", &[]);
+    let user2 = deps.api.addr_make("user2");
+    let info = message_info(&user2, &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -2229,6 +2241,7 @@ fn test_claim_rewards_after_remove() {
     assert!(!REWARD_TOKENS.has(deps.as_ref().storage, "native:uusd"));
     deps.querier
         .base
+        .bank
         .update_balance(mock_env().contract.address, coins(1, "uusd"));
 
     // Verify that the queries return the empty pending rewards.
@@ -2296,7 +2309,7 @@ fn test_claim_rewards_allocated_after_remove() {
         msg: to_json_binary(&Cw20HookMsg::StakeTokens {}).unwrap(),
     });
 
-    let info = message_info(MOCK_STAKING_TOKEN, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     deps.querier.with_token_balances(&[
@@ -2315,7 +2328,8 @@ fn test_claim_rewards_allocated_after_remove() {
     env.block.time = env.block.time.plus_seconds(50);
 
     // User claims rewards.
-    let info = message_info("user", &[]);
+    let user = deps.api.addr_make("user");
+    let info = message_info(&user, &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
@@ -2328,7 +2342,7 @@ fn test_claim_rewards_allocated_after_remove() {
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     env.block.time = env.block.time.plus_seconds(25);
-    let info = message_info("user", &[]);
+    let info = message_info(&user, &[]);
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -2449,7 +2463,8 @@ fn test_replace_reward_token_unauthorized() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner1", &[]);
+    let owner1 = deps.api.addr_make("owner1");
+    let info = message_info(&owner1, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
