@@ -19,7 +19,7 @@ pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(map_info: MapInfo) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info("sender", &[]);
+    let info = message_info(&Addr::unchecked("sender"), &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

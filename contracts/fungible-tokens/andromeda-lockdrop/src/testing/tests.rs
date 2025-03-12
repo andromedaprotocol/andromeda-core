@@ -29,7 +29,7 @@ const WITHDRAWAL_WINDOW: u64 = 4;
 
 fn init(deps: DepsMut) -> Result<Response, ContractError> {
     let env = mock_env();
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -94,7 +94,7 @@ fn test_instantiate() {
 fn test_instantiate_init_timestamp_past() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -122,7 +122,7 @@ fn test_instantiate_init_timestamp_past() {
 fn test_instantiate_init_deposit_window_zero() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -144,7 +144,7 @@ fn test_instantiate_init_deposit_window_zero() {
 fn test_instantiate_init_withdrawal_window_zero() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -166,7 +166,7 @@ fn test_instantiate_init_withdrawal_window_zero() {
 fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -291,7 +291,7 @@ fn test_deposit_native() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("sender", &coins(100, "uusd"));
+    let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -331,7 +331,7 @@ fn test_deposit_native_zero_amount() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("sender", &coins(0, "uusd"));
+    let info = message_info(&Addr::unchecked("sender"), &coins(0, "uusd"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -349,7 +349,7 @@ fn test_deposit_native_wrong_denom() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("sender", &coins(100, "uluna"));
+    let info = message_info(&Addr::unchecked("sender"), &coins(100, "uluna"));
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -367,7 +367,7 @@ fn test_deposit_native_multiple_denoms() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("sender", &[coin(100, "uluna"), coin(100, "uusd")]);
+    let info = message_info(&Addr::unchecked("sender"), &[coin(100, "uluna"), coin(100, "uusd")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -385,7 +385,7 @@ fn test_deposit_native_deposit_window_closed() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("sender", &coins(100, "uusd"));
+    let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
 
     let mut env = mock_env();
     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW + 1);
@@ -400,7 +400,7 @@ fn test_withdraw_native() {
     init(deps.as_mut()).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
-    let info = message_info("sender", &coins(100, "uusd"));
+    let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -448,7 +448,7 @@ fn test_withdraw_native() {
 //     init(deps.as_mut()).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
-//     let info = message_info("sender", &coins(100, "uusd"));
+//     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
 
 //     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -512,7 +512,7 @@ fn test_withdraw_native() {
 //     init(deps.as_mut()).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
-//     let info = message_info("sender", &coins(100, "uusd"));
+//     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
 
 //     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -590,7 +590,7 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = message_info("owner", &[]);
+//     let info = message_info(&Addr::unchecked("owner"), &[]);
 //     let mut env = mock_env();
 //     env.block.time = env.block.time.minus_seconds(1);
 //     let res = execute(deps.as_mut(), env, info, msg);
@@ -610,7 +610,7 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = message_info("owner", &[]);
+//     let info = message_info(&Addr::unchecked("owner"), &[]);
 //     let mut env = mock_env();
 //     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW);
 //     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -632,7 +632,7 @@ fn test_withdraw_native() {
 //     init(deps.as_mut()).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
-//     let info = message_info("sender", &coins(amount, "uusd"));
+//     let info = message_info(&Addr::unchecked("sender"), &coins(amount, "uusd"));
 
 //     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -643,7 +643,7 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = message_info("owner", &[]);
+//     let info = message_info(&Addr::unchecked("owner"), &[]);
 //     let mut env = mock_env();
 //     env.block.time = env
 //         .block
@@ -693,7 +693,7 @@ fn test_enable_claims_no_bootstrap_specified() {
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
 
-    let info = message_info("sender", &[]);
+    let info = message_info(&Addr::unchecked("sender"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     assert_eq!(
@@ -730,7 +730,7 @@ fn test_enable_claims_no_bootstrap_specified() {
 //         native_denom: "uusd".to_string(),
 //     };
 
-//     let info = message_info("owner", &[]);
+//     let info = message_info(&Addr::unchecked("owner"), &[]);
 //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
 //     let msg = ExecuteMsg::EnableClaims {};
@@ -779,7 +779,7 @@ fn test_enable_claims_phase_not_ended() {
     let mut env = mock_env();
     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW - 1);
 
-    let info = message_info("sender", &[]);
+    let info = message_info(&Addr::unchecked("sender"), &[]);
     let res = execute(deps.as_mut(), env, info, msg);
 
     assert_eq!(ContractError::PhaseOngoing {}, res.unwrap_err());
@@ -831,7 +831,7 @@ fn test_claim_rewards() {
     // Enable claims
     let msg = ExecuteMsg::EnableClaims {};
 
-    let info = message_info("sender", &[]);
+    let info = message_info(&Addr::unchecked("sender"), &[]);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // User 1 claims rewards
@@ -1002,7 +1002,7 @@ fn test_query_withdrawable_percent() {
 //     let msg = ExecuteMsg::DepositToBootstrap {
 //         amount: Uint128::new(100),
 //     };
-//     let info = message_info("owner", &[]);
+//     let info = message_info(&Addr::unchecked("owner"), &[]);
 
 //     let mut env = mock_env();
 //     env.block.time = env

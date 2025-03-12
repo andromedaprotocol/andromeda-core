@@ -144,7 +144,7 @@ fn test_unauthorized_unstake() {
         amount: None,
     };
 
-    let info = message_info("other", &[coin(100, "uandr")]);
+    let info = message_info(&Addr::unchecked("other"), &[coin(100, "uandr")]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 }

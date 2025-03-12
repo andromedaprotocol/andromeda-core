@@ -1,5 +1,5 @@
 use andromeda_app::app::QueryMsg as AppQueryMsg;
-use andromeda_std::ado_contract::ADOContract;
+use andromeda_std::{ado_contract::ADOContract, testing::mock_querier::SupplyResponse};
 
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 pub use andromeda_std::testing::mock_querier::{MOCK_APP_CONTRACT, MOCK_KERNEL_CONTRACT};
@@ -7,10 +7,10 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coin, from_json,
     testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankQuery, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
-    QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
+    to_json_binary, Addr, BankQuery, Binary, Coin, ContractResult, Empty, OwnedDeps, Querier,
+    QuerierResult, QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
-use cw721::{Cw721QueryMsg, OwnerOfResponse};
+use cw721::msg::{Cw721QueryMsg, OwnerOfResponse};
 
 pub const MOCK_TOKEN_ADDR: &str = "token0001";
 pub const MOCK_CW721_ADDR: &str = "cw721_contract";
@@ -41,7 +41,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info("sender", &[]),
+            message_info(&Addr::unchecked("sender"), &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),
@@ -77,19 +77,10 @@ impl Querier for WasmMockQuerier {
     }
 }
 
-#[cw_serde(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    JsonSchema
-)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub struct SupplyResponse {
+pub struct OtherSupplyResponse {
     /// Always returns a Coin with the requested denom.
     /// This will be of zero amount if the denom does not exist.
     pub amount: Coin,
@@ -107,7 +98,7 @@ impl WasmMockQuerier {
             }
             QueryRequest::Bank(bank_query) => match bank_query {
                 BankQuery::Supply { denom } => {
-                    let response = SupplyResponse {
+                    let response = OtherSupplyResponse {
                         amount: coin(1_000_000, denom),
                     };
 
@@ -146,7 +137,7 @@ impl WasmMockQuerier {
     }
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
-        match from_json(msg).unwrap() {
+        match from_json::<Cw721QueryMsg<Empty, Empty, Empty>>(msg).unwrap() {
             Cw721QueryMsg::OwnerOf { token_id, .. } => {
                 let res = if token_id == MOCK_UNCLAIMED_TOKEN {
                     OwnerOfResponse {

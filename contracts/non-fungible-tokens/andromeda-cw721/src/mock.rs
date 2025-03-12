@@ -12,7 +12,7 @@ use andromeda_testing::{
 };
 use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty};
-use cw721::OwnerOfResponse;
+use cw721::msg::OwnerOfResponse;
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCW721(Addr);

@@ -36,7 +36,7 @@ fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = message_info(MOCK_DEFAULT_OWNER, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_DEFAULT_OWNER), &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -177,7 +177,7 @@ mod test {
 
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-            let info = message_info(MOCK_DEFAULT_OWNER, &[]);
+            let info = message_info(&Addr::unchecked(MOCK_DEFAULT_OWNER), &[]);
             let msg = InstantiateMsg {
                 campaign_config: test.config.clone(),
                 tiers: test.tiers.clone(),
@@ -284,7 +284,7 @@ mod test {
                 mock_campaign_tiers(),
             );
 
-            let info = message_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::AddTier {
                 tier: test.tier.clone(),
@@ -377,7 +377,7 @@ mod test {
                 mock_campaign_tiers(),
             );
 
-            let info = message_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::UpdateTier {
                 tier: test.tier.clone(),
@@ -458,7 +458,7 @@ mod test {
                 mock_campaign_tiers(),
             );
 
-            let info = message_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::RemoveTier {
                 level: test.tier.level,
@@ -565,7 +565,7 @@ mod test {
                 mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
                 test.tiers.clone(),
             );
-            let info = message_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::StartCampaign {
                 start_time: test.start_time.clone(),
@@ -760,7 +760,7 @@ mod test {
         ];
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&test.funds);
-            let info = message_info(&test.payee, &test.funds);
+            let info = message_info(&Addr::unchecked(test.payee), &test.funds);
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
@@ -943,7 +943,7 @@ mod test {
             let Asset::Cw20Token(ref cw20) = test.denom else {
                 todo!();
             };
-            let info = message_info(cw20.as_ref(), &[]);
+            let info = message_info(&Addr::unchecked(cw20.as_ref()), &[]);
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
@@ -1147,7 +1147,7 @@ mod test {
             let mut mock_config = mock_campaign_config(test.denom.clone());
             let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
 
-            let info = message_info(&test.sender, &[]);
+            let info = message_info(&Addr::unchecked(test.sender), &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
             set_current_capital(deps.as_mut().storage, &test.current_capital);
 
@@ -1252,7 +1252,7 @@ mod test {
             let mut mock_config = mock_campaign_config(test.denom.clone());
             let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
 
-            let info = message_info(&test.sender, &[]);
+            let info = message_info(&Addr::unchecked(test.sender), &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
             set_current_capital(deps.as_mut().storage, &test.current_capital);
 
@@ -1433,7 +1433,7 @@ mod test {
             set_tier_orders(deps.as_mut().storage, test.orders).unwrap();
             let msg = ExecuteMsg::Claim {};
 
-            let info = message_info(orderer.as_ref(), &[]);
+            let info = message_info(&Addr::unchecked(orderer.clone()), &[]);
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);

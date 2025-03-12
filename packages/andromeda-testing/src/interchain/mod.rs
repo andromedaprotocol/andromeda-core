@@ -3,11 +3,7 @@ pub mod aos;
 use aos::InterchainAOS;
 use cosmwasm_std::Coin;
 use cw_orch::mock::{cw_multi_test::MockApiBech32, MockBase};
-use cw_orch_interchain::{
-    prelude::PortId,
-    types::{IbcPacketOutcome, IbcTxAnalysis},
-    InterchainEnv, MockBech32InterchainEnv,
-};
+use cw_orch_interchain::{core::InterchainEnv, mock::MockBech32InterchainEnv, prelude::*};
 
 use cw_orch::prelude::*;
 pub const DEFAULT_SENDER: &str = "sender_for_all_chains";
@@ -88,7 +84,7 @@ impl InterchainTestEnv {
         juno.chain
             .set_balance(
                 &juno.chain.sender,
-                vec![Coin::new(100000000000000, "ujuno")],
+                vec![Coin::new(100000000000000u128, "ujuno")],
             )
             .unwrap();
 
@@ -104,7 +100,7 @@ impl InterchainTestEnv {
             .chain
             .set_balance(
                 &osmosis.chain.sender,
-                vec![Coin::new(100000000000000, "uosmo")],
+                vec![Coin::new(100000000000000u128, "uosmo")],
             )
             .unwrap();
 
@@ -120,7 +116,7 @@ impl InterchainTestEnv {
             .chain
             .set_balance(
                 &andromeda.chain.sender,
-                vec![Coin::new(100000000000000, "uandr")],
+                vec![Coin::new(100000000000000u128, "uandr")],
             )
             .unwrap();
 
@@ -234,8 +230,8 @@ impl Default for InterchainTestEnv {
     }
 }
 
-pub fn ensure_packet_success(packet_lifetime: IbcTxAnalysis<MockBase<MockApiBech32>>) {
-    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+pub fn ensure_packet_success(packet_lifetime: NestedPacketsFlow<MockBase<MockApiBech32>>) {
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0] {
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
     } else {
         panic!("Packet failed when success was expected");

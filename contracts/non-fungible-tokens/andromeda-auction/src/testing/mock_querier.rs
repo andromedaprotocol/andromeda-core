@@ -6,7 +6,7 @@ use cosmwasm_schema::cw_serde;
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::message_info;
-use cosmwasm_std::{coin, BankQuery, QuerierWrapper};
+use cosmwasm_std::{coin, Addr, BankQuery, Empty, QuerierWrapper};
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -14,7 +14,7 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 
-use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
+use cw721::msg::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
@@ -48,7 +48,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info("sender", &[]),
+            message_info(&Addr::unchecked("sender"), &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),
@@ -86,16 +86,7 @@ impl Querier for WasmMockQuerier {
 
 // NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
 // https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
-#[cw_serde(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    JsonSchema
-)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub struct SupplyResponse {
@@ -139,7 +130,7 @@ impl WasmMockQuerier {
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
         match from_json(msg).unwrap() {
-            Cw721QueryMsg::Tokens { owner, .. } => {
+            Cw721QueryMsg::<Empty, Empty, Empty>::Tokens { owner, .. } => {
                 let res = if owner == MOCK_CONDITIONS_MET_CONTRACT
                     || owner == MOCK_CONDITIONS_NOT_MET_CONTRACT
                 {

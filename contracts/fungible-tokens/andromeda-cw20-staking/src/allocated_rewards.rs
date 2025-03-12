@@ -132,7 +132,7 @@ fn rewards_distributed_for_cycle(
     if till_timestamp <= from_timestamp {
         return Uint128::zero();
     }
-    rewards_per_sec * Uint128::from(till_timestamp - from_timestamp)
+    Uint128::from(till_timestamp - from_timestamp).mul_floor(rewards_per_sec)
 }
 
 fn calculate_cycle_rewards(
@@ -143,5 +143,5 @@ fn calculate_cycle_rewards(
     if is_same_cycle {
         return current_cycle_rewards;
     }
-    current_cycle_rewards + (current_cycle_rewards * reward_increase_percent)
+    current_cycle_rewards + (current_cycle_rewards.mul_floor(reward_increase_percent))
 }

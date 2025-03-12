@@ -29,7 +29,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info("sender", &[]),
+            message_info(&Addr::unchecked("sender"), &[]),
             InstantiateMsg {
                 ado_type: "cw20-staking".to_string(),
                 ado_version: "test".to_string(),

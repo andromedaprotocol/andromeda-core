@@ -149,7 +149,7 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked(owner))
             .unwrap();
-        let info = message_info("not_owner", &[]);
+        let info = message_info(&Addr::unchecked("not_owner"), &[]);
         let res = ADOContract::default().execute_withdraw(
             ExecuteContext::new(deps.as_mut(), info, mock_env()),
             Some(Recipient::from_string("address".to_string())),
@@ -224,7 +224,7 @@ mod tests {
             .owner
             .save(deps.as_mut().storage, &Addr::unchecked("owner"))
             .unwrap();
-        let info = message_info("owner", &[]);
+        let info = message_info(&Addr::unchecked("owner"), &[]);
         ADOContract::default()
             .withdrawable_tokens
             .save(

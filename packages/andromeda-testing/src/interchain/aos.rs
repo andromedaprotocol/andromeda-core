@@ -47,30 +47,32 @@ impl InterchainAOS {
 
     fn instantiate(&self, chain_name: String) {
         let init_msg = mock_kernel_instantiate_message(None, chain_name);
-        self.kernel.instantiate(&init_msg, None, None).unwrap();
+        self.kernel.instantiate(&init_msg, None, &vec![]).unwrap();
         let vfs_init_msg =
             mock_vfs_instantiate_message(self.kernel.address().unwrap().into_string(), None);
-        self.vfs.instantiate(&vfs_init_msg, None, None).unwrap();
+        self.vfs.instantiate(&vfs_init_msg, None, &vec![]).unwrap();
         let adodb_init_msg =
             mock_adodb_instantiate_msg(self.kernel.address().unwrap().into_string(), None);
-        self.adodb.instantiate(&adodb_init_msg, None, None).unwrap();
+        self.adodb
+            .instantiate(&adodb_init_msg, None, &vec![])
+            .unwrap();
         let economics_init_msg =
             mock_economics_instantiate_msg(self.kernel.address().unwrap().into_string(), None);
         self.economics
-            .instantiate(&economics_init_msg, None, None)
+            .instantiate(&economics_init_msg, None, &vec![])
             .unwrap();
     }
 
     fn register_modules(&self) {
         let msg = mock_upsert_key_address(VFS_KEY, self.vfs.address().unwrap().into_string());
-        self.kernel.execute(&msg, None).unwrap();
+        self.kernel.execute(&msg, &vec![]).unwrap();
         let msg = mock_upsert_key_address(ADO_DB_KEY, self.adodb.address().unwrap().into_string());
-        self.kernel.execute(&msg, None).unwrap();
+        self.kernel.execute(&msg, &vec![]).unwrap();
         let msg = mock_upsert_key_address(
             ECONOMICS_KEY,
             self.economics.address().unwrap().into_string(),
         );
-        self.kernel.execute(&msg, None).unwrap();
+        self.kernel.execute(&msg, &vec![]).unwrap();
     }
 
     pub fn assign_channels(
@@ -87,7 +89,7 @@ impl InterchainAOS {
             kernel_address: foreign_kernel_address,
         };
 
-        self.kernel.execute(&msg, None).unwrap();
+        self.kernel.execute(&msg, &vec![]).unwrap();
     }
 
     pub fn get_aos_channel(&self, chain: impl Into<String>) -> Option<ChannelInfoResponse> {

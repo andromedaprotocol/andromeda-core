@@ -6,6 +6,7 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError,
     SubMsg, Uint128,
 };
+use cw721::helpers::DefaultCw721Helper;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
@@ -24,10 +25,10 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
-use cw721::{ContractInfoResponse, Cw721Execute};
-use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg};
+use cw721::{traits::Cw721Execute, ContractInfoResponse};
+use cw721_base::{helpers::Cw721Contract, msg::ExecuteMsg as Cw721ExecuteMsg, state::TokenInfo};
 
-pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
+pub type AndrCW721Contract = DefaultCw721Helper;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MINT_ACTION: &str = "Mint";
@@ -42,7 +43,7 @@ pub fn instantiate(
     let contract_info = ContractInfoResponse {
         name: msg.name,
         symbol: msg.symbol,
-        extension: TokenExtension::default(),
+        extension: None,
         updated_at: env.block.time,
     };
 
@@ -117,12 +118,9 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     Ok(res)
 }
 
-fn execute_cw721(
-    ctx: ExecuteContext,
-    msg: Cw721ExecuteMsg<TokenExtension, ExecuteMsg>,
-) -> Result<Response, ContractError> {
+fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
-    Ok(contract.execute(ctx.deps, ctx.env, ctx.info, msg)?)
+    Ok(contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?)
 }
 
 macro_rules! ensure_can_mint {
@@ -131,7 +129,7 @@ macro_rules! ensure_can_mint {
             .load($ctx.deps.storage)?
             .get_raw_address(&$ctx.deps.as_ref())?;
 
-        let is_minter = $ctx.info.sender == minter.as_str();
+        let is_minter = $ctx.info.sender == minter;
         // We check if the sender is the minter before checking if they have the mint permission
         // to prevent consuming unnecessary limited permission usage.
         let has_mint_permission = is_minter
@@ -321,7 +319,7 @@ fn check_can_send(
             ),
             ContractError::InsufficientFunds {}
         );
-        if agreement.purchaser == info.sender || agreement.purchaser == "*" {
+        if agreement.purchaser == info.sender.as_str() || agreement.purchaser == "*" {
             return Ok(());
         }
     }
@@ -433,7 +431,7 @@ fn execute_send_nft(
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
-    Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
+    Ok(contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)?)
 }
 
 fn execute_batch_send_nft(

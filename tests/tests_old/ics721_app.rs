@@ -259,7 +259,7 @@ fn test_do_instantiate_and_mint() {
     )
     .unwrap();
 
-    let owner: cw721::OwnerOfResponse = app
+    let owner: cw721::msg::OwnerOfResponse = app
         .wrap()
         .query_wasm_smart(
             bridge,
@@ -274,7 +274,7 @@ fn test_do_instantiate_and_mint() {
 
     // Check that this state matches the state of the underlying
     // cw721.
-    let base_owner: cw721::OwnerOfResponse = app
+    let base_owner: cw721::msg::OwnerOfResponse = app
         .wrap()
         .query_wasm_smart(
             nft,

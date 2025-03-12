@@ -37,7 +37,7 @@ fn init(
     deps: DepsMut,
     additional_rewards: Option<Vec<RewardTokenUnchecked>>,
 ) -> Result<Response, ContractError> {
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let msg = InstantiateMsg {
         staking_token: AndrAddr::from_string(MOCK_STAKING_TOKEN.to_owned()),
@@ -413,7 +413,7 @@ fn test_stake_unstake_tokens() {
         amount: Some(Uint128::new(202)),
     };
 
-    let info = message_info("sender", &[]);
+    let info = message_info(&Addr::unchecked("sender"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg);
 
     assert_eq!(
@@ -468,7 +468,7 @@ fn test_stake_unstake_tokens() {
     // User 2 unstakes all
     let msg = ExecuteMsg::UnstakeTokens { amount: None };
 
-    let info = message_info("other_sender", &[]);
+    let info = message_info(&Addr::unchecked("other_sender"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -574,7 +574,7 @@ fn test_update_global_indexes() {
 
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
@@ -707,7 +707,7 @@ fn test_update_global_indexes_selective() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -782,7 +782,7 @@ fn test_update_global_indexes_invalid_asset() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uluna")]),
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
@@ -952,7 +952,7 @@ fn test_claim_rewards() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -1536,7 +1536,7 @@ fn test_stake_rewards_update() {
 
     // Update global index.
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -1730,7 +1730,7 @@ fn test_unstake_rewards_update() {
 
     // Update global index.
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -1835,7 +1835,7 @@ fn test_add_reward_token() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -1883,7 +1883,7 @@ fn test_add_reward_token_duplicate() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
@@ -1907,7 +1907,7 @@ fn test_add_reward_token_staking_token() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
@@ -1931,7 +1931,7 @@ fn test_add_reward_token_unauthorized() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("not_owner", &[]);
+    let info = message_info(&Addr::unchecked("not_owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
@@ -1960,7 +1960,7 @@ fn test_add_reward_token_exceeds_max() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -1989,7 +1989,7 @@ fn test_remove_reward_token() {
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -2048,7 +2048,7 @@ fn test_remove_reward_token_invalid_asset() {
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -2134,7 +2134,7 @@ fn test_claim_rewards_after_remove() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -2198,7 +2198,7 @@ fn test_claim_rewards_after_remove() {
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let info = message_info("user2", &[]);
@@ -2324,7 +2324,7 @@ fn test_claim_rewards_allocated_after_remove() {
     };
 
     env.block.time = env.block.time.plus_seconds(25);
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     env.block.time = env.block.time.plus_seconds(25);
@@ -2405,7 +2405,7 @@ fn test_replace_reward_token() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -2478,7 +2478,7 @@ fn test_replace_reward_token_invalid_asset() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -2497,7 +2497,7 @@ fn test_replace_reward_token_invalid_asset() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 

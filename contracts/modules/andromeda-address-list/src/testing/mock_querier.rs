@@ -32,7 +32,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info("sender", &[]),
+            message_info(&Addr::unchecked("sender"), &[]),
             InstantiateMsg {
                 ado_type: "address-list".to_string(),
                 ado_version: "1.0.0".to_string(),

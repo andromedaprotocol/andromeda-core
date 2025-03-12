@@ -49,7 +49,7 @@ andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "
 andromeda-cw-json = { path = "./packages/andromeda-cw-json", version = "0.1.1" }
 
 strum_macros = "0.24.3"
-cosmwasm-std = "2.2.2"
+cosmwasm-std = "^2.2"
 cw-utils = "2.0.0"
 cw-storage-plus = "2.0.0"
 cw2 = "2.0.0"
@@ -57,10 +57,10 @@ cw20 = "2.0.0"
 cw20-base = "2.0.0"
 cw3 = "2.0.0"
 cw4 = "2.0.0"
-cw721 = { git = "https://github.com/public-awesome/cw-nfts.git" }
-cw721-base = { git = "https://github.com/public-awesome/cw-nfts.git" }
+cw721 = { git = "https://github.com/joemonem/cw-nfts", branch = "main" }
+cw721-base = { git = "https://github.com/joemonem/cw-nfts", branch = "main" }
 cw-asset = "4.0.0"
-cosmwasm-schema = "2.2.2"
+cosmwasm-schema = "^2.2"
 semver = "1.0.25"
 enum-repr = "0.2.6"
 cw-multi-test = "2.3.2"

@@ -366,7 +366,7 @@ fn execute_stake_tokens(
 
     let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
     ensure!(
-        token_address == staking_token_address,
+        token_address == staking_token_address.as_str(),
         ContractError::InvalidFunds {
             msg: "Deposited cw20 token is not the staking token".to_string(),
         }
@@ -508,7 +508,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
             let rewards: Uint128 =
                 Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
-                    * Uint128::from(1u128);
+                    .to_uint_floor();
 
             let decimals: Decimal256 =
                 staker_reward_info.pending_rewards - Decimal256::from_ratio(rewards, 1u128);
@@ -725,10 +725,11 @@ fn update_staker_reward_info(
     reward_token: RewardToken,
 ) {
     let staker_share = Uint256::from(staker.share);
-    let rewards = (reward_token.index - staker_reward_info.index) * staker_share;
+    let rewards = (reward_token.index - staker_reward_info.index).checked_mul(staker_share)?;
 
     staker_reward_info.index = reward_token.index;
-    staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
+    //TODO check if this is correct
+    staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards.to_uint_floor(), 1u128);
 }
 
 pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {
@@ -812,7 +813,7 @@ pub(crate) fn get_pending_rewards(
         pending_rewards.push((
             token_string,
             Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
-                * Uint128::from(1u128),
+                .to_uint_floor(),
         ))
     }
     Ok(pending_rewards)

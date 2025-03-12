@@ -13,7 +13,7 @@ use cosmwasm_std::{
     testing::{message_info, mock_env},
     Addr, Binary, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
-use cw721::{AllNftInfoResponse, OwnerOfResponse};
+use cw721::{msg::AllNftInfoResponse, msg::OwnerOfResponse};
 use rstest::rstest;
 
 const MINTER: &str = "minter";
@@ -23,7 +23,7 @@ const _ADDRESS_LIST: &str = "addresslist";
 // const RATES: &str = "rates";
 
 fn init_setup(deps: DepsMut, env: Env) {
-    let info = message_info(MINTER, &[]);
+    let info = message_info(&Addr::unchecked(MINTER), &[]);
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
@@ -37,7 +37,7 @@ fn init_setup(deps: DepsMut, env: Env) {
 }
 
 fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extension: TokenExtension) {
-    let info = message_info(MINTER, &[]);
+    let info = message_info(&Addr::unchecked(MINTER), &[]);
     let mint_msg = ExecuteMsg::Mint {
         token_id,
         owner,
@@ -69,7 +69,7 @@ fn test_transfer_nft() {
         token_id: token_id.clone(),
     };
 
-    let unauth_info = message_info("anyone", &[]);
+    let unauth_info = message_info(&Addr::unchecked("anyone"), &[]);
     assert_eq!(
         execute(
             deps.as_mut(),
@@ -92,7 +92,7 @@ fn test_transfer_nft() {
         )
         .unwrap();
 
-    let info = message_info(creator.as_str(), &[]);
+    let info = message_info(&Addr::unchecked(creator), &[]);
     assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg).is_ok());
 
     let query_msg = QueryMsg::OwnerOf {
@@ -114,7 +114,7 @@ fn test_transfer_nft() {
 fn test_agreed_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let valid_info = message_info(creator.as_str(), &[]);
+    let valid_info = message_info(&Addr::unchecked(&creator), &[]);
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let agreed_amount = Coin {
@@ -151,7 +151,7 @@ fn test_agreed_transfer_nft() {
         token_id: token_id.clone(),
     };
 
-    let invalid_info = message_info(purchaser, &[]);
+    let invalid_info = message_info(&Addr::unchecked(purchaser), &[]);
     assert_eq!(
         execute(
             deps.as_mut(),
@@ -163,7 +163,7 @@ fn test_agreed_transfer_nft() {
         ContractError::InsufficientFunds {}
     );
 
-    let info = message_info(purchaser, &[agreed_amount]);
+    let info = message_info(&Addr::unchecked(purchaser), &[agreed_amount]);
     assert!(execute(deps.as_mut(), env.clone(), info, transfer_msg).is_ok());
 
     let query_msg = QueryMsg::OwnerOf {
@@ -205,7 +205,13 @@ fn test_agreed_transfer_nft_wildcard() {
             purchaser: purchaser.to_string(),
         }),
     };
-    let _res = execute(deps.as_mut(), mock_env(), message_info(&creator, &[]), msg).unwrap();
+    let _res = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&Addr::unchecked(creator), &[]),
+        msg,
+    )
+    .unwrap();
 
     // Transfer the nft
     let transfer_msg = ExecuteMsg::TransferNft {
@@ -213,7 +219,7 @@ fn test_agreed_transfer_nft_wildcard() {
         token_id: token_id.clone(),
     };
 
-    let info = message_info("anyone", &[agreed_amount]);
+    let info = message_info(&Addr::unchecked("anyone"), &[agreed_amount]);
     let _res = execute(deps.as_mut(), env.clone(), info, transfer_msg).unwrap();
 
     let query_msg = QueryMsg::OwnerOf {
@@ -246,13 +252,13 @@ fn test_archive() {
         token_id: token_id.clone(),
     };
 
-    let unauth_info = message_info("anyone", &[]);
+    let unauth_info = message_info(&Addr::unchecked("anyone"), &[]);
     assert_eq!(
         execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err(),
         ContractError::Unauthorized {}
     );
 
-    let info = message_info(creator.as_str(), &[]);
+    let info = message_info(&Addr::unchecked(creator), &[]);
     assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
 
     let query_msg = QueryMsg::IsArchived { token_id };
@@ -282,13 +288,13 @@ fn test_burn() {
         token_id: token_id.clone(),
     };
 
-    let unauth_info = message_info("anyone", &[]);
+    let unauth_info = message_info(&Addr::unchecked("anyone"), &[]);
     assert_eq!(
         execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err(),
         ContractError::Unauthorized {}
     );
 
-    let info = message_info(creator.as_str(), &[]);
+    let info = message_info(&Addr::unchecked(creator), &[]);
     let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
 
     assert_eq!(
@@ -316,7 +322,7 @@ fn test_burn() {
 fn test_archived_check() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
-    let valid_info = message_info(creator.as_str(), &[]);
+    let valid_info = message_info(&Addr::unchecked(creator.clone()), &[]);
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     init_setup(deps.as_mut(), env.clone());
@@ -337,7 +343,7 @@ fn test_archived_check() {
 
     let msg = ExecuteMsg::Burn { token_id };
 
-    let info = message_info(creator.as_str(), &[]);
+    let info = message_info(&Addr::unchecked(creator), &[]);
     assert_eq!(
         execute(deps.as_mut(), env, info, msg).unwrap_err(),
         ContractError::TokenIsArchived {}
@@ -373,13 +379,13 @@ fn test_transfer_agreement() {
         agreement: Some(agreement.clone()),
     };
 
-    let unauth_info = message_info("anyone", &[]);
+    let unauth_info = message_info(&Addr::unchecked("anyone"), &[]);
     assert_eq!(
         execute(deps.as_mut(), env.clone(), unauth_info, msg.clone()).unwrap_err(),
         ContractError::Unauthorized {}
     );
 
-    let info = message_info(creator.as_str(), &[]);
+    let info = message_info(&Addr::unchecked(creator), &[]);
     assert!(execute(deps.as_mut(), env.clone(), info, msg).is_ok());
 
     let query_msg = QueryMsg::TransferAgreement { token_id };
@@ -393,7 +399,7 @@ fn test_transfer_agreement() {
 fn test_update_app_contract_invalid_minter() {
     let mut deps = mock_dependencies_custom(&[]);
 
-    let info = message_info("app_contract", &[]);
+    let info = message_info(&Addr::unchecked("app_contract"), &[]);
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
@@ -421,7 +427,7 @@ fn test_update_app_contract_invalid_minter() {
 #[test]
 fn test_batch_mint() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info(MINTER, &[]);
+    let info = message_info(&Addr::unchecked(MINTER), &[]);
     let inst_msg = InstantiateMsg {
         name: NAME.to_string(),
         symbol: SYMBOL.to_string(),
@@ -524,7 +530,7 @@ fn test_batch_send_nft(
         .collect();
 
     let mint_msg = ExecuteMsg::BatchMint { tokens: mint_msgs };
-    let minter_info = message_info(MINTER, &[]);
+    let minter_info = message_info(&Addr::unchecked(MINTER), &[]);
     execute(deps.as_mut(), env.clone(), minter_info, mint_msg).unwrap();
 
     // Create batch from parameters
@@ -544,14 +550,12 @@ fn test_batch_send_nft(
     let batch_send_msg = ExecuteMsg::BatchSend {
         batch: batch.clone(),
     };
-    let test_info = message_info(
-        if matches!(expected_error, Some(ContractError::Unauthorized {})) {
-            "unauthorized"
-        } else {
-            owner
-        },
-        &[],
-    );
+    let addr = if matches!(expected_error, Some(ContractError::Unauthorized {})) {
+        Addr::unchecked("unauthorized")
+    } else {
+        Addr::unchecked(owner)
+    };
+    let test_info = message_info(&addr, &[]);
 
     let result = execute(deps.as_mut(), env.clone(), test_info, batch_send_msg);
 

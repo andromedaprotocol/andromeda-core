@@ -11,7 +11,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage},
-    Coin, OwnedDeps, QuerierWrapper, Uint128, Uint64,
+    Addr, Coin, OwnedDeps, QuerierWrapper, Uint128, Uint64,
 };
 
 pub const MOCK_DEFAULT_OWNER: &str = "owner";
@@ -98,7 +98,7 @@ pub fn mock_dependencies_custom(
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info("sender", &[]),
+            message_info(&Addr::unchecked("sender"), &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),

@@ -52,7 +52,7 @@ fn init(deps: DepsMut) -> Response {
         lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -383,7 +383,7 @@ fn test_execute_send() {
         lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // First batch will test first threshold
@@ -554,7 +554,7 @@ fn test_execute_send_threshold_not_found() {
         lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // This batch is lower than the lowest threshold which is 7
@@ -856,7 +856,7 @@ fn test_execute_send_with_multiple_thresholds() {
         lock_time: None,
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Test sending 7 tokens (should use the 5 token threshold)

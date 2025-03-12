@@ -36,7 +36,7 @@ fn init(deps: DepsMut) -> Response {
         },
     };
 
-    let info = message_info("owner", &[]);
+    let info = message_info(&Addr::unchecked("owner"), &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
