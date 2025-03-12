@@ -6,7 +6,10 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError,
     SubMsg, Uint128,
 };
-use cw721::helpers::DefaultCw721Helper;
+use cw721::helpers::{Cw721Contract, DefaultCw721Helper};
+use cw721::msg::CollectionInfoAndExtensionResponse;
+use cw721::state::NftInfo;
+use cw721_base::state::TokenInfo;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
@@ -25,8 +28,7 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
-use cw721::{traits::Cw721Execute, ContractInfoResponse};
-use cw721_base::{helpers::Cw721Contract, msg::ExecuteMsg as Cw721ExecuteMsg, state::TokenInfo};
+use cw721::{msg::Cw721ExecuteMsg, ContractInfoResponse};
 
 pub type AndrCW721Contract = DefaultCw721Helper;
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
@@ -40,10 +42,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let contract_info = ContractInfoResponse {
+    let contract_info = CollectionInfoAndExtensionResponse {
         name: msg.name,
         symbol: msg.symbol,
-        extension: None,
+        extension: TokenExtension::default(),
         updated_at: env.block.time,
     };
 
@@ -118,9 +120,12 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     Ok(res)
 }
 
-fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
+fn execute_cw721(
+    ctx: ExecuteContext,
+    msg: Cw721ExecuteMsg<TokenExtension, Empty, ExecuteMsg>,
+) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
-    Ok(contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?)
+    Ok(contract.execute(ctx.deps, ctx.env, ctx.info, msg)?)
 }
 
 macro_rules! ensure_can_mint {
@@ -164,7 +169,7 @@ fn mint(
     extension: TokenExtension,
 ) -> Result<Response, ContractError> {
     let cw721_contract = AndrCW721Contract::default();
-    let token = TokenInfo {
+    let token = NftInfo {
         owner: ctx.deps.api.addr_validate(&owner)?,
         approvals: vec![],
         token_uri,
@@ -431,7 +436,7 @@ fn execute_send_nft(
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
-    Ok(contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)?)
+    Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
 }
 
 fn execute_batch_send_nft(

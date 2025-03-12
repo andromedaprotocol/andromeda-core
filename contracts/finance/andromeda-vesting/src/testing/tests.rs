@@ -12,7 +12,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins, from_json,
     testing::{message_info, mock_env, MOCK_CONTRACT_ADDR},
-    BankMsg, Decimal, DepsMut, Response, Uint128,
+    Addr, BankMsg, Decimal, DepsMut, Response, Uint128,
 };
 
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -409,6 +409,7 @@ fn test_claim_batch_single_claim() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Skip time.
@@ -496,6 +497,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(7, "uusd"));
 
     // Skip time.
@@ -566,6 +568,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(vesting_amount, "uusd"));
 
     // Skip time.
@@ -667,6 +670,7 @@ fn test_claim_batch_middle_of_interval() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Claim batch.
@@ -744,6 +748,7 @@ fn test_claim_batch_multiple_claims() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -849,6 +854,7 @@ fn test_claim_batch_all_releases() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -926,6 +932,7 @@ fn test_claim_batch_too_high_of_claim() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -1033,6 +1040,7 @@ fn test_claim_all() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(400, "uusd"));
 
     // Speed up time.

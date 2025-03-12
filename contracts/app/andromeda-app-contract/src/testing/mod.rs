@@ -8,7 +8,7 @@ use andromeda_std::testing::mock_querier::{
 use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
 use cosmwasm_std::{
     attr,
-    testing::{mock_env, message_info},
+    testing::{message_info, mock_env},
     to_json_binary, Addr, CosmosMsg, Empty, ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
 use cosmwasm_std::{Binary, Event, Reply, SubMsgResponse, SubMsgResult};
@@ -50,7 +50,7 @@ fn test_empty_instantiation() {
 //         chain_info: None,
 //     };
 //     let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+// let info = message_info(&creator, &[]);
 
 //     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 //     assert_eq!(3, res.messages.len());
@@ -133,7 +133,7 @@ fn test_empty_instantiation() {
 //         chain_info: None,
 //     };
 //     let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+// let info = message_info(&creator, &[]);
 
 //     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
 //     assert_eq!(ContractError::NameAlreadyTaken {}, res.unwrap_err());
@@ -155,7 +155,8 @@ fn test_add_app_component_unauthorized() {
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
-    let unauth_info = message_info("anyone", &[]);
+    let anyone = deps.api.addr_make("anyone");
+    let unauth_info = message_info(&anyone, &[]);
     let msg = ExecuteMsg::AddAppComponent {
         component: AppComponent {
             name: "token".to_string(),
@@ -173,7 +174,7 @@ fn test_add_app_component_unauthorized() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+// let info = message_info(&creator, &[]);
 //     let inst_msg = InstantiateMsg {
 //         app_components: vec![AppComponent {
 //             name: "token".to_string(),
@@ -212,7 +213,7 @@ fn test_add_app_component_unauthorized() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
 //     let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+// let info = message_info(&creator, &[]);
 //     let inst_msg = InstantiateMsg {
 //         app_components: vec![],
 //         name: String::from("Some App"),
@@ -276,8 +277,8 @@ fn test_claim_ownership_unauth() {
     };
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
-
-    let unauth_info = message_info("anyone", &[]);
+    let anyone = deps.api.addr_make("anyone");
+    let unauth_info = message_info(&anyone, &[]);
     let msg = ExecuteMsg::ClaimOwnership {
         name: None,
         new_owner: None,
@@ -427,6 +428,7 @@ fn test_claim_ownership() {
         }),
         reply_on: ReplyOn::Error,
         gas_limit: None,
+        payload: Binary::default(),
     };
     let expected = Response::new()
         .add_submessage(exec_submsg)
@@ -451,7 +453,8 @@ fn test_proxy_message_unauth() {
 
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
-    let unauth_info = message_info("anyone", &[]);
+    let anyone = deps.api.addr_make("anyone");
+    let unauth_info = message_info(&anyone, &[]);
     let msg = ExecuteMsg::ProxyMessage {
         name: "token".to_string(),
         msg: to_json_binary(&true).unwrap(),
@@ -525,6 +528,7 @@ fn test_proxy_message() {
         }),
         reply_on: ReplyOn::Error,
         gas_limit: None,
+        payload: Binary::default(),
     };
     let expected = Response::new()
         .add_submessage(exec_submsg)
@@ -559,7 +563,8 @@ fn test_update_address_unauth() {
         .unwrap();
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
-    let unauth_info = message_info("anyone", &[]);
+    let anyone = deps.api.addr_make("anyone");
+    let unauth_info = message_info(&anyone, &[]);
     let msg = ExecuteMsg::UpdateAddress {
         name: "token".to_string(),
         addr: "newtokenaddress".to_string(),
@@ -704,9 +709,12 @@ fn test_reply_assign_app() {
     let mock_reply = Reply {
         id: component_idx,
         result: SubMsgResult::Ok(SubMsgResponse {
-            data: Some(Binary::from_base64(reply_resp).unwrap()),
             events: vec![mock_reply_event],
+            msg_responses: vec![],
+            data: Some(Binary::from_base64(reply_resp).unwrap()),
         }),
+        gas_used: 0,
+        payload: Binary::default(),
     };
 
     let res = reply(deps.as_mut(), env, mock_reply).unwrap();

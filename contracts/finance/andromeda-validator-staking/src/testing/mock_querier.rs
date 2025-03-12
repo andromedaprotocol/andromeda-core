@@ -1,4 +1,5 @@
-use cosmwasm_std::{Decimal, Validator};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Addr, Decimal};
 
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
@@ -15,6 +16,41 @@ pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
 pub const DEFAULT_VALIDATOR: &str = "default_validator";
 pub const VALID_VALIDATOR: &str = "valid_validator";
+
+#[cw_serde]
+pub struct Validator {
+    /// The operator address of the validator (e.g. cosmosvaloper1...).
+    /// See https://github.com/cosmos/cosmos-sdk/blob/v0.47.4/proto/cosmos/staking/v1beta1/staking.proto#L95-L96
+    /// for more information.
+    ///
+    /// This uses `String` instead of `Addr` since the bech32 address prefix is different from
+    /// the ones that regular user accounts use.
+    pub address: String,
+    pub commission: Decimal,
+    pub max_commission: Decimal,
+    /// The maximum daily increase of the commission
+    pub max_change_rate: Decimal,
+}
+
+impl Validator {
+    /// Creates a new validator.
+    ///
+    /// If fields get added to the [`Validator`] struct in the future, this constructor will
+    /// provide default values for them, but these default values may not be sensible.
+    pub fn create(
+        address: String,
+        commission: Decimal,
+        max_commission: Decimal,
+        max_change_rate: Decimal,
+    ) -> Self {
+        Self {
+            address,
+            commission,
+            max_commission,
+            max_change_rate,
+        }
+    }
+}
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
@@ -35,9 +71,11 @@ pub fn mock_dependencies_custom(
     //
     let mut custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-    custom_querier
-        .base
-        .update_staking("uandr", &[default_validator, valid_validator], &[]);
+    //TODO resolve this
+    // custom_querier
+    //     .base
+    //     .staking
+    //     .update("uandr", &[default_validator, valid_validator], &[]);
     let storage = MockStorage::default();
     let mut deps = OwnedDeps {
         storage,

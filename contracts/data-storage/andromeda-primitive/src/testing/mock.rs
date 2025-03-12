@@ -8,7 +8,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     from_json,
     testing::{message_info, mock_env, MockApi, MockStorage},
-    Coin, Deps, DepsMut, MessageInfo, OwnedDeps, Response,
+    Addr, Coin, Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 
 use crate::contract::{execute, instantiate, query};
@@ -47,7 +47,7 @@ pub fn set_value(
         key: key.clone(),
         value: value.clone(),
     };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -62,7 +62,7 @@ pub fn set_value_with_funds(
         key: key.clone(),
         value: value.clone(),
     };
-    let info = message_info(sender, &[coin]);
+    let info = message_info(&Addr::unchecked(sender), &[coin]);
     execute(deps, mock_env(), info, msg)
 }
 
@@ -72,6 +72,6 @@ pub fn delete_value(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::DeleteValue { key: key.clone() };
-    let info = message_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     execute(deps, mock_env(), info, msg)
 }
