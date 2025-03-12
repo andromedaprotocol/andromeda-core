@@ -9,7 +9,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{message_info, mock_env, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankMsg, Coin, CosmosMsg, DepsMut, Response, SubMsg,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, SubMsg,
 };
 pub const OWNER: &str = "creator";
 
@@ -72,7 +72,7 @@ fn test_execute_update_lock() {
         lock_time: Expiry::FromNow(lock_time),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let new_lock = lock_time
         .plus_seconds(current_time)
@@ -120,7 +120,7 @@ fn test_execute_update_recipients() {
         recipients: duplicate_recipients,
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
@@ -138,11 +138,11 @@ fn test_execute_update_recipients() {
         recipients: recipients.clone(),
     };
 
-    let info = message_info("incorrect_owner", &[]);
+    let info = message_info(&Addr::unchecked("incorrect_owner"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::default().add_attributes(vec![attr("action", "update_recipients")]),
@@ -163,7 +163,7 @@ fn test_execute_send() {
     let sender_funds_amount = 10000u128;
 
     let info = message_info(
-        OWNER,
+        &Addr::unchecked(OWNER),
         &[
             Coin::new(sender_funds_amount, "uandr"),
             Coin::new(50_u128, "usdc"),
@@ -196,17 +196,17 @@ fn test_execute_send() {
     let msg = ExecuteMsg::Send { config: None };
 
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
 
     let amp_msg_3 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(30, "usdc")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(30_u128, "usdc")]))
         .unwrap();
     let amp_msg_4 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(20, "usdc")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(20_u128, "usdc")]))
         .unwrap();
 
     let amp_pkt = AMPPkt::new(
@@ -218,10 +218,10 @@ fn test_execute_send() {
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
             Some(vec![
-                Coin::new(1, "uandr"),
-                Coin::new(1, "uandr"),
-                Coin::new(30, "usdc"),
-                Coin::new(20, "usdc"),
+                Coin::new(1_u128, "uandr"),
+                Coin::new(1_u128, "uandr"),
+                Coin::new(30_u128, "usdc"),
+                Coin::new(20_u128, "usdc"),
             ]),
             1,
         )
@@ -243,7 +243,7 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(9998, "uandr")],
+                    amount: vec![Coin::new(9998_u128, "uandr")],
                 }),
             ),
             amp_msg,
@@ -258,11 +258,11 @@ fn test_execute_send() {
     };
 
     let amp_msg_1 = recip3
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
 
     let amp_msg_2 = recip3
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(30, "usdc")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(30_u128, "usdc")]))
         .unwrap();
 
     let amp_pkt = AMPPkt::new(
@@ -273,7 +273,7 @@ fn test_execute_send() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(1, "uandr"), Coin::new(30, "usdc")]),
+            Some(vec![Coin::new(1_u128, "uandr"), Coin::new(30_u128, "usdc")]),
             1,
         )
         .unwrap();
@@ -284,14 +284,14 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(9999, "uandr")],
+                    amount: vec![Coin::new(9999_u128, "uandr")],
                 }),
             ),
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(20, "usdc")],
+                    amount: vec![Coin::new(20_u128, "usdc")],
                 }),
             ),
             amp_msg,
@@ -309,7 +309,10 @@ fn test_execute_send_ado_recipient() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 10_000u128;
-    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uandr")]);
+    let info = message_info(
+        &Addr::unchecked(OWNER),
+        &[Coin::new(sender_funds_amount, "uandr")],
+    );
 
     let recip_address1 = "address1".to_string();
 
@@ -331,10 +334,10 @@ fn test_execute_send_ado_recipient() {
     let msg = ExecuteMsg::Send { config: None };
 
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -344,7 +347,7 @@ fn test_execute_send_ado_recipient() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(1, "uandr"), Coin::new(1, "uandr")]),
+            Some(vec![Coin::new(1_u128, "uandr"), Coin::new(1_u128, "uandr")]),
             1,
         )
         .unwrap();
@@ -365,7 +368,7 @@ fn test_execute_send_ado_recipient() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: info.sender.to_string(),
-                    amount: vec![Coin::new(9_998, "uandr")],
+                    amount: vec![Coin::new(9_998_u128, "uandr")],
                 }),
             ),
             amp_msg,
@@ -383,7 +386,10 @@ fn test_handle_packet_exit_with_error_true() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 0u128;
-    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uandr")]);
+    let info = message_info(
+        &Addr::unchecked(OWNER),
+        &[Coin::new(sender_funds_amount, "uandr")],
+    );
 
     let recip_address1 = "address1".to_string();
 
@@ -403,7 +409,7 @@ fn test_handle_packet_exit_with_error_true() {
         vec![AMPMsg::new(
             recip_address1,
             to_json_binary(&ExecuteMsg::Send { config: None }).unwrap(),
-            Some(vec![Coin::new(0, "uandr")]),
+            Some(vec![Coin::new(0_u128, "uandr")]),
         )],
     );
     let msg = ExecuteMsg::AMPReceive(pkt);
@@ -455,7 +461,7 @@ fn test_execute_send_error() {
     let sender_funds_amount = 10000u128;
     let owner = "creator";
     let info = message_info(
-        owner,
+        &Addr::unchecked(owner),
         &vec![
             Coin::new(sender_funds_amount, "uandr"),
             Coin::new(sender_funds_amount, "uandr"),
@@ -499,7 +505,7 @@ fn test_execute_send_error() {
     assert_eq!(res, expected_res);
 
     // Insufficient funds
-    let info = message_info(owner, &[Coin::new(1_u128, "uandr")]);
+    let info = message_info(&Addr::unchecked(owner), &[Coin::new(1_u128, "uandr")]);
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -513,7 +519,7 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "app_contract".to_string(),
@@ -534,7 +540,7 @@ fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "z".to_string(),
@@ -609,7 +615,10 @@ fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
         config: Some(config),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("owner"),
+        &[Coin::new(10000u128_u128, "uluna")],
+    );
     let res = execute(deps, mock_env(), info, msg);
 
     assert_eq!(
@@ -633,7 +642,10 @@ fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter
         config: Some(config),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("owner"),
+        &[Coin::new(10000u128_u128, "uluna")],
+    );
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund
@@ -647,7 +659,10 @@ fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("owner"),
+        &[Coin::new(10000u128_u128, "uluna")],
+    );
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund
@@ -661,7 +676,10 @@ fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Split
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("owner"),
+        &[Coin::new(10000u128_u128, "uluna")],
+    );
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund

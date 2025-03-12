@@ -6,7 +6,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, from_json,
     testing::{message_info, mock_env},
-    BankMsg, Binary, CosmosMsg, DepsMut, Response, Uint128, WasmMsg,
+    Addr, BankMsg, Binary, CosmosMsg, DepsMut, Response, Uint128, WasmMsg,
 };
 pub const OWNER: &str = "creator";
 
@@ -67,7 +67,7 @@ fn test_deposit_invalid_funds() {
         recipient: Some("me".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "uusd")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "uusd")]);
 
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
     assert_eq!(
@@ -87,7 +87,7 @@ fn test_deposit_new_account_works() {
         recipient: Some("andromedauser".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
     let expected_balance = AccountDetails {
@@ -109,12 +109,12 @@ fn test_deposit_existing_account_works() {
         recipient: Some("andromedauser".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
     let exec = ExecuteMsg::Deposit { recipient: None };
 
-    let info = message_info("andromedauser", &[coin(70, "junox")]);
+    let info = message_info(&Addr::unchecked("andromedauser"), &[coin(70, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
     let expected_balance = AccountDetails {
@@ -136,11 +136,11 @@ fn test_withdraw_account_not_found() {
         recipient: Some("andromedauser".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info("random", &[]);
+    let info = message_info(&Addr::unchecked("random"), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(19_u16),
         recipient: None,
@@ -158,11 +158,11 @@ fn test_withdraw_over_account_limit() {
         recipient: Some("andromedauser".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info("andromedauser", &[]);
+    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(31_u16),
         recipient: None,
@@ -180,18 +180,18 @@ fn test_withdraw_funds_locked() {
         recipient: Some("andromedauser".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info("andromedauser", &[]);
+    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
         recipient: None,
     };
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info("andromedauser", &[]);
+    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
         recipient: None,
@@ -224,11 +224,11 @@ fn test_withdraw_over_allowed_limit() {
         recipient: Some("andromedauser".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info("andromedauser", &[]);
+    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(21_u16),
         recipient: None,
@@ -261,10 +261,10 @@ fn test_withdraw_works(#[case] recipient: Option<Recipient>, #[case] expected_re
         recipient: Some("andromedauser".to_string()),
     };
 
-    let info = message_info("creator", &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info("andromedauser", &[]);
+    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
         recipient: recipient.clone(),

@@ -334,9 +334,9 @@ fn test_splitter_cross_chain_recipient() {
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
-    juno.set_balance(buyer.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(buyer.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());

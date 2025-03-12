@@ -41,7 +41,7 @@ fn test_kernel_ibc_execute_only() {
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let mut kernel_juno = KernelContract::new(juno.clone());
@@ -312,7 +312,7 @@ fn test_kernel_ibc_execute_only_with_username() {
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let mut kernel_juno = KernelContract::new(juno.clone());
@@ -621,7 +621,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -984,9 +984,9 @@ fn test_kernel_ibc_funds_only() {
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
-    juno.set_balance(buyer.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(buyer.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -1475,7 +1475,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -1816,7 +1816,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -2152,7 +2152,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -2416,7 +2416,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(sender.clone(), vec![Coin::new(100000000000000, "juno")])
+    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());

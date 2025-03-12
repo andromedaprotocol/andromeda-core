@@ -18,7 +18,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::AndrAddr,
     andr_execute_fn,
-    common::{context::ExecuteContext, distribution::MsgWithdrawDelegatorReward, encode_binary},
+    common::{context::ExecuteContext, encode_binary},
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
@@ -307,16 +307,13 @@ fn execute_claim(
     .unwrap_or(false);
 
     let withdraw_msg: CosmosMsg = if is_andromeda_distribution {
-        MsgWithdrawDelegatorReward {
-            delegator_address: delegator.to_string(),
-            validator_address: validator.to_string(),
-        }
-        .into()
-    } else {
-        DistributionMsg::WithdrawDelegatorReward {
+        CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
-        }
-        .into()
+        })
+    } else {
+        CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
+            validator: validator.to_string(),
+        })
     };
     let restake = restake.unwrap_or(false);
     // Only one denom is allowed to be restaked at a time

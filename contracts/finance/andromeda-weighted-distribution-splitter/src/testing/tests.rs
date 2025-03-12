@@ -1651,7 +1651,7 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: recip_address3,
-                    amount: vec![Coin::new(10000_u128, "uluna")],
+                    amount: vec![Coin::new(10000u128_u128, "uluna")],
                 }),
             ),
             // amp_msg,
@@ -1738,7 +1738,7 @@ fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
         config: Some(config),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg);
 
     assert_eq!(
@@ -1762,7 +1762,7 @@ fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter
         config: Some(config),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund
@@ -1776,7 +1776,7 @@ fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages
@@ -1790,7 +1790,7 @@ fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Split
 
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000_u128, "uluna")]);
+    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128_u128, "uluna")]);
     let res = execute(deps, mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages

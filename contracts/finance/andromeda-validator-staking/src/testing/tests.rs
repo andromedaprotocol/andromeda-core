@@ -21,7 +21,7 @@ fn init(deps: DepsMut, default_validator: Addr) -> Result<Response, ContractErro
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     instantiate(deps, mock_env(), info, msg)
 }
 
@@ -46,7 +46,10 @@ fn test_stake_with_invalid_funds() {
 
     let msg = ExecuteMsg::Stake { validator: None };
 
-    let info = message_info(OWNER, &[coin(100, "uandr"), coin(100, "usdc")]);
+    let info = message_info(
+        &Addr::unchecked(OWNER),
+        &[coin(100, "uandr"), coin(100, "usdc")],
+    );
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -61,7 +64,7 @@ fn test_stake_with_default_validator() {
 
     let msg = ExecuteMsg::Stake { validator: None };
 
-    let info = message_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -89,7 +92,7 @@ fn test_stake_with_validator() {
         validator: Some(valid_validator),
     };
 
-    let info = message_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -117,7 +120,7 @@ fn test_stake_with_invalid_validator() {
         validator: Some(fake_validator),
     };
 
-    let info = message_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 
@@ -135,7 +138,7 @@ fn test_unauthorized_unstake() {
         validator: Some(valid_validator.clone()),
     };
 
-    let info = message_info(OWNER, &[coin(100, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
     execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 

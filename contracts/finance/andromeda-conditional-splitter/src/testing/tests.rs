@@ -9,7 +9,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, from_json,
     testing::{message_info, mock_env, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
     Uint128,
 };
 pub const OWNER: &str = "creator";
@@ -79,7 +79,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
 
     assert_eq!(err, ContractError::LockTimeTooShort {});
@@ -114,7 +114,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
 
@@ -129,7 +129,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::LockTimeTooShort {});
 
@@ -143,7 +143,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let err = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::LockTimeTooLong {});
 
@@ -163,7 +163,7 @@ fn test_different_lock_times() {
         lock_time: Some(lock_time),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     assert_eq!(0, res.messages.len());
 }
@@ -193,7 +193,7 @@ fn test_execute_update_lock() {
         lock_time: lock_time.clone(),
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     assert_eq!(
@@ -215,7 +215,7 @@ fn test_execute_update_lock() {
     let msg = ExecuteMsg::UpdateLock {
         lock_time: new_lock_2.clone(),
     };
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
     assert_eq!(err, ContractError::ContractLocked { msg: None });
 }
@@ -271,7 +271,7 @@ fn test_execute_update_thresholds() {
         thresholds: duplicate_recipients,
     };
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
@@ -307,11 +307,11 @@ fn test_execute_update_thresholds() {
         thresholds: new_threshold.clone(),
     };
 
-    let info = message_info("incorrect_owner", &[]);
+    let info = message_info(&Addr::unchecked("incorrect_owner"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::default().add_attributes(vec![attr("action", "update_thresholds")]),
@@ -396,17 +396,17 @@ fn test_execute_send() {
     let third_batch = 100u128;
 
     // First batch
-    let info = message_info(OWNER, &[Coin::new(first_batch, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(first_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // 50 percent
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4_u128, "uandr")]))
         .unwrap();
     // 20 percent, 1.6 which is rounded down to 1
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -416,7 +416,7 @@ fn test_execute_send() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(4, "uandr"), Coin::new(1, "uandr")]),
+            Some(vec![Coin::new(4_u128, "uandr"), Coin::new(1_u128, "uandr")]),
             1,
         )
         .unwrap();
@@ -427,7 +427,7 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(3, "uandr")], // 8 - (0.5 * 8) - (0.2 * 8)   remainder
+                    amount: vec![Coin::new(3_u128, "uandr")], // 8 - (0.5 * 8) - (0.2 * 8)   remainder
                 }),
             ),
             amp_msg,
@@ -437,17 +437,17 @@ fn test_execute_send() {
     assert_eq!(res, expected_res);
 
     // Second batch
-    let info = message_info(OWNER, &[Coin::new(second_batch, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(second_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // 20 percent
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2_u128, "uandr")]))
         .unwrap();
     // 10 percent
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -457,7 +457,7 @@ fn test_execute_send() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(2, "uandr"), Coin::new(1, "uandr")]),
+            Some(vec![Coin::new(2_u128, "uandr"), Coin::new(1_u128, "uandr")]),
             1,
         )
         .unwrap();
@@ -468,7 +468,7 @@ fn test_execute_send() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(7, "uandr")], // 10 - (0.2 * 10) - (0.1 * 10)   remainder
+                    amount: vec![Coin::new(7_u128, "uandr")], // 10 - (0.2 * 10) - (0.1 * 10)   remainder
                 }),
             ),
             amp_msg,
@@ -478,17 +478,17 @@ fn test_execute_send() {
     assert_eq!(res, expected_res);
 
     // Third batch
-    let info = message_info(OWNER, &[Coin::new(third_batch, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(third_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     // amount 100 * 50% = 50
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(50, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(50_u128, "uandr")]))
         .unwrap();
     // amount 100 * 50% = 50
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(50, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(50_u128, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -498,7 +498,10 @@ fn test_execute_send() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(50, "uandr"), Coin::new(50, "uandr")]),
+            Some(vec![
+                Coin::new(50_u128, "uandr"),
+                Coin::new(50_u128, "uandr"),
+            ]),
             1,
         )
         .unwrap();
@@ -561,7 +564,7 @@ fn test_execute_send_threshold_not_found() {
     let first_batch = 6u128;
 
     // First batch
-    let info = message_info(OWNER, &[Coin::new(first_batch, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(first_batch, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
 
@@ -579,7 +582,10 @@ fn test_execute_send_ado_recipient() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 10000u128;
-    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked(OWNER),
+        &[Coin::new(sender_funds_amount, "uluna")],
+    );
 
     let recip_address1 = "address1".to_string();
     let recip_address2 = "address2".to_string();
@@ -590,10 +596,10 @@ fn test_execute_send_ado_recipient() {
     let msg = ExecuteMsg::Send {};
 
     let amp_msg_1 = recip1
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000, "uluna")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1000_u128, "uluna")]))
         .unwrap();
     let amp_msg_2 = recip2
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000, "uluna")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2000_u128, "uluna")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -603,7 +609,10 @@ fn test_execute_send_ado_recipient() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")]),
+            Some(vec![
+                Coin::new(1000_u128, "uluna"),
+                Coin::new(2000_u128, "uluna"),
+            ]),
             1,
         )
         .unwrap();
@@ -637,7 +646,7 @@ fn test_execute_send_ado_recipient() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: info.sender.to_string(),
-                    amount: vec![Coin::new(7000, "uluna")], // 10000 * 0.7   remainder
+                    amount: vec![Coin::new(7000_u128, "uluna")], // 10000 * 0.7   remainder
                 }),
             ),
             amp_msg,
@@ -655,7 +664,10 @@ fn test_handle_packet_exit_with_error_true() {
     let _res: Response = init(deps.as_mut());
 
     let sender_funds_amount = 0u128;
-    let info = message_info(OWNER, &[Coin::new(sender_funds_amount, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked(OWNER),
+        &[Coin::new(sender_funds_amount, "uluna")],
+    );
 
     let recip_address1 = "address1".to_string();
     let recip_percent1 = 10; // 10%
@@ -678,7 +690,7 @@ fn test_handle_packet_exit_with_error_true() {
         vec![AMPMsg::new(
             recip_address1,
             to_json_binary(&ExecuteMsg::Send {}).unwrap(),
-            Some(vec![Coin::new(0, "uluna")]),
+            Some(vec![Coin::new(0_u128, "uluna")]),
         )],
     );
     let msg = ExecuteMsg::AMPReceive(pkt);
@@ -731,8 +743,9 @@ fn test_execute_send_error() {
 
     let sender_funds_amount = 10000u128;
     let owner = "creator";
+    let owner = deps.api.addr_make(owner);
     let info = message_info(
-        owner,
+        &owner,
         &vec![
             Coin::new(sender_funds_amount, "uluna"),
             Coin::new(sender_funds_amount, "uluna"),
@@ -782,7 +795,7 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "app_contract".to_string(),
@@ -803,7 +816,7 @@ fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = message_info(OWNER, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "z".to_string(),
@@ -860,7 +873,7 @@ fn test_execute_send_with_multiple_thresholds() {
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Test sending 7 tokens (should use the 5 token threshold)
-    let info = message_info(OWNER, &[Coin::new(7, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(7_u128, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -870,10 +883,10 @@ fn test_execute_send_with_multiple_thresholds() {
     // 1 token should be returned to sender
 
     let amp_msg_1 = Recipient::from_string(addr1.to_string())
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4_u128, "uandr")]))
         .unwrap();
     let amp_msg_2 = Recipient::from_string(addr2.to_string())
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(2_u128, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -883,7 +896,7 @@ fn test_execute_send_with_multiple_thresholds() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(2, "uandr"), Coin::new(4, "uandr")]),
+            Some(vec![Coin::new(2_u128, "uandr"), Coin::new(4_u128, "uandr")]),
             1,
         )
         .unwrap();
@@ -894,7 +907,7 @@ fn test_execute_send_with_multiple_thresholds() {
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: OWNER.to_string(),
-                    amount: vec![Coin::new(1, "uandr")], // Remainder
+                    amount: vec![Coin::new(1_u128, "uandr")], // Remainder
                 }),
             ),
             amp_msg,
@@ -904,7 +917,7 @@ fn test_execute_send_with_multiple_thresholds() {
     assert_eq!(res, expected_res);
 
     // Test sending 15 tokens (should use the 10 token threshold)
-    let info = message_info(OWNER, &[Coin::new(15, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(15_u128, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -914,10 +927,10 @@ fn test_execute_send_with_multiple_thresholds() {
     // 1 token should be returned to sender
 
     let amp_msg_1 = Recipient::from_string(addr1.to_string())
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(7, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(7_u128, "uandr")]))
         .unwrap();
     let amp_msg_2 = Recipient::from_string(addr2.to_string())
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(7, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(7_u128, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -927,7 +940,7 @@ fn test_execute_send_with_multiple_thresholds() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(7, "uandr"), Coin::new(7, "uandr")]),
+            Some(vec![Coin::new(7_u128, "uandr"), Coin::new(7_u128, "uandr")]),
             1,
         )
         .unwrap();
@@ -936,7 +949,7 @@ fn test_execute_send_with_multiple_thresholds() {
         .add_submessages(vec![
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: OWNER.to_string(),
-                amount: vec![Coin::new(1, "uandr")], // Remainder
+                amount: vec![Coin::new(1_u128, "uandr")], // Remainder
             })),
             amp_msg,
         ])
@@ -945,7 +958,7 @@ fn test_execute_send_with_multiple_thresholds() {
     assert_eq!(res, expected_res);
 
     // Test sending 6 tokens (should use the 5 token threshold)
-    let info = message_info(OWNER, &[Coin::new(6, "uandr")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(6_u128, "uandr")]);
     let msg = ExecuteMsg::Send {};
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -955,10 +968,10 @@ fn test_execute_send_with_multiple_thresholds() {
     // 1 token should be returned to sender
 
     let amp_msg_1 = Recipient::from_string(addr1.to_string())
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(4_u128, "uandr")]))
         .unwrap();
     let amp_msg_2 = Recipient::from_string(addr2.to_string())
-        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1, "uandr")]))
+        .generate_amp_msg(&deps.as_ref(), Some(vec![Coin::new(1_u128, "uandr")]))
         .unwrap();
     let amp_pkt = AMPPkt::new(
         MOCK_CONTRACT_ADDR.to_string(),
@@ -968,7 +981,7 @@ fn test_execute_send_with_multiple_thresholds() {
     let amp_msg = amp_pkt
         .to_sub_msg(
             MOCK_KERNEL_CONTRACT,
-            Some(vec![Coin::new(1, "uandr"), Coin::new(4, "uandr")]),
+            Some(vec![Coin::new(1_u128, "uandr"), Coin::new(4_u128, "uandr")]),
             1,
         )
         .unwrap();
@@ -977,7 +990,7 @@ fn test_execute_send_with_multiple_thresholds() {
         .add_submessages(vec![
             SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: OWNER.to_string(),
-                amount: vec![Coin::new(1, "uandr")], // Remainder
+                amount: vec![Coin::new(1_u128, "uandr")], // Remainder
             })),
             amp_msg,
         ])
