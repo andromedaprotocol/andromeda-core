@@ -10,7 +10,7 @@ use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
-    testing::{mock_env, message_info},
+    testing::{message_info, mock_env},
     to_json_binary, Addr, DepsMut, Response, Uint128,
 };
 

@@ -46,6 +46,7 @@ andromeda-accounts = { path = "./packages/andromeda-accounts", version = "1.0.0"
 andromeda-math = { path = "./packages/andromeda-math", version = "1.0.0" }
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
+andromeda-cw-json = { path = "./packages/andromeda-cw-json", version = "0.1.1" }
 
 strum_macros = "0.24.3"
 cosmwasm-std = "2.2.2"

@@ -5,7 +5,7 @@ use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
 use cosmwasm_std::testing::{
-    mock_env, message_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
+    message_info, mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
 };
 
 use cosmwasm_std::QuerierWrapper;

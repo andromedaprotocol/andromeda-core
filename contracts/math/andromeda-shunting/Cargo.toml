@@ -22,7 +22,7 @@ andromeda-math = { workspace = true }
 
 simple-shunting = "0.1.2"
 serde-cw-value = "0.7.0"
-cw-json = { git = "https://github.com/SlayerAnsh/cw-json.git" }
+andromeda-cw-json = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }

@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, message_info, MockApi, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response,
 };
 

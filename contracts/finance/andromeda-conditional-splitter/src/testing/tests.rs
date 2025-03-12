@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, from_json,
-    testing::{mock_env, message_info, MOCK_CONTRACT_ADDR},
+    testing::{message_info, mock_env, MOCK_CONTRACT_ADDR},
     to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
     Uint128,
 };

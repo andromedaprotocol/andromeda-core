@@ -4,7 +4,7 @@ pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use andromeda_math::shunting::{EvaluateParam, InstantiateMsg, QueryMsg, ShuntingResponse};
 use cosmwasm_std::{
     from_json,
-    testing::{mock_dependencies, mock_env, message_info},
+    testing::{message_info, mock_dependencies, mock_env},
 };
 
 #[test]

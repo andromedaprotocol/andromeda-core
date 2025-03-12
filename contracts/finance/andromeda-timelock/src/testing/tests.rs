@@ -12,7 +12,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
-    testing::{mock_env, message_info},
+    testing::{message_info, mock_env},
     BankMsg, Coin, Response, Timestamp,
 };
 
