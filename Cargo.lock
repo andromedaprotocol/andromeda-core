@@ -263,6 +263,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-cw-json"
+version = "0.1.1"
+dependencies = [
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "serde",
+ "serde-cw-value",
+ "serde_derive",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "andromeda-cw20"
 version = "2.1.0"
 dependencies = [
@@ -776,12 +788,12 @@ name = "andromeda-schema"
 version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
+ "andromeda-cw-json",
  "andromeda-modules",
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-json",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -794,12 +806,12 @@ name = "andromeda-shunting"
 version = "0.1.0-a.1"
 dependencies = [
  "andromeda-app",
+ "andromeda-cw-json",
  "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-json",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -2020,18 +2032,6 @@ dependencies = [
  "cw-utils 2.0.0",
  "schemars",
  "serde",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "cw-json"
-version = "0.1.1"
-source = "git+https://github.com/SlayerAnsh/cw-json.git#1a3ef8005bafdd30571dc4546ca52400e45fda8a"
-dependencies = [
- "cosmwasm-schema 1.5.10",
- "cosmwasm-std 1.5.10",
- "serde",
- "serde-cw-value",
  "thiserror 1.0.69",
 ]
 

@@ -12,7 +12,7 @@ use andromeda_std::{
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
     attr, coin, from_json,
-    testing::{mock_env, message_info},
+    testing::{message_info, mock_env},
     to_json_binary, BankMsg, Coin, CosmosMsg, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;

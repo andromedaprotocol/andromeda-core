@@ -18,7 +18,7 @@ testing = ["cw-multi-test", "andromeda-testing"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw-json = { git = "https://github.com/SlayerAnsh/cw-json.git" }
+andromeda-cw-json = { workspace = true }
 serde_json = { workspace = true }
 test-case = { workspace = true }
 

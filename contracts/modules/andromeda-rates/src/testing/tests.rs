@@ -11,7 +11,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, coins,
-    testing::{mock_env, message_info},
+    testing::{message_info, mock_env},
     BankMsg, CosmosMsg, Event, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg};

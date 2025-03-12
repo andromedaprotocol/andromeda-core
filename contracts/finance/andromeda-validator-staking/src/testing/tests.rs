@@ -6,7 +6,7 @@ use crate::{
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{
     coin,
-    testing::{mock_env, message_info},
+    testing::{message_info, mock_env},
     Addr, DepsMut, Response, StakingMsg,
 };
 

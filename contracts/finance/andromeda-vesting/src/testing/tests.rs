@@ -11,7 +11,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_json,
-    testing::{mock_env, message_info, MOCK_CONTRACT_ADDR},
+    testing::{message_info, mock_env, MOCK_CONTRACT_ADDR},
     BankMsg, Decimal, DepsMut, Response, Uint128,
 };
 

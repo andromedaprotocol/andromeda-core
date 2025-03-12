@@ -9,7 +9,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_json,
-    testing::{mock_dependencies, mock_env, message_info, MOCK_CONTRACT_ADDR},
+    testing::{message_info, mock_dependencies, mock_env, MOCK_CONTRACT_ADDR},
     to_json_binary, Addr, BankMsg, Decimal, Decimal256, DepsMut, Response, Uint128, Uint256,
     WasmMsg,
 };

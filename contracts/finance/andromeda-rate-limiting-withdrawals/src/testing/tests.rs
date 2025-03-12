@@ -5,7 +5,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, from_json,
-    testing::{mock_env, message_info},
+    testing::{message_info, mock_env},
     BankMsg, Binary, CosmosMsg, DepsMut, Response, Uint128, WasmMsg,
 };
 pub const OWNER: &str = "creator";
