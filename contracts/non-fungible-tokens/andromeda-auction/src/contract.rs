@@ -33,7 +33,10 @@ use cosmwasm_std::{
     StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
+use cw721::{
+    msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse},
+    receiver::Cw721ReceiveMsg,
+};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

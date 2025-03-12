@@ -42,6 +42,8 @@ pub fn instantiate(
     let contract_info = ContractInfoResponse {
         name: msg.name,
         symbol: msg.symbol,
+        extension: TokenExtension::default(),
+        updated_at: env.block.time,
     };
 
     // Do this directly instead of with cw721_contract.instantiate because we want to have minter
@@ -195,9 +197,7 @@ fn execute_batch_mint(
     ensure_can_mint!(ctx);
     ensure!(
         !tokens_to_mint.is_empty(),
-        ContractError::Std(cosmwasm_std::StdError::GenericErr {
-            msg: String::from("No tokens to mint")
-        })
+        ContractError::new("No tokens to mint")
     );
     for msg in tokens_to_mint {
         let mut ctx = ExecuteContext::new(ctx.deps.branch(), ctx.info.clone(), ctx.env.clone());

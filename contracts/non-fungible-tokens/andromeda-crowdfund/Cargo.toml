@@ -8,7 +8,6 @@ rust-version = "1.75.0"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-
 # use library feature to disable all instantiate/execute/query exports
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]
@@ -28,7 +27,7 @@ andromeda-non-fungible-tokens = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
 cw-orch = { workspace = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = "0.29.1"
 
 [dev-dependencies]
 andromeda-app = { workspace = true }

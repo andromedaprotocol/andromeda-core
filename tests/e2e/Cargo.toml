@@ -15,7 +15,7 @@ name = "crowdfund"
 serde.workspace = true
 tokio = "1.43.0"
 cw-orch = { workspace = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = "0.29.1"
 rstest = { workspace = true }
 
 andromeda-testing-e2e = { workspace = true }
