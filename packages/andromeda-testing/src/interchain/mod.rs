@@ -84,7 +84,7 @@ impl InterchainTestEnv {
         juno.chain
             .set_balance(
                 &juno.chain.sender,
-                vec![Coin::new(10000u1280000000000u128, "ujuno")],
+                vec![Coin::new(100000000000000u128, "ujuno")],
             )
             .unwrap();
 
@@ -100,7 +100,7 @@ impl InterchainTestEnv {
             .chain
             .set_balance(
                 &osmosis.chain.sender,
-                vec![Coin::new(10000u1280000000000u128, "uosmo")],
+                vec![Coin::new(10000000000000u128, "uosmo")],
             )
             .unwrap();
 
@@ -116,7 +116,7 @@ impl InterchainTestEnv {
             .chain
             .set_balance(
                 &andromeda.chain.sender,
-                vec![Coin::new(10000u1280000000000u128, "uandr")],
+                vec![Coin::new(100000000000000u128, "uandr")],
             )
             .unwrap();
 
