@@ -6,7 +6,7 @@ macro_rules! ado_deployer {
             ($contract:expr, $msg_expr:expr, $ado_name:expr) => {{
                 let contract: $contract_type = $contract;
                 let msg: $msg_type = $msg_expr;
-                contract.instantiate(msg, None, None).unwrap();
+                contract.instantiate(msg, None, &vec![]).unwrap();
                 contract
             }};
         }
@@ -27,7 +27,7 @@ macro_rules! register_ado {
                     publisher: None,
                     action_fees: None,
                 },
-                None,
+                &vec![],
             )
             .unwrap()
     }};

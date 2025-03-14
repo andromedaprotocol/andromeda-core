@@ -31,7 +31,7 @@ macro_rules! register_contract {
                     version: $version.to_string(),
                     publisher: None,
                 },
-                None,
+                &vec![],
             )
             .unwrap()
     };

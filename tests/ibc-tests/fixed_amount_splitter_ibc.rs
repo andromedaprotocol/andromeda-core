@@ -55,7 +55,7 @@ fn test_fixed_amount_splitter_ibc() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -71,7 +71,7 @@ fn test_fixed_amount_splitter_ibc() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -100,10 +100,10 @@ fn test_fixed_amount_splitter_ibc() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(100000000),
                 denom: juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -142,7 +142,7 @@ fn test_fixed_amount_splitter_ibc() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -164,7 +164,7 @@ fn test_fixed_amount_splitter_ibc() {
                 packet_ack,
                 channel_id,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 

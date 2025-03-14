@@ -41,7 +41,7 @@ fn test_kernel_ibc_execute_only() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -58,7 +58,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -84,7 +84,7 @@ fn test_kernel_ibc_execute_only() {
                     },
                 },
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -127,10 +127,10 @@ fn test_kernel_ibc_funds_only() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 denom: juno.denom.clone(),
                 amount: Uint128::new(100),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -162,7 +162,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -179,7 +179,7 @@ fn test_kernel_ibc_funds_only() {
                 packet_ack,
                 channel_id,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -227,7 +227,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
     osmosis
@@ -241,7 +241,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -264,10 +264,10 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 denom: juno.denom.clone(),
                 amount: Uint128::new(100),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -299,7 +299,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -316,7 +316,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 packet_ack,
                 channel_id,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 

@@ -105,10 +105,10 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 denom: chain2.denom.clone(),
                 amount: Uint128::new(100),
-            }]),
+            }],
         )
         .unwrap();
     let packet_lifetime = interchain
@@ -138,7 +138,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
                 key: "trigger_key".to_string(),
                 value: chain2.chain.sender.to_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -160,7 +160,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
                 packet_ack,
                 channel_id,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -222,7 +222,7 @@ fn test_splitter_ibc_update_recipients() {
                 default_recipient: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -237,7 +237,7 @@ fn test_splitter_ibc_update_recipients() {
                 publisher: None,
                 action_fees: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -280,7 +280,7 @@ fn test_splitter_ibc_update_recipients() {
             &os::kernel::ExecuteMsg::Send {
                 message: ibc_update_msg,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 

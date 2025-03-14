@@ -150,7 +150,9 @@ fn prepare_validator_staking(
         chain_info: None,
     };
 
-    app_contract.instantiate(&app_init_msg, None, None).unwrap();
+    app_contract
+        .instantiate(&app_init_msg, None, &vec![])
+        .unwrap();
 
     let validator_staking_addr = app_contract.get_address(validator_staking_component.name);
 
@@ -172,7 +174,7 @@ fn prepare_validator_staking(
     println!("//===============================Processing Stake For testing=================================//");
     validators.into_iter().for_each(|validator| {
         let balance = daemon
-            .balance(daemon.sender_addr(), Some(denom.to_string()))
+            .balance(&daemon.sender_addr(), Some(denom.to_string()))
             .unwrap();
         let amount_to_send = cmp::min(balance[0].amount, Uint128::new(10000000000));
         validator_staking_contract

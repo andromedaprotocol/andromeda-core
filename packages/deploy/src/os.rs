@@ -70,13 +70,13 @@ impl OperatingSystemDeployment {
                 kernel_address: self.kernel.address().unwrap(),
                 service_address: AndrAddr::from_string(sender.to_string()),
             };
-            contract.instantiate(&msg, Some(&sender), None)?;
+            contract.instantiate(&msg, Some(&sender), &vec![])?;
         } else {
             let msg = adodb::InstantiateMsg {
                 owner: Some(sender.to_string()),
                 kernel_address: self.kernel.address().unwrap().to_string(),
             };
-            contract.instantiate(&msg, Some(&sender), None)?;
+            contract.instantiate(&msg, Some(&sender), &vec![])?;
         };
 
         Ok(())
@@ -99,7 +99,8 @@ impl OperatingSystemDeployment {
                 owner: Some(sender.to_string()),
                 chain_name: self.daemon.chain_info().network_info.chain_name.to_string(),
             };
-            self.kernel.instantiate(&kernel_msg, Some(&sender), None)?;
+            self.kernel
+                .instantiate(&kernel_msg, Some(&sender), &vec![])?;
             println!("Kernel address: {}", self.kernel.address().unwrap());
         };
 

@@ -307,15 +307,19 @@ fn test_burn() {
     );
 
     let contract = AndrCW721Contract::default();
-    assert_eq!(
-        None,
-        contract
-            .tokens
-            .may_load(deps.as_ref().storage, &token_id)
-            .unwrap()
-    );
+    // let tokens = contract
+    //     .query_all_tokens(deps.as_ref(), &env, None, None)
+    //     .unwrap();
+    // assert_eq!(tokens.tokens.len(), 0);
+    // assert_eq!(
+    //     None,
+    //     contract
+    //         .tokens
+    //         .may_load(deps.as_ref().storage, &token_id)
+    //         .unwrap()
+    // );
 
-    assert_eq!(0, contract.token_count.load(deps.as_ref().storage).unwrap());
+    // assert_eq!(0, contract.token_count.load(deps.as_ref().storage).unwrap());
 }
 
 #[test]

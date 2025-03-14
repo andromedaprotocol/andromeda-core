@@ -126,7 +126,7 @@ fn test_mint_permission(
     // If the mint was expected to succeed, verify ownership
     if expected_success {
         let owner = cw721.query_owner_of(&router, "1");
-        assert_eq!(owner, andr.get_wallet(sender).to_string());
+        assert_eq!(owner, andr.get_wallet(sender));
     }
 }
 
@@ -170,7 +170,7 @@ fn test_transfer_permission(
 
     // Verify initial ownership is with sender
     let owner = cw721.query_owner_of(&router, expected_token_id);
-    assert_eq!(owner, andr.get_wallet(sender).to_string());
+    assert_eq!(owner, andr.get_wallet(sender));
 
     // Attempt to transfer token #1 to the recipient
     let transfer_msg = mock_transfer_nft(
@@ -192,9 +192,9 @@ fn test_transfer_permission(
     // If the transfer was expected to succeed, verify ownership changed
     if expected_success {
         let owner = cw721.query_owner_of(&router, expected_token_id);
-        assert_eq!(owner, recipient.to_string());
+        assert_eq!(owner, recipient);
     } else {
         let owner = cw721.query_owner_of(&router, expected_token_id);
-        assert_eq!(owner, andr.get_wallet(sender).to_string());
+        assert_eq!(owner, andr.get_wallet(sender));
     }
 }
