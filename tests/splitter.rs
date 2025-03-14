@@ -8,6 +8,7 @@ use andromeda_testing::{
     mock_builder::MockAndromedaBuilder,
     MockAndromeda, MockContract,
 };
+use cw_orch_interchain::prelude::PortId;
 
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -317,26 +318,26 @@ use andromeda_economics::EconomicsContract;
 use andromeda_splitter::SplitterContract;
 use andromeda_vfs::VFSContract;
 use cw_orch::prelude::*;
-use cw_orch_interchain::{prelude::*, types::IbcPacketOutcome, InterchainEnv};
-use ibc_relayer_types::core::ics24_host::identifier::PortId;
+use cw_orch_interchain::{core::IbcPacketOutcome, prelude::*};
+
 #[test]
 fn test_splitter_cross_chain_recipient() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
-    let sender = Addr::unchecked("sender_for_all_chains").into_string();
-    let buyer = Addr::unchecked("buyer").into_string();
+    let sender = Addr::unchecked("sender_for_all_chains");
+    let buyer = Addr::unchecked("buyer");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender),
-        ("osmosis", &sender),
+        ("juno", &sender.to_string()),
+        ("osmosis", &sender.to_string()),
         // Dummy chain to create unequal ports to test counterparty denom properly
-        ("cosmoshub", &sender),
+        ("cosmoshub", &sender.to_string()),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
-    juno.set_balance(sender.clone(), vec![Coin::new(10000u1280000000000, "juno")])
+    juno.set_balance(&sender, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
-    juno.set_balance(buyer.clone(), vec![Coin::new(10000u1280000000000, "juno")])
+    juno.set_balance(&buyer, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -368,9 +369,11 @@ fn test_splitter_cross_chain_recipient() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno.instantiate(init_msg_juno, None, None).unwrap();
+    kernel_juno
+        .instantiate(init_msg_juno, None, &vec![])
+        .unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, None)
+        .instantiate(init_msg_osmosis, None, &vec![])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -431,7 +434,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -442,7 +445,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -453,7 +456,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -466,7 +469,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "1.1.1".to_string(),
                 publisher: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -479,7 +482,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "2.3.0".to_string(),
                 publisher: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -490,7 +493,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -500,7 +503,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "economics".to_string(),
                 value: economics_juno.address().unwrap().into_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -511,7 +514,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -524,7 +527,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -537,7 +540,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "1.1.1".to_string(),
                 publisher: None,
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -547,7 +550,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -557,7 +560,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "adodb".to_string(),
                 value: adodb_juno.address().unwrap().into_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -567,7 +570,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -577,7 +580,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -589,7 +592,7 @@ fn test_splitter_cross_chain_recipient() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -601,7 +604,7 @@ fn test_splitter_cross_chain_recipient() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -641,7 +644,7 @@ fn test_splitter_cross_chain_recipient() {
                 default_recipient: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -649,10 +652,10 @@ fn test_splitter_cross_chain_recipient() {
     let splitter_juno_send_request = splitter_juno
         .execute(
             &SplitterExecuteMsg::Send { config: None },
-            Some(&[Coin {
+            &[Coin {
                 denom: "juno".to_string(),
                 amount: Uint128::new(200),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -663,11 +666,11 @@ fn test_splitter_cross_chain_recipient() {
     let ibc_denom = format!("ibc/{}/{}", channel.1.channel.unwrap().as_str(), "juno");
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
-    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0] {
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
         // Check recipient balance
         let balances = osmosis
-            .query_all_balances(kernel_osmosis.address().unwrap())
+            .query_all_balances(&kernel_osmosis.address().unwrap())
             .unwrap();
         assert_eq!(balances.len(), 1);
         assert_eq!(balances[0].denom, ibc_denom);
@@ -683,9 +686,9 @@ fn test_splitter_cross_chain_recipient() {
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
-                value: sender.clone(),
+                value: sender.to_string(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -697,7 +700,7 @@ fn test_splitter_cross_chain_recipient() {
                 channel_id: channel.0.channel.clone().unwrap().to_string(),
                 packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -706,11 +709,13 @@ fn test_splitter_cross_chain_recipient() {
         .unwrap();
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
-    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0].outcome {
+    if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0] {
         // Packet has been successfully acknowledged and decoded, the transaction has gone through correctly
 
         // Check recipient balance after trigger execute msg
-        let balances = osmosis.query_all_balances(recipient).unwrap();
+        let balances = osmosis
+            .query_all_balances(&Addr::unchecked(recipient))
+            .unwrap();
         assert_eq!(balances.len(), 1);
         assert_eq!(balances[0].denom, ibc_denom);
         assert_eq!(balances[0].amount.u128(), 100);

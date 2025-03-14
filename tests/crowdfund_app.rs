@@ -352,9 +352,9 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
         .unwrap();
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
     let owner_resp = cw721.query_owner_of(&router, "29".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
 }
 
 #[rstest]
@@ -724,9 +724,9 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         .unwrap();
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
     let owner_resp = cw721.query_owner_of(&router, "29".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
 }
 
 #[rstest]

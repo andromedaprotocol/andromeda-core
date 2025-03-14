@@ -142,7 +142,7 @@ fn test_fixed_amount_splitter_local(#[case] with_message: bool) {
         .instantiate(
             fixed_amount_splitter_instantiate!(env.juno.aos, recipient, env.juno.denom),
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -172,10 +172,10 @@ fn test_fixed_amount_splitter_local(#[case] with_message: bool) {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(100000000),
                 denom: env.juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -214,7 +214,7 @@ fn test_fixed_amount_splitter_local_funds_mismatch() {
         .instantiate(
             fixed_amount_splitter_instantiate!(env.juno.aos, recipient, env.juno.denom),
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -237,10 +237,10 @@ fn test_fixed_amount_splitter_local_funds_mismatch() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(2), // Less than required
                 denom: env.juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap_err()
         .downcast()
@@ -284,7 +284,7 @@ fn test_fixed_amount_splitter_cw20(#[case] with_message: bool) {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -301,7 +301,7 @@ fn test_fixed_amount_splitter_cw20(#[case] with_message: bool) {
                     cw20_token.address().unwrap().to_string()
                 ),
                 None,
-                None,
+                &vec![],
             )
             .unwrap();
 
@@ -350,7 +350,7 @@ fn test_fixed_amount_splitter_cw20(#[case] with_message: bool) {
                 amount: Uint128::new(100000000),
                 msg: to_json_binary(&Cw20HookMsg::Send { message }).unwrap(),
             },
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -395,7 +395,7 @@ fn test_fixed_amount_splitter_cw20_funds_mismatch() {
                 owner: None,
             },
             None,
-            None,
+            &vec![],
         )
         .unwrap();
 
@@ -420,7 +420,7 @@ fn test_fixed_amount_splitter_cw20_funds_mismatch() {
                 amount: Uint128::new(2), // Less than required
                 msg: to_json_binary(&Cw20HookMsg::Send { message }).unwrap(),
             },
-            None,
+            &vec![],
         )
         .unwrap_err()
         .downcast()
@@ -457,7 +457,7 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
                 .instantiate(
                     fixed_amount_splitter_instantiate!(env.juno.aos, recipients[0], env.juno.denom),
                     None,
-                    None,
+                    &vec![],
                 )
                 .unwrap();
         }
@@ -480,7 +480,7 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
                         ]
                     ),
                     None,
-                    None,
+                    &vec![],
                 )
                 .unwrap();
         }
@@ -511,10 +511,10 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(1000000),
                 denom: env.juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap();
 
