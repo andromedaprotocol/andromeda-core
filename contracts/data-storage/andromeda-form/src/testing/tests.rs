@@ -568,17 +568,18 @@ fn test_submit_form_disallowed_multiple_submission_disallowed_edit() {
         None,
         5000000000_u64,
     );
+    let user1 = deps.api.addr_make("user1");
     open_form(deps.as_mut(), info.sender.as_ref(), 10000000000_u64).unwrap();
     submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data1".to_string(),
         20000000000_u64,
     )
     .unwrap();
     let res = submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data2".to_string(),
         30000000000_u64,
     )
@@ -592,9 +593,9 @@ fn test_submit_form_disallowed_multiple_submission_disallowed_edit() {
 
     let res = edit_submission(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         1,
-        AndrAddr::from_string("user1"),
+        AndrAddr::from_string(user1.to_string()),
         "valid_data2".to_string(),
     )
     .unwrap_err();
@@ -621,10 +622,12 @@ fn test_submit_form_disallowed_multiple_submission_allowed_edit() {
         None,
         5000000000_u64,
     );
+    let user1 = deps.api.addr_make("user1");
+    let user2 = deps.api.addr_make("user2");
     open_form(deps.as_mut(), info.sender.as_ref(), 10000000000_u64).unwrap();
     submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data1".to_string(),
         20000000000_u64,
     )
@@ -632,9 +635,9 @@ fn test_submit_form_disallowed_multiple_submission_allowed_edit() {
 
     let res = edit_submission(
         deps.as_mut(),
-        "user2",
+        user2.as_str(),
         1,
-        AndrAddr::from_string("user1"),
+        AndrAddr::from_string(user1.to_string()),
         "valid_data2".to_string(),
     )
     .unwrap_err();
@@ -642,20 +645,20 @@ fn test_submit_form_disallowed_multiple_submission_allowed_edit() {
 
     edit_submission(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         1,
-        AndrAddr::from_string("user1"),
+        AndrAddr::from_string(user1.to_string()),
         "valid_data2".to_string(),
     )
     .unwrap();
-    let submission = query_submission(deps.as_ref(), 1, AndrAddr::from_string("user1"))
+    let submission = query_submission(deps.as_ref(), 1, AndrAddr::from_string(user1.to_string()))
         .unwrap()
         .submission;
     assert_eq!(
         submission,
         Some(SubmissionInfo {
             submission_id: 1,
-            wallet_address: Addr::unchecked("user1"),
+            wallet_address: user1,
             data: "valid_data2".to_string()
         })
     );

@@ -353,19 +353,13 @@ fn test_claim_ownership_all() {
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    let cw20_addr = deps.api.addr_make(MOCK_CW20_CONTRACT);
+    let anchor_addr = deps.api.addr_make(MOCK_ANCHOR_CONTRACT);
     ADO_ADDRESSES
-        .save(
-            deps.as_mut().storage,
-            "token",
-            &Addr::unchecked(MOCK_CW20_CONTRACT),
-        )
+        .save(deps.as_mut().storage, "token", &cw20_addr)
         .unwrap();
     ADO_ADDRESSES
-        .save(
-            deps.as_mut().storage,
-            "anchor",
-            &Addr::unchecked(MOCK_ANCHOR_CONTRACT),
-        )
+        .save(deps.as_mut().storage, "anchor", &anchor_addr)
         .unwrap();
 
     let msg = ExecuteMsg::ClaimOwnership {
@@ -392,19 +386,13 @@ fn test_claim_ownership() {
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
+    let token_addr = deps.api.addr_make("tokenaddress");
+    let anchor_addr = deps.api.addr_make("anchoraddress");
     ADO_ADDRESSES
-        .save(
-            deps.as_mut().storage,
-            "token",
-            &Addr::unchecked("tokenaddress".to_string()),
-        )
+        .save(deps.as_mut().storage, "token", &token_addr)
         .unwrap();
     ADO_ADDRESSES
-        .save(
-            deps.as_mut().storage,
-            "anchor",
-            &Addr::unchecked("anchoraddress".to_string()),
-        )
+        .save(deps.as_mut().storage, "anchor", &anchor_addr)
         .unwrap();
 
     let msg = ExecuteMsg::ClaimOwnership {
@@ -418,9 +406,9 @@ fn test_claim_ownership() {
     let exec_submsg: SubMsg<Empty> = SubMsg {
         id: 200,
         msg: CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "tokenaddress".to_string(),
+            contract_addr: token_addr.to_string(),
             msg: to_json_binary(&AndromedaMsg::Ownership(OwnershipMessage::UpdateOwner {
-                new_owner: Addr::unchecked("creator"),
+                new_owner: creator,
                 expiration: None,
             }))
             .unwrap(),
@@ -684,6 +672,7 @@ fn test_reply_assign_app() {
         name: "token".to_string(),
         component_type: ComponentType::New(to_json_binary(&true).unwrap()),
     };
+    let cosmos_contract = deps.api.addr_make("cosmos2contract");
     let component_idx = 1;
     ADO_DESCRIPTORS
         .save(
@@ -696,14 +685,12 @@ fn test_reply_assign_app() {
         .save(
             deps.as_mut().storage,
             &mock_app_component.name,
-            &Addr::unchecked("cosmos2contract"),
+            &cosmos_contract,
         )
         .unwrap();
 
-    let mock_reply_event = Event::new("instantiate").add_attribute(
-        "contract_address".to_string(),
-        "cosmos2contract".to_string(),
-    );
+    let mock_reply_event = Event::new("instantiate")
+        .add_attribute("contract_address".to_string(), cosmos_contract.to_string());
 
     let reply_resp = "Cg9jb3Ntb3MyY29udHJhY3QSAA==";
     let mock_reply = Reply {

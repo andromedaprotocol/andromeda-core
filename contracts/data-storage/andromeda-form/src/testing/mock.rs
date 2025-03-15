@@ -27,11 +27,12 @@ pub fn valid_initialization(
 ) -> (MockDeps, MessageInfo, Response) {
     let mut deps = mock_dependencies_custom(&[]);
     let creator = deps.api.addr_make("creator");
+    let schema_ado_address = deps.api.addr_make(schema_ado_address.as_str());
     let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        schema_ado_address,
+        schema_ado_address: AndrAddr::from_string(schema_ado_address.to_string()),
         authorized_addresses_for_submission,
         form_config,
         custom_key_for_notifications,
