@@ -45,7 +45,8 @@ fn setup() -> (OwnedDeps<MockStorage, MockApi, WasmMockQuerier>, Env) {
     let mut deps = mock_dependencies_custom(&[]);
     let querier = QuerierWrapper::new(&deps.querier);
     let env = mock_env();
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     ADOContract::default()
         .instantiate(

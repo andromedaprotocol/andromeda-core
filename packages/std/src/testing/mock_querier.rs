@@ -31,7 +31,8 @@ pub const MOCK_APP_CONTRACT: &str = "app_contract";
 /// Mock Primitive Contract Address
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 /// Mock Kernel Contract Address
-pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
+pub const MOCK_KERNEL_CONTRACT: &str =
+    "cosmwasm10ve4qc7y97ks47tmur0j44zx2mhuvlr78wr0y0udsxn7yp5cr30slhc6sx";
 /// Mock Kernel Contract Address on foreign chain
 pub const MOCK_FAKE_KERNEL_CONTRACT: &str = "fake_kernel_contract";
 /// Mock VFS Contract Address
@@ -466,8 +467,13 @@ impl MockAndromedaQuerier {
                 to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
             ));
         }
-
-        panic!("Unsupported query for contract: {contract_addr}")
+        if key_str.contains("ado_type1") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+        println!("key str is: {}", key_str);
+        panic!("Unsupported query for contract: {contract_addr}");
     }
 
     pub fn handle_kernel_raw_query(&self, key: &Binary, fake: bool) -> QuerierResult {

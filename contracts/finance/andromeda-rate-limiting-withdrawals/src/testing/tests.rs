@@ -6,9 +6,11 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, from_json,
     testing::{message_info, mock_env},
-    Addr, BankMsg, Binary, CosmosMsg, DepsMut, Response, Uint128, WasmMsg,
+    Addr, BankMsg, Binary, CosmosMsg, Response, Uint128, WasmMsg,
 };
-pub const OWNER: &str = "creator";
+pub const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
+pub const ANDROMEDAUSER: &str =
+    "cosmwasm163rntam8lncj2azj9jg67xll2sfqw0fpt3aj2j6uqy6xnwqy05kqhpagcm";
 
 use super::mock_querier::MOCK_KERNEL_CONTRACT;
 
@@ -23,7 +25,13 @@ use andromeda_finance::rate_limiting_withdrawals::{
 
 use rstest::*;
 
-fn init(deps: DepsMut) -> Response {
+fn init(
+    deps: &mut cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    >,
+) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -37,22 +45,25 @@ fn init(deps: DepsMut) -> Response {
     };
 
     let info = message_info(&Addr::unchecked("owner"), &[]);
-    instantiate(deps, mock_env(), info, msg).unwrap()
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap()
 }
 
 #[test]
 fn test_instantiate_works() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut());
+    let mut deps: cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    > = mock_dependencies_custom(&[]);
+    let res = init(&mut deps);
     assert_eq!(0, res.messages.len());
 }
 
 #[test]
 fn test_deposit_zero_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
-    let _res = init(deps.as_mut());
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
+    let _res = init(&mut deps);
 
     let exec = ExecuteMsg::Deposit { recipient: None };
     let _err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
@@ -61,13 +72,14 @@ fn test_deposit_zero_funds() {
 #[test]
 fn test_deposit_invalid_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
+    let me = deps.api.addr_make("me");
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("me".to_string()),
+        recipient: Some(me.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "uusd")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "uusd")]);
 
     let err = execute(deps.as_mut(), mock_env(), info, exec).unwrap_err();
     assert_eq!(
@@ -81,13 +93,14 @@ fn test_deposit_invalid_funds() {
 #[test]
 fn test_deposit_new_account_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
+    let andromedauser = deps.api.addr_make("andromedauser");
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("andromedauser".to_string()),
+        recipient: Some(andromedauser.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
     let expected_balance = AccountDetails {
@@ -95,7 +108,7 @@ fn test_deposit_new_account_works() {
         latest_withdrawal: None,
     };
     let actual_balance = ACCOUNTS
-        .load(&deps.storage, "andromedauser".to_string())
+        .load(&deps.storage, andromedauser.to_string())
         .unwrap();
     assert_eq!(expected_balance, actual_balance)
 }
@@ -103,18 +116,22 @@ fn test_deposit_new_account_works() {
 #[test]
 fn test_deposit_existing_account_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
+    let andromedauser = deps.api.addr_make("andromedauser");
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("andromedauser".to_string()),
+        recipient: Some(andromedauser.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
     let exec = ExecuteMsg::Deposit { recipient: None };
 
-    let info = message_info(&Addr::unchecked("andromedauser"), &[coin(70, "junox")]);
+    let info = message_info(
+        &Addr::unchecked(andromedauser.clone()),
+        &[coin(70, "junox")],
+    );
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
     let expected_balance = AccountDetails {
@@ -122,7 +139,7 @@ fn test_deposit_existing_account_works() {
         latest_withdrawal: None,
     };
     let actual_balance = ACCOUNTS
-        .load(&deps.storage, "andromedauser".to_string())
+        .load(&deps.storage, andromedauser.to_string())
         .unwrap();
     assert_eq!(expected_balance, actual_balance)
 }
@@ -130,17 +147,19 @@ fn test_deposit_existing_account_works() {
 #[test]
 fn test_withdraw_account_not_found() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
+    let andromedauser = deps.api.addr_make("andromedauser");
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("andromedauser".to_string()),
+        recipient: Some(andromedauser.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info(&Addr::unchecked("random"), &[]);
+    let random = deps.api.addr_make("random");
+    let info = message_info(&Addr::unchecked(random), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(19_u16),
         recipient: None,
@@ -152,17 +171,18 @@ fn test_withdraw_account_not_found() {
 #[test]
 fn test_withdraw_over_account_limit() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
+    let andromedauser = deps.api.addr_make("andromedauser");
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("andromedauser".to_string()),
+        recipient: Some(andromedauser.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
+    let info = message_info(&Addr::unchecked(andromedauser.clone()), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(31_u16),
         recipient: None,
@@ -174,24 +194,25 @@ fn test_withdraw_over_account_limit() {
 #[test]
 fn test_withdraw_funds_locked() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
+    let andromedauser = deps.api.addr_make("andromedauser");
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("andromedauser".to_string()),
+        recipient: Some(andromedauser.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
+    let info = message_info(&Addr::unchecked(andromedauser.clone()), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
         recipient: None,
     };
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
+    let info = message_info(&Addr::unchecked(andromedauser.clone()), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
         recipient: None,
@@ -206,8 +227,8 @@ fn test_withdraw_funds_locked() {
 fn test_withdraw_over_allowed_limit() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let msg = InstantiateMsg {
         allowed_coin: CoinAndLimit {
             coin: "junox".to_string(),
@@ -220,15 +241,17 @@ fn test_withdraw_over_allowed_limit() {
         owner: None,
     };
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+    let andromedauser = deps.api.addr_make("andromedauser");
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("andromedauser".to_string()),
+        recipient: Some(andromedauser.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "junox")]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
+    let info = message_info(&Addr::unchecked(andromedauser.clone()), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(21_u16),
         recipient: None,
@@ -238,13 +261,13 @@ fn test_withdraw_over_allowed_limit() {
 }
 
 #[rstest]
-#[case::direct(None, "andromedauser")] // Withdraw to self
-#[case::with_recipient(Some(Recipient::new("recipient".to_string(), Some(Binary::default()))), "recipient")] // Withdraw to different recipient
+#[case::direct(None, ANDROMEDAUSER)] // Withdraw to self
+#[case::with_recipient(Some(Recipient::new("cosmwasm163rntam8lncj2azj9jg67xll2sfqw0fpt3aj2j6uqy6xnwqy05kqhpagcx".to_string(), Some(Binary::default()))), "cosmwasm163rntam8lncj2azj9jg67xll2sfqw0fpt3aj2j6uqy6xnwqy05kqhpagcx")] // Withdraw to different recipient
 fn test_withdraw_works(#[case] recipient: Option<Recipient>, #[case] expected_recipient: &str) {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     let msg = InstantiateMsg {
         allowed_coin: CoinAndLimit {
             coin: "junox".to_string(),
@@ -258,13 +281,13 @@ fn test_withdraw_works(#[case] recipient: Option<Recipient>, #[case] expected_re
     };
     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
     let exec = ExecuteMsg::Deposit {
-        recipient: Some("andromedauser".to_string()),
+        recipient: Some(ANDROMEDAUSER.to_string()),
     };
 
-    let info = message_info(&Addr::unchecked("creator"), &[coin(30, "junox")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(30, "junox")]);
     let _res = execute(deps.as_mut(), mock_env(), info, exec).unwrap();
 
-    let info = message_info(&Addr::unchecked("andromedauser"), &[]);
+    let info = message_info(&Addr::unchecked(ANDROMEDAUSER), &[]);
     let exec = ExecuteMsg::Withdraw {
         amount: Uint128::from(10_u16),
         recipient: recipient.clone(),
@@ -307,7 +330,7 @@ fn test_withdraw_works(#[case] recipient: Option<Recipient>, #[case] expected_re
         latest_withdrawal: Some(env.block.time),
     };
     let actual_balance = ACCOUNTS
-        .load(&deps.storage, "andromedauser".to_string())
+        .load(&deps.storage, ANDROMEDAUSER.to_string())
         .unwrap();
     assert_eq!(expected_balance, actual_balance)
 }

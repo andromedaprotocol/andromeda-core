@@ -72,7 +72,8 @@ fn test_execute_update_lock() {
         lock_time: Expiry::FromNow(lock_time),
     };
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let new_lock = lock_time
         .plus_seconds(current_time)
@@ -120,7 +121,8 @@ fn test_execute_update_recipients() {
         recipients: duplicate_recipients,
     };
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
@@ -142,7 +144,8 @@ fn test_execute_update_recipients() {
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         Response::default().add_attributes(vec![attr("action", "update_recipients")]),
@@ -519,7 +522,8 @@ fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "app_contract".to_string(),
@@ -540,7 +544,8 @@ fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res: Response = init(deps.as_mut());
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateAppContract {
         address: "z".to_string(),

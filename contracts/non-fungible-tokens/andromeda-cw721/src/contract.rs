@@ -145,13 +145,13 @@ pub fn instantiate(
         withdraw_address: None,
     };
 
-    AndrCW721Contract::instantiate(
+    let mut res = AndrCW721Contract::instantiate(
         &AndrCW721Contract::default(),
         deps.branch(),
         &env,
         &info,
         cw721_instantiate_msg,
-    );
+    )?;
 
     let contract = ADOContract::default();
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
@@ -172,7 +172,9 @@ pub fn instantiate(
         },
     )?;
 
-    Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
+    Ok(res
+        .add_attributes(vec![attr("minter", msg.minter)])
+        .add_submessages(resp.messages))
 }
 
 #[andr_execute_fn]

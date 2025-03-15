@@ -96,7 +96,8 @@ fn get_tally(deps: Deps, proposal_id: u64) -> u64 {
 #[test]
 fn test_instantiate_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     let max_voting_period = Duration::Time(1234567);
 
@@ -166,7 +167,8 @@ fn zero_weight_member_cant_vote() {
     let threshold = Threshold::AbsoluteCount { weight: 4 };
     let voting_period = Duration::Time(2000000);
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     setup_test_case(deps.as_mut(), info, threshold, voting_period).unwrap();
 
     let bank_msg = BankMsg::Send {
@@ -206,7 +208,8 @@ fn test_propose_works() {
     let threshold = Threshold::AbsoluteCount { weight: 4 };
     let voting_period = Duration::Time(2000000);
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     setup_test_case(deps.as_mut(), info, threshold, voting_period).unwrap();
 
     let bank_msg = BankMsg::Send {
@@ -227,7 +230,8 @@ fn test_propose_works() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Wrong expiration option fails
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     let proposal_wrong_exp = ExecuteMsg::Propose {
         title: "Rewarding somebody".to_string(),
         description: "Do we reward her?".to_string(),
@@ -258,7 +262,8 @@ fn test_vote_works() {
     let threshold = Threshold::AbsoluteCount { weight: 3 };
     let voting_period = Duration::Time(2000000);
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
 
     // Propose
@@ -353,7 +358,8 @@ fn test_vote_works() {
     execute(deps.as_mut(), mock_env(), info, yes_vote).unwrap();
 
     // Propose
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     let bank_msg = BankMsg::Send {
         to_address: SOMEBODY.into(),
         amount: vec![coin(1, "BTC")],
@@ -412,7 +418,8 @@ fn test_execute_works() {
     let threshold = Threshold::AbsoluteCount { weight: 3 };
     let voting_period = Duration::Time(2000000);
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
 
     // Propose
@@ -485,7 +492,8 @@ fn proposal_pass_on_expiration() {
     };
     let voting_period = Duration::Time(2000000);
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
 
     // Propose
@@ -572,7 +580,8 @@ fn test_close_works() {
     let threshold = Threshold::AbsoluteCount { weight: 3 };
     let voting_period = Duration::Height(2000000);
 
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
 
     // Propose
@@ -607,7 +616,8 @@ fn test_close_works() {
     );
 
     // Expired proposals can be closed
-    let info = message_info(&Addr::unchecked(OWNER), &[]);
+        let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     let proposal = ExecuteMsg::Propose {
         title: "(Try to) pay somebody".to_string(),
