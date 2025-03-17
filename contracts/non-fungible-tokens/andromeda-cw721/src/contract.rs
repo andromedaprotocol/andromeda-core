@@ -6,10 +6,7 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError,
     SubMsg, Uint128,
 };
-use cw721::msg::{
-    CollectionExtensionMsg, CollectionInfoAndExtensionResponse, Cw721InstantiateMsg,
-    NftInfoResponse, RoyaltyInfoResponse,
-};
+use cw721::msg::Cw721InstantiateMsg;
 use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
@@ -29,11 +26,8 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
-use cw721::{
-    traits::{Cw721Execute, Cw721Query},
-    ContractInfoResponse,
-};
-use cw721_base::{helpers::Cw721Contract, msg::ExecuteMsg as Cw721ExecuteMsg, state::TokenInfo};
+use cw721::traits::{Cw721Execute, Cw721Query};
+use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
 // executeCw721
 // pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
@@ -57,6 +51,13 @@ impl AndrCW721Contract {
             },
             QueryMsg::NftInfo { token_id } => cw721::msg::Cw721QueryMsg::NftInfo { token_id },
             // Add other conversions as needed
+            QueryMsg::AllNftInfo {
+                token_id,
+                include_expired,
+            } => cw721::msg::Cw721QueryMsg::AllNftInfo {
+                token_id,
+                include_expired,
+            },
             _ => return Err(ContractError::new("Unsupported query message")),
         };
 
@@ -145,7 +146,7 @@ pub fn instantiate(
         withdraw_address: None,
     };
 
-    let mut res = AndrCW721Contract::instantiate(
+    let res = AndrCW721Contract::instantiate(
         &AndrCW721Contract::default(),
         deps.branch(),
         &env,
@@ -281,7 +282,7 @@ fn mint(
         owner.clone(),
         token_uri.clone(),
         Empty::default(),
-    );
+    )?;
     // cw721_contract
     //     .tokens
     //     .update(ctx.deps.storage, &token_id, |old| match old {
@@ -326,7 +327,7 @@ fn execute_transfer(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps,
+        mut deps,
         info,
         env,
         contract: base_contract,
@@ -337,7 +338,6 @@ fn execute_transfer(
     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
     let contract = AndrCW721Contract::default();
 
-    let token = contract.query_nft_info(deps.storage, token_id.clone())?;
     let owner = contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
     ensure!(
         !is_archived(deps.storage, &token_id)?.is_archived,
@@ -386,7 +386,7 @@ fn execute_transfer(
         Uint128::zero()
     };
 
-    let approvals = contract.query_approvals(deps.as_ref(), &env, token_id.clone(), false)?;
+    let approvals = contract.query_approvals(deps.as_ref(), &env, token_id.clone(), true)?;
     let operators =
         contract.query_operators(deps.as_ref(), &env, owner.owner.clone(), true, None, None)?;
     check_can_send(
@@ -394,7 +394,6 @@ fn execute_transfer(
         env.clone(),
         info.clone(),
         &token_id,
-        &token,
         tax_amount,
         owner.owner,
         approvals.approvals,
@@ -402,11 +401,17 @@ fn execute_transfer(
     )?;
     // token.owner = deps.api.addr_validate(&recipient_address)?;
     // token.approvals.clear();
-    TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     // contract.tokens.save(deps.storage, &token_id, &token)?;
-    let res = contract.transfer_nft(deps, &env, &info, recipient.to_string(), token_id)?;
+    let res = contract.transfer_nft(
+        deps.branch(),
+        &env,
+        &info,
+        recipient.to_string(),
+        token_id.clone(),
+    )?;
+    TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
 
-    Ok(resp
+    Ok(res
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient_address))
 }
@@ -425,7 +430,6 @@ fn check_can_send(
     env: Env,
     info: MessageInfo,
     token_id: &str,
-    token: &NftInfoResponse<Empty>,
     tax_amount: Uint128,
     owner: String,
     approvals: Vec<Approval>,
@@ -484,7 +488,7 @@ fn execute_update_transfer_agreement(
     token_id: String,
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext { deps, ref info, .. } = ctx;
     let contract = AndrCW721Contract::default();
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
@@ -499,17 +503,33 @@ fn execute_update_transfer_agreement(
         TRANSFER_AGREEMENTS.save(deps.storage, &token_id, xfer_agreement)?;
         if xfer_agreement.purchaser != "*" {
             deps.api.addr_validate(&xfer_agreement.purchaser)?;
+            contract.approve(
+                deps,
+                &ctx.env,
+                &ctx.info,
+                xfer_agreement.purchaser.clone(),
+                token_id.clone(),
+                None,
+            )?;
         }
     } else {
         TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
+        contract.revoke_all(deps, &ctx.env, &ctx.info, token_id.clone())?;
     }
 
-    // TODO should we call contract in this function?
-    // contract
-    //     .tokens
-    //     .save(deps.storage, token_id.as_str(), &token)?;
+    let mut attributes = vec![
+        attr("action", "update_transfer_agreement"),
+        attr("token_id", token_id),
+    ];
 
-    Ok(Response::default())
+    if let Some(xfer_agreement) = &agreement {
+        attributes.push(attr("purchaser", &xfer_agreement.purchaser));
+        attributes.push(attr("amount", xfer_agreement.amount.to_string()));
+    } else {
+        attributes.push(attr("agreement", "removed"));
+    }
+
+    Ok(Response::default().add_attributes(attributes))
 }
 
 fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {

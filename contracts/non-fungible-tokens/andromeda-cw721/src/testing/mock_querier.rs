@@ -1,23 +1,24 @@
-use andromeda_fungible_tokens::cw20::QueryMsg as Cw20Query;
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-
-use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-use cosmwasm_std::testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::Addr;
+use cosmwasm_std::testing::message_info;
+use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
-    from_json, to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
-    QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
+    from_json,
+    testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
 
-pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";
+pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
+/// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
+///
+/// Automatically assigns a kernel address as MOCK_KERNEL_CONTRACT.
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
     let custom_querier: WasmMockQuerier =
-        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CW20_CONTRACT, contract_balance)]));
+        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
     let storage = MockStorage::default();
     let mut deps = OwnedDeps {
         storage,
@@ -26,6 +27,7 @@ pub fn mock_dependencies_custom(
         custom_query_type: std::marker::PhantomData,
     };
     let sender = deps.api.addr_make("sender");
+    let kernel_address = deps.api.addr_make(MOCK_KERNEL_CONTRACT);
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
@@ -34,9 +36,9 @@ pub fn mock_dependencies_custom(
             &QuerierWrapper::new(&deps.querier),
             message_info(&sender, &[]),
             InstantiateMsg {
-                ado_type: "cw20".to_string(),
+                ado_type: "splitter".to_string(),
                 ado_version: "test".to_string(),
-                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                kernel_address: kernel_address.to_string(),
                 owner: None,
             },
         )
@@ -70,31 +72,17 @@ impl Querier for WasmMockQuerier {
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<cosmwasm_std::Empty>) -> QuerierResult {
         match &request {
-            QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                match contract_addr.as_str() {
-                    MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
-                    _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
-                }
+            QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            }) => {
+                let _ = contract_addr.as_str();
+                MockAndromedaQuerier::default().handle_query(&self.base, request)
             }
             _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
         }
     }
 
-    fn handle_cw20_query(&self, msg: &Binary) -> QuerierResult {
-        match from_json(msg).unwrap() {
-            Cw20Query::Owner {} => {
-                let res = andromeda_std::ado_base::ownership::ContractOwnerResponse {
-                    owner: "owner".to_string(),
-                };
-
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&res).unwrap()))
-            }
-
-            _ => panic!("Unsupported Query"),
-        }
-    }
-}
-impl WasmMockQuerier {
     pub fn new(base: MockQuerier) -> Self {
         WasmMockQuerier {
             base,

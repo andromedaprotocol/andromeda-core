@@ -150,9 +150,7 @@ pub fn mock_mint_msg(
 pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
     let mut mint_msgs: Vec<MintMsg> = Vec::new();
     for i in 1..=amount {
-        let extension = TokenExtension {
-            publisher: owner.clone(),
-        };
+        let extension = TokenExtension {};
 
         let msg = mock_mint_msg(i.to_string(), extension, None, owner.clone());
         mint_msgs.push(msg);

@@ -19,7 +19,16 @@ use cw20_base::state::BALANCES;
 
 use super::mock_querier::MOCK_CW20_CONTRACT;
 
-fn init(deps: DepsMut) -> Response {
+fn init(
+    deps: &mut cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    >,
+) -> Response {
+    let sender = deps.api.addr_make("sender");
+    let rates_recipient = deps.api.addr_make("rates_recipient");
+    let royalty_recipient = deps.api.addr_make("royalty_recipient");
     let msg = InstantiateMsg {
         name: MOCK_CW20_CONTRACT.into(),
         symbol: "Symbol".into(),
@@ -27,32 +36,32 @@ fn init(deps: DepsMut) -> Response {
         initial_balances: vec![
             Cw20Coin {
                 amount: 1000u128.into(),
-                address: "sender".to_string(),
+                address: sender.to_string(),
             },
             Cw20Coin {
                 amount: 1u128.into(),
-                address: "rates_recipient".to_string(),
+                address: rates_recipient.to_string(),
             },
             Cw20Coin {
                 amount: 1u128.into(),
-                address: "royalty_recipient".to_string(),
+                address: royalty_recipient.to_string(),
             },
         ],
         mint: None,
         marketing: None,
-
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
-    instantiate(deps, mock_env(), info, msg).unwrap()
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap()
 }
 
 #[test]
 fn test_andr_query() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
     let msg = QueryMsg::Owner {};
     let res = query(deps.as_ref(), mock_env(), msg);
@@ -63,33 +72,35 @@ fn test_andr_query() {
 #[test]
 fn test_transfer() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut());
+    let res = init(&mut deps);
+    let owner = deps.api.addr_make("owner");
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
             .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", "owner"),
+            .add_attribute("owner", owner.to_string()),
         res
     );
 
+    let sender = deps.api.addr_make("sender");
     assert_eq!(
         Uint128::from(1000u128),
-        BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
-            .unwrap()
+        BALANCES.load(deps.as_ref().storage, &sender).unwrap()
     );
 
+    let other = deps.api.addr_make("other");
     let msg = ExecuteMsg::Transfer {
-        recipient: AndrAddr::from_string("other"),
+        recipient: AndrAddr::from_string(other.to_string()),
         amount: 100u128.into(),
     };
 
+    let royalty_recipient = deps.api.addr_make("royalty_recipient");
     // Set a royalty of 10% to be paid to royalty_recipient
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Deductive,
         recipient: Recipient {
-            address: AndrAddr::from_string("royalty_recipient".to_string()),
+            address: AndrAddr::from_string(royalty_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
         },
@@ -112,22 +123,23 @@ fn test_transfer() {
 
     // Blacklist the sender who otherwise would have been able to call the function successfully
     let permission = Permission::Local(LocalPermission::blacklisted(None, None));
-    let actors = vec![AndrAddr::from_string("sender")];
+    let actors = vec![AndrAddr::from_string(sender.to_string())];
     let action = "Transfer";
-    let ctx = ExecuteContext::new(deps.as_mut(), message_info(&Addr::unchecked("owner"), &[]), mock_env());
+    let ctx = ExecuteContext::new(deps.as_mut(), message_info(&owner, &[]), mock_env());
     ADOContract::default()
         .execute_set_permission(ctx, actors, action, permission)
         .unwrap();
-    let info = message_info(&Addr::unchecked("sender"), &[]);
+    let info = message_info(&sender, &[]);
     let err = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap_err();
 
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Now whitelist the sender, that should allow him to call the function successfully
     let permission = Permission::Local(LocalPermission::whitelisted(None, None));
-    let actors = vec![AndrAddr::from_string("sender")];
+    let actors = vec![AndrAddr::from_string(sender.to_string())];
     let action = "Transfer";
-    let ctx = ExecuteContext::new(deps.as_mut(), message_info(&Addr::unchecked("owner"), &[]), mock_env());
+    let owner = deps.api.addr_make("owner");
+    let ctx = ExecuteContext::new(deps.as_mut(), message_info(&owner, &[]), mock_env());
     ADOContract::default()
         .execute_set_permission(ctx, actors, action, permission)
         .unwrap();
@@ -137,8 +149,8 @@ fn test_transfer() {
         Response::new()
             .add_event(expected_event)
             .add_attribute("action", "transfer")
-            .add_attribute("from", "sender")
-            .add_attribute("to", "other")
+            .add_attribute("from", sender.to_string())
+            .add_attribute("to", other.to_string())
             .add_attribute("amount", "90"),
         res
     );
@@ -146,24 +158,20 @@ fn test_transfer() {
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
         Uint128::from(900u128),
-        BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
-            .unwrap()
+        BALANCES.load(deps.as_ref().storage, &sender).unwrap()
     );
 
     // Funds given to the receiver. Remove 10 for the royalty
     assert_eq!(
         Uint128::from(100u128 - 10u128),
-        BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("other"))
-            .unwrap()
+        BALANCES.load(deps.as_ref().storage, &other).unwrap()
     );
 
     // Royalty given to royalty_recipient
     assert_eq!(
         Uint128::from(1u128 + 10u128),
         BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("royalty_recipient"))
+            .load(deps.as_ref().storage, &royalty_recipient)
             .unwrap()
     );
 }
@@ -173,7 +181,7 @@ fn test_send() {
     let mut deps = mock_dependencies_custom(&[]);
     let info = message_info(&Addr::unchecked("sender"), &[]);
 
-    let res = init(deps.as_mut());
+    let res = init(&mut deps);
 
     assert_eq!(
         Response::new()

@@ -7,7 +7,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::denom::Asset,
-    testing::mock_querier::{WasmMockQuerier, MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
+    testing::mock_querier::{WasmMockQuerier, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
     testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage},
@@ -41,9 +41,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             limit: None,
             price: Uint128::new(10u128),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         },
@@ -53,9 +51,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             limit: Some(Uint128::new(MOCK_DEFAULT_LIMIT)),
             price: Uint128::new(10u128),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         },
@@ -69,9 +65,7 @@ pub fn mock_zero_price_tier(level: Uint64) -> Tier {
         limit: None,
         price: Uint128::zero(),
         metadata: TierMetaData {
-            extension: TokenExtension {
-                publisher: MOCK_ADO_PUBLISHER.to_string(),
-            },
+            extension: TokenExtension {},
             token_uri: None,
         },
     }

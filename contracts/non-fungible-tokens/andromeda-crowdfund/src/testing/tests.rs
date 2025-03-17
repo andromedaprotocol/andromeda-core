@@ -7,9 +7,8 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::{
-    common::MillisecondsExpiration,
-    error::ContractError,
-    testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
+    common::MillisecondsExpiration, error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
     testing::{message_info, mock_env},
@@ -220,9 +219,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         };
@@ -232,9 +229,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         };
@@ -313,9 +308,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         };
@@ -325,9 +318,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         };
@@ -406,9 +397,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         };
@@ -418,9 +407,7 @@ mod test {
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         };
@@ -1319,9 +1306,7 @@ mod test {
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "0".to_string(),
                             owner: orderer.to_string(),
-                            extension: TokenExtension {
-                                publisher: MOCK_ADO_PUBLISHER.to_string(),
-                            },
+                            extension: TokenExtension {},
                             token_uri: None,
                         })
                         .unwrap(),
@@ -1332,9 +1317,7 @@ mod test {
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "1".to_string(),
                             owner: orderer.to_string(),
-                            extension: TokenExtension {
-                                publisher: MOCK_ADO_PUBLISHER.to_string(),
-                            },
+                            extension: TokenExtension {},
                             token_uri: None,
                         })
                         .unwrap(),

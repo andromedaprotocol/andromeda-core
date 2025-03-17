@@ -42,10 +42,7 @@ pub struct MetadataAttribute {
 /// Replicates OpenSea Metadata Standards
 #[cw_serde]
 #[derive(Default)]
-pub struct TokenExtension {
-    /// The original publisher of the token
-    pub publisher: String,
-}
+pub struct TokenExtension {}
 
 impl CustomMsg for ExecuteMsg {}
 impl CustomMsg for QueryMsg {}
