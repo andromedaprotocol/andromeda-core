@@ -542,20 +542,18 @@ fn test_update_address_unauth() {
         chain_info: None,
     };
 
+    let token_addr = deps.api.addr_make("tokenaddress");
     ADO_ADDRESSES
-        .save(
-            deps.as_mut().storage,
-            "token",
-            &Addr::unchecked("tokenaddress".to_string()),
-        )
+        .save(deps.as_mut().storage, "token", &token_addr)
         .unwrap();
     instantiate(deps.as_mut(), env.clone(), info, inst_msg).unwrap();
 
     let anyone = deps.api.addr_make("anyone");
     let unauth_info = message_info(&anyone, &[]);
+    let new_token_addr = deps.api.addr_make("newtokenaddress");
     let msg = ExecuteMsg::UpdateAddress {
         name: "token".to_string(),
-        addr: "newtokenaddress".to_string(),
+        addr: new_token_addr.to_string(),
     };
 
     let err = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
@@ -578,9 +576,10 @@ fn test_update_address_not_found() {
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
 
+    let new_token_address = deps.api.addr_make("newtokenaddress");
     let msg = ExecuteMsg::UpdateAddress {
         name: "token".to_string(),
-        addr: "newtokenaddress".to_string(),
+        addr: new_token_address.to_string(),
     };
 
     let res = execute(deps.as_mut(), env, info, msg);
@@ -604,24 +603,22 @@ fn test_update_address() {
         chain_info: None,
     };
 
+    let token_address = deps.api.addr_make("tokenaddress");
     ADO_ADDRESSES
-        .save(
-            deps.as_mut().storage,
-            "token",
-            &Addr::unchecked("tokenaddress".to_string()),
-        )
+        .save(deps.as_mut().storage, "token", &token_address)
         .unwrap();
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
 
+    let new_token_address = deps.api.addr_make("newtokenaddress");
     let msg = ExecuteMsg::UpdateAddress {
         name: "token".to_string(),
-        addr: "newtokenaddress".to_string(),
+        addr: new_token_address.to_string(),
     };
 
     execute(deps.as_mut(), env, info, msg).unwrap();
 
     let addr = ADO_ADDRESSES.load(deps.as_ref().storage, "token").unwrap();
-    assert_eq!(Addr::unchecked("newtokenaddress"), addr)
+    assert_eq!(new_token_address, addr)
 }
 
 #[test]
@@ -667,6 +664,7 @@ fn test_add_app_component_limit() {
 fn test_reply_assign_app() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
+
     let mock_app_component = AppComponent {
         ado_type: "cw721".to_string(),
         name: "token".to_string(),

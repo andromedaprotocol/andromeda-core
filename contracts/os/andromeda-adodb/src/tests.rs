@@ -45,11 +45,12 @@ fn test_publish() {
     )
     .unwrap();
 
+    let cw20_addr = deps.api.addr_make("cw20_addr");
     let action_fees = vec![
         ActionFee {
             action: "action".to_string(),
             amount: Uint128::from(1u128),
-            asset: "cw20:somecw20token".to_string(),
+            asset: format!("cw20:{}", cw20_addr),
             receiver: None,
         },
         ActionFee {
@@ -121,16 +122,15 @@ fn test_publish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner_addr.to_string().clone()),
     };
 
-    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    let _resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-    assert!(resp.is_ok());
     let publisher = PUBLISHER
         .load(deps.as_ref().storage, ado_version.as_str())
         .unwrap();
-    assert_eq!(publisher, owner);
+    assert_eq!(publisher, owner_addr.to_string());
 
     let code_id = CODE_ID
         .load(deps.as_ref().storage, ado_version.as_str())
@@ -165,13 +165,12 @@ fn test_publish() {
         publisher: None,
     };
 
-    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
-    assert!(resp.is_ok());
+    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     let publisher = PUBLISHER
         .load(deps.as_ref().storage, ado_version.as_str())
         .unwrap();
-    assert_eq!(publisher, owner);
+    assert_eq!(publisher, owner_addr.to_string());
 
     let code_id = CODE_ID
         .load(deps.as_ref().storage, ado_version.as_str())
@@ -192,16 +191,15 @@ fn test_publish() {
 
 #[test]
 fn test_unpublish() {
-    let owner = String::from("owner");
     let mut deps = mock_dependencies_custom(&[]);
+    let owner = deps.api.addr_make("owner");
     let env = mock_env();
-    let owner_addr = deps.api.addr_make(owner.as_str());
-    let info = message_info(&owner_addr, &[]);
+    let info = message_info(&owner, &[]);
 
     instantiate(
         deps.as_mut(),
         mock_env(),
-        message_info(&owner_addr, &[]),
+        message_info(&owner, &[]),
         InstantiateMsg {
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
@@ -209,11 +207,12 @@ fn test_unpublish() {
     )
     .unwrap();
 
+    let cw20_addr = deps.api.addr_make("cw20_addr");
     let action_fees = vec![
         ActionFee {
             action: "action".to_string(),
             amount: Uint128::from(1u128),
-            asset: "cw20:somecw20token".to_string(),
+            asset: format!("cw20:{}", cw20_addr),
             receiver: None,
         },
         ActionFee {
@@ -230,7 +229,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
@@ -239,7 +238,7 @@ fn test_unpublish() {
     let publisher = PUBLISHER
         .load(deps.as_ref().storage, ado_version.as_str())
         .unwrap();
-    assert_eq!(publisher, owner);
+    assert_eq!(publisher, owner.to_string());
 
     let code_id = CODE_ID
         .load(deps.as_ref().storage, ado_version.as_str())
@@ -330,7 +329,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id: 1,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
@@ -345,7 +344,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
@@ -359,7 +358,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
@@ -373,7 +372,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
@@ -387,7 +386,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
@@ -400,7 +399,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees.clone()),
-        publisher: Some(owner.clone()),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
@@ -431,7 +430,7 @@ fn test_unpublish() {
         version: ado_version.get_version(),
         code_id,
         action_fees: Some(action_fees),
-        publisher: Some(owner),
+        publisher: Some(owner.to_string().clone()),
     };
 
     let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg);
@@ -471,10 +470,9 @@ fn test_unpublish() {
 
 #[test]
 fn test_update_action_fees() {
-    let owner = String::from("owner");
     let mut deps = mock_dependencies_custom(&[]);
+    let owner = deps.api.addr_make("owner");
     let env = mock_env();
-    let owner = deps.api.addr_make(owner.as_str());
     let info = message_info(&owner, &[]);
     let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
     let code_id = 1;
@@ -490,11 +488,12 @@ fn test_update_action_fees() {
     )
     .unwrap();
 
+    let cw20_addr = deps.api.addr_make("cw20_addr");
     let action_fees = vec![
         ActionFee {
             action: "action".to_string(),
             amount: Uint128::from(1u128),
-            asset: "cw20:somecw20token".to_string(),
+            asset: format!("cw20:{}", cw20_addr),
             receiver: None,
         },
         ActionFee {
@@ -545,10 +544,9 @@ fn test_update_action_fees() {
 
 #[test]
 fn test_remove_action_fees() {
-    let owner = String::from("owner");
     let mut deps = mock_dependencies_custom(&[]);
+    let owner = deps.api.addr_make("owner");
     let env = mock_env();
-    let owner = deps.api.addr_make(owner.as_str());
     let info = message_info(&owner, &[]);
     let ado_version = ADOVersion::from_type("ado_type").with_version("0.1.0");
     let code_id = 1;

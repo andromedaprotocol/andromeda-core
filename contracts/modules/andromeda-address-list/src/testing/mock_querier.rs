@@ -26,13 +26,14 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let sender = deps.api.addr_make("sender");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info(&Addr::unchecked("sender"), &[]),
+            message_info(&sender, &[]),
             InstantiateMsg {
                 ado_type: "address-list".to_string(),
                 ado_version: "1.0.0".to_string(),
