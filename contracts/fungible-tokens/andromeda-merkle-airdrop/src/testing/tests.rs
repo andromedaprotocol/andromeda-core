@@ -28,9 +28,12 @@ const MOCK_NATIVE_DENOM: &str = "uandr";
 fn proper_instantiation() {
     let mut deps = mock_dependencies_custom(&[]);
 
+    let mock_cw20_contract = deps.api.addr_make(MOCK_CW20_CONTRACT);
+    let mock_kernel_address = deps.api.addr_make("mock_kernel_address");
+
     let msg = InstantiateMsg {
-        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
-        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(mock_cw20_contract.to_string())),
+        kernel_address: mock_kernel_address.to_string(),
         owner: None,
     };
 
@@ -45,7 +48,7 @@ fn proper_instantiation() {
     let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
     let config: ConfigResponse = from_json(res).unwrap();
     assert!(ADOContract::default()
-        .is_contract_owner(deps.as_ref().storage, "owner0000")
+        .is_contract_owner(deps.as_ref().storage, owner0000.as_str())
         .unwrap());
     assert_eq!(
         Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),

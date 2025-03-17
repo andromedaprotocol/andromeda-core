@@ -19,7 +19,8 @@ use cw721::msg::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
 pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
 pub const MOCK_TOKEN_ADDR: &str = "token_addr";
-pub const MOCK_TOKEN_OWNER: &str = "owner";
+pub const MOCK_TOKEN_OWNER: &str =
+    "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
     "token1", "token2", "token3", "token4", "token5", "token6", "token7",
 ];
@@ -42,17 +43,17 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let owner = deps.api.addr_make("owner");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            message_info(&Addr::unchecked("sender"), &[]),
+            message_info(&owner, &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),
-
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

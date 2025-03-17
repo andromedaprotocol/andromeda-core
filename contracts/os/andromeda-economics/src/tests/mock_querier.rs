@@ -48,9 +48,7 @@ pub fn mock_dependencies_custom(
             message_info(&Addr::unchecked("sender"), &[]),
             InstantiateMsg {
                 ado_type: "vault".to_string(),
-                ado_version: "test".to_string(),
-
-                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                ado_version: "test".to_string(),               kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },
         )
