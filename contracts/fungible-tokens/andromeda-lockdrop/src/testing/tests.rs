@@ -18,7 +18,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, coins, from_json,
     testing::{message_info, mock_env},
-    to_json_binary, Addr, BankMsg, Decimal, DepsMut, Response, Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Decimal, Response, Uint128, WasmMsg,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -27,43 +27,50 @@ const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
 const DEPOSIT_WINDOW: u64 = 5;
 const WITHDRAWAL_WINDOW: u64 = 4;
 
-fn init(deps: DepsMut) -> Result<Response, ContractError> {
+fn init(
+    deps: &mut cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    >,
+) -> Result<Response, ContractError> {
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
+    let mock_incentive_token = deps.api.addr_make(MOCK_INCENTIVE_TOKEN);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
         init_timestamp: Expiry::AtTime(Milliseconds::from_nanos(env.block.time.nanos())),
         deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
         withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
-        incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
+        incentive_token: AndrAddr::from_string(mock_incentive_token.to_string()),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
 
-    instantiate(deps, env, info, msg)
+    instantiate(deps.as_mut(), env, info, msg)
 }
 
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-
-    let res = init(deps.as_mut()).unwrap();
-
+    let owner = deps.api.addr_make("owner");
+    let res = init(&mut deps).unwrap();
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "lockdrop")
-            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", "owner"),
+            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT.to_string())
+            .add_attribute("owner", owner.to_string()),
         res
     );
 
     let msg = QueryMsg::Config {};
     let config_res: ConfigResponse =
         from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-
+    let mock_incentive_token = deps.api.addr_make(MOCK_INCENTIVE_TOKEN);
     assert_eq!(
         ConfigResponse {
             // bootstrap_contract_address: None,
@@ -71,7 +78,7 @@ fn test_instantiate() {
             deposit_window: Milliseconds::from_seconds(DEPOSIT_WINDOW),
             withdrawal_window: Milliseconds::from_seconds(WITHDRAWAL_WINDOW),
             lockdrop_incentives: Uint128::zero(),
-            incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
+            incentive_token: AndrAddr::from_string(mock_incentive_token.to_string()),
             native_denom: "uusd".to_string()
         },
         config_res
@@ -94,14 +101,15 @@ fn test_instantiate() {
 fn test_instantiate_init_timestamp_past() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("owner"), &[]);
-
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
+    let mock_incentive_token = deps.api.addr_make(MOCK_INCENTIVE_TOKEN);
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
         init_timestamp: Expiry::AtTime(Milliseconds::from_seconds(env.block.time.seconds() - 1)),
         deposit_window: Milliseconds::from_seconds(5),
         withdrawal_window: Milliseconds::from_seconds(2),
-        incentive_token: AndrAddr::from_string(MOCK_INCENTIVE_TOKEN),
+        incentive_token: AndrAddr::from_string(mock_incentive_token.to_string()),
         native_denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -122,7 +130,8 @@ fn test_instantiate_init_timestamp_past() {
 fn test_instantiate_init_deposit_window_zero() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -144,7 +153,8 @@ fn test_instantiate_init_deposit_window_zero() {
 fn test_instantiate_init_withdrawal_window_zero() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -166,7 +176,8 @@ fn test_instantiate_init_withdrawal_window_zero() {
 fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let msg = InstantiateMsg {
         // bootstrap_contract: None,
@@ -187,16 +198,17 @@ fn test_instantiate_init_deposit_window_less_than_withdrawal_window() {
 #[test]
 fn test_increase_incentives() {
     let mut deps = mock_dependencies_custom(&[]);
-
-    init(deps.as_mut()).unwrap();
+    let owner = deps.api.addr_make("owner");
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: "owner".to_string(),
+        sender: owner.to_string(),
         amount: Uint128::new(100),
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
+    let mock_incentive_token = deps.api.addr_make(MOCK_INCENTIVE_TOKEN);
+    let info = message_info(&mock_incentive_token, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -219,7 +231,7 @@ fn test_increase_incentives() {
 fn test_increase_incentives_invalid_token() {
     let mut deps = mock_dependencies_custom(&[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
@@ -242,10 +254,11 @@ fn test_increase_incentives_after_phase_ends() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
+    let owner = deps.api.addr_make("owner");
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: "owner".to_string(),
+        sender: owner.to_string(),
         amount: Uint128::new(100),
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
@@ -254,7 +267,8 @@ fn test_increase_incentives_after_phase_ends() {
         .block
         .time
         .plus_seconds(DEPOSIT_WINDOW + WITHDRAWAL_WINDOW + 1);
-    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
+    let mock_incentive_token = deps.api.addr_make(MOCK_INCENTIVE_TOKEN);
+    let info = message_info(&mock_incentive_token, &[]);
     let res = execute(deps.as_mut(), env, info, msg);
     assert_eq!(
         ContractError::TokenAlreadyBeingDistributed {},
@@ -266,7 +280,7 @@ fn test_increase_incentives_after_phase_ends() {
 fn test_increase_incentives_zero_amount() {
     let mut deps = mock_dependencies_custom(&[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "owner".to_string(),
@@ -288,7 +302,7 @@ fn test_increase_incentives_zero_amount() {
 #[test]
 fn test_deposit_native() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
@@ -328,7 +342,7 @@ fn test_deposit_native() {
 #[test]
 fn test_deposit_native_zero_amount() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
     let info = message_info(&Addr::unchecked("sender"), &coins(0, "uusd"));
@@ -346,7 +360,7 @@ fn test_deposit_native_zero_amount() {
 #[test]
 fn test_deposit_native_wrong_denom() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uluna"));
@@ -364,7 +378,7 @@ fn test_deposit_native_wrong_denom() {
 #[test]
 fn test_deposit_native_multiple_denoms() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
     let info = message_info(
@@ -385,7 +399,7 @@ fn test_deposit_native_multiple_denoms() {
 #[test]
 fn test_deposit_native_deposit_window_closed() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
@@ -400,7 +414,7 @@ fn test_deposit_native_deposit_window_closed() {
 #[test]
 fn test_withdraw_native() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::DepositNative {};
     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
@@ -448,7 +462,7 @@ fn test_withdraw_native() {
 // #[test]
 // fn test_withdraw_native_withdraw_phase_first_half() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     init(deps.as_mut()).unwrap();
+//     init(&mut deps).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
 //     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
@@ -512,7 +526,7 @@ fn test_withdraw_native() {
 // #[test]
 // fn test_withdraw_native_withdraw_phase_second_half() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     init(deps.as_mut()).unwrap();
+//     init(&mut deps).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
 //     let info = message_info(&Addr::unchecked("sender"), &coins(100, "uusd"));
@@ -576,7 +590,7 @@ fn test_withdraw_native() {
 // #[test]
 // fn test_withdraw_proceeds_unauthorized() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     init(deps.as_mut()).unwrap();
+//     init(&mut deps).unwrap();
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
@@ -589,11 +603,12 @@ fn test_withdraw_native() {
 // #[test]
 // fn test_withdraw_proceeds_phase_not_started() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     init(deps.as_mut()).unwrap();
+//     init(&mut deps).unwrap();
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//         let owner = deps.api.addr_make("owner");
+// let info = message_info(&owner, &[]);
 //     let mut env = mock_env();
 //     env.block.time = env.block.time.minus_seconds(1);
 //     let res = execute(deps.as_mut(), env, info, msg);
@@ -609,11 +624,12 @@ fn test_withdraw_native() {
 // #[test]
 // fn test_withdraw_proceeds_phase_not_ended() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     init(deps.as_mut()).unwrap();
+//     init(&mut deps).unwrap();
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//         let owner = deps.api.addr_make("owner");
+// let info = message_info(&owner, &[]);
 //     let mut env = mock_env();
 //     env.block.time = env.block.time.plus_seconds(DEPOSIT_WINDOW);
 //     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -632,7 +648,7 @@ fn test_withdraw_native() {
 //     // since the mock querier doesn't automatically assign balances.
 //     let amount = 100;
 //     let mut deps = mock_dependencies_custom(&[coin(amount, "uusd")]);
-//     init(deps.as_mut()).unwrap();
+//     init(&mut deps).unwrap();
 
 //     let msg = ExecuteMsg::DepositNative {};
 //     let info = message_info(&Addr::unchecked("sender"), &coins(amount, "uusd"));
@@ -646,7 +662,8 @@ fn test_withdraw_native() {
 
 //     let msg = ExecuteMsg::WithdrawProceeds { recipient: None };
 
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//         let owner = deps.api.addr_make("owner");
+// let info = message_info(&owner, &[]);
 //     let mut env = mock_env();
 //     env.block.time = env
 //         .block
@@ -686,7 +703,7 @@ fn test_withdraw_native() {
 #[test]
 fn test_enable_claims_no_bootstrap_specified() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::EnableClaims {};
 
@@ -733,7 +750,8 @@ fn test_enable_claims_no_bootstrap_specified() {
 //         native_denom: "uusd".to_string(),
 //     };
 
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//         let owner = deps.api.addr_make("owner");
+// let info = message_info(&owner, &[]);
 //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
 //     let msg = ExecuteMsg::EnableClaims {};
@@ -775,7 +793,7 @@ fn test_enable_claims_no_bootstrap_specified() {
 #[test]
 fn test_enable_claims_phase_not_ended() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::EnableClaims {};
 
@@ -791,16 +809,18 @@ fn test_enable_claims_phase_not_ended() {
 #[test]
 fn test_claim_rewards() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
+    let owner = deps.api.addr_make("owner");
     // First increase incentives
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: "owner".to_string(),
+        sender: owner.to_string(),
         amount: Uint128::new(100),
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
+    let mock_incentive_token = deps.api.addr_make(MOCK_INCENTIVE_TOKEN);
+    let info = message_info(&mock_incentive_token, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User1 deposits
@@ -836,7 +856,8 @@ fn test_claim_rewards() {
     // Enable claims
     let msg = ExecuteMsg::EnableClaims {};
 
-    let info = message_info(&Addr::unchecked("sender"), &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // User 1 claims rewards
@@ -851,10 +872,10 @@ fn test_claim_rewards() {
             .add_attribute("action", "claim_rewards")
             .add_attribute("amount", "75")
             .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_INCENTIVE_TOKEN.to_string(),
+                contract_addr: mock_incentive_token.to_string(),
                 funds: vec![],
                 msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: "user1".to_string(),
+                    recipient: user1.to_string(),
                     amount: Uint128::new(75)
                 })
                 .unwrap()
@@ -863,7 +884,7 @@ fn test_claim_rewards() {
     );
 
     let msg = QueryMsg::UserInfo {
-        address: "user1".to_string(),
+        address: user1.to_string(),
     };
     let user_res: UserInfoResponse =
         from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
@@ -890,10 +911,10 @@ fn test_claim_rewards() {
             .add_attribute("action", "claim_rewards")
             .add_attribute("amount", "25")
             .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_INCENTIVE_TOKEN.to_string(),
+                contract_addr: mock_incentive_token.to_string(),
                 funds: vec![],
                 msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: "user2".to_string(),
+                    recipient: user2.to_string(),
                     amount: Uint128::new(25)
                 })
                 .unwrap()
@@ -902,7 +923,7 @@ fn test_claim_rewards() {
     );
 
     let msg = QueryMsg::UserInfo {
-        address: "user2".to_string(),
+        address: user2.to_string(),
     };
     let user_res: UserInfoResponse =
         from_json(query(deps.as_ref(), env.clone(), msg).unwrap()).unwrap();
@@ -936,7 +957,7 @@ fn test_claim_rewards() {
 #[test]
 fn test_claim_rewards_not_available() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     // First increase incentives
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
@@ -945,7 +966,8 @@ fn test_claim_rewards_not_available() {
         msg: to_json_binary(&Cw20HookMsg::IncreaseIncentives {}).unwrap(),
     });
 
-    let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
+    let mock_incentive_token = deps.api.addr_make(MOCK_INCENTIVE_TOKEN);
+    let info = message_info(&mock_incentive_token, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Then User1 deposits
@@ -965,7 +987,7 @@ fn test_claim_rewards_not_available() {
 #[test]
 fn test_query_withdrawable_percent() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = QueryMsg::WithdrawalPercentAllowed { timestamp: None };
     let res: Decimal = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
@@ -1006,12 +1028,13 @@ fn test_query_withdrawable_percent() {
 // #[test]
 // fn test_deposit_to_bootstrap_contract_not_specified() {
 //     let mut deps = mock_dependencies_custom(&[]);
-//     init(deps.as_mut()).unwrap();
+//     init(&mut deps).unwrap();
 
 //     let msg = ExecuteMsg::DepositToBootstrap {
 //         amount: Uint128::new(100),
 //     };
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//         let owner = deps.api.addr_make("owner");
+// let info = message_info(&owner, &[]);
 
 //     let mut env = mock_env();
 //     env.block.time = env

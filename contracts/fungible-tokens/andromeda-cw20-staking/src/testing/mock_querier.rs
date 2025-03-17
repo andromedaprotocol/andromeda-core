@@ -30,6 +30,8 @@ pub fn mock_dependencies_custom(
         custom_query_type: std::marker::PhantomData,
     };
     let sender = deps.api.addr_make("sender");
+    let mock_kernel_address = deps.api.addr_make("mock_kernel_address");
+
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
@@ -40,7 +42,7 @@ pub fn mock_dependencies_custom(
             InstantiateMsg {
                 ado_type: "cw20-staking".to_string(),
                 ado_version: "test".to_string(),
-                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                kernel_address: mock_kernel_address.to_string(),
                 owner: None,
             },
         )
