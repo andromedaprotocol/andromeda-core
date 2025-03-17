@@ -192,8 +192,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             token_id,
             token_uri,
             owner,
-            extension,
-        } => execute_mint(ctx, token_id, token_uri, owner, extension),
+        } => execute_mint(ctx, token_id, token_uri, owner),
         ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens),
         ExecuteMsg::TransferNft {
             recipient,
@@ -253,10 +252,9 @@ fn execute_mint(
     token_id: String,
     token_uri: Option<String>,
     owner: String,
-    extension: TokenExtension,
 ) -> Result<Response, ContractError> {
     ensure_can_mint!(ctx);
-    mint(ctx, token_id, token_uri, owner, extension)
+    mint(ctx, token_id, token_uri, owner)
 }
 
 fn mint(
@@ -264,7 +262,6 @@ fn mint(
     token_id: String,
     token_uri: Option<String>,
     owner: String,
-    extension: TokenExtension,
 ) -> Result<Response, ContractError> {
     let cw721_contract = AndrCW721Contract::default();
     // let token = TokenInfo {
@@ -312,7 +309,7 @@ fn execute_batch_mint(
     for msg in tokens_to_mint {
         let mut ctx = ExecuteContext::new(ctx.deps.branch(), ctx.info.clone(), ctx.env.clone());
         ctx.amp_ctx = ctx.amp_ctx.clone();
-        let mint_resp = mint(ctx, msg.token_id, msg.token_uri, msg.owner, msg.extension)?;
+        let mint_resp = mint(ctx, msg.token_id, msg.token_uri, msg.owner)?;
         resp = resp
             .add_attributes(mint_resp.attributes)
             .add_submessages(mint_resp.messages);

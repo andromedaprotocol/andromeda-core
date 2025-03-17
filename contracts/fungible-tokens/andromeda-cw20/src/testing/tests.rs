@@ -11,7 +11,7 @@ use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CON
 use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
     testing::{message_info, mock_env},
-    to_json_binary, Addr, DepsMut, Response, Uint128,
+    to_json_binary, Response, Uint128,
 };
 
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
@@ -117,8 +117,8 @@ fn test_transfer() {
 
     // The expected events for the royalty
     let expected_event = Event::new("royalty").add_attributes(vec![
-        attr("deducted", "10cosmos2contract"),
-        attr("payment", "royalty_recipient<10cosmos2contract"),
+        attr("deducted", "10cosmwasm1jpev2csrppg792t22rn8z8uew8h3sjcpglcd0qv9g8gj8ky922tscp8avs"),
+        attr("payment", "cosmwasm15r4uytzhmpnefdw0ykpfjrmja37tpcf092wzyfjkfe40g7zf3w4svuasg3<10cosmwasm1jpev2csrppg792t22rn8z8uew8h3sjcpglcd0qv9g8gj8ky922tscp8avs"),
     ]);
 
     // Blacklist the sender who otherwise would have been able to call the function successfully
@@ -179,30 +179,31 @@ fn test_transfer() {
 #[test]
 fn test_send() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info(&Addr::unchecked("sender"), &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     let res = init(&mut deps);
 
+    let owner = deps.api.addr_make("owner");
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "cw20")
             .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", "owner"),
+            .add_attribute("owner", owner.to_string()),
         res
     );
 
     assert_eq!(
         Uint128::from(1000u128),
-        BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
-            .unwrap()
+        BALANCES.load(deps.as_ref().storage, &sender).unwrap()
     );
 
+    let rates_recipient = deps.api.addr_make("rates_recipient");
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient {
-            address: AndrAddr::from_string("rates_recipient".to_string()),
+            address: AndrAddr::from_string(rates_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
         },
@@ -217,29 +218,35 @@ fn test_send() {
         .set_rates(deps.as_mut().storage, "Send", rate)
         .unwrap();
 
+    let contract = deps.api.addr_make("contract");
     let msg = ExecuteMsg::Send {
-        contract: AndrAddr::from_string("contract".to_string()),
+        contract: AndrAddr::from_string(contract.to_string()),
         amount: 100u128.into(),
         msg: to_json_binary(&"msg").unwrap(),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    let expected_event = Event::new("tax")
-        .add_attributes(vec![attr("payment", "rates_recipient<10cosmos2contract")]);
+    let expected_event = Event::new("tax").add_attributes(vec![attr(
+        "payment",
+        format!(
+            "{}<10cosmwasm1jpev2csrppg792t22rn8z8uew8h3sjcpglcd0qv9g8gj8ky922tscp8avs",
+            rates_recipient.to_string()
+        ),
+    )]);
 
     assert_eq!(
         Response::new()
             .add_attribute("action", "send")
-            .add_attribute("from", "sender")
-            .add_attribute("to", "contract")
+            .add_attribute("from", sender.to_string())
+            .add_attribute("to", contract.to_string())
             .add_attribute("amount", "100")
             .add_message(
                 Cw20ReceiveMsg {
-                    sender: "sender".into(),
+                    sender: sender.to_string(),
                     amount: 100u128.into(),
                     msg: to_json_binary(&"msg").unwrap(),
                 }
-                .into_cosmos_msg("contract")
+                .into_cosmos_msg(contract.to_string())
                 .unwrap(),
             )
             .add_event(expected_event),
@@ -249,24 +256,20 @@ fn test_send() {
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
         Uint128::from(1_000u128 - 100u128 - 10u128),
-        BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("sender"))
-            .unwrap()
+        BALANCES.load(deps.as_ref().storage, &sender).unwrap()
     );
 
     // Funds given to the receiver.
     assert_eq!(
         Uint128::from(100u128),
-        BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("contract"))
-            .unwrap()
+        BALANCES.load(deps.as_ref().storage, &contract).unwrap()
     );
 
     // The rates recipient started with a balance of 1, and received 10 from the tax
     assert_eq!(
         Uint128::from(1u128 + 10u128),
         BALANCES
-            .load(deps.as_ref().storage, &Addr::unchecked("rates_recipient"))
+            .load(deps.as_ref().storage, &rates_recipient)
             .unwrap()
     );
 }

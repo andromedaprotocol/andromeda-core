@@ -644,7 +644,6 @@ fn mint(
             token_id,
             owner,
             token_uri: tier_metadata.token_uri,
-            extension: tier_metadata.extension,
         })?,
         funds: vec![],
     }))

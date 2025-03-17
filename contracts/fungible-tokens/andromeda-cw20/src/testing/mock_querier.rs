@@ -5,7 +5,6 @@ use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::Addr;
 use cosmwasm_std::{
     from_json, to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
     QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,

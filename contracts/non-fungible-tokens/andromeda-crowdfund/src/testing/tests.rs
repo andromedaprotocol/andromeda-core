@@ -1306,7 +1306,6 @@ mod test {
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "0".to_string(),
                             owner: orderer.to_string(),
-                            extension: TokenExtension {},
                             token_uri: None,
                         })
                         .unwrap(),
@@ -1317,7 +1316,6 @@ mod test {
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "1".to_string(),
                             owner: orderer.to_string(),
-                            extension: TokenExtension {},
                             token_uri: None,
                         })
                         .unwrap(),

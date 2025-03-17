@@ -1375,7 +1375,6 @@ fn test_kernel_ibc_funds_only() {
                 token_id: "1".to_string(),
                 owner: sender.to_string(),
                 token_uri: None,
-                extension: TokenExtension::default(),
             },
             &vec![],
         )

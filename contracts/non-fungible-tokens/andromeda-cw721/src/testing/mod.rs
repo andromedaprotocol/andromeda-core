@@ -52,7 +52,6 @@ fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extensio
         token_id,
         owner,
         token_uri: None,
-        extension,
     };
     execute(deps, env, info, mint_msg).unwrap();
 }
@@ -426,7 +425,6 @@ fn test_update_app_contract_invalid_minter() {
         token_id: "1".to_string(),
         owner: owner.to_string(),
         token_uri: None,
-        extension: TokenExtension {},
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);

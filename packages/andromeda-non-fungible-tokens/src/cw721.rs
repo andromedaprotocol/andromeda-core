@@ -74,8 +74,6 @@ pub enum ExecuteMsg {
         /// Should point to a JSON file that conforms to the ERC721
         /// Metadata JSON Schema
         token_uri: Option<String>,
-        /// Any custom extension used by this contract
-        extension: TokenExtension,
     },
     /// Transfers ownership of a token
     TransferNft {
@@ -163,7 +161,6 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
             }
             ExecuteMsg::RevokeAll { operator } => Ok(Cw721ExecuteMsg::RevokeAll { operator }),
             ExecuteMsg::Mint {
-                extension,
                 token_id,
                 token_uri,
                 owner,
@@ -274,7 +271,7 @@ impl From<QueryMsg> for Cw721QueryMsg {
                 limit,
             },
             QueryMsg::NumTokens {} => Cw721QueryMsg::NumTokens {},
-            QueryMsg::ContractInfo {} => Cw721QueryMsg::ContractInfo {},
+            QueryMsg::ContractInfo {} => Cw721QueryMsg::GetCollectionInfoAndExtension {},
             QueryMsg::NftInfo { token_id } => Cw721QueryMsg::NftInfo { token_id },
             QueryMsg::AllNftInfo {
                 token_id,
@@ -295,7 +292,7 @@ impl From<QueryMsg> for Cw721QueryMsg {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
-            QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
+            QueryMsg::Minter {} => Cw721QueryMsg::GetMinterOwnership {},
             QueryMsg::Approval {
                 token_id,
                 spender,
