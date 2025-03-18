@@ -74,6 +74,9 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_SCHEMA_ADO => self.handle_schema_smart_query(msg),
+                    "cosmwasm1vrvzfjg5qx7apcsjtc7z49f5qvx3k8j7hvjnlnv7pndyffq0x3nsh44s8w" => {
+                        self.handle_schema_smart_query(msg)
+                    }
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }
