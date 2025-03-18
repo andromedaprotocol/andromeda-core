@@ -7,16 +7,14 @@ use crate::{
         ibc_registry::{DenomInfo, QueryMsg as IBCRegistryQueryMsg},
         kernel::{ChannelInfo, QueryMsg as KernelQueryMsg},
         vfs::QueryMsg as VFSQueryMsg,
-        IBC_VERSION, TRANSFER_PORT,
     },
 };
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Addr, Binary, CodeInfoResponse, Coin, ContractInfoResponse, ContractResult,
-    HexBinary, IbcChannel, IbcEndpoint, IbcOrder, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, OwnedDeps, Querier,
+    QuerierResult, QueryRequest, SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
@@ -90,7 +88,7 @@ pub struct WasmMockQuerier {
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
-    let mut custom_querier: WasmMockQuerier =
+    let custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
     // Add IBC Channels to mock querier
@@ -184,6 +182,10 @@ impl MockAndromedaQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
+                    "cosmwasm1epy7ztwxfyl93052dww6aupmjsmykjrhwjxfgx4xfz4k5u27jmgsvj0dty" => {
+                        self.handle_cw20_query(msg)
+                    }
+
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     #[cfg(feature = "primitive")]
                     MOCK_PRIMITIVE_CONTRACT => self.handle_primitive_query(msg),
@@ -236,7 +238,7 @@ impl MockAndromedaQuerier {
                 if *code_id == 2u64 {
                     return SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string()));
                 }
-                let mut resp =
+                let resp =
                     ContractInfoResponse::new(1, Addr::unchecked("creator"), None, false, None);
                 // resp.checksum = HexBinary::from_hex(MOCK_CHECKSUM).unwrap();
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
