@@ -23,7 +23,9 @@ use crate::{
     state::{ForwardReplyState, FORWARD_REPLY_STATE, SWAP_ROUTER},
 };
 
-use andromeda_socket::osmosis::{ExecuteMsg, InstantiateMsg, QueryMsg, Slippage, SwapRoute};
+use andromeda_socket::osmosis::{
+    ExecuteMsg, InstantiateMsg, QueryMsg, Slippage, SwapAmountInRoute,
+};
 
 const CONTRACT_NAME: &str = "crates.io:swap-and-forward-osmosis";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -83,7 +85,7 @@ fn execute_swap_and_forward(
     to_denom: String,
     recipient: Option<Recipient>,
     slippage: Slippage,
-    route: Option<Vec<SwapRoute>>,
+    route: Option<Vec<SwapAmountInRoute>>,
 ) -> Result<Response, ContractError> {
     let fund = one_coin(&ctx.info).map_err(|_| ContractError::InvalidAsset {
         asset: "Invalid or missing coin".to_string(),

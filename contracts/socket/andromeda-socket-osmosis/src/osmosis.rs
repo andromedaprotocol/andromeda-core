@@ -15,7 +15,7 @@ use cosmwasm_std::{
 use crate::state::{ForwardReplyState, FORWARD_REPLY_STATE, PREV_BALANCE, SWAP_ROUTER};
 
 use andromeda_socket::osmosis::{
-    GetRouteResponse, OsmosisExecuteMsg, OsmosisQueryMsg, Slippage, SwapRoute,
+    GetRouteResponse, OsmosisExecuteMsg, OsmosisQueryMsg, Slippage, SwapAmountInRoute,
 };
 
 pub const OSMOSIS_MSG_SWAP_ID: u64 = 1;
@@ -30,7 +30,7 @@ pub(crate) fn execute_swap_osmosis_msg(
     recipient: Recipient,  // receiver where the swapped token goes to
     refund_addr: AndrAddr, // refund address
     slippage: Slippage,
-    route: Option<Vec<SwapRoute>>,
+    route: Option<Vec<SwapAmountInRoute>>,
 ) -> Result<SubMsg, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
 
@@ -50,9 +50,6 @@ pub(crate) fn execute_swap_osmosis_msg(
     } else {
         None
     };
-
-    // Generate route for the `OsmosisExecuteMsg::Swap` message
-    let route = route.map(|route| route.iter().map(|v| v.clone().into()).collect());
 
     let prev_balance = deps
         .querier
@@ -172,15 +169,7 @@ pub fn query_get_route(
         Err(err)
     } else {
         Ok(GetRouteResponse {
-            pool_route: res
-                .unwrap()
-                .pool_route
-                .iter()
-                .map(|route| SwapRoute {
-                    pool_id: route.pool_id,
-                    token_out_denom: route.token_out_denom.clone(),
-                })
-                .collect(),
+            pool_route: res.unwrap().pool_route,
         })
     }
 }

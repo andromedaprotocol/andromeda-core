@@ -4,8 +4,6 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Decimal, Uint128};
-use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
-// use swaprouter::Slippage as OsmosisSlippage;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -27,7 +25,7 @@ pub enum ExecuteMsg {
         /// The slippage
         slippage: Slippage,
         /// The swap operations that is supposed to be taken
-        route: Option<Vec<SwapRoute>>,
+        route: Option<Vec<SwapAmountInRoute>>,
     },
 
     /// Update swap router
@@ -74,37 +72,13 @@ pub enum Slippage {
     MinOutputAmount(Uint128),
 }
 
-// impl From<Slippage> for OsmosisSlippage {
-//     fn from(val: Slippage) -> Self {
-//         match val {
-//             Slippage::Twap {
-//                 window_seconds,
-//                 slippage_percentage,
-//             } => OsmosisSlippage::Twap {
-//                 window_seconds,
-//                 slippage_percentage,
-//             },
-//             Slippage::MinOutputAmount(min_output) => OsmosisSlippage::MinOutputAmount(min_output),
-//         }
-//     }
-// }
-
 #[cw_serde]
-pub struct SwapRoute {
+pub struct SwapAmountInRoute {
     pub pool_id: u64,
     pub token_out_denom: String,
 }
 
-impl From<SwapRoute> for SwapAmountInRoute {
-    fn from(val: SwapRoute) -> Self {
-        SwapAmountInRoute {
-            pool_id: val.pool_id,
-            token_out_denom: val.token_out_denom,
-        }
-    }
-}
-
 #[cw_serde]
 pub struct GetRouteResponse {
-    pub pool_route: Vec<SwapRoute>,
+    pub pool_route: Vec<SwapAmountInRoute>,
 }
