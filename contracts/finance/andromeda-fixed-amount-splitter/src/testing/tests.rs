@@ -9,7 +9,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{message_info, mock_env, MOCK_CONTRACT_ADDR},
-    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Response, SubMsg,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Response, SubMsg,
 };
 pub const OWNER: &str = "creator";
 
@@ -24,34 +24,42 @@ use andromeda_finance::fixed_amount_splitter::{
     AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
 
-fn init(deps: DepsMut) -> Response {
+fn init(
+    deps: &mut cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    >,
+) -> Response {
+    let some_address = deps.api.addr_make("some_address");
     let mock_recipient: Vec<AddressAmount> = vec![AddressAmount {
-        recipient: Recipient::from_string(String::from("some_address")),
+        recipient: Recipient::from_string(String::from(some_address)),
         coins: coins(1_u128, "uandr"),
     }];
+    let owner = deps.api.addr_make(OWNER);
     let msg = InstantiateMsg {
-        owner: Some(OWNER.to_owned()),
+        owner: Some(owner.to_string()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         recipients: mock_recipient,
         lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(100_000))),
         default_recipient: None,
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
-    instantiate(deps, mock_env(), info, msg).unwrap()
+    let info = message_info(&owner, &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap()
 }
 
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut());
+    let res = init(&mut deps);
     assert_eq!(0, res.messages.len());
 }
 
 #[test]
 fn test_execute_update_lock() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
     let env = mock_env();
 
@@ -96,7 +104,7 @@ fn test_execute_update_lock() {
 fn test_execute_update_recipients() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res = init(deps.as_mut());
+    let _res = init(&mut deps);
 
     let splitter = Splitter {
         recipients: vec![],
@@ -106,14 +114,15 @@ fn test_execute_update_recipients() {
 
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
 
+    let addr1 = deps.api.addr_make("addr1");
     // Duplicate recipients
     let duplicate_recipients = vec![
         AddressAmount {
-            recipient: Recipient::from_string(String::from("addr1")),
+            recipient: Recipient::from_string(String::from(addr1.clone())),
             coins: coins(1_u128, "uandr"),
         },
         AddressAmount {
-            recipient: Recipient::from_string(String::from("addr1")),
+            recipient: Recipient::from_string(String::from(addr1.clone())),
             coins: coins(1_u128, "uandr"),
         },
     ];
@@ -126,21 +135,22 @@ fn test_execute_update_recipients() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(ContractError::DuplicateRecipient {}, res.unwrap_err());
 
+    let addr2 = deps.api.addr_make("addr2");
     let recipients = vec![
         AddressAmount {
-            recipient: Recipient::from_string(String::from("addr1")),
+            recipient: Recipient::from_string(String::from(addr1)),
             coins: coins(1_u128, "uandr"),
         },
         AddressAmount {
-            recipient: Recipient::from_string(String::from("addr2")),
+            recipient: Recipient::from_string(String::from(addr2)),
             coins: coins(1_u128, "uandr"),
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
         recipients: recipients.clone(),
     };
-
-    let info = message_info(&Addr::unchecked("incorrect_owner"), &[]);
+    let incorrect_owner = deps.api.addr_make("incorrect_owner");
+    let info = message_info(&incorrect_owner, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(ContractError::Unauthorized {}, res.unwrap_err());
 
@@ -161,23 +171,24 @@ fn test_execute_update_recipients() {
 fn test_execute_send() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut());
+    let _res: Response = init(&mut deps);
 
     let sender_funds_amount = 10000u128;
 
+    let owner = deps.api.addr_make(OWNER);
     let info = message_info(
-        &Addr::unchecked(OWNER),
+        &owner,
         &[
             Coin::new(sender_funds_amount, "uandr"),
             Coin::new(50_u128, "usdc"),
         ],
     );
 
-    let recip_address1 = "address1".to_string();
+    let recip_address1 = deps.api.addr_make("address1").to_string();
 
-    let recip_address2 = "address2".to_string();
+    let recip_address2 = deps.api.addr_make("address2").to_string();
 
-    let recip_address3 = "address3".to_string();
+    let recip_address3 = deps.api.addr_make("address3").to_string();
 
     let recip1 = Recipient::from_string(recip_address1);
     let recip2 = Recipient::from_string(recip_address2);
@@ -245,13 +256,16 @@ fn test_execute_send() {
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
-                    to_address: OWNER.to_string(),
+                    to_address: owner.to_string(),
                     amount: vec![Coin::new(9998_u128, "uandr")],
                 }),
             ),
             amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        .add_attributes(vec![
+            attr("action", "send"),
+            attr("sender", owner.to_string()),
+        ]);
 
     assert_eq!(res, expected_res);
 
@@ -286,20 +300,23 @@ fn test_execute_send() {
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
-                    to_address: OWNER.to_string(),
+                    to_address: owner.to_string(),
                     amount: vec![Coin::new(9999_u128, "uandr")],
                 }),
             ),
             SubMsg::new(
                 // refunds remainder to sender
                 CosmosMsg::Bank(BankMsg::Send {
-                    to_address: OWNER.to_string(),
+                    to_address: owner.to_string(),
                     amount: vec![Coin::new(20_u128, "usdc")],
                 }),
             ),
             amp_msg,
         ])
-        .add_attributes(vec![attr("action", "send"), attr("sender", "creator")]);
+        .add_attributes(vec![
+            attr("action", "send"),
+            attr("sender", owner.to_string()),
+        ]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     assert_eq!(res, expected_res);
@@ -309,17 +326,15 @@ fn test_execute_send() {
 fn test_execute_send_ado_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut());
+    let _res: Response = init(&mut deps);
+    let owner = deps.api.addr_make(OWNER);
 
     let sender_funds_amount = 10_000u128;
-    let info = message_info(
-        &Addr::unchecked(OWNER),
-        &[Coin::new(sender_funds_amount, "uandr")],
-    );
+    let info = message_info(&owner, &[Coin::new(sender_funds_amount, "uandr")]);
 
-    let recip_address1 = "address1".to_string();
+    let recip_address1 = deps.api.addr_make("address1").to_string();
 
-    let recip_address2 = "address2".to_string();
+    let recip_address2 = deps.api.addr_make("address2").to_string();
 
     let recip1 = Recipient::from_string(recip_address1);
     let recip2 = Recipient::from_string(recip_address2);
@@ -377,7 +392,7 @@ fn test_execute_send_ado_recipient() {
             amp_msg,
         ])
         .add_attribute("action", "send")
-        .add_attribute("sender", "creator");
+        .add_attribute("sender", owner.to_string());
 
     assert_eq!(res, expected_res);
 }
@@ -386,15 +401,13 @@ fn test_execute_send_ado_recipient() {
 fn test_handle_packet_exit_with_error_true() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut());
+    let _res: Response = init(&mut deps);
 
+    let owner = deps.api.addr_make(OWNER);
     let sender_funds_amount = 0u128;
-    let info = message_info(
-        &Addr::unchecked(OWNER),
-        &[Coin::new(sender_funds_amount, "uandr")],
-    );
+    let info = message_info(&owner, &[Coin::new(sender_funds_amount, "uandr")]);
 
-    let recip_address1 = "address1".to_string();
+    let recip_address1 = deps.api.addr_make("address1").to_string();
 
     let recipient = vec![
         AddressAmount {
@@ -408,7 +421,7 @@ fn test_handle_packet_exit_with_error_true() {
     ];
     let pkt = AMPPkt::new(
         info.clone().sender,
-        "cosmos2contract",
+        MOCK_CONTRACT_ADDR.to_string(),
         vec![AMPMsg::new(
             recip_address1,
             to_json_binary(&ExecuteMsg::Send { config: None }).unwrap(),
@@ -459,7 +472,7 @@ fn test_execute_send_error() {
     //Executes send with more than 5 tokens [ACK-04]
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
-    let _res: Response = init(deps.as_mut());
+    let _res: Response = init(&mut deps);
 
     let sender_funds_amount = 10000u128;
     let owner = "creator";
@@ -520,13 +533,14 @@ fn test_execute_send_error() {
 #[test]
 fn test_update_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res: Response = init(deps.as_mut());
+    let _res: Response = init(&mut deps);
 
     let owner = deps.api.addr_make(OWNER);
     let info = message_info(&owner, &[]);
 
+    let app_contract = deps.api.addr_make("app_contract");
     let msg = ExecuteMsg::UpdateAppContract {
-        address: "app_contract".to_string(),
+        address: app_contract.to_string(),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -534,7 +548,7 @@ fn test_update_app_contract() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_app_contract")
-            .add_attribute("address", "app_contract"),
+            .add_attribute("address", app_contract.to_string()),
         res
     );
 }
@@ -542,7 +556,7 @@ fn test_update_app_contract() {
 #[test]
 fn test_update_app_contract_invalid_recipient() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res: Response = init(deps.as_mut());
+    let _res: Response = init(&mut deps);
 
     let owner = deps.api.addr_make(OWNER);
     let info = message_info(&owner, &[]);
@@ -565,8 +579,15 @@ fn test_update_app_contract_invalid_recipient() {
 use rstest::*;
 
 #[fixture]
-fn locked_splitter() -> (DepsMut<'static>, Splitter) {
-    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+fn locked_splitter() -> (
+    cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    >,
+    Splitter,
+) {
+    let mut deps = mock_dependencies_custom(&[]);
     let lock_time = mock_env().block.time.plus_seconds(86400);
     let splitter = Splitter {
         recipients: vec![
@@ -583,12 +604,19 @@ fn locked_splitter() -> (DepsMut<'static>, Splitter) {
         default_recipient: None,
     };
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
-    (deps.as_mut(), splitter)
+    (deps, splitter)
 }
 
 #[fixture]
-fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
-    let deps = Box::leak(Box::new(mock_dependencies_custom(&[])));
+fn unlocked_splitter() -> (
+    cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    >,
+    Splitter,
+) {
+    let mut deps = mock_dependencies_custom(&[]);
     let splitter = Splitter {
         recipients: vec![
             AddressAmount {
@@ -604,13 +632,21 @@ fn unlocked_splitter() -> (DepsMut<'static>, Splitter) {
         default_recipient: None,
     };
     SPLITTER.save(deps.as_mut().storage, &splitter).unwrap();
-    (deps.as_mut(), splitter)
+    (deps, splitter)
 }
 
 #[rstest]
-fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
-    let (deps, _) = locked_splitter;
-
+fn test_send_with_config_locked(
+    locked_splitter: (
+        cosmwasm_std::OwnedDeps<
+            cosmwasm_std::MemoryStorage,
+            cosmwasm_std::testing::MockApi,
+            crate::testing::mock_querier::WasmMockQuerier,
+        >,
+        Splitter,
+    ),
+) {
+    let (mut deps, _) = locked_splitter;
     let config = vec![AddressAmount {
         recipient: Recipient::from_string("new_addr".to_string()),
         coins: coins(100_u128, "uluna"),
@@ -621,7 +657,7 @@ fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
     };
 
     let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128, "uluna")]);
-    let res = execute(deps, mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
         ContractError::ContractLocked {
@@ -632,11 +668,20 @@ fn test_send_with_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
 }
 
 #[rstest]
-fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
-    let (deps, _) = unlocked_splitter;
-
+fn test_send_with_config_unlocked(
+    unlocked_splitter: (
+        cosmwasm_std::OwnedDeps<
+            cosmwasm_std::MemoryStorage,
+            cosmwasm_std::testing::MockApi,
+            crate::testing::mock_querier::WasmMockQuerier,
+        >,
+        Splitter,
+    ),
+) {
+    let (mut deps, _) = unlocked_splitter;
+    let new_addr = deps.api.addr_make("new_addr");
     let config = vec![AddressAmount {
-        recipient: Recipient::from_string("new_addr".to_string()),
+        recipient: Recipient::from_string(new_addr.to_string()),
         coins: coins(100_u128, "uluna"),
     }];
 
@@ -644,8 +689,9 @@ fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter
         config: Some(config),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128, "uluna")]);
-    let res = execute(deps, mock_env(), info, msg).unwrap();
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[Coin::new(10000u128, "uluna")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund
     assert_eq!(2, res.messages.len()); // 1 for refund, 1 for transfer
@@ -653,13 +699,22 @@ fn test_send_with_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter
 }
 
 #[rstest]
-fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)) {
-    let (deps, _) = locked_splitter;
-
+fn test_send_without_config_locked(
+    locked_splitter: (
+        cosmwasm_std::OwnedDeps<
+            cosmwasm_std::MemoryStorage,
+            cosmwasm_std::testing::MockApi,
+            crate::testing::mock_querier::WasmMockQuerier,
+        >,
+        Splitter,
+    ),
+) {
+    let (mut deps, _) = locked_splitter;
     let msg = ExecuteMsg::Send { config: None };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128, "uluna")]);
-    let res = execute(deps, mock_env(), info, msg).unwrap();
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[Coin::new(10000u128, "uluna")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund
     assert_eq!(2, res.messages.len()); // 1 for refund, 1 for transfers
@@ -667,13 +722,21 @@ fn test_send_without_config_locked(locked_splitter: (DepsMut<'static>, Splitter)
 }
 
 #[rstest]
-fn test_send_without_config_unlocked(unlocked_splitter: (DepsMut<'static>, Splitter)) {
-    let (deps, _) = unlocked_splitter;
-
+fn test_send_without_config_unlocked(
+    unlocked_splitter: (
+        cosmwasm_std::OwnedDeps<
+            cosmwasm_std::MemoryStorage,
+            cosmwasm_std::testing::MockApi,
+            crate::testing::mock_querier::WasmMockQuerier,
+        >,
+        Splitter,
+    ),
+) {
     let msg = ExecuteMsg::Send { config: None };
-
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128, "uluna")]);
-    let res = execute(deps, mock_env(), info, msg).unwrap();
+    let (mut deps, _) = unlocked_splitter;
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[Coin::new(10000u128, "uluna")]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Verify response contains expected submessages and refund
     assert_eq!(2, res.messages.len()); // 1 for refund, 1 for transfers
