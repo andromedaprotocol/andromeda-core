@@ -43,7 +43,8 @@ pub const MOCK_ADODB_CONTRACT: &str =
 /// Mock IBC Registry Contract Address
 pub const MOCK_IBC_REGISTRY_CONTRACT: &str = "ibc_registry_contract";
 // Mock ADO Publisher
-pub const MOCK_ADO_PUBLISHER: &str = "ado_publisher";
+pub const MOCK_ADO_PUBLISHER: &str =
+    "cosmwasm1a3dv29r4mu0kruar9fjpxrggxggqpnaw5cj5rq4nytpdg2pxtskqpdxmwr";
 // Mock Osmosis Router
 pub const MOCK_OSMOSIS_ROUTER_CONTRACT: &str = "osmosis_router";
 // Mock Economics Contract

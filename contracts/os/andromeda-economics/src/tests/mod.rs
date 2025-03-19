@@ -52,7 +52,7 @@ fn test_deposit() {
     let balance = BALANCES
         .load(
             deps.as_ref().storage,
-            (Addr::unchecked("creator"), "uandr".to_string()),
+            (Addr::unchecked(creator.to_string()), "uandr".to_string()),
         )
         .unwrap();
 
@@ -67,7 +67,7 @@ fn test_deposit() {
     let balance = BALANCES
         .load(
             deps.as_ref().storage,
-            (Addr::unchecked("creator"), "uandr".to_string()),
+            (Addr::unchecked(creator.to_string()), "uandr".to_string()),
         )
         .unwrap();
     assert_eq!(balance, Uint128::from(200u128));
@@ -75,7 +75,7 @@ fn test_deposit() {
     let balance = BALANCES
         .load(
             deps.as_ref().storage,
-            (Addr::unchecked("creator"), "uusd".to_string()),
+            (Addr::unchecked(creator.to_string()), "uusd".to_string()),
         )
         .unwrap();
     assert_eq!(balance, Uint128::from(100u128));
@@ -85,7 +85,7 @@ fn test_deposit() {
 fn test_spend_balance() {
     let mut deps = mock_dependencies_custom(&[]);
     let amount = Uint128::from(100u128);
-    let payee = Addr::unchecked("payee");
+    let payee = deps.api.addr_make("payee");
     let asset = "uusd";
 
     let res = spend_balance(deps.as_mut().storage, &payee, asset.to_string(), amount).unwrap();
@@ -128,10 +128,10 @@ fn test_pay_fee() {
     let env = mock_env();
     let creator = deps.api.addr_make("creator");
     let info = message_info(&creator, &[]);
-    let payee = "payee";
+    let payee = deps.api.addr_make("payee");
 
     let msg = ExecuteMsg::PayFee {
-        payee: Addr::unchecked(payee),
+        payee: payee.clone(),
         action: MOCK_ACTION.to_string(),
     };
 
@@ -142,7 +142,7 @@ fn test_pay_fee() {
     BALANCES
         .save(
             deps.as_mut().storage,
-            (Addr::unchecked(payee), "uusd".to_string()),
+            (payee.clone(), "uusd".to_string()),
             &Uint128::from(10u128),
         )
         .unwrap();
@@ -152,10 +152,7 @@ fn test_pay_fee() {
     assert!(res.is_ok());
 
     let balance = BALANCES
-        .load(
-            deps.as_ref().storage,
-            (Addr::unchecked(payee), "uusd".to_string()),
-        )
+        .load(deps.as_ref().storage, (payee.clone(), "uusd".to_string()))
         .unwrap();
     assert_eq!(balance, Uint128::from(0u128));
 
@@ -453,11 +450,12 @@ fn test_cw20_deposit() {
     let asset = deps.api.addr_make(asset);
 
     let info = message_info(&asset, &[]);
-    let depositee = "depositee";
-    let recipient = AndrAddr::from_string("recipient");
+    let depositee = deps.api.addr_make("depositee");
+    let recipient = deps.api.addr_make("recipient");
+    let recipient = AndrAddr::from_string(recipient);
 
     // Send 0 amount
-    let msg = cw20_deposit_msg(depositee, Uint128::zero(), None);
+    let msg = cw20_deposit_msg(depositee.clone(), Uint128::zero(), None);
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(
@@ -468,7 +466,7 @@ fn test_cw20_deposit() {
     );
 
     // Send valid amount direct deposit
-    let msg = cw20_deposit_msg(depositee, Uint128::from(10u128), None);
+    let msg = cw20_deposit_msg(depositee.clone(), Uint128::from(10u128), None);
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     assert!(res.is_ok());
@@ -477,13 +475,17 @@ fn test_cw20_deposit() {
     let balance = BALANCES
         .load(
             deps.as_ref().storage,
-            (Addr::unchecked(depositee), asset.to_string()),
+            (Addr::unchecked(depositee.clone()), asset.to_string()),
         )
         .unwrap();
     assert_eq!(balance, Uint128::from(10u128));
 
     // Send valid amount deposit on behalf
-    let msg = cw20_deposit_msg(depositee, Uint128::from(10u128), Some(recipient.clone()));
+    let msg = cw20_deposit_msg(
+        depositee.clone(),
+        Uint128::from(10u128),
+        Some(recipient.clone()),
+    );
 
     let res = execute(deps.as_mut(), env, info, msg);
     assert!(res.is_ok());
