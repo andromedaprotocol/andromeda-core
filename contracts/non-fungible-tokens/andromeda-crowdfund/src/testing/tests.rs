@@ -98,14 +98,16 @@ mod test {
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
         common::{denom::Asset, encode_binary, Milliseconds},
-        testing::mock_querier::MOCK_CW20_CONTRACT,
+        testing::mock_querier::{MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT_2},
     };
     use cosmwasm_std::{coin, coins, testing::MOCK_CONTRACT_ADDR, wasm_execute, BankMsg, Coin};
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
     use crate::{
         state::{get_current_capital, set_current_stage, set_tier_orders, TIER_SALES},
-        testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
+        testing::mock_querier::{
+            MOCK_DEFAULT_OWNER, MOCK_TIER_CONTRACT, MOCK_WITHDRAWAL_ADDRESS, ORDERER, RANDOM_USER,
+        },
     };
 
     use super::*;
@@ -130,7 +132,7 @@ mod test {
                     .add_attribute("method", "instantiate")
                     .add_attribute("type", "crowdfund")
                     .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-                    .add_attribute(MOCK_DEFAULT_OWNER, MOCK_DEFAULT_OWNER)),
+                    .add_attribute("owner", MOCK_DEFAULT_OWNER)),
             },
             InstantiateTestCase {
                 name: "instantiate with invalid native token".to_string(),
@@ -150,17 +152,19 @@ mod test {
                     .add_attribute("method", "instantiate")
                     .add_attribute("type", "crowdfund")
                     .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-                    .add_attribute(MOCK_DEFAULT_OWNER, MOCK_DEFAULT_OWNER)),
+                    .add_attribute("owner", MOCK_DEFAULT_OWNER)),
             },
             InstantiateTestCase {
                 name: "instantiate with invalid cw20".to_string(),
                 config: mock_campaign_config(Asset::Cw20Token(AndrAddr::from_string(
-                    "cw20_contract1".to_string(),
+                    MOCK_CW20_CONTRACT_2.to_string(),
                 ))),
                 tiers: mock_campaign_tiers(),
                 expected_res: Err(ContractError::InvalidAsset {
-                    asset: Asset::Cw20Token(AndrAddr::from_string("cw20_contract1".to_string()))
-                        .to_string(),
+                    asset: Asset::Cw20Token(AndrAddr::from_string(
+                        MOCK_CW20_CONTRACT_2.to_string(),
+                    ))
+                    .to_string(),
                 }),
             },
             InstantiateTestCase {
@@ -183,8 +187,7 @@ mod test {
                 owner: None,
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             };
-            let res = instantiate(deps.as_mut(), mock_env(), info, msg);
-
+            let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone());
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
@@ -339,7 +342,7 @@ mod test {
                 name: "update_tier with unauthorized sender".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Err(ContractError::Unauthorized {}),
-                payee: "owner1".to_string(),
+                payee: RANDOM_USER.to_string(),
             },
             TierTestCase {
                 name: "update_tier with zero price tier".to_string(),
@@ -810,7 +813,7 @@ mod test {
     fn test_execute_purchase_tiers_cw20() {
         // fixed total cost to 100 for valid purchase
         let env = mock_env();
-        let buyer = "buyer";
+        let buyer = Addr::unchecked(RANDOM_USER);
         let valid_denom = Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()));
         let test_cases: Vec<PurchaseTierTestCase> = vec![
             PurchaseTierTestCase {
@@ -818,7 +821,7 @@ mod test {
                 stage: CampaignStage::ONGOING,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "purchase_tiers")
-                    .add_attribute("payment", "1000cw20:cw20_contract")
+                    .add_attribute("payment", format!("1000cw20:{}", MOCK_CW20_CONTRACT))
                     .add_attribute("total_cost", "100")
                     .add_attribute("refunded", "900")
                     .add_message(
@@ -950,7 +953,7 @@ mod test {
                 orders: test.orders.clone(),
             };
             let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-                sender: buyer.to_owned(),
+                sender: buyer.to_string(),
                 amount: Uint128::new(1000u128),
                 msg: encode_binary(&hook_msg).unwrap(),
             });
@@ -969,7 +972,7 @@ mod test {
                     let stored_order_info = TIER_ORDERS
                         .load(
                             deps.as_ref().storage,
-                            (Addr::unchecked(buyer), order.level.into()),
+                            (Addr::unchecked(buyer.to_string()), order.level.into()),
                         )
                         .unwrap();
                     assert_eq!(
@@ -1278,7 +1281,7 @@ mod test {
 
     #[test]
     fn test_execute_claim() {
-        let orderer = Addr::unchecked("orderer");
+        let orderer = Addr::unchecked(ORDERER);
 
         let test_cases = vec![
             ClaimTestCase {
@@ -1302,7 +1305,7 @@ mod test {
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "claim")
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: "tier_contract".to_string(),
+                        contract_addr: MOCK_TIER_CONTRACT.to_string(),
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "0".to_string(),
                             owner: orderer.to_string(),
@@ -1312,7 +1315,7 @@ mod test {
                         funds: vec![],
                     }))
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: "tier_contract".to_string(),
+                        contract_addr: MOCK_TIER_CONTRACT.to_string(),
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "1".to_string(),
                             owner: orderer.to_string(),
