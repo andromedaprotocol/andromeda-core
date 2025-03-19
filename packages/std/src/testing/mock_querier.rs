@@ -489,6 +489,11 @@ impl MockAndromedaQuerier {
                 to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
             ));
         }
+        if key_str.contains("ado_type3") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
         println!("key str is: {}", key_str);
         panic!("Unsupported query for contract: {contract_addr}");
     }

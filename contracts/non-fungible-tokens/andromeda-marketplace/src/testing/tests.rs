@@ -103,7 +103,11 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
 }
 
 fn init(
-    deps: DepsMut,
+    deps: &mut cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        crate::testing::mock_querier::WasmMockQuerier,
+    >,
     authorized_cw20_addresses: Option<Vec<AndrAddr>>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
 ) -> Response {
@@ -114,8 +118,8 @@ fn init(
         authorized_token_addresses,
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
-    instantiate(deps, mock_env(), info, msg).unwrap()
+    let sender = deps.api.addr_make("sender");
+    instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), msg).unwrap()
 }
 
 fn assert_sale_created(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool) {
@@ -149,7 +153,7 @@ fn assert_sale_created(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool
         sale_infos()
             .load(
                 deps.storage,
-                (MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_TOKEN_ADDR)
+                MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_TOKEN_ADDR
             )
             .unwrap()
     );
@@ -186,7 +190,7 @@ fn assert_sale_created_future_start(deps: Deps, env: Env, coin_denom: String, us
         sale_infos()
             .load(
                 deps.storage,
-                (MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_TOKEN_ADDR)
+                MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_TOKEN_ADDR
             )
             .unwrap()
     );
@@ -195,7 +199,7 @@ fn assert_sale_created_future_start(deps: Deps, env: Env, coin_denom: String, us
 #[test]
 fn test_sale_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None, None);
+    let res = init(&mut deps, None, None);
     assert_eq!(0, res.messages.len());
 }
 
@@ -206,10 +210,13 @@ fn test_instantiate_with_multiple_authorized_cw20_addresses() {
     let creator = deps.api.addr_make("creator");
     let info = message_info(&creator, &[]);
 
+    let cw20_contract_1 = deps.api.addr_make("cw20_contract_1");
+    let cw20_contract_2 = deps.api.addr_make("cw20_contract_2");
+    let cw20_contract_3 = deps.api.addr_make("cw20_contract_3");
     let authorized_cw20_addresses = vec![
-        AndrAddr::from_string("cw20_contract_1"),
-        AndrAddr::from_string("cw20_contract_2"),
-        AndrAddr::from_string("cw20_contract_3"),
+        AndrAddr::from_string(cw20_contract_1.to_string()),
+        AndrAddr::from_string(cw20_contract_2.to_string()),
+        AndrAddr::from_string(cw20_contract_3.to_string()),
     ];
 
     let msg = InstantiateMsg {
@@ -234,7 +241,7 @@ fn test_instantiate_with_multiple_authorized_cw20_addresses() {
     }
 
     // Check that a non-authorized address doesn't have permission
-    let non_authorized = "non_authorized_cw20".to_string();
+    let non_authorized = deps.api.addr_make("non_authorized_cw20");
     let permission =
         ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, non_authorized)
             .unwrap();
@@ -244,7 +251,7 @@ fn test_instantiate_with_multiple_authorized_cw20_addresses() {
 #[test]
 fn test_sale_instantiate_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
-    let res = init(deps.as_mut(), None, None);
+    let res = init(&mut deps, None, None);
     assert_eq!(0, res.messages.len());
 
     start_sale_future_start(
@@ -260,7 +267,7 @@ fn test_authorized_cw721() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let res = init(
-        deps.as_mut(),
+        &mut deps,
         None,
         Some(vec![AndrAddr::from_string(MOCK_CW721_ADDR.to_string())]),
     );
@@ -282,14 +289,12 @@ fn test_authorized_cw721() {
     });
     let env = mock_env();
 
-    let mock_token_addr = deps.api.addr_make(MOCK_TOKEN_ADDR);
-    let info = message_info(&mock_token_addr, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_TOKEN_ADDR), &[]);
     let err = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, err);
 
     // Now let's set mock cw721 addr as the message sender
-    let mock_cw721_addr = deps.api.addr_make(MOCK_CW721_ADDR);
-    let info = message_info(&mock_cw721_addr, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_CW721_ADDR), &[]);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     // Add one to the current time to have it set in the future
@@ -320,7 +325,7 @@ fn test_authorized_cw721() {
         sale_infos()
             .load(
                 deps.as_ref().storage,
-                (MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_CW721_ADDR)
+                MOCK_UNCLAIMED_TOKEN.to_owned() + MOCK_CW721_ADDR
             )
             .unwrap()
     );
@@ -330,7 +335,7 @@ fn test_authorized_cw721() {
 fn test_sale_instantiate_future_start_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let res = init(
-        deps.as_mut(),
+        &mut deps,
         Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
@@ -352,7 +357,7 @@ fn test_sale_instantiate_future_start_cw20() {
 #[test]
 fn test_execute_buy_non_existing_sale() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
     let env = mock_env();
     let msg = ExecuteMsg::Buy {
         token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
@@ -368,7 +373,7 @@ fn test_execute_buy_non_existing_sale() {
 fn test_execute_buy_sale_not_open_already_bought() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -399,7 +404,7 @@ fn test_execute_buy_sale_not_open_cancelled() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -427,7 +432,7 @@ fn test_execute_buy_token_owner_cannot_buy() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -453,7 +458,7 @@ fn test_execute_buy_token_owner_cannot_buy_cw20() {
     let mut env = mock_env();
 
     let _res = init(
-        deps.as_mut(),
+        &mut deps,
         Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
@@ -494,7 +499,7 @@ fn test_execute_buy_invalid_coins_sent() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -542,7 +547,7 @@ fn test_execute_buy_invalid_coins_sent_cw20() {
     let mut env = mock_env();
 
     let _res = init(
-        deps.as_mut(),
+        &mut deps,
         Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
@@ -604,7 +609,7 @@ fn test_execute_buy_works() {
     let mut env = mock_env();
 
     let _res = init(
-        deps.as_mut(),
+        &mut deps,
         Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
@@ -629,7 +634,7 @@ fn test_execute_buy_works_cw20() {
     let mut env = mock_env();
 
     let _res = init(
-        deps.as_mut(),
+        &mut deps,
         Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
@@ -667,7 +672,7 @@ fn test_execute_buy_future_start() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale_future_start(
         deps.as_mut(),
@@ -692,7 +697,7 @@ fn test_execute_buy_sale_expired() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale_future_start_with_duration(deps.as_mut(), mock_env());
 
@@ -714,7 +719,7 @@ fn test_execute_update_sale_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -737,7 +742,7 @@ fn test_execute_update_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), env.clone(), "uusd".to_string(), false);
@@ -750,7 +755,8 @@ fn test_execute_update_sale_invalid_price() {
         recipient: None,
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::InvalidZeroAmount {})
 }
@@ -758,7 +764,7 @@ fn test_execute_update_sale_invalid_price() {
 #[test]
 fn test_execute_start_sale_invalid_price() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom: Asset::NativeToken("uusd".to_string()),
@@ -782,15 +788,16 @@ fn test_execute_start_sale_invalid_price() {
 #[test]
 fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
 
+    let tax_recipient = deps.api.addr_make("tax_recipient");
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient {
-            address: AndrAddr::from_string("tax_recipient".to_string()),
+            address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
         },
@@ -812,7 +819,8 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
     let mut env = mock_env();
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
-    let info = message_info(&Addr::unchecked("someone"), &coins(100, "uusd".to_string()));
+    let someone = deps.api.addr_make("someone");
+    let info = message_info(&someone, &coins(100, "uusd".to_string()));
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(
         err,
@@ -826,7 +834,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds() {
 fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(
-        deps.as_mut(),
+        &mut deps,
         Some(vec![AndrAddr::from_string(MOCK_CW20_CONTRACT)]),
         None,
     );
@@ -843,10 +851,11 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
         uses_cw20,
     );
 
+    let tax_recipient = deps.api.addr_make("tax_recipient");
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient {
-            address: AndrAddr::from_string("tax_recipient".to_string()),
+            address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
         },
@@ -865,8 +874,9 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
+    let someone = deps.api.addr_make("someone");
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: "someone".to_string(),
+        sender: someone.to_string(),
         amount: Uint128::new(100),
         msg: encode_binary(&hook_msg).unwrap(),
     });
@@ -888,7 +898,7 @@ fn test_execute_buy_with_tax_and_royalty_insufficient_funds_cw20() {
 #[test]
 fn execute_buy_with_tax_and_royalty_too_many_funds() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
@@ -913,7 +923,7 @@ fn execute_buy_with_tax_and_royalty_too_many_funds() {
 #[test]
 fn test_execute_buy_with_tax_and_royalty_works() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     start_sale(deps.as_mut(), Asset::NativeToken("uusd".to_string()));
     assert_sale_created(deps.as_ref(), mock_env(), "uusd".to_string(), false);
@@ -923,10 +933,11 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
     };
 
+    let tax_recipient = deps.api.addr_make("tax_recipient");
     let rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient {
-            address: AndrAddr::from_string("tax_recipient".to_string()),
+            address: AndrAddr::from_string(tax_recipient.to_string()),
             msg: None,
             ibc_recovery_address: None,
         },
@@ -941,7 +952,8 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         .set_rates(deps.as_mut().storage, "Buy", rate)
         .unwrap();
 
-    let info = message_info(&Addr::unchecked("someone"), &coins(150, "uusd".to_string()));
+    let someone = deps.api.addr_make("someone");
+    let info = message_info(&someone, &coins(150, "uusd".to_string()));
     let mut env = mock_env();
     // Add one second so that the start_time expires
     env.block.time = env.block.time.plus_seconds(1);
@@ -958,7 +970,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         //     amount: vec![coin(90, "uusd")],
         // })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "tax_recipient".to_string(),
+            to_address: tax_recipient.to_string(),
             amount: vec![coin(50, "uusd")],
         })),
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -971,7 +983,8 @@ fn test_execute_buy_with_tax_and_royalty_works() {
             funds: vec![],
         })),
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "owner".to_string(),
+            to_address: "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y"
+                .to_string(),
             amount: vec![coin(100, "uusd")],
         })),
     ];
@@ -980,13 +993,15 @@ fn test_execute_buy_with_tax_and_royalty_works() {
 #[test]
 fn test_execute_authorize_cw20_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     // Test unauthorized attempt
-    let unauthorized_info = message_info(&Addr::unchecked("unauthorized"), &[]);
+    let unauthorized = deps.api.addr_make("unauthorized");
+    let unauthorized_info = message_info(&unauthorized, &[]);
+
     let unauthorized_msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
-        addr: AndrAddr::from_string("cw20_contract"),
+        addr: AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()),
         expiration: None,
     };
     let unauthorized_result = execute(
@@ -1001,10 +1016,11 @@ fn test_execute_authorize_cw20_contract() {
     );
 
     // Test successful authorization without expiration
-    let owner_info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("sender");
+    let owner_info = message_info(&owner, &[]);
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
-        addr: AndrAddr::from_string("cw20_contract"),
+        addr: AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()),
         expiration: None,
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
@@ -1013,26 +1029,31 @@ fn test_execute_authorize_cw20_contract() {
         result.attributes,
         vec![
             attr("action", "authorize_contract"),
-            attr("address", "cw20_contract"),
+            attr("address", MOCK_CW20_CONTRACT.to_string()),
             attr("permission", "whitelisted"),
         ]
     );
 
     // Verify the permission was set correctly
-    let permission =
-        ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, "cw20_contract")
-            .unwrap();
+    let permission = ADOContract::get_permission(
+        deps.as_ref().storage,
+        SEND_CW20_ACTION,
+        MOCK_CW20_CONTRACT.to_string(),
+    )
+    .unwrap();
     assert_eq!(
         permission,
         Some(Permission::Local(LocalPermission::whitelisted(None, None)))
     );
 
     // Test successful authorization with expiration
-    let owner_info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("sender");
+    let owner_info = message_info(&owner, &[]);
+    let mock_cw20_contract_with_expiry = deps.api.addr_make("mock_cw20_contract_with_expiry");
     let expiration = Expiry::FromNow(Milliseconds(10000));
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
-        addr: AndrAddr::from_string("cw20_contract_with_expiry"),
+        addr: AndrAddr::from_string(mock_cw20_contract_with_expiry.to_string()),
         expiration: Some(expiration.clone()),
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
@@ -1041,7 +1062,7 @@ fn test_execute_authorize_cw20_contract() {
         result.attributes,
         vec![
             attr("action", "authorize_contract"),
-            attr("address", "cw20_contract_with_expiry"),
+            attr("address", mock_cw20_contract_with_expiry.to_string()),
             attr("permission", format!("whitelisted until:{}", expiration)),
         ]
     );
@@ -1050,7 +1071,7 @@ fn test_execute_authorize_cw20_contract() {
     let permission = ADOContract::get_permission(
         deps.as_ref().storage,
         SEND_CW20_ACTION,
-        "cw20_contract_with_expiry",
+        mock_cw20_contract_with_expiry.to_string(),
     )
     .unwrap();
     assert_eq!(
@@ -1065,21 +1086,25 @@ fn test_execute_authorize_cw20_contract() {
 #[test]
 fn test_execute_deauthorize_cw20_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
     // First, authorize a CW20 contract
-    let owner_info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("sender");
+    let owner_info = message_info(&owner, &[]);
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendCw20,
-        addr: AndrAddr::from_string("cw20_contract"),
+        addr: AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()),
         expiration: None,
     };
     let _res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
 
     // Verify the permission was set
-    let permission =
-        ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, "cw20_contract")
-            .unwrap();
+    let permission = ADOContract::get_permission(
+        deps.as_ref().storage,
+        SEND_CW20_ACTION,
+        MOCK_CW20_CONTRACT.to_string(),
+    )
+    .unwrap();
     assert_eq!(
         permission,
         Some(Permission::Local(LocalPermission::whitelisted(None, None)))
@@ -1088,7 +1113,7 @@ fn test_execute_deauthorize_cw20_contract() {
     // Now deauthorize the CW20 contract
     let msg = ExecuteMsg::DeauthorizeContract {
         action: PermissionAction::SendCw20,
-        addr: AndrAddr::from_string("cw20_contract"),
+        addr: AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
@@ -1097,22 +1122,26 @@ fn test_execute_deauthorize_cw20_contract() {
         res.attributes,
         vec![
             attr("action", "deauthorize_contract"),
-            attr("address", "cw20_contract"),
+            attr("address", MOCK_CW20_CONTRACT.to_string()),
             attr("deauthorized_action", SEND_CW20_ACTION),
         ]
     );
 
     // Verify the permission was removed
-    let permission =
-        ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, "cw20_contract")
-            .unwrap();
+    let permission = ADOContract::get_permission(
+        deps.as_ref().storage,
+        SEND_CW20_ACTION,
+        MOCK_CW20_CONTRACT.to_string(),
+    )
+    .unwrap();
     assert_eq!(permission, None);
 
     // Test deauthorization by non-owner (should fail)
-    let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
+    let non_owner = deps.api.addr_make("not_owner");
+    let non_owner_info = message_info(&non_owner, &[]);
     let msg = ExecuteMsg::DeauthorizeContract {
         action: PermissionAction::SendCw20,
-        addr: AndrAddr::from_string("cw20_contract"),
+        addr: AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()),
     };
     let err = execute(deps.as_mut(), mock_env(), non_owner_info, msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
@@ -1121,15 +1150,19 @@ fn test_execute_deauthorize_cw20_contract() {
 #[test]
 fn test_query_authorized_addresses() {
     let mut deps = mock_dependencies_custom(&[]);
+    let cw20_contract_1 = deps.api.addr_make("cw20_contract_1");
+    let cw20_contract_2 = deps.api.addr_make("cw20_contract_2");
+    let nft_contract_1 = deps.api.addr_make("nft_contract_1");
+    let nft_contract_2 = deps.api.addr_make("nft_contract_2");
     let _res = init(
-        deps.as_mut(),
+        &mut deps,
         Some(vec![
-            AndrAddr::from_string("cw20_contract1"),
-            AndrAddr::from_string("cw20_contract2"),
+            AndrAddr::from_string(cw20_contract_1.to_string()),
+            AndrAddr::from_string(cw20_contract_2.to_string()),
         ]),
         Some(vec![
-            AndrAddr::from_string("nft_contract1"),
-            AndrAddr::from_string("nft_contract2"),
+            AndrAddr::from_string(nft_contract_1.to_string()),
+            AndrAddr::from_string(nft_contract_2.to_string()),
         ]),
     );
 
@@ -1144,7 +1177,7 @@ fn test_query_authorized_addresses() {
         from_json(query(deps.as_ref(), mock_env(), cw20_query).unwrap()).unwrap();
     assert_eq!(
         cw20_res.addresses,
-        vec!["cw20_contract1".to_string(), "cw20_contract2".to_string()]
+        vec![cw20_contract_1.to_string(), cw20_contract_2.to_string(),]
     );
 
     // Query authorized addresses for NFT action
@@ -1158,16 +1191,18 @@ fn test_query_authorized_addresses() {
         from_json(query(deps.as_ref(), mock_env(), nft_query).unwrap()).unwrap();
     assert_eq!(
         nft_res.addresses,
-        vec!["nft_contract1".to_string(), "nft_contract2".to_string()]
+        vec![nft_contract_2.to_string(), nft_contract_1.to_string(),]
     );
 }
 #[test]
 fn test_authorize_token_contract() {
     let mut deps = mock_dependencies_custom(&[]);
-    let _res = init(deps.as_mut(), None, None);
+    let _res = init(&mut deps, None, None);
 
-    let owner_info = message_info(&Addr::unchecked("owner"), &[]);
-    let token_address = AndrAddr::from_string("nft_contract");
+    let owner = deps.api.addr_make("sender");
+    let owner_info = message_info(&owner, &[]);
+    let nft_contract = Addr::unchecked(MOCK_TOKEN_ADDR);
+    let token_address = AndrAddr::from_string(nft_contract.to_string());
     let expiration = Expiry::FromNow(Milliseconds(100));
 
     // Test successful authorization
@@ -1181,13 +1216,14 @@ fn test_authorize_token_contract() {
         res.attributes,
         vec![
             attr("action", "authorize_contract"),
-            attr("address", "nft_contract"),
+            attr("address", nft_contract.to_string()),
             attr("permission", format!("whitelisted until:{}", expiration)),
         ]
     );
 
     // Test unauthorized attempt
-    let non_owner_info = message_info(&Addr::unchecked("non_owner"), &[]);
+    let non_owner = deps.api.addr_make("non_owner");
+    let non_owner_info = message_info(&non_owner, &[]);
     let msg = ExecuteMsg::AuthorizeContract {
         action: PermissionAction::SendNft,
         addr: token_address.clone(),
@@ -1205,20 +1241,21 @@ fn test_authorize_token_contract() {
     };
     let res: AuthorizedAddressesResponse =
         from_json(query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-    assert_eq!(res.addresses, vec!["nft_contract".to_string()]);
+    assert_eq!(res.addresses, vec![nft_contract.to_string()]);
 }
 
 #[test]
 fn test_deauthorize_token_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(
-        deps.as_mut(),
+        &mut deps,
         None,
-        Some(vec![AndrAddr::from_string("nft_contract")]),
+        Some(vec![AndrAddr::from_string(MOCK_TOKEN_ADDR.to_string())]),
     );
 
-    let owner_info = message_info(&Addr::unchecked("owner"), &[]);
-    let token_address = AndrAddr::from_string("nft_contract");
+    let owner = deps.api.addr_make("sender");
+    let owner_info = message_info(&owner, &[]);
+    let token_address = AndrAddr::from_string(MOCK_TOKEN_ADDR.to_string());
 
     // Test successful deauthorization
     let msg = ExecuteMsg::DeauthorizeContract {
@@ -1230,13 +1267,14 @@ fn test_deauthorize_token_contract() {
         res.attributes,
         vec![
             attr("action", "deauthorize_contract"),
-            attr("address", "nft_contract"),
+            attr("address", MOCK_TOKEN_ADDR.to_string()),
             attr("deauthorized_action", SEND_NFT_ACTION),
         ]
     );
 
     // Test unauthorized attempt
-    let non_owner_info = message_info(&Addr::unchecked("non_owner"), &[]);
+    let non_owner = deps.api.addr_make("non_owner");
+    let non_owner_info = message_info(&non_owner, &[]);
     let msg = ExecuteMsg::DeauthorizeContract {
         action: PermissionAction::SendNft,
         addr: token_address.clone(),
