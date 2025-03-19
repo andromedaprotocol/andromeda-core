@@ -1,13 +1,13 @@
 use super::mock::{
     add_actors, proper_initialization, query_actors, query_last_mint_timestamp_seconds,
-    query_mint_cooldown_minutes, vdf_mint,
+    query_mint_cooldown_minutes, remove_actors, vdf_mint,
 };
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::error::ContractError;
 use cosmwasm_std::{testing::mock_env, Addr, BlockInfo, Timestamp, Uint64};
 
 #[test]
-fn test_instantiation_private() {
+fn test_instantiation() {
     let (deps, _) = proper_initialization(
         AndrAddr::from_string("cw721"),
         None,
@@ -50,6 +50,61 @@ fn test_add_actors() {
     assert_eq!(
         actors,
         vec![Addr::unchecked("creator"), Addr::unchecked("actor_1")]
+    );
+}
+
+#[test]
+fn test_remove_actors() {
+    let (mut deps, _) = proper_initialization(
+        AndrAddr::from_string("cw721"),
+        None,
+        Some(Uint64::new(5_u64)),
+    );
+
+    add_actors(
+        deps.as_mut(),
+        vec![
+            AndrAddr::from_string("actor_1"),
+            AndrAddr::from_string("actor_2"),
+        ],
+        "creator",
+    )
+    .unwrap();
+
+    let actors = query_actors(deps.as_ref()).unwrap().actors;
+    assert_eq!(
+        actors,
+        vec![
+            Addr::unchecked("creator"),
+            Addr::unchecked("actor_1"),
+            Addr::unchecked("actor_2")
+        ]
+    );
+
+    remove_actors(
+        deps.as_mut(),
+        vec![AndrAddr::from_string("actor_1")],
+        "creator",
+    )
+    .unwrap();
+
+    let actors = query_actors(deps.as_ref()).unwrap().actors;
+    assert_eq!(
+        actors,
+        vec![Addr::unchecked("creator"), Addr::unchecked("actor_2")]
+    );
+
+    let err = remove_actors(
+        deps.as_mut(),
+        vec![AndrAddr::from_string("actor_3")],
+        "creator",
+    )
+    .unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::CustomError {
+            msg: format!("Actor not found: {:?}", Addr::unchecked("actor_3"))
+        }
     );
 }
 

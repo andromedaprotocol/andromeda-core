@@ -46,6 +46,16 @@ pub fn add_actors(
     execute(deps, mock_env(), info, msg)
 }
 
+pub fn remove_actors(
+    deps: DepsMut<'_>,
+    actors: Vec<AndrAddr>,
+    sender: &str,
+) -> Result<Response, ContractError> {
+    let msg = ExecuteMsg::RemoveActors { actors };
+    let info = mock_info(sender, &[]);
+    execute(deps, mock_env(), info, msg)
+}
+
 pub fn vdf_mint(
     deps: DepsMut<'_>,
     token_id: String,

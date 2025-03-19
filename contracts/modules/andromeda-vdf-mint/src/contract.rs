@@ -51,86 +51,71 @@ pub fn instantiate(
     )?;
 
     let cw721_address = msg.cw721_address;
+    let raw_cw721_address = cw721_address.get_raw_address(&deps.as_ref())?;
+
+    // Verify the address is a contract and has the correct ADO type
     let contract_info = deps
         .querier
-        .query_wasm_contract_info(cw721_address.get_raw_address(&deps.as_ref())?);
-    if let Ok(contract_info) = contract_info {
-        let code_id = contract_info.code_id;
-        println!("code_id: {:?}", code_id);
-        let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
-        let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
+        .query_wasm_contract_info(raw_cw721_address.clone())
+        .map_err(|_| ContractError::InvalidAddress {})?;
 
-        match ado_type {
-            None => {
-                return Err(ContractError::InvalidADOType {
-                    msg: Some("ADO Type must be cw721: None".to_string()),
-                });
-            }
-            Some(ado_type) => {
-                if ado_type != *"cw721" {
-                    return Err(ContractError::InvalidADOType {
-                        msg: Some(format!("ADO Type must be cw721: {:?}", ado_type)),
-                    });
-                }
-            }
+    let adodb_addr = ADOContract::default().get_adodb_address(deps.storage, &deps.querier)?;
+    let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, contract_info.code_id)?;
+
+    // Ensure the contract is a CW721 type
+    ensure!(
+        matches!(ado_type.clone(), Some(type_str) if type_str == "cw721"),
+        ContractError::InvalidADOType {
+            msg: Some(format!("ADO Type must be cw721, got: {:?}", ado_type))
         }
-    } else {
-        // Not a contract
-        return Err(ContractError::InvalidAddress {});
-    }
+    );
 
     CW721_ADDRESS.save(deps.storage, &cw721_address)?;
 
     ADOContract::default().permission_action(deps.storage, VDF_MINT_ACTION)?;
 
     let mut actors_addr: Vec<Addr> = Vec::new();
-    match msg.actors {
-        Some(actors) => {
-            for actor in actors {
-                let actor_raw_addr = actor.get_raw_address(&deps.as_ref())?;
-                ADOContract::set_permission(
-                    deps.storage,
-                    VDF_MINT_ACTION,
-                    actor_raw_addr.clone(),
-                    Permission::Local(LocalPermission::whitelisted(None, None)),
-                )?;
-                actors_addr.push(actor_raw_addr);
-            }
-            ACTORS.save(deps.storage, &actors_addr)?;
-        }
-        None => {
-            let actor_addr = info.sender.clone();
+
+    if let Some(actors) = msg.actors {
+        for actor in actors {
+            let actor_raw_addr = actor.get_raw_address(&deps.as_ref())?;
             ADOContract::set_permission(
                 deps.storage,
                 VDF_MINT_ACTION,
-                info.sender,
+                actor_raw_addr.clone(),
                 Permission::Local(LocalPermission::whitelisted(None, None)),
             )?;
-            actors_addr.push(actor_addr);
-
-            ACTORS.save(deps.storage, &actors_addr)?;
+            actors_addr.push(actor_raw_addr);
         }
+    } else {
+        // Default to sender as actor if none provided
+        actors_addr.push(info.sender.clone());
+        ADOContract::set_permission(
+            deps.storage,
+            VDF_MINT_ACTION,
+            info.sender,
+            Permission::Local(LocalPermission::whitelisted(None, None)),
+        )?;
     }
+    ACTORS.save(deps.storage, &actors_addr)?;
 
-    match msg.mint_cooldown_minutes {
-        None => {
-            MINT_COOLDOWN_MINUTES
-                .save(deps.storage, &Uint64::new(DEFAULT_MINT_COOLDOWN_MINUTES))?;
-        }
-        Some(mint_cooldown_minutes) => {
-            ensure!(
-                mint_cooldown_minutes.ge(&Uint64::new(DEFAULT_MINT_COOLDOWN_MINUTES)),
-                ContractError::CustomError {
-                    msg: format!(
-                        "Mint cooldown should not be less than {:?}",
-                        DEFAULT_MINT_COOLDOWN_MINUTES
-                    )
-                }
-            );
+    // Set mint cooldown - use provided value or default
+    let cooldown = msg
+        .mint_cooldown_minutes
+        .unwrap_or(Uint64::new(DEFAULT_MINT_COOLDOWN_MINUTES));
 
-            MINT_COOLDOWN_MINUTES.save(deps.storage, &mint_cooldown_minutes)?;
+    // Ensure cooldown is not less than minimum
+    ensure!(
+        cooldown.ge(&Uint64::new(DEFAULT_MINT_COOLDOWN_MINUTES)),
+        ContractError::CustomError {
+            msg: format!(
+                "Mint cooldown should not be less than {:?}",
+                DEFAULT_MINT_COOLDOWN_MINUTES
+            )
         }
-    }
+    );
+
+    MINT_COOLDOWN_MINUTES.save(deps.storage, &cooldown)?;
 
     Ok(resp)
 }
@@ -139,6 +124,7 @@ pub fn instantiate(
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AddActors { actors } => execute_add_actors(ctx, actors),
+        ExecuteMsg::RemoveActors { actors } => execute_remove_actors(ctx, actors),
         ExecuteMsg::VdfMint { token_id, owner } => execute_vdf_mint(ctx, token_id, owner),
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -172,6 +158,35 @@ pub fn execute_add_actors(
     ACTORS.save(ctx.deps.storage, &origin_actors)?;
 
     Ok(Response::new().add_attribute("method", "add_actors"))
+}
+
+pub fn execute_remove_actors(
+    ctx: ExecuteContext,
+    new_actors: Vec<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let mut origin_actors = ACTORS
+        .load(ctx.deps.storage)
+        .map_err(|_| ContractError::ActorNotFound {})?;
+
+    for actor in new_actors {
+        let actor_raw_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
+        if !origin_actors.contains(&actor_raw_addr) {
+            return Err(ContractError::CustomError {
+                msg: format!("Actor not found: {:?}", actor_raw_addr.clone()),
+            });
+        }
+
+        // Remove actor from the list
+        origin_actors.retain(|a| a != &actor_raw_addr);
+
+        // Remove permission for the actor
+        ADOContract::remove_permission(ctx.deps.storage, VDF_MINT_ACTION, actor_raw_addr.clone())?;
+    }
+
+    // Save the updated actor list
+    ACTORS.save(ctx.deps.storage, &origin_actors)?;
+
+    Ok(Response::new().add_attribute("method", "remove_actors"))
 }
 
 pub fn execute_vdf_mint(

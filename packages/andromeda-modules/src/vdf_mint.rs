@@ -16,6 +16,8 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     #[attrs(restricted, nonpayable)]
     AddActors { actors: Vec<AndrAddr> },
+    #[attrs(restricted, nonpayable)]
+    RemoveActors { actors: Vec<AndrAddr> },
     #[attrs(nonpayable)]
     VdfMint { token_id: String, owner: AndrAddr },
 }
