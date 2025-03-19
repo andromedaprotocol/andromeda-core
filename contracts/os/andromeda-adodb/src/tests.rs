@@ -165,7 +165,7 @@ fn test_publish() {
         publisher: None,
     };
 
-    let resp = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
     let publisher = PUBLISHER
         .load(deps.as_ref().storage, ado_version.as_str())
