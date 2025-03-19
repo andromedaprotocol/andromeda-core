@@ -474,6 +474,11 @@ impl MockAndromedaQuerier {
                 to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
             ));
         }
+        if key_str.contains("kernel_env_variables") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
         println!("key str is: {}", key_str);
         panic!("Unsupported query for contract: {contract_addr}");
     }
