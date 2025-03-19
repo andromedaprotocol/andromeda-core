@@ -13,7 +13,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, from_json,
     testing::{message_info, mock_env},
-    Addr, DepsMut, MessageInfo, Response,
+    MessageInfo, Response,
 };
 
 fn init(
