@@ -177,7 +177,7 @@ pub fn execute_remove_actors(
         }
 
         // Remove actor from the list
-        origin_actors.retain(|a| a != &actor_raw_addr);
+        origin_actors.retain(|a| a != actor_raw_addr);
 
         // Remove permission for the actor
         ADOContract::remove_permission(ctx.deps.storage, VDF_MINT_ACTION, actor_raw_addr.clone())?;
