@@ -79,7 +79,7 @@ mod ibc_transfer_tests {
 
         // Check storage
         let stored_packet = PENDING_MSG_AND_FUNDS.load(&deps.storage).unwrap();
-        assert_eq!(stored_packet.sender, "sender");
+        assert_eq!(stored_packet.sender, sender.to_string());
         assert_eq!(stored_packet.channel, "channel-0");
         assert_eq!(stored_packet.funds.amount, Uint128::new(100));
         assert_eq!(stored_packet.funds.denom, "uatom");
@@ -393,8 +393,8 @@ mod ibc_transfer_tests {
         // Test with different sender addresses
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let sender = deps.api.addr_make("another_sender");
-        let info = message_info(&sender, &[]); // Different sender
+        let another_sender = deps.api.addr_make("another_sender");
+        let info = message_info(&another_sender, &[]); // Different sender
 
         let message = AMPMsg {
             recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
@@ -426,7 +426,7 @@ mod ibc_transfer_tests {
 
         // Verify stored packet has the correct sender
         let stored_packet = PENDING_MSG_AND_FUNDS.load(&deps.storage).unwrap();
-        assert_eq!(stored_packet.sender, "another_sender");
+        assert_eq!(stored_packet.sender, another_sender.to_string());
     }
 
     #[test]
@@ -474,6 +474,6 @@ mod ibc_transfer_tests {
 
         // Function should succeed even with context (which is ignored)
         let stored_packet = PENDING_MSG_AND_FUNDS.load(&deps.storage).unwrap();
-        assert_eq!(stored_packet.sender, "sender"); // Original sender preserved
+        assert_eq!(stored_packet.sender, sender.to_string()); // Original sender preserved
     }
 }

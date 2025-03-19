@@ -9,7 +9,7 @@ use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{
         mock_dependencies_custom, FAKE_VFS_PATH, INVALID_CONTRACT, MOCK_ADODB_CONTRACT,
-        MOCK_APP_CONTRACT, MOCK_WALLET,
+        MOCK_APP_CONTRACT, MOCK_WALLET, RECEIVER,
     },
 };
 use cosmwasm_std::{
@@ -17,6 +17,7 @@ use cosmwasm_std::{
     testing::{message_info, mock_env},
     to_json_binary, Addr, BankMsg, Binary, ReplyOn, SubMsg,
 };
+pub const SENDER: &str = "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg";
 
 struct TestHandleLocalCase {
     name: &'static str,
@@ -50,8 +51,8 @@ fn test_handle_local() {
             msg: AMPMsg::new(MOCK_APP_CONTRACT, to_json_binary(&true).unwrap(), None),
             ctx: None,
             expected_submessage: AMPPkt::new(
-                "sender",
-                "sender",
+                SENDER,
+                SENDER,
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),
@@ -69,7 +70,7 @@ fn test_handle_local() {
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
-                "sender",
+                SENDER,
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),
@@ -91,7 +92,7 @@ fn test_handle_local() {
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
-                "sender",
+                SENDER,
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),
@@ -181,14 +182,14 @@ fn test_handle_local() {
             name: "Valid bank send message",
             sender: "sender",
             msg: AMPMsg::new(
-                "receiver",
+                RECEIVER,
                 Binary::default(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
             ctx: None,
             expected_submessage: SubMsg::reply_on_error(
                 BankMsg::Send {
-                    to_address: "receiver".to_string(),
+                    to_address: RECEIVER.to_string(),
                     amount: vec![coin(100, "denom"), coin(200, "denom_two")],
                 },
                 ReplyId::AMPMsg.repr(),
@@ -217,8 +218,8 @@ fn test_handle_local() {
             msg: create_test_msg_with_config(config.clone()),
             ctx: None,
             expected_submessage: AMPPkt::new(
-                "sender",
-                "sender",
+                SENDER,
+                SENDER,
                 vec![create_test_msg_with_config(config)],
             )
             .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
@@ -247,7 +248,6 @@ fn test_handle_local() {
             assert_eq!(res.unwrap_err(), err, "{}", test.name);
             continue;
         }
-
         let response = res.unwrap();
 
         assert_eq!(

@@ -25,7 +25,8 @@ pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
 /// Mock Anchor Contract Address
 pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 /// Mock App Contract Address
-pub const MOCK_APP_CONTRACT: &str = "app_contract";
+pub const MOCK_APP_CONTRACT: &str =
+    "cosmwasm1t3hmmkn74pqs5htv9swgzpjf7np9z8zc98hgj8hx879cp5juk4eqmnwcm4";
 /// Mock Primitive Contract Address
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 /// Mock Kernel Contract Address
@@ -34,9 +35,11 @@ pub const MOCK_KERNEL_CONTRACT: &str =
 /// Mock Kernel Contract Address on foreign chain
 pub const MOCK_FAKE_KERNEL_CONTRACT: &str = "fake_kernel_contract";
 /// Mock VFS Contract Address
-pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
+pub const MOCK_VFS_CONTRACT: &str =
+    "cosmwasm1d6zkcymf096kr7u7txgfzseavxag5nqjlp752sh6amdrsvd888tq830ls3";
 /// Mock ADODB Contract Address
-pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
+pub const MOCK_ADODB_CONTRACT: &str =
+    "cosmwasm1czczgckw8ffqfdrv864vmr5re5rqn2cvw8t0pttyeanmxvdv99cq9fqslh";
 /// Mock IBC Registry Contract Address
 pub const MOCK_IBC_REGISTRY_CONTRACT: &str = "ibc_registry_contract";
 // Mock ADO Publisher
@@ -52,7 +55,10 @@ pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESS_LIST_CONTRACT: &str = "address_list_contract";
 
 /// An invalid contract address
-pub const INVALID_CONTRACT: &str = "invalid_contract";
+pub const INVALID_CONTRACT: &str =
+    "cosmwasm1xfwre2uvf2xa9e8qwkkgr58537p88ylyfutgv0gvx5mpdaev945qc5ag7z";
+
+pub const RECEIVER: &str = "cosmwasm1sxawsa4hq5funhkvvz8w64yew75p47su9d45pq9wcftr88ne9c8sy9s57j";
 /// An invalid VFS Path
 pub const FAKE_VFS_PATH: &str = "/f";
 /// An invalid ADODB Key
@@ -64,7 +70,7 @@ pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
 
 pub const MOCK_CHECKSUM: &str = "9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d";
 
-pub const MOCK_WALLET: &str = "mock_wallet";
+pub const MOCK_WALLET: &str = "cosmwasm1ss738deprq7wsjw2un0dhhny9r9smpz6vta7ase5qzws4lzj4yaql34g2e";
 
 pub const MOCK_UANDR: &str = "mock_uandr";
 

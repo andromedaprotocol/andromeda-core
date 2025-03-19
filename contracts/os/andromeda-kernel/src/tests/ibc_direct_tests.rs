@@ -93,7 +93,7 @@ fn test_handle_ibc_direct_success() {
                     );
 
                     // Check the context
-                    assert_eq!(amp_packet.ctx.get_origin(), "sender");
+                    assert_eq!(amp_packet.ctx.get_origin(), sender.to_string());
 
                     // Should have one hop with correct source and destination chains
                     assert_eq!(amp_packet.ctx.previous_hops.len(), 1);
