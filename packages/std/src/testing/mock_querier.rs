@@ -21,7 +21,8 @@ use cosmwasm_std::{Decimal, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
 
 /// Mock CW20 Contract Address
-pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
+pub const MOCK_CW20_CONTRACT: &str =
+    "cosmwasm1epy7ztwxfyl93052dww6aupmjsmykjrhwjxfgx4xfz4k5u27jmgsvj0dty";
 /// Mock Anchor Contract Address
 pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 /// Mock App Contract Address

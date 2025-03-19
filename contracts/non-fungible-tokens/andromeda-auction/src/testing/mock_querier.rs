@@ -6,7 +6,7 @@ use cosmwasm_schema::cw_serde;
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::message_info;
-use cosmwasm_std::{coin, Addr, BankQuery, Empty, QuerierWrapper};
+use cosmwasm_std::{coin, BankQuery, Empty, QuerierWrapper};
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
@@ -16,9 +16,12 @@ use cosmwasm_std::{
 
 use cw721::msg::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
-pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
-pub const MOCK_TOKEN_ADDR: &str = "token_addr";
+pub const MOCK_TOKEN_CONTRACT: &str =
+    "cosmwasm1k2mr5h0a6296pe7s7hwttxzvls049wml8zxnpul3apufzu4qwvwsu8c5mn";
+pub const MOCK_UNCLAIMED_TOKEN: &str =
+    "cosmwasm1h07t2zcl7ce2l9hgkamgsemj00rktgs0ytpnttk7gsfd88awmufqsuwajh";
+pub const MOCK_TOKEN_ADDR: &str =
+    "cosmwasm1qatal5f83m2ecv6ndxrx6jyj7n2gj6yalvc667eyj705c7pzsatswspwvw";
 pub const MOCK_TOKEN_OWNER: &str =
     "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
@@ -118,9 +121,6 @@ impl WasmMockQuerier {
                     address: _,
                     denom: _,
                 } => {
-                    panic!("Unsupported Query")
-                }
-                BankQuery::AllBalances { address: _ } => {
                     panic!("Unsupported Query")
                 }
                 _ => panic!("Unsupported Query"),
