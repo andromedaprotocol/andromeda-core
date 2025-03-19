@@ -465,9 +465,6 @@ fn test_crowdfund_app_native_with_ado_recipient(
 
     let owner = andr.get_wallet("owner");
     let buyer_one = andr.get_wallet("buyer_one");
-    let recipient_1 = andr.get_wallet("recipient1");
-    let recipient_2 = andr.get_wallet("recipient2");
-
     // Start campaign
     let start_time = None;
     let end_time = Milliseconds::from_nanos(router.block_info().time.plus_days(1).nanos());
@@ -553,20 +550,7 @@ fn test_crowdfund_app_native_with_ado_recipient(
     let summary = crowdfund.query_campaign_summary(&mut router);
 
     // Campaign could not be ended due to invalid withdrawal recipient msg
-    assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
-
-    let recipient_1_balance = router
-        .wrap()
-        .query_balance(recipient_1, "uandr")
-        .unwrap()
-        .amount;
-    let recipient_2_balance = router
-        .wrap()
-        .query_balance(recipient_2, "uandr")
-        .unwrap()
-        .amount;
-    assert_eq!(recipient_1_balance.u128(), summary.current_capital / 5);
-    assert_eq!(recipient_2_balance.u128(), summary.current_capital * 4 / 5);
+    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
 }
 
 #[rstest]

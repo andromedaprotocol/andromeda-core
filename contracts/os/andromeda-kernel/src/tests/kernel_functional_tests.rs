@@ -1,3 +1,4 @@
+#[cfg(test)]
 use crate::execute::validate_id;
 use crate::{
     contract::{execute, instantiate, query},
