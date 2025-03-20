@@ -591,6 +591,9 @@ pub enum ContractError {
     #[error("Sale not ended")]
     SaleNotEnded {},
 
+    #[error("Redemption clause already exists")]
+    RedemptionClauseAlreadyExists {},
+
     #[error("Min sales exceeded")]
     MinSalesExceeded {},
 

@@ -44,10 +44,14 @@ andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", feature
 andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = [
     "testing",
 ] }
+
+andromeda-cw20-redeem = { path = "../contracts/fungible-tokens/andromeda-cw20-redeem", features = [
+    "testing",
+] }
+
 andromeda-lockdrop = { path = "../contracts/fungible-tokens/andromeda-lockdrop", features = [
     "testing",
 ] }
-# andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
 
 # #Modules
 andromeda-modules = { workspace = true }
@@ -186,6 +190,10 @@ path = "fixed_amount_splitter.rs"
 [[test]]
 name = "cw20_staking"
 path = "cw20_staking.rs"
+
+[[test]]
+name = "cw20_redeem"
+path = "cw20_redeem.rs"
 
 [[test]]
 name = "ibc_registry"

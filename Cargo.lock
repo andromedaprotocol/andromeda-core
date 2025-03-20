@@ -281,6 +281,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-cw20-redeem"
+version = "2.1.0"
+dependencies = [
+ "andromeda-app",
+ "andromeda-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+]
+
+[[package]]
 name = "andromeda-cw20-staking"
 version = "2.1.1-b.1"
 dependencies = [
@@ -359,6 +376,7 @@ dependencies = [
  "andromeda-curve",
  "andromeda-cw20",
  "andromeda-cw20-exchange",
+ "andromeda-cw20-redeem",
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-date-time",
@@ -5081,6 +5099,7 @@ dependencies = [
  "andromeda-crowdfund",
  "andromeda-curve",
  "andromeda-cw20",
+ "andromeda-cw20-redeem",
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-data-storage",
