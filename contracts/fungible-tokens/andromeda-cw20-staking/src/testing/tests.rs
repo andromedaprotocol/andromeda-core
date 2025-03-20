@@ -29,9 +29,12 @@ use andromeda_fungible_tokens::cw20_staking::{
 };
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
-const MOCK_STAKING_TOKEN: &str = "staking_token";
-const MOCK_INCENTIVE_TOKEN: &str = "incentive_token";
-const MOCK_ALLOCATED_TOKEN: &str = "allocated_token";
+const MOCK_STAKING_TOKEN: &str =
+    "cosmwasm1jpev2csrppg792t22rn8z8uew8h3sjcpglcd0qv9g8gj8ky922tscp8ava";
+const MOCK_INCENTIVE_TOKEN: &str =
+    "cosmwasm1jpev2csrppg792t22rn8z8uew8h3sjcpglcd0qv9g8gj8ky922tscp8avb";
+const MOCK_ALLOCATED_TOKEN: &str =
+    "cosmwasm1jpev2csrppg792t22rn8z8uew8h3sjcpglcd0qv9g8gj8ky922tscp8avc";
 
 fn init(
     deps: &mut cosmwasm_std::OwnedDeps<
@@ -584,7 +587,8 @@ fn test_update_global_indexes() {
 
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     assert_eq!(
@@ -717,7 +721,8 @@ fn test_update_global_indexes_selective() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -792,7 +797,8 @@ fn test_update_global_indexes_invalid_asset() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uluna")]),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(
@@ -963,7 +969,8 @@ fn test_claim_rewards() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -1551,7 +1558,8 @@ fn test_stake_rewards_update() {
 
     // Update global index.
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -1745,7 +1753,8 @@ fn test_unstake_rewards_update() {
 
     // Update global index.
     let msg = ExecuteMsg::UpdateGlobalIndexes { asset_infos: None };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -1851,14 +1860,15 @@ fn test_add_reward_token() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         Response::new()
             .add_attribute("action", "add_reward_token")
-            .add_attribute("added_token", "cw20:incentive_token"),
+            .add_attribute("added_token", format!("cw20:{}", MOCK_INCENTIVE_TOKEN)),
         res
     );
 
@@ -1899,7 +1909,8 @@ fn test_add_reward_token_duplicate() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
@@ -1923,7 +1934,8 @@ fn test_add_reward_token_staking_token() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert_eq!(
@@ -1976,7 +1988,8 @@ fn test_add_reward_token_exceeds_max() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -2005,7 +2018,8 @@ fn test_remove_reward_token() {
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -2065,7 +2079,8 @@ fn test_remove_reward_token_invalid_asset() {
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -2153,7 +2168,8 @@ fn test_claim_rewards_after_remove() {
         asset_infos: Some(vec![AssetInfoUnchecked::native("uusd")]),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
@@ -2219,7 +2235,8 @@ fn test_claim_rewards_after_remove() {
     let msg = ExecuteMsg::RemoveRewardToken {
         reward_token: "native:uusd".to_string(),
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let user2 = deps.api.addr_make("user2");
@@ -2348,7 +2365,8 @@ fn test_claim_rewards_allocated_after_remove() {
     };
 
     env.block.time = env.block.time.plus_seconds(25);
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     env.block.time = env.block.time.plus_seconds(25);
@@ -2429,7 +2447,8 @@ fn test_replace_reward_token() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -2503,7 +2522,8 @@ fn test_replace_reward_token_invalid_asset() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
@@ -2522,7 +2542,8 @@ fn test_replace_reward_token_invalid_asset() {
             init_timestamp: Expiry::AtTime(current_timestamp),
         },
     };
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
