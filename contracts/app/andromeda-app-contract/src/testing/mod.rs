@@ -5,13 +5,13 @@ use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,
 };
-use andromeda_std::{ado_base::AndromedaMsg, error::ContractError};
+use andromeda_std::{ado_base::AndromedaMsg, error::ContractError, common::reply::ReplyId};
 use cosmwasm_std::{
     attr,
     testing::{message_info, mock_env},
     to_json_binary, Addr, CosmosMsg, Empty, ReplyOn, Response, StdError, SubMsg, WasmMsg,
 };
-use cosmwasm_std::{Binary, Event, Reply, SubMsgResponse, SubMsgResult};
+use cosmwasm_std::{Binary, Event, MsgResponse, Reply, SubMsgResponse, SubMsgResult};
 
 #[test]
 fn test_empty_instantiation() {
@@ -690,13 +690,12 @@ fn test_reply_assign_app() {
     let mock_reply_event = Event::new("instantiate")
         .add_attribute("contract_address".to_string(), cosmos_contract.to_string());
 
-    let reply_resp = "Cg9jb3Ntb3MyY29udHJhY3QSAA==";
-    let mock_reply = Reply {
-        id: component_idx,
+    let mock_reply: Reply = Reply {
+        id: ReplyId::AssignApp.repr(),
         result: SubMsgResult::Ok(SubMsgResponse {
             events: vec![mock_reply_event],
             msg_responses: vec![],
-            data: Some(Binary::from_base64(reply_resp).unwrap()),
+            data: None,
         }),
         gas_used: 0,
         payload: Binary::default(),
