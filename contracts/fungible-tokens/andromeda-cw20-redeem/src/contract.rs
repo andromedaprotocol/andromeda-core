@@ -8,6 +8,7 @@ use andromeda_std::{
     andr_execute_fn,
     common::{
         context::ExecuteContext,
+        encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         Milliseconds, MillisecondsDuration,
     },
@@ -17,7 +18,7 @@ use cosmwasm_std::{
     attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
     CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_utils::{one_coin, Expiration};
 
@@ -415,6 +416,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::RedemptionClause {} => query_redemption(deps),
         QueryMsg::TokenAddress {} => query_token_address(deps),
         QueryMsg::RedemptionAsset {} => query_redemption_asset(deps),
+        QueryMsg::RedemptionAssetBalance {} => {
+            encode_binary(&query_redemption_asset_balance(deps, env)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -439,4 +443,28 @@ fn query_redemption_asset(deps: Deps) -> Result<Binary, ContractError> {
     Ok(to_json_binary(&RedemptionAssetResponse {
         asset: redemption_clause.asset.to_string(),
     })?)
+}
+
+fn query_redemption_asset_balance(deps: Deps, env: Env) -> Result<Uint128, ContractError> {
+    let asset = REDEMPTION_CLAUSE.load(deps.storage)?.asset;
+
+    match asset.clone() {
+        AssetInfo::Native(denom) => {
+            let balance = deps.querier.query_balance(env.contract.address, denom)?;
+            Ok(balance.amount)
+        }
+        AssetInfo::Cw20(addr) => {
+            let balance_msg = Cw20QueryMsg::Balance {
+                address: env.contract.address.into(),
+            };
+            let balance_response: BalanceResponse = deps
+                .querier
+                .query_wasm_smart(addr, &to_json_binary(&balance_msg)?)?;
+            Ok(balance_response.balance)
+        }
+        // Does not support 1155 currently
+        _ => Err(ContractError::InvalidAsset {
+            asset: asset.to_string(),
+        }),
+    }
 }

@@ -80,11 +80,18 @@ pub enum QueryMsg {
     TokenAddress {},
     #[returns(RedemptionAssetResponse)]
     RedemptionAsset {},
+    #[returns(RedemptionAssetBalanceResponse)]
+    RedemptionAssetBalance {},
 }
 
 #[cw_serde]
 pub struct RedemptionAssetResponse {
     pub asset: String,
+}
+
+#[cw_serde]
+pub struct RedemptionAssetBalanceResponse {
+    pub balance: Uint128,
 }
 
 #[cw_serde]
