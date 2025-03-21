@@ -252,12 +252,15 @@ pub fn execute_set_redemption_clause_native(
         Expiration::Never {}
     };
 
-    // Do not allow duplicate sales
+    // Check if a redemption clause already exists
     let redemption_clause = REDEMPTION_CLAUSE.may_load(deps.storage)?;
-    ensure!(
-        redemption_clause.is_none(),
-        ContractError::RedemptionClauseAlreadyExists {}
-    );
+    if let Some(clause) = redemption_clause {
+        // If a clause exists, ensure it has expired before allowing a new one
+        ensure!(
+            clause.end_time.is_expired(&env.block),
+            ContractError::RedemptionClauseAlreadyExists {}
+        );
+    }
 
     let redemption_clause = RedemptionClause {
         recipient: info.sender.to_string(),
