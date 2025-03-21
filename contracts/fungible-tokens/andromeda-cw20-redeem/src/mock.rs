@@ -53,6 +53,10 @@ pub fn mock_cw20_set_redemption_clause_native_msg(
     }
 }
 
+pub fn mock_cw20_redeem_cancel_redemption_clause_msg() -> ExecuteMsg {
+    ExecuteMsg::CancelRedemptionClause {}
+}
+
 pub fn mock_get_redemption_clause() -> QueryMsg {
     QueryMsg::RedemptionClause {}
 }
