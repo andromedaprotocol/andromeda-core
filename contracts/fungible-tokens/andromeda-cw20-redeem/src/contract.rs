@@ -413,9 +413,9 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, Co
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::RedemptionClause {} => query_redemption(deps),
-        QueryMsg::TokenAddress {} => query_token_address(deps),
-        QueryMsg::RedemptionAsset {} => query_redemption_asset(deps),
+        QueryMsg::RedemptionClause {} => encode_binary(&query_redemption_clause(deps)?),
+        QueryMsg::TokenAddress {} => encode_binary(&query_token_address(deps)?),
+        QueryMsg::RedemptionAsset {} => encode_binary(&query_redemption_asset(deps)?),
         QueryMsg::RedemptionAssetBalance {} => {
             encode_binary(&query_redemption_asset_balance(deps, env)?)
         }
@@ -423,32 +423,33 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_redemption(deps: Deps) -> Result<Binary, ContractError> {
+fn query_redemption_clause(deps: Deps) -> Result<RedemptionResponse, ContractError> {
     let redemption = REDEMPTION_CLAUSE.may_load(deps.storage)?;
 
-    Ok(to_json_binary(&RedemptionResponse { redemption })?)
+    Ok(RedemptionResponse { redemption })
 }
 
-fn query_token_address(deps: Deps) -> Result<Binary, ContractError> {
-    let address = TOKEN_ADDRESS.load(deps.storage)?.get_raw_address(&deps)?;
+fn query_token_address(deps: Deps) -> Result<TokenAddressResponse, ContractError> {
+    let address = TOKEN_ADDRESS
+        .load(deps.storage)?
+        .get_raw_address(&deps)?
+        .to_string();
 
-    Ok(to_json_binary(&TokenAddressResponse {
-        address: address.to_string(),
-    })?)
+    Ok(TokenAddressResponse { address })
 }
 
-fn query_redemption_asset(deps: Deps) -> Result<Binary, ContractError> {
+fn query_redemption_asset(deps: Deps) -> Result<RedemptionAssetResponse, ContractError> {
     let redemption_clause = REDEMPTION_CLAUSE.load(deps.storage)?;
 
-    Ok(to_json_binary(&RedemptionAssetResponse {
+    Ok(RedemptionAssetResponse {
         asset: redemption_clause.asset.to_string(),
-    })?)
+    })
 }
 
 fn query_redemption_asset_balance(deps: Deps, env: Env) -> Result<Uint128, ContractError> {
     let asset = REDEMPTION_CLAUSE.load(deps.storage)?.asset;
 
-    match asset.clone() {
+    match asset {
         AssetInfo::Native(denom) => {
             let balance = deps.querier.query_balance(env.contract.address, denom)?;
             Ok(balance.amount)
