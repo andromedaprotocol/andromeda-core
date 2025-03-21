@@ -236,6 +236,16 @@ pub fn execute_set_redemption_clause_native(
         ContractError::Unauthorized {}
     );
 
+    // Check if a redemption clause already exists
+    let redemption_clause = REDEMPTION_CLAUSE.may_load(deps.storage)?;
+    if let Some(clause) = redemption_clause {
+        // If a clause exists, ensure it has expired before allowing a new one
+        ensure!(
+            clause.end_time.is_expired(&env.block),
+            ContractError::RedemptionClauseAlreadyExists {}
+        );
+    }
+
     // If start time wasn't provided, it will be set as the current_time
     let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;
 
@@ -251,16 +261,6 @@ pub fn execute_set_redemption_clause_native(
     } else {
         Expiration::Never {}
     };
-
-    // Check if a redemption clause already exists
-    let redemption_clause = REDEMPTION_CLAUSE.may_load(deps.storage)?;
-    if let Some(clause) = redemption_clause {
-        // If a clause exists, ensure it has expired before allowing a new one
-        ensure!(
-            clause.end_time.is_expired(&env.block),
-            ContractError::RedemptionClauseAlreadyExists {}
-        );
-    }
 
     let redemption_clause = RedemptionClause {
         recipient: info.sender.to_string(),
