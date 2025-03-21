@@ -195,7 +195,6 @@ pub fn execute_start_sale(
         recipient: recipient.unwrap_or(sender),
         start_time: start_expiration,
         end_time: end_expiration,
-        start_amount: amount,
     };
     SALE.save(deps.storage, &asset.to_string(), &sale)?;
 
@@ -206,7 +205,6 @@ pub fn execute_start_sale(
         attr("amount", amount),
         attr("start_time", start_expiration.to_string()),
         attr("end_time", end_expiration.to_string()),
-        attr("start_amount", amount),
     ]))
 }
 
