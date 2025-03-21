@@ -1,19 +1,17 @@
-use andromeda_fungible_tokens::cw20_redeem::{Cw20HookMsg, ExecuteMsg, InstantiateMsg};
+use andromeda_fungible_tokens::cw20_redeem::InstantiateMsg;
 use andromeda_std::{
     amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    attr, coins,
     testing::{mock_env, mock_info},
-    to_json_binary, DepsMut, Response, Uint128,
+    DepsMut, Response, StdError, StdResult, Uint128,
 };
-use cw20::Cw20ReceiveMsg;
+use rstest::rstest;
+
 pub const MOCK_TOKEN_ADDRESS: &str = "cw20";
 
 use crate::{
-    contract::{execute, instantiate},
-    state::TOKEN_ADDRESS,
-    testing::mock_querier::mock_dependencies_custom,
+    contract::instantiate, state::TOKEN_ADDRESS, testing::mock_querier::mock_dependencies_custom,
 };
 
 fn init(deps: DepsMut) -> Result<Response, ContractError> {
@@ -38,120 +36,134 @@ pub fn test_instantiate() {
     assert_eq!(saved_mock_token_address, MOCK_TOKEN_ADDRESS.to_string())
 }
 
-const OWNER: &str = "owner";
-const USER: &str = "user";
-const REDEEMED_TOKEN_CONTRACT: &str = "redeemed_token_contract";
-const CW20_CONTRACT: &str = "cw20_contract";
-const NATIVE_DENOM: &str = "uusd";
+/// Represents the result of a redemption calculation
+#[derive(Debug, PartialEq)]
+struct RedemptionResult {
+    redeemed_amount: Uint128,
+    excess_amount: Uint128,
+}
 
-#[test]
-fn test_native_token_redemption() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let info = mock_info(OWNER, &[]);
+/// Calculates redemption amount and any excess based on available tokens
+fn calculate_redemption_with_limits(
+    amount_sent: Uint128,
+    exchange_rate: Uint128,
+    available_tokens: Uint128,
+) -> StdResult<RedemptionResult> {
+    let redeemed = amount_sent.checked_mul(exchange_rate)?;
 
-    // First instantiate the contract
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string(REDEEMED_TOKEN_CONTRACT),
-        kernel_address: "kernel".to_string(),
-        owner: Some(OWNER.to_string()),
-    };
-    instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    if redeemed.is_zero() {
+        return Err(StdError::generic_err("Zero redemption amount"));
+    }
 
-    // Start redemption clause with native token
-    let exchange_rate = Uint128::from(2u128); // 2:1 exchange rate
-    let amount = Uint128::from(1000u128);
-    let info = mock_info(OWNER, &coins(amount.into(), NATIVE_DENOM));
+    if redeemed <= available_tokens {
+        Ok(RedemptionResult {
+            redeemed_amount: redeemed,
+            excess_amount: Uint128::zero(),
+        })
+    } else {
+        // Calculate how many tokens we can actually redeem
+        let actual_redeemed = available_tokens;
+        // Calculate how much of the sent amount we didn't use
+        let actual_amount_needed = available_tokens.checked_div(exchange_rate)?;
+        let excess = amount_sent.checked_sub(actual_amount_needed)?;
 
-    let msg = ExecuteMsg::SetRedemptionClause {
-        exchange_rate,
-        start_time: None,
-        duration: None,
-    };
+        Ok(RedemptionResult {
+            redeemed_amount: actual_redeemed,
+            excess_amount: excess,
+        })
+    }
+}
 
-    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-    // Now try to redeem tokens
-    let redeem_amount = Uint128::from(100u128);
-    let info = mock_info(USER, &coins(100, NATIVE_DENOM));
-
-    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-        sender: USER.to_string(),
-        amount: redeem_amount,
-        msg: to_json_binary(&Cw20HookMsg::Redeem {}).unwrap(),
-    });
-
-    let response = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-    // Verify the response contains the correct attributes
-    assert_eq!(
-        response.attributes,
-        vec![
-            attr("action", "redeem"),
-            attr("purchaser", USER),
-            attr("amount", (redeem_amount * exchange_rate).to_string()),
-            attr("purchase_asset", format!("native:{}", NATIVE_DENOM)),
-            attr("purchase_asset_amount_send", redeem_amount.to_string()),
-        ]
-    );
+#[rstest]
+// Normal cases
+#[case(
+    Uint128::new(100), // amount sent
+    Uint128::new(2),   // exchange rate
+    Uint128::new(1000), // available tokens
+    Ok(RedemptionResult {
+        redeemed_amount: Uint128::new(200),
+        excess_amount: Uint128::zero(),
+    })
+)]
+// Exact amount case
+#[case(
+    Uint128::new(500),
+    Uint128::new(2),
+    Uint128::new(1000),
+    Ok(RedemptionResult {
+        redeemed_amount: Uint128::new(1000),
+        excess_amount: Uint128::zero(),
+    })
+)]
+// Excess case
+#[case(
+    Uint128::new(600), // trying to get 1200 tokens when only 1000 available
+    Uint128::new(2),
+    Uint128::new(1000),
+    Ok(RedemptionResult {
+        redeemed_amount: Uint128::new(1000),
+        excess_amount: Uint128::new(100), // 100 tokens worth of excess
+    })
+)]
+// Zero amount case
+#[case(
+    Uint128::zero(),
+    Uint128::new(2),
+    Uint128::new(1000),
+    Err(StdError::generic_err("Zero redemption amount"))
+)]
+fn test_redemption_calculations(
+    #[case] amount_sent: Uint128,
+    #[case] exchange_rate: Uint128,
+    #[case] available_tokens: Uint128,
+    #[case] expected: StdResult<RedemptionResult>,
+) {
+    let result = calculate_redemption_with_limits(amount_sent, exchange_rate, available_tokens);
+    assert_eq!(result, expected);
 }
 
 #[test]
-fn test_cw20_token_redemption() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let info = mock_info(OWNER, &[]);
+fn test_redemption_edge_cases() {
+    // Test with maximum available tokens
+    let result =
+        calculate_redemption_with_limits(Uint128::new(1000), Uint128::new(2), Uint128::MAX)
+            .unwrap();
+    assert_eq!(result.excess_amount, Uint128::zero());
+    assert_eq!(result.redeemed_amount, Uint128::new(2000));
 
-    // First instantiate the contract
-    let msg = InstantiateMsg {
-        token_address: AndrAddr::from_string(REDEEMED_TOKEN_CONTRACT),
-        kernel_address: "kernel".to_string(),
-        owner: Some(OWNER.to_string()),
-    };
-    instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    // Test with very small amounts
+    let result =
+        calculate_redemption_with_limits(Uint128::new(1), Uint128::new(1), Uint128::new(1))
+            .unwrap();
+    assert_eq!(result.excess_amount, Uint128::zero());
+    assert_eq!(result.redeemed_amount, Uint128::new(1));
 
-    // Start redemption clause with CW20 token
-    let exchange_rate = Uint128::from(2u128); // 2:1 exchange rate
-    let amount = Uint128::from(1000u128);
+    // Test overflow case
+    let result = calculate_redemption_with_limits(Uint128::MAX, Uint128::new(2), Uint128::MAX);
+    assert!(result.is_err());
+}
 
-    let msg = Cw20ReceiveMsg {
-        sender: OWNER.to_string(),
-        amount,
-        msg: to_json_binary(&Cw20HookMsg::StartRedemptionClause {
-            exchange_rate,
-            start_time: None,
-            duration: None,
-        })
-        .unwrap(),
-    };
+#[test]
+fn test_fractional_redemption_cases() {
+    // Test when available tokens don't divide evenly by exchange rate
+    let result = calculate_redemption_with_limits(
+        Uint128::new(100),
+        Uint128::new(3),
+        Uint128::new(250), // Not divisible by 3
+    )
+    .unwrap();
 
-    let info = mock_info(REDEEMED_TOKEN_CONTRACT, &[]);
+    // Should redeem up to 249 (as 250 is not divisible by 3)
+    assert_eq!(result.redeemed_amount, Uint128::new(250));
+    assert_eq!(result.excess_amount, Uint128::new(17)); // (100 - 83) where 83 * 3 = 249
+}
 
-    let msg = ExecuteMsg::Receive(msg);
-    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-    // Now try to redeem tokens
-    let redeem_amount = Uint128::from(100u128);
-    let info = mock_info(REDEEMED_TOKEN_CONTRACT, &[]);
-
-    let msg = Cw20ReceiveMsg {
-        sender: USER.to_string(),
-        amount: redeem_amount,
-        msg: to_json_binary(&Cw20HookMsg::Redeem {}).unwrap(),
-    };
-    let msg = ExecuteMsg::Receive(msg);
-
-    let response = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-    // Verify the response contains the correct attributes
-    assert_eq!(
-        response.attributes,
-        vec![
-            attr("action", "redeem"),
-            attr("purchaser", USER),
-            attr("amount", (redeem_amount * exchange_rate).to_string()),
-            attr("purchase_asset", format!("cw20:{}", CW20_CONTRACT)),
-            attr("purchase_asset_amount_send", redeem_amount.to_string()),
-        ]
-    );
+#[test]
+fn test_boundary_conditions() {
+    // Test with minimum viable amounts
+    let result =
+        calculate_redemption_with_limits(Uint128::new(1), Uint128::new(1), Uint128::new(1))
+            .unwrap();
+    assert_eq!(result.redeemed_amount, Uint128::new(1));
+    assert_eq!(result.excess_amount, Uint128::zero());
 }

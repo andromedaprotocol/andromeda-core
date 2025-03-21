@@ -207,9 +207,9 @@ pub fn execute_set_redemption_clause_native(
     } = ctx;
 
     let payment = one_coin(&info)?;
-
     let asset = AssetInfo::Native(payment.denom.to_string());
     let amount = payment.amount;
+
     ensure!(
         !amount.is_zero(),
         ContractError::InvalidFunds {
@@ -231,8 +231,6 @@ pub fn execute_set_redemption_clause_native(
         .query_wasm_contract_info(cw20_address.clone())?;
     let cw20_owner = contract_info.creator;
 
-    println!("cw20_owner: {}", cw20_owner);
-    println!("sender: {}", info.sender);
     ensure!(
         cw20_owner == info.sender || contract_info.admin == Some(info.sender.to_string()),
         ContractError::Unauthorized {}
@@ -313,7 +311,6 @@ pub fn execute_redeem(
     ctx: ExecuteContext,
     amount_sent: Uint128,
     asset_sent: AssetInfo,
-    // For refund purposes
     sender: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
@@ -333,49 +330,78 @@ pub fn execute_redeem(
         ContractError::SaleEnded {}
     );
 
-    let redeemed = amount_sent.checked_mul(redemption_clause.exchange_rate)?;
+    let potential_redeemed = amount_sent.checked_mul(redemption_clause.exchange_rate)?;
 
     ensure!(
-        !redeemed.is_zero(),
+        !potential_redeemed.is_zero(),
         ContractError::InvalidFunds {
             msg: "Not enough funds sent to redeem".to_string()
         }
     );
-    ensure!(
-        redemption_clause.amount >= redeemed,
-        ContractError::NotEnoughTokens {}
-    );
 
-    // Transfer tokens to the user redeeming the cw20 token
-    let transfer_msg_to_user = generate_transfer_message(
+    // Calculate actual redemption amounts
+    let (redeemed_amount, accepted_amount, refund_amount) =
+        if potential_redeemed <= redemption_clause.amount {
+            (potential_redeemed, amount_sent, Uint128::zero())
+        } else {
+            // If we don't have enough tokens, calculate the partial redemption
+            let actual_redeemed = redemption_clause.amount;
+            let actual_amount_needed = redemption_clause
+                .amount
+                .checked_div(redemption_clause.exchange_rate)
+                .map_err(|_| ContractError::Overflow {})?;
+            let refund = amount_sent.checked_sub(actual_amount_needed)?;
+            (actual_redeemed, actual_amount_needed, refund)
+        };
+
+    let mut messages = vec![];
+
+    // Transfer redeemed tokens to the user
+    messages.push(generate_transfer_message(
         redemption_clause.asset.clone(),
-        redeemed,
+        redeemed_amount,
         sender.to_string(),
         RECIPIENT_REPLY_ID,
-    )?;
+    )?);
 
-    // Tranfer the redeemed tokens to the redemtion clause recipient
-    let transfer_msg_to_redemption_clause_recipient = generate_transfer_message(
+    // Transfer accepted amount to the redemption clause recipient
+    messages.push(generate_transfer_message(
         asset_sent.clone(),
-        amount_sent,
+        accepted_amount,
         redemption_clause.recipient.clone(),
         RECIPIENT_REPLY_ID,
-    )?;
+    )?);
+
+    // If there's a refund, send it back to the sender
+    if !refund_amount.is_zero() {
+        messages.push(generate_transfer_message(
+            asset_sent.clone(),
+            refund_amount,
+            sender.to_string(),
+            RECIPIENT_REPLY_ID,
+        )?);
+    }
 
     // Update sale amount remaining
-    redemption_clause.amount = redemption_clause.amount.checked_sub(redeemed)?;
+    redemption_clause.amount = redemption_clause.amount.checked_sub(redeemed_amount)?;
     REDEMPTION_CLAUSE.save(deps.storage, &redemption_clause)?;
 
+    let mut attributes = vec![
+        attr("action", "redeem"),
+        attr("purchaser", sender),
+        attr("amount", redeemed_amount),
+        attr("purchase_asset", asset_sent.to_string()),
+        attr("purchase_asset_amount_accepted", accepted_amount),
+    ];
+
+    // Add refund attribute if there was a refund
+    if !refund_amount.is_zero() {
+        attributes.push(attr("refund_amount", refund_amount));
+    }
+
     Ok(Response::default()
-        .add_submessage(transfer_msg_to_user)
-        .add_submessage(transfer_msg_to_redemption_clause_recipient)
-        .add_attributes(vec![
-            attr("action", "redeem"),
-            attr("purchaser", sender),
-            attr("amount", redeemed),
-            attr("purchase_asset", asset_sent.to_string()),
-            attr("purchase_asset_amount_send", amount_sent),
-        ]))
+        .add_submessages(messages)
+        .add_attributes(attributes))
 }
 
 pub fn execute_cancel_redemption_clause(ctx: ExecuteContext) -> Result<Response, ContractError> {

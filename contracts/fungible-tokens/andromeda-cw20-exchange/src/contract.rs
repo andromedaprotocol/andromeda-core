@@ -339,9 +339,7 @@ pub fn execute_purchase_native(
     let sender = info.sender.to_string();
 
     // Only allow one coin for purchasing
-    one_coin(info)?;
-
-    let payment = info.funds.first().unwrap();
+    let payment = one_coin(info)?;
     let asset = AssetInfo::Native(payment.denom.to_string());
     let amount = payment.amount;
 

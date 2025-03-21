@@ -243,6 +243,128 @@ fn test_cw20_redeem_app_native() {
 }
 
 #[test]
+fn test_cw20_redeem_app_native_refund() {
+    let mut router = mock_app(None);
+
+    let andr = setup_andr(&mut router);
+    let app = setup_app(&andr, &mut router);
+    let owner = andr.get_wallet("owner");
+    let user1 = andr.get_wallet("user1");
+
+    let cw20_addr_2 = andr
+        .vfs
+        .query_resolve_path(&mut router, format!("/home/{}/cw20-2", app.addr()));
+
+    let cw20_redeem_addr = andr
+        .vfs
+        .query_resolve_path(&mut router, format!("/home/{}/cw20redeem", app.addr()));
+
+    // Start native redemption clause
+    let start_redemption_clause_msg =
+        mock_cw20_set_redemption_clause_native_msg(Uint128::new(2), None, None);
+
+    router
+        .execute_contract(
+            owner.clone(),
+            cw20_redeem_addr.clone(),
+            &start_redemption_clause_msg,
+            &[coin(100u128, "uandr")],
+        )
+        .unwrap();
+
+    // Query redemption clause
+    let redemption_clause: RedemptionResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_redeem_addr.clone(), &mock_get_redemption_clause())
+        .unwrap();
+
+    assert_eq!(
+        redemption_clause.redemption.clone().unwrap().asset,
+        AssetInfo::Native("uandr".to_string())
+    );
+    assert_eq!(
+        redemption_clause.redemption.clone().unwrap().exchange_rate,
+        Uint128::new(2)
+    );
+    assert_eq!(
+        redemption_clause.redemption.clone().unwrap().amount,
+        Uint128::new(100)
+    );
+    assert_eq!(
+        redemption_clause.redemption.clone().unwrap().recipient,
+        owner.to_string()
+    );
+
+    // Let user 1 redeem
+    let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
+    let send_msg = mock_cw20_send(
+        cw20_redeem_addr.clone(),
+        Uint128::new(10u128),
+        to_json_binary(&redeem_msg).unwrap(),
+    );
+    // Forward time for the sale to start
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: Timestamp::from_seconds(router.block_info().time.seconds() + 51),
+        chain_id: router.block_info().chain_id,
+    });
+
+    router
+        .execute_contract(user1.clone(), cw20_addr_2.clone(), &send_msg, &[])
+        .unwrap();
+
+    // Check that the redeemer has received 200 uandr and that the remetion clause recipient received 10 cw20 tokens
+    let balance_one: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(
+            cw20_addr_2.clone(),
+            &mock_get_cw20_balance(owner.to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance_one.balance, Uint128::from(10u128));
+
+    // Get native balance of user1
+    let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
+    assert_eq!(balance.amount, Uint128::from(20u128));
+
+    let balance_one: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(
+            cw20_addr_2.clone(),
+            &mock_get_cw20_balance(user1.to_string()),
+        )
+        .unwrap();
+    assert_eq!(balance_one.balance, Uint128::from(1000 - 10u128));
+
+    // Test redemption with refund
+    let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
+    let send_msg = mock_cw20_send(
+        cw20_redeem_addr.clone(),
+        // 40 gets the max amount, so the user must be refunded 60
+        Uint128::new(100u128),
+        to_json_binary(&redeem_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(user1.clone(), cw20_addr_2.clone(), &send_msg, &[])
+        .unwrap();
+
+    // Get native balance of user1
+    let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
+    assert_eq!(balance.amount, Uint128::from(100u128));
+
+    let balance_one: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(
+            cw20_addr_2.clone(),
+            &mock_get_cw20_balance(user1.to_string()),
+        )
+        .unwrap();
+    // Eventhough the user sent 100 to be redeemed the second time, only 40 ended up being deducted since any excess over that was refunded
+    assert_eq!(balance_one.balance, Uint128::from(1000 - 10u128 - 40));
+}
+
+#[test]
 fn test_cw20_redeem_app_cw20() {
     let mut router = mock_app(None);
 
