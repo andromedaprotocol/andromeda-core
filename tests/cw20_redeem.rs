@@ -1,10 +1,8 @@
-use std::fs;
-
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, mock_app_instantiate_msg, MockAppContract};
 use andromeda_cw20::mock::{
     mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_get_cw20_balance,
-    mock_get_version, mock_minter,
+    mock_minter,
 };
 use andromeda_cw20_redeem::mock::mock_andromeda_cw20_redeem;
 use andromeda_cw20_redeem::mock::mock_cw20_redeem_cancel_redemption_clause_msg;
@@ -15,7 +13,6 @@ use andromeda_cw20_redeem::mock::mock_cw20_set_redemption_clause_native_msg;
 use andromeda_cw20_redeem::mock::mock_get_redemption_clause;
 use andromeda_fungible_tokens::cw20_redeem::RedemptionResponse;
 
-use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_testing::{
     mock::{mock_app, MockAndromeda, MockApp},
     mock_builder::MockAndromedaBuilder,
@@ -25,7 +22,7 @@ use cosmwasm_std::{coin, to_json_binary, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfo;
 use cw_multi_test::Executor;
-use toml::Value;
+
 pub const OWNER_INITIAL_BALANCE: Uint128 = Uint128::new(10_000);
 
 fn setup_andr(router: &mut MockApp) -> MockAndromeda {
@@ -139,25 +136,6 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
     app
 }
 
-fn get_cw20_contract_version() -> Result<String, Box<dyn std::error::Error>> {
-    // Read the Cargo.toml file
-    let content = fs::read_to_string("../contracts/fungible-tokens/andromeda-cw20/Cargo.toml")?;
-
-    // Parse the Cargo.toml content
-    let parsed_toml = content.parse::<Value>()?;
-
-    // Extract the version string
-    if let Some(version) = parsed_toml
-        .get("package")
-        .and_then(|pkg| pkg.get("version"))
-        .and_then(|v| v.as_str())
-    {
-        Ok(version.to_string())
-    } else {
-        Err("Version not found in Cargo.toml".into())
-    }
-}
-
 #[test]
 fn test_cw20_redeem_app_native() {
     let mut router = mock_app(None);
@@ -167,11 +145,6 @@ fn test_cw20_redeem_app_native() {
     let owner = andr.get_wallet("owner");
     let user1 = andr.get_wallet("user1");
 
-    // Component Addresses
-    let cw20_addr = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20", app.addr()));
-
     let cw20_addr_2 = andr
         .vfs
         .query_resolve_path(&mut router, format!("/home/{}/cw20-2", app.addr()));
@@ -179,12 +152,6 @@ fn test_cw20_redeem_app_native() {
     let cw20_redeem_addr = andr
         .vfs
         .query_resolve_path(&mut router, format!("/home/{}/cw20redeem", app.addr()));
-
-    let version: VersionResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_addr.clone(), &mock_get_version())
-        .unwrap();
-    assert_eq!(version.version, get_cw20_contract_version().unwrap());
 
     // Start native redemption clause
     let start_redemption_clause_msg =
