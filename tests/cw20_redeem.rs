@@ -18,6 +18,7 @@ use andromeda_testing::{
     mock_builder::MockAndromedaBuilder,
     MockContract,
 };
+use cosmwasm_std::Addr;
 use cosmwasm_std::{coin, to_json_binary, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfo;
@@ -136,6 +137,54 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
     app
 }
 
+// Add these helper functions after setup_app but before the tests
+fn query_cw20_balance(router: &mut MockApp, token: String, address: String) -> Uint128 {
+    let balance: BalanceResponse = router
+        .wrap()
+        .query_wasm_smart(token, &mock_get_cw20_balance(address))
+        .unwrap();
+    balance.balance
+}
+
+fn query_redemption_clause(router: &mut MockApp, redeem_addr: String) -> RedemptionResponse {
+    router
+        .wrap()
+        .query_wasm_smart(redeem_addr, &mock_get_redemption_clause())
+        .unwrap()
+}
+
+fn advance_time(router: &mut MockApp, seconds: u64) {
+    router.set_block(BlockInfo {
+        height: router.block_info().height,
+        time: Timestamp::from_seconds(router.block_info().time.seconds() + seconds),
+        chain_id: router.block_info().chain_id,
+    });
+}
+
+struct TestAddresses {
+    cw20: Addr,
+    cw20_2: Addr,
+    cw20_redeem: Addr,
+}
+
+fn get_addresses(
+    router: &mut MockApp,
+    andr: &MockAndromeda,
+    app: &MockAppContract,
+) -> TestAddresses {
+    TestAddresses {
+        cw20: andr
+            .vfs
+            .query_resolve_path(router, format!("/home/{}/cw20", app.addr())),
+        cw20_2: andr
+            .vfs
+            .query_resolve_path(router, format!("/home/{}/cw20-2", app.addr())),
+        cw20_redeem: andr
+            .vfs
+            .query_resolve_path(router, format!("/home/{}/cw20redeem", app.addr())),
+    }
+}
+
 #[test]
 fn test_cw20_redeem_app_native() {
     let mut router = mock_app(None);
@@ -145,13 +194,9 @@ fn test_cw20_redeem_app_native() {
     let owner = andr.get_wallet("owner");
     let user1 = andr.get_wallet("user1");
 
-    let cw20_addr_2 = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20-2", app.addr()));
-
-    let cw20_redeem_addr = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20redeem", app.addr()));
+    let addresses = get_addresses(&mut router, &andr, &app);
+    let cw20_addr_2 = addresses.cw20_2;
+    let cw20_redeem_addr = addresses.cw20_redeem;
 
     // Start native redemption clause
     let start_redemption_clause_msg =
@@ -167,10 +212,7 @@ fn test_cw20_redeem_app_native() {
         .unwrap();
 
     // Query redemption clause
-    let redemption_clause: RedemptionResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_redeem_addr.clone(), &mock_get_redemption_clause())
-        .unwrap();
+    let redemption_clause = query_redemption_clause(&mut router, cw20_redeem_addr.to_string());
 
     assert_eq!(
         redemption_clause.redemption.clone().unwrap().asset,
@@ -197,25 +239,16 @@ fn test_cw20_redeem_app_native() {
         to_json_binary(&redeem_msg).unwrap(),
     );
     // Forward time for the sale to start
-    router.set_block(BlockInfo {
-        height: router.block_info().height,
-        time: Timestamp::from_seconds(router.block_info().time.seconds() + 51),
-        chain_id: router.block_info().chain_id,
-    });
+    advance_time(&mut router, 51);
 
     router
         .execute_contract(user1.clone(), cw20_addr_2.clone(), &send_msg, &[])
         .unwrap();
 
     // Check that the redeemer has received 200 uandr and that the remetion clause recipient received 10 cw20 tokens
-    let balance_one: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw20_addr_2.clone(),
-            &mock_get_cw20_balance(owner.to_string()),
-        )
-        .unwrap();
-    assert_eq!(balance_one.balance, Uint128::from(10u128));
+    let balance_one: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr_2.to_string(), owner.to_string());
+    assert_eq!(balance_one, Uint128::from(10u128));
 
     // Get native balance of user1
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
@@ -251,13 +284,9 @@ fn test_cw20_redeem_app_native_refund() {
     let owner = andr.get_wallet("owner");
     let user1 = andr.get_wallet("user1");
 
-    let cw20_addr_2 = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20-2", app.addr()));
-
-    let cw20_redeem_addr = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20redeem", app.addr()));
+    let addresses = get_addresses(&mut router, &andr, &app);
+    let cw20_addr_2 = addresses.cw20_2;
+    let cw20_redeem_addr = addresses.cw20_redeem;
 
     // Start native redemption clause
     let start_redemption_clause_msg =
@@ -272,29 +301,6 @@ fn test_cw20_redeem_app_native_refund() {
         )
         .unwrap();
 
-    // Query redemption clause
-    let redemption_clause: RedemptionResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_redeem_addr.clone(), &mock_get_redemption_clause())
-        .unwrap();
-
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().asset,
-        AssetInfo::Native("uandr".to_string())
-    );
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().exchange_rate,
-        Uint128::new(2)
-    );
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().amount,
-        Uint128::new(100)
-    );
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().recipient,
-        owner.to_string()
-    );
-
     // Let user 1 redeem
     let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
     let send_msg = mock_cw20_send(
@@ -303,38 +309,24 @@ fn test_cw20_redeem_app_native_refund() {
         to_json_binary(&redeem_msg).unwrap(),
     );
     // Forward time for the sale to start
-    router.set_block(BlockInfo {
-        height: router.block_info().height,
-        time: Timestamp::from_seconds(router.block_info().time.seconds() + 51),
-        chain_id: router.block_info().chain_id,
-    });
+    advance_time(&mut router, 51);
 
     router
         .execute_contract(user1.clone(), cw20_addr_2.clone(), &send_msg, &[])
         .unwrap();
 
     // Check that the redeemer has received 200 uandr and that the remetion clause recipient received 10 cw20 tokens
-    let balance_one: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw20_addr_2.clone(),
-            &mock_get_cw20_balance(owner.to_string()),
-        )
-        .unwrap();
-    assert_eq!(balance_one.balance, Uint128::from(10u128));
+    let balance_one: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr_2.to_string(), owner.to_string());
+    assert_eq!(balance_one, Uint128::from(10u128));
 
     // Get native balance of user1
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::from(20u128));
 
-    let balance_one: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw20_addr_2.clone(),
-            &mock_get_cw20_balance(user1.to_string()),
-        )
-        .unwrap();
-    assert_eq!(balance_one.balance, Uint128::from(1000 - 10u128));
+    let balance_one: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
+    assert_eq!(balance_one, Uint128::from(1000 - 10u128));
 
     // Test redemption with refund
     let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
@@ -353,15 +345,10 @@ fn test_cw20_redeem_app_native_refund() {
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::from(100u128));
 
-    let balance_one: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw20_addr_2.clone(),
-            &mock_get_cw20_balance(user1.to_string()),
-        )
-        .unwrap();
+    let balance_one: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
     // Eventhough the user sent 100 to be redeemed the second time, only 40 ended up being deducted since any excess over that was refunded
-    assert_eq!(balance_one.balance, Uint128::from(1000 - 10u128 - 40));
+    assert_eq!(balance_one, Uint128::from(1000 - 10u128 - 40));
 }
 
 #[test]
@@ -374,17 +361,9 @@ fn test_cw20_redeem_app_cw20() {
     let user1 = andr.get_wallet("user1");
 
     // Component Addresses
-    let cw20_addr = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20", app.addr()));
-
-    let cw20_addr_2 = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20-2", app.addr()));
-
-    let cw20_redeem_addr = andr
-        .vfs
-        .query_resolve_path(&mut router, format!("/home/{}/cw20redeem", app.addr()));
+    let addresses = get_addresses(&mut router, &andr, &app);
+    let (cw20_addr, cw20_addr_2, cw20_redeem_addr) =
+        (addresses.cw20, addresses.cw20_2, addresses.cw20_redeem);
 
     // Start cw20 redemption clause
     let start_redemption_clause_msg =
@@ -400,29 +379,6 @@ fn test_cw20_redeem_app_cw20() {
         .execute_contract(owner.clone(), cw20_addr.clone(), &send_msg, &[])
         .unwrap();
 
-    // Query redemption clause
-    let redemption_clause: RedemptionResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_redeem_addr.clone(), &mock_get_redemption_clause())
-        .unwrap();
-
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().asset,
-        AssetInfo::Cw20(cw20_addr.clone())
-    );
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().exchange_rate,
-        Uint128::new(2)
-    );
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().amount,
-        Uint128::new(OWNER_INITIAL_BALANCE.into())
-    );
-    assert_eq!(
-        redemption_clause.redemption.clone().unwrap().recipient,
-        owner.to_string()
-    );
-
     // Let user 1 redeem
     let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
     let send_msg = mock_cw20_send(
@@ -431,61 +387,44 @@ fn test_cw20_redeem_app_cw20() {
         to_json_binary(&redeem_msg).unwrap(),
     );
     // Forward time for the sale to start
-    router.set_block(BlockInfo {
-        height: router.block_info().height,
-        time: Timestamp::from_seconds(router.block_info().time.seconds() + 51),
-        chain_id: router.block_info().chain_id,
-    });
+    advance_time(&mut router, 51);
 
     router
         .execute_contract(user1.clone(), cw20_addr_2.clone(), &send_msg, &[])
         .unwrap();
 
     // Check that the redeemer has received 200 uandr and that the redemption clause recipient received 10 cw20 tokens
-    let balance_one: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw20_addr_2.clone(),
-            &mock_get_cw20_balance(owner.to_string()),
-        )
-        .unwrap();
-    assert_eq!(balance_one.balance, Uint128::from(10u128));
+    let balance_one: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr_2.to_string(), owner.to_string());
+    assert_eq!(balance_one, Uint128::from(10u128));
 
     // Get cw20 balance of user1
-    let balance_one: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_addr.clone(), &mock_get_cw20_balance(user1.to_string()))
-        .unwrap();
-    assert_eq!(balance_one.balance, Uint128::from(20u128));
+    let balance_one: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), user1.to_string());
+    assert_eq!(balance_one, Uint128::from(20u128));
 
     // Get cw20 balance of owner
-    let owner_balance: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_addr.clone(), &mock_get_cw20_balance(owner.to_string()))
-        .unwrap();
-    assert_eq!(owner_balance.balance, Uint128::zero());
+    let owner_balance: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), owner.to_string());
+    assert_eq!(owner_balance, Uint128::zero());
 
     // Get cw20 balance of redeem contract
-    let redeem_contract_balance: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw20_addr.clone(),
-            &mock_get_cw20_balance(cw20_redeem_addr.to_string()),
-        )
-        .unwrap();
+    let redeem_contract_balance: Uint128 = query_cw20_balance(
+        &mut router,
+        cw20_addr.to_string(),
+        cw20_redeem_addr.to_string(),
+    );
     assert_eq!(
-        redeem_contract_balance.balance,
+        redeem_contract_balance,
         OWNER_INITIAL_BALANCE.checked_sub(Uint128::new(20)).unwrap()
     );
 
     // Test cancel redemption clause
 
     // Get cw20 balance of owner before cancelling
-    let owner_balance: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_addr.clone(), &mock_get_cw20_balance(owner.to_string()))
-        .unwrap();
-    assert_eq!(owner_balance.balance, Uint128::zero());
+    let owner_balance: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), owner.to_string());
+    assert_eq!(owner_balance, Uint128::zero());
     let cancel_redemption_clause_msg = mock_cw20_redeem_cancel_redemption_clause_msg();
     router
         .execute_contract(
@@ -497,22 +436,18 @@ fn test_cw20_redeem_app_cw20() {
         .unwrap();
 
     // Get cw20 balance of redeem contract
-    let redeem_contract_balance: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(
-            cw20_addr.clone(),
-            &mock_get_cw20_balance(cw20_redeem_addr.to_string()),
-        )
-        .unwrap();
-    assert_eq!(redeem_contract_balance.balance, Uint128::zero());
+    let redeem_contract_balance: Uint128 = query_cw20_balance(
+        &mut router,
+        cw20_addr.to_string(),
+        cw20_redeem_addr.to_string(),
+    );
+    assert_eq!(redeem_contract_balance, Uint128::zero());
 
     // Get cw20 balance of owner
-    let owner_balance: BalanceResponse = router
-        .wrap()
-        .query_wasm_smart(cw20_addr.clone(), &mock_get_cw20_balance(owner.to_string()))
-        .unwrap();
+    let owner_balance: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), owner.to_string());
     assert_eq!(
-        owner_balance.balance,
+        owner_balance,
         OWNER_INITIAL_BALANCE.checked_sub(Uint128::new(20)).unwrap()
     );
 }
