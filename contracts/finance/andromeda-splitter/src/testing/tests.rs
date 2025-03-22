@@ -64,6 +64,7 @@ fn test_instantiate() {
 fn test_different_lock_times() {
     let mut deps = mock_dependencies_custom(&[]);
     let mut env = mock_env();
+
     // Current time
     env.block.time = Timestamp::from_seconds(1724920577);
     // Set a lock time that's less than 1 day in milliseconds
@@ -88,7 +89,6 @@ fn test_different_lock_times() {
     lock_time = Expiry::FromNow(Milliseconds(31_708_800_000));
 
     let kernel_address = deps.api.addr_make(MOCK_KERNEL_CONTRACT);
-    println!(" the kernel address is {}", kernel_address);
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),

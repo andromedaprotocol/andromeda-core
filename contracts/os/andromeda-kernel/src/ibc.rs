@@ -139,7 +139,9 @@ pub fn do_ibc_packet_receive(
         deps.branch(),
         MessageInfo {
             funds: vec![],
-            sender: Addr::unchecked("foreign_kernel"),
+            sender: Addr::unchecked(
+                "cosmwasm122xa328nvn93rsemr980psc9m9qwh8xj8rdje4qtp68m5tyt7yusajjrpz",
+            ),
         },
         env.clone(),
     );

@@ -11,7 +11,7 @@ use andromeda_math::counter::{
     CounterRestriction, ExecuteMsg as CounterExecuteMsg, GetCurrentAmountResponse,
     InstantiateMsg as CounterInstantiateMsg, State,
 };
-use andromeda_non_fungible_tokens::cw721::TokenExtension;
+
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},
@@ -985,8 +985,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
 #[test]
 fn test_kernel_ibc_funds_only() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
-    let sender = Addr::unchecked("sender_for_all_chains");
-    let buyer = Addr::unchecked("buyer");
+    let sender = "sender_for_all_chains";
 
     let interchain = MockInterchainEnv::new(vec![
         ("juno", &sender.to_string()),
@@ -995,11 +994,16 @@ fn test_kernel_ibc_funds_only() {
         ("cosmoshub", &sender.to_string()),
     ]);
 
+    let sender_addr =
+        Addr::unchecked("cosmwasm1s3ul5svzwn3hamk4w434tch9tcqrgl3drjcsju768sk6dxzjvq0qe4umm9");
+    let buyer_addr =
+        Addr::unchecked("cosmwasm1dk7s72xsm9m9va5t0d8djcj4uelaz96q5393cj6h2xgmqm578g6sxddd23");
+
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
-    juno.set_balance(&sender, vec![Coin::new(100000000000000u128, "juno")])
+    juno.set_balance(&sender_addr, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
-    juno.set_balance(&buyer, vec![Coin::new(100000000000000u128, "juno")])
+    juno.set_balance(&buyer_addr, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -1223,7 +1227,7 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
-    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+    let recipient = kernel_osmosis.address().unwrap();
     println!(
         "osmosis kernel address: {}",
         kernel_osmosis.address().unwrap()
@@ -1259,7 +1263,8 @@ fn test_kernel_ibc_funds_only() {
         .await_packets("juno", kernel_juno_send_request)
         .unwrap();
 
-    let ibc_denom = format!("ibc/{}/{}", channel.1.channel.unwrap().as_str(), "juno");
+    let ibc_denom =
+        "ibc/1b2f8f2baf5b42370343270756f8180dd56acc9aa1699406df7821ae75608c99".to_string();
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0] {
@@ -1282,7 +1287,7 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
-                value: sender.to_string(),
+                value: sender_addr.to_string(),
             },
             &vec![],
         )
@@ -1310,7 +1315,7 @@ fn test_kernel_ibc_funds_only() {
 
         // Check recipient balance after trigger execute msg
         let balances = osmosis
-            .query_all_balances(&Addr::unchecked(recipient))
+            .query_all_balances(&Addr::unchecked(&recipient))
             .unwrap();
         assert_eq!(balances.len(), 1);
         assert_eq!(balances[0].denom, ibc_denom);
@@ -1340,7 +1345,7 @@ fn test_kernel_ibc_funds_only() {
             &andromeda_non_fungible_tokens::cw721::InstantiateMsg {
                 name: "test tokens".to_string(),
                 symbol: "TT".to_string(),
-                minter: AndrAddr::from_string(sender.clone()),
+                minter: AndrAddr::from_string(sender_addr.clone()),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
                 owner: None,
             },
@@ -1373,7 +1378,7 @@ fn test_kernel_ibc_funds_only() {
         .execute(
             &andromeda_non_fungible_tokens::cw721::ExecuteMsg::Mint {
                 token_id: "1".to_string(),
-                owner: sender.to_string(),
+                owner: sender_addr.to_string(),
                 token_uri: None,
             },
             &vec![],
@@ -1403,7 +1408,7 @@ fn test_kernel_ibc_funds_only() {
         .unwrap();
     juno.wait_seconds(1).unwrap();
 
-    auction_juno.set_sender(&Addr::unchecked(buyer.clone()));
+    auction_juno.set_sender(&Addr::unchecked(buyer_addr));
     auction_juno
         .execute(
             &andromeda_non_fungible_tokens::auction::ExecuteMsg::PlaceBid {
@@ -2045,7 +2050,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         )
         .unwrap();
 
-    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+    let recipient = "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
 
     // This section covers the actions that take place after a successful ack from the ICS20 transfer is received
     // Let's instantiate a splitter
