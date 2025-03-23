@@ -1227,7 +1227,7 @@ fn test_kernel_ibc_funds_only() {
         )
         .unwrap();
 
-    let recipient = kernel_osmosis.address().unwrap();
+    let recipient = osmosis.addr_make_with_balance("recipient", vec![]).unwrap();
     println!(
         "osmosis kernel address: {}",
         kernel_osmosis.address().unwrap()
@@ -1487,18 +1487,19 @@ fn test_kernel_ibc_funds_only() {
 #[test]
 fn test_kernel_ibc_funds_only_multi_hop() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
-    let sender = Addr::unchecked("sender_for_all_chains");
+    let sender_addr =
+        Addr::unchecked("cosmwasm1s3ul5svzwn3hamk4w434tch9tcqrgl3drjcsju768sk6dxzjvq0qe4umm9");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
-        ("andromeda", &sender.to_string()),
+        ("juno", "sender_for_all_chains"),
+        ("osmosis", "sender_for_all_chains"),
+        ("andromeda", "sender_for_all_chains"),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(&sender, vec![Coin::new(100000000000000u128, "juno")])
+    juno.set_balance(&sender_addr, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -1830,18 +1831,19 @@ fn test_kernel_ibc_funds_only_multi_hop() {
 #[test]
 fn test_kernel_ibc_funds_and_execute_msg() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
-    let sender = Addr::unchecked("sender_for_all_chains");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
-        ("cosmoshub", &sender.to_string()),
+        ("juno", "sender_for_all_chains"),
+        ("osmosis", "sender_for_all_chains"),
+        ("cosmoshub", "sender_for_all_chains"),
     ]);
+    let sender_addr =
+        Addr::unchecked("cosmwasm1s3ul5svzwn3hamk4w434tch9tcqrgl3drjcsju768sk6dxzjvq0qe4umm9");
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(&sender, vec![Coin::new(100000000000000u128, "juno")])
+    juno.set_balance(&sender_addr, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -2124,7 +2126,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
             .execute(
                 &ExecuteMsg::UpsertKeyAddress {
                     key: "trigger_key".to_string(),
-                    value: sender.to_string(),
+                    value: sender_addr.to_string(),
                 },
                 &vec![],
             )
@@ -2174,17 +2176,17 @@ fn test_kernel_ibc_funds_and_execute_msg() {
 #[test]
 fn test_kernel_ibc_funds_only_unhappy() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
-    let sender = Addr::unchecked("sender_for_all_chains");
-
+    let sender_addr =
+        Addr::unchecked("cosmwasm1s3ul5svzwn3hamk4w434tch9tcqrgl3drjcsju768sk6dxzjvq0qe4umm9");
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
+        ("juno", &"sender_for_all_chains".to_string()),
+        ("osmosis", &"sender_for_all_chains".to_string()),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(&sender, vec![Coin::new(100000000000000u128, "juno")])
+    juno.set_balance(&sender_addr, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -2356,7 +2358,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
             &vec![],
         )
         .unwrap();
-    let balances = juno.query_all_balances(&sender.clone()).unwrap();
+    let balances = juno.query_all_balances(&sender_addr).unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, "juno");
     println!("sender balance before transfer: {}", balances[0].amount);
@@ -2405,7 +2407,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
             .execute(
                 &ExecuteMsg::UpsertKeyAddress {
                     key: "trigger_key".to_string(),
-                    value: sender.to_string(),
+                    value: sender_addr.to_string(),
                 },
                 &vec![],
             )
@@ -2424,7 +2426,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
             .await_packets("juno", kernel_juno_splitter_request)
             .unwrap();
 
-        let balances = juno.query_all_balances(&sender).unwrap();
+        let balances = juno.query_all_balances(&sender_addr).unwrap();
         assert_eq!(balances.len(), 1);
         assert_eq!(balances[0].denom, "juno");
         // Original amount
@@ -2443,17 +2445,19 @@ fn test_kernel_ibc_funds_only_unhappy() {
 #[test]
 fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
     // Here `juno-1` is the chain-id and `juno` is the address prefix for this chain
-    let sender = Addr::unchecked("sender_for_all_chains");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
+        ("juno", "sender_for_all_chains"),
+        ("osmosis", "sender_for_all_chains"),
     ]);
+
+    let sender_addr =
+        Addr::unchecked("cosmwasm1s3ul5svzwn3hamk4w434tch9tcqrgl3drjcsju768sk6dxzjvq0qe4umm9");
 
     let juno = interchain.get_chain("juno").unwrap();
     let osmosis = interchain.get_chain("osmosis").unwrap();
 
-    juno.set_balance(&sender, vec![Coin::new(100000000000000u128, "juno")])
+    juno.set_balance(&sender_addr, vec![Coin::new(100000000000000u128, "juno")])
         .unwrap();
 
     let kernel_juno = KernelContract::new(juno.clone());
@@ -2662,7 +2666,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
         )
         .unwrap();
 
-    let recipient = "osmo1qzskhrca90qy2yjjxqzq4yajy842x7c50xq33d";
+    let recipient = osmosis.addr_make_with_balance("recipient", vec![]).unwrap();
 
     // This section covers the actions that take place after a successful ack from the ICS20 transfer is received
     // Let's instantiate a splitter
@@ -2687,6 +2691,8 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
         )
         .unwrap();
 
+    let ibc_denom =
+        "ibc/c890986431075905ebdf3dc19ccc882505e0a66eb4347bb3f779355b0f1bba85".to_string();
     let kernel_juno_send_request = kernel_juno
         .execute(
             &ExecuteMsg::Send {
@@ -2726,11 +2732,18 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
         .await_packets("juno", kernel_juno_send_request)
         .unwrap();
     // Make sure the sender's balance decreased by 100
-    let balances = juno.query_all_balances(&sender).unwrap();
+    let balances = juno.query_all_balances(&sender_addr).unwrap();
     assert_eq!(balances.len(), 1);
     assert_eq!(balances[0].denom, "juno");
     // Original amount
     assert_eq!(balances[0].amount, Uint128::new(100000000000000 - 100));
+
+    let osmo_balances = osmosis
+        .query_all_balances(&kernel_osmosis.address().unwrap())
+        .unwrap();
+    assert_eq!(osmo_balances.len(), 1);
+    assert_eq!(osmo_balances[0].denom, ibc_denom);
+    assert_eq!(osmo_balances[0].amount, Uint128::new(100));
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0] {
@@ -2739,7 +2752,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
             .execute(
                 &ExecuteMsg::UpsertKeyAddress {
                     key: "trigger_key".to_string(),
-                    value: sender.to_string(),
+                    value: sender_addr.to_string(),
                 },
                 &vec![],
             )
@@ -2767,7 +2780,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
             .unwrap();
         assert_eq!(balances.len(), 0);
 
-        let balances = juno.query_all_balances(&sender).unwrap();
+        let balances = juno.query_all_balances(&sender_addr).unwrap();
         assert_eq!(balances.len(), 1);
         assert_eq!(balances[0].denom, "juno");
         // Original amount

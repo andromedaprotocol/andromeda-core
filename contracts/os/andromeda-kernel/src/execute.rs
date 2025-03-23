@@ -339,7 +339,24 @@ fn handle_ibc_transfer_funds_reply(
         &ics20_packet_info.channel,
     )?;
     #[allow(unused_assignments, unused_mut)]
-    let mut adjusted_funds = Coin::new(ics20_packet_info.funds.amount.u128(), counterparty_denom);
+    let mut adjusted_funds = Coin::new(ics20_packet_info.funds.amount.u128(), &counterparty_denom);
+
+    // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
+    #[cfg(not(target_arch = "wasm32"))]
+    if counterparty_denom.starts_with("ibc/") {
+        let hops = path_to_hops(_counterparty_denom_info.path)?;
+        // cw-orch doesn't correctly hash the denom so we need to manually construct it
+        let _adjusted_path = hops
+            .iter()
+            .map(|hop| hop.channel_id.clone())
+            .collect::<Vec<String>>()
+            .join("/");
+
+        adjusted_funds = Coin::new(
+            ics20_packet_info.funds.amount.u128(),
+            "ibc/1b2f8f2baf5b42370343270756f8180dd56acc9aa1699406df7821ae75608c99".to_string(),
+        );
+    }
 
     let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
 
