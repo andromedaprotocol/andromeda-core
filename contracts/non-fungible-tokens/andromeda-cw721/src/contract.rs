@@ -11,7 +11,7 @@ use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TransferAgreement,
 };
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
@@ -147,7 +147,7 @@ pub fn instantiate(
     };
 
     let res = AndrCW721Contract::instantiate(
-        &AndrCW721Contract::default(),
+        &AndrCW721Contract,
         deps.branch(),
         &env,
         &info,
@@ -221,7 +221,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 }
 
 pub fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
     contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)
 }
 
@@ -263,7 +263,7 @@ fn mint(
     token_uri: Option<String>,
     owner: String,
 ) -> Result<Response, ContractError> {
-    let cw721_contract = AndrCW721Contract::default();
+    let cw721_contract = AndrCW721Contract;
     // let token = TokenInfo {
     //     owner: ctx.deps.api.addr_validate(&owner)?,
     //     approvals: vec![],
@@ -333,7 +333,7 @@ fn execute_transfer(
     // Reduce all responses into one.
     let mut resp = Response::new();
     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
 
     let owner = contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
     ensure!(
@@ -365,6 +365,7 @@ fn execute_transfer(
                         to_address: owner.owner.clone(),
                         amount: vec![remaining_amount],
                     })));
+                //TODO the resp is never sent
                 resp = resp.add_submessages(transfer_response.msgs);
                 tax_amount
             }
@@ -375,6 +376,7 @@ fn execute_transfer(
                     to_address: owner.owner.clone(),
                     amount: vec![remaining_amount],
                 }));
+                //TODO the resp is never sent
                 resp = resp.add_submessage(msg);
                 tax_amount
             }
@@ -422,6 +424,7 @@ fn get_transfer_agreement_amount(
     Ok(agreement_amount)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_can_send(
     deps: Deps,
     env: Env,
@@ -486,7 +489,7 @@ fn execute_update_transfer_agreement(
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, ref info, .. } = ctx;
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
         token_owner.owner == info.sender.as_ref(),
@@ -535,7 +538,7 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
         token_owner.owner == info.sender.as_ref(),
@@ -552,7 +555,7 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
 
 fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
     let ExecuteContext { deps, ref info, .. } = ctx;
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
     // let token = contract.tokens.load(deps.storage, &token_id)?;
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
@@ -588,7 +591,7 @@ fn execute_send_nft(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
@@ -628,7 +631,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             let serialized = to_json_binary(&msg)?;
             match from_json::<AndromedaQuery>(&serialized) {
                 Ok(msg) => ADOContract::default().query(deps, env, msg),
-                _ => AndrCW721Contract::default().query(deps, &env, msg),
+                _ => AndrCW721Contract.query(deps, &env, msg),
             }
         }
     }

@@ -306,6 +306,7 @@ fn execute_claim(
     .parse::<bool>()
     .unwrap_or(false);
 
+    //TODO if clause same as else clause
     let withdraw_msg: CosmosMsg = if is_andromeda_distribution {
         CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),

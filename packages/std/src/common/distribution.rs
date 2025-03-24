@@ -1,5 +1,4 @@
 use cosmwasm_schema::cw_serde;
-use osmosis_std_derive::CosmwasmExt;
 
 #[cw_serde]
 // #[proto_message(type_url = "/andromeda.distribution.v1beta1.MsgSetWithdrawAddress")]

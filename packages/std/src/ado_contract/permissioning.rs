@@ -22,7 +22,7 @@ pub struct PermissionsIndices<'a> {
     pub action: MultiIndex<'a, String, PermissionInfo, String>,
 }
 
-impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
+impl IndexList<PermissionInfo> for PermissionsIndices<'static> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &dyn Index<PermissionInfo>> + '_> {
         let v: Vec<&dyn Index<PermissionInfo>> = vec![&self.action, &self.actor];
         Box::new(v.into_iter())
@@ -32,7 +32,7 @@ impl<'a> IndexList<PermissionInfo> for PermissionsIndices<'a> {
 /// Permissions for the ADO contract
 ///
 /// Permissions are stored in a multi-indexed map with the primary key being the action and actor
-pub fn permissions<'a>() -> IndexedMap<&'a str, PermissionInfo, PermissionsIndices<'a>> {
+pub fn permissions() -> IndexedMap<&'static str, PermissionInfo, PermissionsIndices<'static>> {
     let indexes = PermissionsIndices {
         actor: MultiIndex::new(|_pk: &[u8], r| r.actor.clone(), "andr_permissions", "actor"),
         action: MultiIndex::new(
