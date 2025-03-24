@@ -97,6 +97,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum Cw20HookMsg {
     AmpReceive(AMPPkt),
+    Send { message: AMPMsg },
 }
 
 #[cw_serde]

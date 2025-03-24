@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use andromeda_std::{
-    amp::recipient::Recipient,
+    amp::{messages::AMPPkt, recipient::Recipient},
     andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, MillisecondsExpiration},
     error::ContractError,
@@ -53,6 +53,7 @@ impl InstantiateMsg {
 #[cw_serde]
 pub enum Cw20HookMsg {
     Send { config: Option<Vec<AddressAmount>> },
+    AmpReceive(AMPPkt),
 }
 
 #[andr_exec]

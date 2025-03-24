@@ -1,3 +1,5 @@
+#[cfg(test)]
+use crate::execute::validate_id;
 use crate::{
     contract::{execute, instantiate, query},
     ibc::PACKET_LIFETIME,
@@ -601,4 +603,77 @@ fn test_query_pending_packets(
             assert_eq!(packet.packet_info.channel, channel);
         }
     }
+}
+
+#[rstest]
+// Valid cases
+#[case::same_chain(
+    "cosmos-1.1234.5",    // id
+    "cosmos-1",           // current_chain_id
+    1234,                 // current_block_height
+    5,                    // current_index
+    Ok("cosmos-1.1234.5".to_string())
+)]
+#[case::different_chain(
+    "osmosis-1.5678.3",   // id from different chain
+    "cosmos-1",           // current_chain_id
+    1234,                 // current_block_height
+    5,                    // current_index
+    Ok("osmosis-1.5678.3".to_string())
+)]
+// Error cases
+#[case::missing_index(
+    "cosmos-1.1234",      // missing index
+    "cosmos-1",
+    1234,
+    5,
+    Err(ContractError::InvalidPacket {
+        error: Some("Invalid packet ID format. Expected: chain_id.block_height.index".to_string()) 
+    })
+)]
+#[case::empty_chain_id(
+    ".1234.5",
+    "cosmos-1",
+    1234,
+    5,
+    Err(ContractError::InvalidPacket {
+        error: Some("Chain ID cannot be empty".to_string()) 
+    })
+)]
+#[case::invalid_block_height(
+    "cosmos-1.invalid.5",
+    "cosmos-1",
+    1234,
+    5,
+    Err(ContractError::InvalidPacket {
+        error: Some("Invalid block height format".to_string()) 
+    })
+)]
+#[case::mismatched_height(
+    "cosmos-1.1234.5",
+    "cosmos-1",
+    1235,                 // different block height
+    5,
+    Err(ContractError::InvalidPacket {
+        error: Some("Block height or transaction index does not match the current values".to_string()) 
+    })
+)]
+#[case::mismatched_index(
+    "cosmos-1.1234.5",
+    "cosmos-1",
+    1234,
+    6,                    // different index
+    Err(ContractError::InvalidPacket {
+        error: Some("Block height or transaction index does not match the current values".to_string()) 
+    })
+)]
+fn test_validate_id(
+    #[case] id: &str,
+    #[case] current_chain_id: &str,
+    #[case] current_block_height: u64,
+    #[case] current_index: u32,
+    #[case] expected: Result<String, ContractError>,
+) {
+    let result = validate_id(id, current_chain_id, current_block_height, current_index);
+    assert_eq!(result, expected);
 }

@@ -217,7 +217,8 @@ pub struct AMPCtx {
     origin: String,
     origin_username: Option<AndrAddr>,
     pub previous_sender: String,
-    pub id: u64,
+    pub id: Option<String>,
+    #[serde(default)]
     pub previous_hops: Vec<CrossChainHop>,
 }
 
@@ -226,14 +227,13 @@ impl AMPCtx {
     pub fn new(
         origin: impl Into<String>,
         previous_sender: impl Into<String>,
-        id: u64,
         origin_username: Option<AndrAddr>,
     ) -> AMPCtx {
         AMPCtx {
             origin: origin.into(),
             origin_username,
             previous_sender: previous_sender.into(),
-            id,
+            id: None,
             previous_hops: vec![],
         }
     }
@@ -251,6 +251,11 @@ impl AMPCtx {
     /// Gets the previous sender of a message
     pub fn get_previous_sender(&self) -> String {
         self.previous_sender.clone()
+    }
+
+    /// Gets the previous sender of a message
+    pub fn get_id(&self) -> Option<String> {
+        self.id.clone()
     }
 
     /// Adds a cross-chain hop to the context's previous hops
@@ -295,6 +300,25 @@ pub struct CrossChainHop {
     pub channel: String,
 }
 
+impl CrossChainHop {
+    pub fn new(
+        channel: &str,
+        current_chain: String,
+        destination_chain: String,
+        origin_address: String,
+        username: Option<AndrAddr>,
+    ) -> Self {
+        Self {
+            username,
+            address: origin_address,
+            from_chain: current_chain,
+            to_chain: destination_chain,
+            funds: vec![],
+            channel: channel.to_string(),
+        }
+    }
+}
+
 #[cw_serde]
 /// An Andromeda packet contains all message protocol related data, this is what is sent between ADOs when communicating
 /// It contains an original sender, if used for authorisation the sender must be authorised
@@ -315,7 +339,7 @@ impl AMPPkt {
     ) -> AMPPkt {
         AMPPkt {
             messages,
-            ctx: AMPCtx::new(origin, previous_sender, 0, None),
+            ctx: AMPCtx::new(origin, previous_sender, None),
         }
     }
 
@@ -422,7 +446,7 @@ impl AMPPkt {
         Ok(sub_msg)
     }
 
-    /// Generates a CW20 Send SubMsg that contains an AMPReceive message inteded for the kernel
+    /// Generates a CW20 Send SubMsg that contains an AMPReceive message intended for the kernel
     pub fn to_sub_msg_cw20(
         &self,
         kernel_address: impl Into<String>,
@@ -441,23 +465,16 @@ impl AMPPkt {
         let sub_msg = SubMsg::reply_always(
             WasmMsg::Execute {
                 contract_addr,
-                msg: encode_binary(&Cw20ExecuteMsg::Send {
+                msg: to_json_binary(&Cw20ExecuteMsg::Send {
                     contract: kernel_address.into(),
                     amount: total_amount,
-                    msg: encode_binary(&Cw20HookMsg::AmpReceive(self.clone()))?,
+                    msg: to_json_binary(&Cw20HookMsg::AmpReceive(self.clone()))?,
                 })?,
                 funds: vec![],
             },
             id,
         );
         Ok(sub_msg)
-    }
-
-    ///  Attaches an ID to the current packet
-    pub fn with_id(&self, id: u64) -> AMPPkt {
-        let mut new = self.clone();
-        new.ctx.id = id;
-        new
     }
 
     /// Converts a given AMP Packet to an IBC Hook memo for use with Osmosis' IBC Hooks module
@@ -494,7 +511,7 @@ impl AMPPkt {
         let mut ctx = if let Some(pkt) = ctx {
             pkt.ctx
         } else {
-            AMPCtx::new(current_address.clone(), current_address.clone(), 0, None)
+            AMPCtx::new(current_address.clone(), current_address.clone(), None)
         };
         ctx.previous_sender = current_address;
 
@@ -634,7 +651,7 @@ mod tests {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
 
         let memo = msg.to_json();
-        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0,\"previous_hops\":[]}}".to_string());
+        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":null,\"previous_hops\":[]}}".to_string());
     }
 
     #[test]
@@ -642,6 +659,6 @@ mod tests {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
         let contract_addr = "contractaddr";
         let memo = msg.to_ibc_hooks_memo(contract_addr.to_string(), "callback".to_string());
-        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0,\"previous_hops\":[]}}}},\"ibc_callback\":\"callback\"}".to_string());
+        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":null,\"previous_hops\":[]}}}},\"ibc_callback\":\"callback\"}".to_string());
     }
 }

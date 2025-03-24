@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-kernel"
-version = "1.2.1-b.3"
+version = "1.2.1-b.4"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
 rust-version = "1.65.0"
@@ -34,8 +34,9 @@ prost = { version = "0.11.2", default-features = false, features = [
   "prost-derive",
 ] }
 serde = { workspace = true }
-schemars = "0.8.10"
+schemars = "0.8.22"
 hex = "0.4.3"
+sha2 = "0.10.8"
 
 
 andromeda-std = { workspace = true }

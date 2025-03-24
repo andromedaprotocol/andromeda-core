@@ -1,4 +1,5 @@
-use crate::{execute::MsgHandler, state::KERNEL_ADDRESSES};
+#[cfg(test)]
+use crate::{execute::handle_local, state::KERNEL_ADDRESSES};
 use andromeda_std::{
     amp::{
         messages::{AMPCtx, AMPMsg, AMPMsgConfig, AMPPkt},
@@ -65,7 +66,7 @@ fn test_handle_local() {
             name: "Valid message to ADO (no funds)",
             sender: "sender",
             msg: AMPMsg::new(MOCK_APP_CONTRACT, to_json_binary(&true).unwrap(), None),
-            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, 1, None)),
+            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
                 "sender",
@@ -87,7 +88,7 @@ fn test_handle_local() {
                 to_json_binary(&true).unwrap(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
-            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, 1, None)),
+            ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
                 "sender",
@@ -207,7 +208,7 @@ fn test_handle_local() {
                 ReplyId::AMPMsg.repr(),
             ),
             expected_error: Some(ContractError::InvalidPacket {
-                error: Some("No message or funds supplied".to_string()),
+                error: Some("No funds supplied".to_string()),
             }),
         },
         TestHandleLocalCase {
@@ -239,7 +240,7 @@ fn test_handle_local() {
             .unwrap();
 
         let res: Result<cosmwasm_std::Response, ContractError> =
-            MsgHandler::new(test.msg).handle_local(deps.as_mut(), info, mock_env(), test.ctx, 0);
+            handle_local(deps.as_mut(), info, mock_env(), test.ctx, test.msg);
 
         if let Some(err) = test.expected_error {
             assert_eq!(res.unwrap_err(), err, "{}", test.name);

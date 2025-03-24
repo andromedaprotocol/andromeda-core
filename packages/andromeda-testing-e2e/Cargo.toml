@@ -18,7 +18,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw721 = { workspace = true }
 cw20 = { workspace = true }
-anyhow = "1.0.95"
+anyhow = "1.0.97"
 
 andromeda-non-fungible-tokens = { workspace = true }
 andromeda-app = { version = "1.0.0", path = "../andromeda-app" }
@@ -41,7 +41,7 @@ serde = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true }
-anyhow = "1.0.95"
-tokio = "1.43.0"
+anyhow = "1.0.97"
+tokio = "1.44.1"
 cw-orch-daemon = "0.24.3"
 cw-orch = { workspace = true }
