@@ -4,7 +4,6 @@ use super::mock::{
 };
 use andromeda_math::curve::{CurveConfig, CurveType};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
-use cosmwasm_std::StdError;
 use test_case::test_case;
 
 #[test]

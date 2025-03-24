@@ -27,6 +27,12 @@ use crate::{
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers, MOCK_DEFAULT_OWNER};
 
+use andromeda_std::{
+    amp::{messages::AMPPkt, AndrAddr, Recipient},
+    common::{denom::Asset, encode_binary, Milliseconds},
+    testing::mock_querier::MOCK_CW20_CONTRACT,
+};
+
 fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
     let msg = InstantiateMsg {
         campaign_config: config,
@@ -157,15 +163,12 @@ mod test {
             InstantiateTestCase {
                 name: "instantiate with invalid cw20".to_string(),
                 config: mock_campaign_config(Asset::Cw20Token(AndrAddr::from_string(
-                    MOCK_CW20_CONTRACT_2.to_string(),
+                    "non_existent_address".to_string(),
                 ))),
                 tiers: mock_campaign_tiers(),
-                expected_res: Err(ContractError::InvalidAsset {
-                    asset: Asset::Cw20Token(AndrAddr::from_string(
-                        MOCK_CW20_CONTRACT_2.to_string(),
-                    ))
-                    .to_string(),
-                }),
+                expected_res: Err(ContractError::Std(
+                    cosmwasm_std::StdError::generic_err("Error decoding bech32")
+                )),
             },
             InstantiateTestCase {
                 name: "instantiate with invalid tiers including zero price tier".to_string(),
