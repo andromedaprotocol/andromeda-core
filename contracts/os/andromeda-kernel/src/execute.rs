@@ -244,7 +244,6 @@ pub fn trigger_relay(
     channel_id: String,
     packet_ack_msg: Binary,
 ) -> Result<Response, ContractError> {
-    //TODO Only the authorized address to handle replies can call this function
     ensure!(
         ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
         ContractError::Unauthorized {}

@@ -2112,7 +2112,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
 
     // For testing a successful outcome of the first packet sent out in the tx, you can use:
     if let IbcPacketOutcome::Success { .. } = &packet_lifetime.packets[0] {
-        let ibc_denom = format!("ibc/{}/{}", channel.1.channel.unwrap().as_str(), "juno");
+        let ibc_denom = "ibc/1b2f8f2baf5b42370343270756f8180dd56acc9aa1699406df7821ae75608c99";
         // Check kernel balance before trigger execute msg
         let balances = osmosis
             .query_all_balances(&kernel_osmosis.address().unwrap())
