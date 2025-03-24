@@ -5,13 +5,14 @@ use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::testing::mock_querier::{
     mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,
 };
-use andromeda_std::{ado_base::AndromedaMsg, error::ContractError, common::reply::ReplyId};
+use andromeda_std::{ado_base::AndromedaMsg, common::reply::ReplyId, error::ContractError};
+use cosmwasm_std::testing::MOCK_CONTRACT_ADDR;
 use cosmwasm_std::{
     attr,
     testing::{message_info, mock_env},
-    to_json_binary, Addr, CosmosMsg, Empty, ReplyOn, Response, StdError, SubMsg, WasmMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, Empty, Event, Reply, ReplyOn, Response, StdError,
+    SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
-use cosmwasm_std::{Binary, Event, MsgResponse, Reply, SubMsgResponse, SubMsgResult};
 
 #[test]
 fn test_empty_instantiation() {
@@ -341,9 +342,12 @@ fn test_claim_ownership_empty() {
 #[test]
 fn test_claim_ownership_all() {
     let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let creator = deps.api.addr_make("creator");
-    let info = message_info(&creator, &[]);
+    let mut env = mock_env();
+
+    env.contract.address = Addr::unchecked("owner");
+    let sender = deps.api.addr_make("Sender");
+    let info = message_info(&sender, &[]);
+
     let inst_msg = InstantiateMsg {
         app_components: vec![],
         name: String::from("Some App"),
@@ -353,22 +357,25 @@ fn test_claim_ownership_all() {
     };
 
     instantiate(deps.as_mut(), env.clone(), info.clone(), inst_msg).unwrap();
-    let cw20_addr = deps.api.addr_make(MOCK_CW20_CONTRACT);
+
+    let token_addr = deps.api.addr_make(MOCK_CW20_CONTRACT);
     let anchor_addr = deps.api.addr_make(MOCK_ANCHOR_CONTRACT);
+
     ADO_ADDRESSES
-        .save(deps.as_mut().storage, "token", &cw20_addr)
+        .save(deps.as_mut().storage, "token", &token_addr)
         .unwrap();
     ADO_ADDRESSES
         .save(deps.as_mut().storage, "anchor", &anchor_addr)
         .unwrap();
 
-    let msg = ExecuteMsg::ClaimOwnership {
-        name: None,
-        new_owner: None,
+    let execute_msg = ExecuteMsg::ClaimOwnership {
+        name: None,      // None means claim ownership for all components
+        new_owner: None, // None means use sender as the new owner
     };
 
-    let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(2, res.messages.len());
+    let result = execute(deps.as_mut(), env, info, execute_msg).unwrap();
+
+    assert_eq!(2, result.messages.len());
 }
 
 #[test]
