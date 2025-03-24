@@ -11,6 +11,12 @@ publish = false
 [[test]]
 name = "crowdfund"
 
+# [[test]]
+# name = "socket_osmosis"
+
+# [[test]]
+# name = "socket_astroport"
+
 [dependencies]
 serde.workspace = true
 tokio = "1.43.0"
@@ -44,11 +50,20 @@ andromeda-validator-staking = { path = "../../contracts/finance/andromeda-valida
     "testing",
 ] }
 
+andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osmosis", features = [
+    "testing",
+] }
+
+andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-astroport", features = [
+    "testing",
+] }
+
 andromeda-finance = { workspace = true }
 andromeda-std = { workspace = true }
 andromeda-app = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }
 andromeda-non-fungible-tokens = { workspace = true }
+andromeda-socket = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
 cw20.workspace = true
 cw721.workspace = true

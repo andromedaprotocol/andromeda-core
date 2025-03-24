@@ -74,3 +74,4 @@ rstest = "0.24.0"
 thiserror = { version = "1.0.58" }
 
 astroport = { git = "https://github.com/astroport-fi/astroport-core" } 
+cosmrs = { version = "0.15.0", features = ["cosmwasm"]}
