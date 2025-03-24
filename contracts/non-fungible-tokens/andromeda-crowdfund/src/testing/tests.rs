@@ -27,11 +27,6 @@ use crate::{
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers, MOCK_DEFAULT_OWNER};
 
-use andromeda_std::{
-    amp::{messages::AMPPkt, AndrAddr, Recipient},
-    common::{denom::Asset, encode_binary, Milliseconds},
-    testing::mock_querier::MOCK_CW20_CONTRACT,
-};
 
 fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
     let msg = InstantiateMsg {
