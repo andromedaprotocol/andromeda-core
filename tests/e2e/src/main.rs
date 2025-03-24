@@ -150,9 +150,7 @@ fn prepare_validator_staking(
         chain_info: None,
     };
 
-    app_contract
-        .instantiate(&app_init_msg, None, &vec![])
-        .unwrap();
+    app_contract.instantiate(&app_init_msg, None, &[]).unwrap();
 
     let validator_staking_addr = app_contract.get_address(validator_staking_component.name);
 

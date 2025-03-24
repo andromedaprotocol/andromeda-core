@@ -321,7 +321,7 @@ fn test_burn() {
         res
     );
 
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
     let tokens = contract
         .query_all_tokens(deps.as_ref(), &env, None, None)
         .unwrap();

@@ -35,7 +35,7 @@ impl IndexList<SubmissionInfo> for SubmissionIndexes<'_> {
     }
 }
 
-pub fn submissions<'a>() -> IndexedMap<(u64, Addr), SubmissionInfo, SubmissionIndexes<'static>> {
+pub fn submissions() -> IndexedMap<(u64, Addr), SubmissionInfo, SubmissionIndexes<'static>> {
     let indexes = SubmissionIndexes {
         submission_id: MultiIndex::new(
             |_pk: &[u8], r| r.submission_id,

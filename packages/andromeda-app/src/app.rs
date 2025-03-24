@@ -141,7 +141,7 @@ impl AppComponent {
         let salt = self.get_salt(parent_addr.clone());
         let creator = api.addr_canonicalize(parent_addr.as_str())?;
         //TODO check if this is correct
-        let new_addr = instantiate2_address(&checksum.as_slice(), &creator, &salt).unwrap();
+        let new_addr = instantiate2_address(checksum.as_slice(), &creator, &salt).unwrap();
 
         // Instantiate 2 impl uses default cannonical address of 32 bytes (SHA 256). But as mentioned here -
         // https://github.com/cosmos/cosmos-sdk/blob/v0.45.8/docs/architecture/adr-028-public-key-addresses.md

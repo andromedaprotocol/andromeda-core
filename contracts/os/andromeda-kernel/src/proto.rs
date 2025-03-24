@@ -3,7 +3,6 @@
 // All credit goes to Osmosis Labs
 
 use cosmwasm_schema::cw_serde;
-use osmosis_std_derive::CosmwasmExt;
 
 #[derive(
     Clone,

@@ -123,8 +123,8 @@ pub fn on_reply_ibc_transfer(
     if let Reply {
         id: 106,
         result: SubMsgResult::Ok(SubMsgResponse { events, .. }),
-        payload,
-        gas_used,
+        payload: _,
+        gas_used: _,
     } = msg.clone()
     {
         if let Some(send_packet_event) = events.iter().find(|e| e.ty == "send_packet") {
