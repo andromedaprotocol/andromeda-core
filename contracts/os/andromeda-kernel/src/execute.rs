@@ -70,7 +70,6 @@ pub fn handle_local(
         ref config,
         ref recipient,
     } = amp_message;
-
     // Handle empty message - send funds only
     if message == &Binary::default() {
         ensure!(
@@ -110,7 +109,7 @@ pub fn handle_local(
         let previous_sender = info.sender.to_string();
 
         AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]).to_sub_msg(
-            recipient.clone(),
+            recipient.get_raw_address(&deps.as_ref())?,
             Some(funds.clone()),
             ReplyId::AMPMsg.repr(),
         )?

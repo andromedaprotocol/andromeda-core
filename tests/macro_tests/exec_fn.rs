@@ -11,7 +11,7 @@ use andromeda_std::{
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coin,
-    testing::{mock_env, message_info, MockApi, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockStorage},
     to_json_binary, Env, MessageInfo, OwnedDeps, QuerierWrapper, Response,
 };
 use cw_utils::PaymentError;
@@ -45,7 +45,7 @@ fn setup() -> (OwnedDeps<MockStorage, MockApi, WasmMockQuerier>, Env) {
     let mut deps = mock_dependencies_custom(&[]);
     let querier = QuerierWrapper::new(&deps.querier);
     let env = mock_env();
-        let owner = deps.api.addr_make(OWNER);
+    let owner = deps.api.addr_make(OWNER);
     let info = message_info(&owner, &[]);
 
     ADOContract::default()
