@@ -9,7 +9,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, from_json,
     testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
+    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Response, SubMsg, Timestamp,
     Uint128,
 };
 pub const OWNER: &str = "creator";
@@ -415,7 +415,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(4, "uandr"), Coin::new(1, "uandr")]),
             1,
         )
@@ -456,7 +456,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(2, "uandr"), Coin::new(1, "uandr")]),
             1,
         )
@@ -497,7 +497,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(50, "uandr"), Coin::new(50, "uandr")]),
             1,
         )
@@ -602,7 +602,7 @@ fn test_execute_send_ado_recipient() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(1000, "uluna"), Coin::new(2000, "uluna")]),
             1,
         )
@@ -882,7 +882,7 @@ fn test_execute_send_with_multiple_thresholds() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(2, "uandr"), Coin::new(4, "uandr")]),
             1,
         )
@@ -926,7 +926,7 @@ fn test_execute_send_with_multiple_thresholds() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(7, "uandr"), Coin::new(7, "uandr")]),
             1,
         )
@@ -967,7 +967,7 @@ fn test_execute_send_with_multiple_thresholds() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(1, "uandr"), Coin::new(4, "uandr")]),
             1,
         )

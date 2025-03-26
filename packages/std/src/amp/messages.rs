@@ -431,7 +431,7 @@ impl AMPPkt {
     /// Generates a SubMsg to send the AMPPkt to the kernel
     pub fn to_sub_msg(
         &self,
-        address: impl Into<String>,
+        address: Addr,
         funds: Option<Vec<Coin>>,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
@@ -630,7 +630,7 @@ mod tests {
 
         let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
 
-        let sub_msg = pkt.to_sub_msg("kernel", None, 1).unwrap();
+        let sub_msg = pkt.to_sub_msg(Addr::unchecked("kernel"), None, 1).unwrap();
 
         let expected_msg =
             ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg]));

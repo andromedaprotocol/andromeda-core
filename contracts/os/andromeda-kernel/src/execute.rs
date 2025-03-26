@@ -456,8 +456,7 @@ pub fn amp_receive(
             .flat_map(|m| m.funds.clone())
             .collect::<Vec<Coin>>();
 
-        let new_pkt_msg =
-            new_pkt.to_sub_msg(env.contract.address.to_string(), Some(new_funds), 0)?;
+        let new_pkt_msg = new_pkt.to_sub_msg(env.contract.address, Some(new_funds), 0)?;
         res.messages.extend_from_slice(&[new_pkt_msg]);
     }
 
