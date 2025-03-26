@@ -13,7 +13,10 @@ use andromeda_non_fungible_tokens::cw721::{
 };
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
-    ado_base::AndromedaQuery,
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        AndromedaQuery,
+    },
     ado_contract::{permissioning::is_context_permissioned, ADOContract},
     amp::AndrAddr,
     common::context::ExecuteContext,
@@ -50,10 +53,17 @@ pub fn instantiate(
         .contract_info
         .save(deps.storage, &contract_info)?;
 
+    let minter = msg.minter;
     let contract = ADOContract::default();
-    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+    ANDR_MINTER.save(deps.storage, &minter.clone())?;
 
     contract.permission_action(deps.storage, MINT_ACTION)?;
+    ADOContract::set_permission(
+        deps.storage,
+        MINT_ACTION,
+        minter.to_string(),
+        Permission::Local(LocalPermission::whitelisted(None, None)),
+    )?;
 
     let resp = contract.instantiate(
         deps.storage,
@@ -69,7 +79,7 @@ pub fn instantiate(
         },
     )?;
 
-    Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
+    Ok(resp.add_attributes(vec![attr("minter", minter.clone())]))
 }
 
 #[andr_execute_fn]
