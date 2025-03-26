@@ -16,11 +16,13 @@ use cosmwasm_std::{
 use crate::contract::{execute, instantiate, query};
 use crate::testing::mock_querier::{mock_dependencies_custom, WasmMockQuerier};
 
+use super::mock_querier::SENDER;
+
 pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization(map_info: MapInfo) -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = message_info(&Addr::unchecked("sender"), &[]);
+    let info = message_info(&Addr::unchecked(SENDER), &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

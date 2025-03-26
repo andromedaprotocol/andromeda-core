@@ -191,7 +191,11 @@ impl MockAndromedaQuerier {
     ) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                println!("contract_addr is: {}", contract_addr);
                 match contract_addr.as_str() {
+                    "cosmwasm1n4hmya98y5znc6xpd58kap7fc42a4s5u736trhrpmuc9smyrdz0s5rddag" => {
+                        self.handle_cw20_query(msg)
+                    }
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     #[cfg(feature = "primitive")]

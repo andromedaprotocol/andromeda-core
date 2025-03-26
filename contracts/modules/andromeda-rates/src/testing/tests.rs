@@ -1,7 +1,5 @@
 use crate::contract::{execute, instantiate, query, query_deducted_funds};
-use crate::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_OWNER, MOCK_RECIPIENT1,
-};
+use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_OWNER};
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, RatesResponse},
@@ -16,6 +14,7 @@ use cosmwasm_std::{
     BankMsg, CosmosMsg, Event, Response, SubMsg, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
+const RECIPIENT: &str = "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
 
 #[test]
 fn test_instantiate_query() {
@@ -99,7 +98,7 @@ fn test_query_deducted_funds_native() {
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient {
-            address: AndrAddr::from_string("recipient1".to_string()),
+            address: AndrAddr::from_string(RECIPIENT.to_string()),
             msg: None,
             ibc_recovery_address: None,
         },
@@ -122,7 +121,7 @@ fn test_query_deducted_funds_native() {
 
     let expected_msgs: Vec<SubMsg> = vec![
         SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: MOCK_RECIPIENT1.into(),
+            to_address: RECIPIENT.into(),
             amount: coins(20, MOCK_CW20_CONTRACT),
         })),
         // SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
@@ -136,7 +135,8 @@ fn test_query_deducted_funds_native() {
             msgs: expected_msgs,
             leftover_funds: Funds::Native(coin(100, MOCK_CW20_CONTRACT)),
             events: vec![
-                Event::new("tax").add_attribute("payment", "recipient1<20mock_uandr"),
+                Event::new("tax")
+                    .add_attribute("payment", format!("{}<20{}", RECIPIENT, MOCK_CW20_CONTRACT),),
                 // Event::new("royalty")
                 //     .add_attribute("description", "desc1")
                 //     .add_attribute("deducted", "10uusd")
@@ -156,7 +156,7 @@ fn test_query_deducted_funds_cw20() {
 
     let action: String = "deposit".to_string();
     let payload = encode_binary(&action).unwrap();
-    let recipient1 = deps.api.addr_make("recipient1");
+    let recipient1 = deps.api.addr_make(RECIPIENT);
     let rate = LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient {
