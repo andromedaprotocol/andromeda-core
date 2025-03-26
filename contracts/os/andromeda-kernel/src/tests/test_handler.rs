@@ -58,7 +58,11 @@ fn test_handle_local() {
                     None,
                 )],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
@@ -76,7 +80,11 @@ fn test_handle_local() {
                     None,
                 )],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
@@ -99,7 +107,7 @@ fn test_handle_local() {
                 )],
             )
             .to_sub_msg(
-                MOCK_APP_CONTRACT,
+                Addr::unchecked(MOCK_APP_CONTRACT),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
                 ReplyId::AMPMsg.repr(),
             )
@@ -221,7 +229,11 @@ fn test_handle_local() {
                 "sender",
                 vec![create_test_msg_with_config(config)],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
