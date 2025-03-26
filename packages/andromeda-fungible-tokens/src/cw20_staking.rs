@@ -111,7 +111,9 @@ impl RewardTokenUnchecked {
         block_info: &BlockInfo,
         api: &dyn Api,
     ) -> Result<RewardToken, ContractError> {
+        println!("self.asset_info: {:?}", self.asset_info);
         let checked_asset_info = self.asset_info.check(api, None)?;
+        println!("checked_asset_info: {:?}", checked_asset_info);
         let reward_type = match self.allocation_config {
             None => RewardType::NonAllocated {
                 previous_reward_balance: Uint128::zero(),
