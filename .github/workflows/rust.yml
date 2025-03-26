@@ -37,7 +37,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        test-type: ["integration-test", "unit-test", "ibc-test"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,4 +45,4 @@ jobs:
         with:
           toolchain: 1.81.0
       - uses: Swatinem/rust-cache@v2
-      - run: make ${{ matrix.test-type }}
+      - run: make test
