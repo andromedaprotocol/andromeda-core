@@ -42,8 +42,6 @@ pub struct Sale {
     pub start_time: Expiration,
     /// The time when the sale ends
     pub end_time: Expiration,
-    /// The amount for sale at the given rate at the start of the sale
-    pub start_amount: Uint128,
 }
 
 #[cw_serde]
