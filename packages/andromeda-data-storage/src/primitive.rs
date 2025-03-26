@@ -316,7 +316,10 @@ mod tests {
             // },
             TestValidate {
                 name: "Valid Address",
-                primitive: Primitive::Addr(Addr::unchecked("andr1".to_string())),
+                primitive: Primitive::Addr(Addr::unchecked(
+                    "cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu"
+                        .to_string(),
+                )),
                 expected_error: None,
             },
         ];
@@ -330,7 +333,6 @@ mod tests {
                 assert_eq!(res.unwrap_err(), err, "{}", test.name);
                 continue;
             }
-
             assert!(res.is_ok());
         }
     }

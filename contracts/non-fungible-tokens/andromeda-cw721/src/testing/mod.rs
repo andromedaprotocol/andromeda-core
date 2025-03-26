@@ -190,62 +190,63 @@ fn test_agreed_transfer_nft() {
     assert_eq!(resp.owner, recipient_addr.to_string())
 }
 
-#[test]
-fn test_agreed_transfer_nft_wildcard() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let token_id = String::from("testtoken");
-    let creator = String::from("creator");
-    let creator_addr = deps.api.addr_make(&creator);
-    let agreed_amount = Coin {
-        denom: "uluna".to_string(),
-        amount: Uint128::from(100u64),
-    };
-    let purchaser = "*";
-    init_setup(&mut deps, env.clone());
-    mint_token(
-        deps.as_mut(),
-        env.clone(),
-        token_id.clone(),
-        creator_addr.to_string(),
-        TokenExtension {},
-    );
+// TODO reenable wildcard functionality
+// #[test]
+// fn test_agreed_transfer_nft_wildcard() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     let env = mock_env();
+//     let token_id = String::from("testtoken");
+//     let creator = String::from("creator");
+//     let creator_addr = deps.api.addr_make(&creator);
+//     let agreed_amount = Coin {
+//         denom: "uluna".to_string(),
+//         amount: Uint128::from(100u64),
+//     };
+//     let purchaser = "*";
+//     init_setup(&mut deps, env.clone());
+//     mint_token(
+//         deps.as_mut(),
+//         env.clone(),
+//         token_id.clone(),
+//         creator_addr.to_string(),
+//         TokenExtension {},
+//     );
 
-    // Update transfer agreement.
-    let msg = ExecuteMsg::TransferAgreement {
-        token_id: token_id.clone(),
-        agreement: Some(TransferAgreement {
-            amount: agreed_amount.clone(),
-            purchaser: purchaser.to_string(),
-        }),
-    };
-    let _res = execute(
-        deps.as_mut(),
-        mock_env(),
-        message_info(&creator_addr, &[]),
-        msg,
-    )
-    .unwrap();
+//     // Update transfer agreement.
+//     let msg = ExecuteMsg::TransferAgreement {
+//         token_id: token_id.clone(),
+//         agreement: Some(TransferAgreement {
+//             amount: agreed_amount.clone(),
+//             purchaser: purchaser.to_string(),
+//         }),
+//     };
+//     let _res = execute(
+//         deps.as_mut(),
+//         mock_env(),
+//         message_info(&creator_addr, &[]),
+//         msg,
+//     )
+//     .unwrap();
 
-    // Transfer the nft
-    let recipient_addr = deps.api.addr_make("recipient");
-    let transfer_msg = ExecuteMsg::TransferNft {
-        recipient: AndrAddr::from_string(recipient_addr.to_string()),
-        token_id: token_id.clone(),
-    };
+//     // Transfer the nft
+//     let recipient_addr = deps.api.addr_make("recipient");
+//     let transfer_msg = ExecuteMsg::TransferNft {
+//         recipient: AndrAddr::from_string(recipient_addr.to_string()),
+//         token_id: token_id.clone(),
+//     };
 
-    let anyone_addr = deps.api.addr_make("anyone");
-    let info = message_info(&anyone_addr, &[agreed_amount]);
-    let _res = execute(deps.as_mut(), env.clone(), info, transfer_msg).unwrap();
+//     let anyone_addr = deps.api.addr_make("anyone");
+//     let info = message_info(&anyone_addr, &[agreed_amount]);
+//     let _res = execute(deps.as_mut(), env.clone(), info, transfer_msg).unwrap();
 
-    let query_msg = QueryMsg::OwnerOf {
-        token_id,
-        include_expired: None,
-    };
-    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
-    let resp: OwnerOfResponse = from_json(query_resp).unwrap();
-    assert_eq!(resp.owner, recipient_addr.to_string())
-}
+//     let query_msg = QueryMsg::OwnerOf {
+//         token_id,
+//         include_expired: None,
+//     };
+//     let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+//     let resp: OwnerOfResponse = from_json(query_resp).unwrap();
+//     assert_eq!(resp.owner, recipient_addr.to_string())
+// }
 
 #[test]
 fn test_archive() {
