@@ -646,7 +646,10 @@ fn test_update_global_indexes() {
             is_active: true,
         },
         REWARD_TOKENS
-            .load(deps.as_ref().storage, "cw20:incentive_token")
+            .load(
+                deps.as_ref().storage,
+                format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str()
+            )
             .unwrap()
     );
 
@@ -659,7 +662,7 @@ fn test_update_global_indexes() {
     assert_eq!(
         Response::new()
             .add_attribute("action", "update_global_indexes")
-            .add_attribute("cw20:incentive_token", "0.2")
+            .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2")
             .add_attribute("native:uandr", "0.4")
             .add_attribute("native:uusd", "0.4"),
         res
@@ -900,7 +903,10 @@ fn test_update_global_indexes_cw20_deposit() {
             is_active: true,
         },
         REWARD_TOKENS
-            .load(deps.as_ref().storage, "cw20:incentive_token")
+            .load(
+                deps.as_ref().storage,
+                format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str()
+            )
             .unwrap()
     );
 }
