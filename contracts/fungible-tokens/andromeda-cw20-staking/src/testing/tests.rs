@@ -61,8 +61,11 @@ fn init(
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     let current_timestamp = Milliseconds::from_seconds(mock_env().block.time.seconds());
+    let origin = deps.api.addr_make("previoussender");
+    println!("origin: {}", origin);
     let cw20_incentive_token = deps.api.addr_make("incentive_token");
     let allocated_token = deps.api.addr_make("allocated_token");
+
     let uusd = "uusd";
     let res = init(
         &mut deps,

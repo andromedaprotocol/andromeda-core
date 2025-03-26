@@ -656,7 +656,7 @@ fn test_send_with_config_locked(
         config: Some(config),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[Coin::new(10000u128, "uluna")]);
+    let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(10000u128, "uluna")]);
     let res = execute(deps.as_mut(), mock_env(), info, msg);
 
     assert_eq!(

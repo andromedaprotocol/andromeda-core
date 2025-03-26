@@ -562,7 +562,7 @@ fn test_execute_send_threshold_not_found() {
         lock_time: Some(Expiry::FromNow(Milliseconds::from_seconds(100_000))),
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // This batch is lower than the lowest threshold which is 7

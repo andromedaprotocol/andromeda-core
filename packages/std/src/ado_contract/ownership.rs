@@ -163,7 +163,7 @@ impl ADOContract {
 mod test {
     use cosmwasm_std::{
         testing::{message_info, mock_dependencies, mock_env},
-        Addr, Api, DepsMut,
+        Addr, DepsMut,
     };
 
     use crate::{
@@ -186,10 +186,11 @@ mod test {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let contract = ADOContract::default();
-        let new_owner = Addr::unchecked("new_owner");
-        init(deps.as_mut(), "owner");
+        let new_owner = deps.api.addr_make("new_owner");
+        let owner = deps.api.addr_make("owner");
 
-        let owner = deps.api.addr_validate("owner").unwrap();
+        init(deps.as_mut(), &owner);
+
         let res = contract.update_owner(
             deps.as_mut(),
             env.clone(),
@@ -205,12 +206,12 @@ mod test {
             deps.as_mut(),
             env.clone(),
             message_info(&owner, &[]),
-            Addr::unchecked("owner"),
+            owner,
             None,
         );
         assert!(res.is_err());
 
-        let new_owner = deps.api.addr_validate("new_owner").unwrap();
+        let new_owner = deps.api.addr_make("new_owner");
         let res = contract.update_owner(
             deps.as_mut(),
             env,
@@ -225,8 +226,9 @@ mod test {
     fn test_revoke_ownership_offer() {
         let mut deps = mock_dependencies();
         let contract = ADOContract::default();
-        init(deps.as_mut(), "owner");
-        let owner = deps.api.addr_validate("owner").unwrap();
+        let owner = deps.api.addr_make("owner");
+        init(deps.as_mut(), &owner);
+
         let res = contract.revoke_ownership_offer(deps.as_mut(), message_info(&owner, &[]));
         assert!(res.is_ok());
         let saved_new_owner = POTENTIAL_OWNER.may_load(deps.as_ref().storage).unwrap();
@@ -237,16 +239,16 @@ mod test {
     fn test_accept_ownership() {
         let mut deps = mock_dependencies();
         let contract = ADOContract::default();
-        let new_owner = Addr::unchecked("new_owner");
-        init(deps.as_mut(), "owner");
+        let new_owner = deps.api.addr_make("new_owner");
+        let owner = deps.api.addr_make("owner");
+        init(deps.as_mut(), &owner);
         POTENTIAL_OWNER
             .save(deps.as_mut().storage, &new_owner)
             .unwrap();
 
-        let owner = deps.api.addr_validate("owner").unwrap();
         let res = contract.accept_ownership(deps.as_mut(), mock_env(), message_info(&owner, &[]));
         assert!(res.is_err());
-        let new_owner = deps.api.addr_validate("new_owner").unwrap();
+        let new_owner = deps.api.addr_make("new_owner");
         let res =
             contract.accept_ownership(deps.as_mut(), mock_env(), message_info(&new_owner, &[]));
         assert!(res.is_ok());
@@ -260,8 +262,9 @@ mod test {
     fn test_accept_ownership_expired() {
         let mut deps = mock_dependencies();
         let contract = ADOContract::default();
-        let new_owner = Addr::unchecked("new_owner");
-        init(deps.as_mut(), "owner");
+        let new_owner = deps.api.addr_make("new_owner");
+        let owner = deps.api.addr_make("owner");
+        init(deps.as_mut(), &owner);
         POTENTIAL_OWNER
             .save(deps.as_mut().storage, &new_owner)
             .unwrap();
@@ -274,20 +277,20 @@ mod test {
 
         let mut env = mock_env();
         env.block.time = MillisecondsExpiration::from_nanos(2).into();
-        let new_owner = deps.api.addr_validate("new_owner").unwrap();
+        let new_owner = deps.api.addr_make("new_owner");
         let res = contract.accept_ownership(deps.as_mut(), env, message_info(&new_owner, &[]));
         assert!(res.is_err());
         let saved_owner = contract.owner.load(deps.as_ref().storage).unwrap();
-        assert_eq!(saved_owner, Addr::unchecked("owner"));
+        assert_eq!(saved_owner, owner);
     }
 
     #[test]
     fn test_disown() {
         let mut deps = mock_dependencies();
         let contract = ADOContract::default();
-        init(deps.as_mut(), "owner");
+        let owner = deps.api.addr_make("owner");
+        init(deps.as_mut(), &owner);
 
-        let owner = deps.api.addr_validate("owner").unwrap();
         let res = contract.disown(deps.as_mut(), message_info(&owner, &[]));
         assert!(res.is_ok());
         let saved_owner = contract.owner.load(deps.as_ref().storage).unwrap();

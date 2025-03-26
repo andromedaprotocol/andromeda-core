@@ -282,7 +282,7 @@ mod tests {
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .owner
-            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .save(deps_mut.storage, &Addr::unchecked(OWNER))
             .unwrap();
         ADOContract::default()
             .ado_type
@@ -307,7 +307,7 @@ mod tests {
         let deps_mut = deps.as_mut();
         ADOContract::default()
             .owner
-            .save(deps_mut.storage, &Addr::unchecked("owner"))
+            .save(deps_mut.storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         ADOContract::default()
@@ -342,7 +342,7 @@ mod tests {
         let module = Module::new("address_list", "address", true);
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         ADOContract::default()
@@ -359,12 +359,12 @@ mod tests {
     #[test]
     fn test_execute_alter_module_addr() {
         let mut deps = mock_dependencies();
-        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let info = message_info(&Addr::unchecked(OWNER), &[]);
         let module = Module::new("address_list", "address", true);
 
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         ADOContract::default()
@@ -401,12 +401,12 @@ mod tests {
     #[test]
     fn test_execute_alter_module_immutable() {
         let mut deps = mock_dependencies();
-        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let info = message_info(&Addr::unchecked(OWNER), &[]);
         let module = Module::new("address_list", "address", false);
 
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         ADOContract::default()
@@ -429,12 +429,12 @@ mod tests {
     #[test]
     fn test_execute_alter_module_nonexisting_module() {
         let mut deps = mock_dependencies();
-        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let info = message_info(&Addr::unchecked(OWNER), &[]);
         let module = Module::new("auction", "address", true);
 
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
         ADOContract::default()
             .ado_type
@@ -453,7 +453,7 @@ mod tests {
         let info = message_info(&Addr::unchecked("sender"), &[]);
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         let res =
@@ -465,10 +465,10 @@ mod tests {
     #[test]
     fn test_execute_deregister_module() {
         let mut deps = mock_dependencies();
-        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let info = message_info(&Addr::unchecked(OWNER), &[]);
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         let module = Module::new("address_list", "address", true);
@@ -497,10 +497,10 @@ mod tests {
     #[test]
     fn test_execute_deregister_module_immutable() {
         let mut deps = mock_dependencies();
-        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let info = message_info(&Addr::unchecked(OWNER), &[]);
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         let module = Module::new("address_list", "address", false);
@@ -518,10 +518,10 @@ mod tests {
     #[test]
     fn test_execute_deregister_module_nonexisting_module() {
         let mut deps = mock_dependencies();
-        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let info = message_info(&Addr::unchecked(OWNER), &[]);
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         let res =

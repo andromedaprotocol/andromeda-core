@@ -44,7 +44,7 @@ fn init(
         },
     };
 
-    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap()
 }
 

@@ -179,6 +179,7 @@ mod tests {
         ado_base::rates::{LocalRate, LocalRateType, LocalRateValue},
         amp::{AndrAddr, Recipient},
     };
+    pub const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
 
     use super::*;
     #[test]
@@ -188,7 +189,7 @@ mod tests {
         let contract = ADOContract::default();
         contract
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
 
         let expected_rate = Rate::Local(LocalRate {

@@ -738,7 +738,7 @@ fn test_execute_start_auction_cw20() {
 // fn execute_start_auction_with_block_height() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//     let info = message_info(&Addr::unchecked(OWNER), &[]);
 //     let msg = InstantiateMsg {  kernel_address: None };
 //     let _res = instantiate(deps.as_mut(), env, &info, msg).unwrap();
 
@@ -777,7 +777,7 @@ fn test_execute_start_auction_cw20() {
 // fn execute_start_auction_with_mismatched_expirations() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//     let info = message_info(&Addr::unchecked(OWNER), &[]);
 //     let msg = InstantiateMsg {  kernel_address: None };
 //     let _res = instantiate(deps.as_mut(), env, &info, msg).unwrap();
 
@@ -937,7 +937,7 @@ fn execute_start_auction_zero_duration() {
 // fn execute_start_auction_end_time_never() {
 //     let mut deps = mock_dependencies_custom(&[]);
 //     let env = mock_env();
-//     let info = message_info(&Addr::unchecked("owner"), &[]);
+//     let info = message_info(&Addr::unchecked(OWNER), &[]);
 //     let msg = InstantiateMsg {  kernel_address: None };
 //     let _res = instantiate(deps.as_mut(), env, &info, msg).unwrap();
 

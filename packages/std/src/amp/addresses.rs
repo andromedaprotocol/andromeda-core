@@ -228,7 +228,7 @@ impl AndrAddr {
                             // If it contains '/', return the path with a leading '/'
                             &self.0[start + path_start..]
                         } else {
-                            // If it doesn't contain '/', return it as is (e.g., "cosmos1...")
+                            // If it doesn't contain '/', return it as is (e.g., OWNER)
                             path
                         }
                     } else {
@@ -315,6 +315,7 @@ impl From<&AndrAddr> for String {
 mod tests {
     use cosmwasm_std::testing::mock_dependencies;
     use regex::Regex;
+    pub const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
 
     use super::*;
     struct ValidateRegexTestCase {
@@ -326,7 +327,7 @@ mod tests {
     #[test]
     fn test_validate() {
         let deps = mock_dependencies();
-        let addr = AndrAddr("cosmos1...".to_string());
+        let addr = AndrAddr(OWNER.to_string());
         assert!(addr.validate(&deps.api).is_ok());
 
         let addr = AndrAddr("ibc://cosmoshub-4/home/user/app/component".to_string());
@@ -353,14 +354,14 @@ mod tests {
         let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());
         assert!(addr.is_vfs_path());
 
-        let addr = AndrAddr("cosmos1...".to_string());
+        let addr = AndrAddr(OWNER.to_string());
         assert!(!addr.is_vfs_path());
     }
 
     #[test]
     fn test_is_addr() {
         let deps = mock_dependencies();
-        let addr = AndrAddr("cosmos1...".to_string());
+        let addr = AndrAddr(OWNER.to_string());
         assert!(addr.is_addr(&deps.api));
         assert!(!addr.is_vfs_path());
     }
@@ -374,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_get_protocol() {
-        let addr = AndrAddr("cosmos1...".to_string());
+        let addr = AndrAddr(OWNER.to_string());
         assert!(addr.get_protocol().is_none());
 
         let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());
@@ -383,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_get_chain() {
-        let addr = AndrAddr("cosmos1...".to_string());
+        let addr = AndrAddr(OWNER.to_string());
         assert!(addr.get_chain().is_none());
 
         let addr = AndrAddr("ibc://chain/home/user/app/component".to_string());
@@ -395,14 +396,14 @@ mod tests {
 
     #[test]
     fn test_get_raw_path() {
-        let addr = AndrAddr("cosmos1...".to_string());
-        assert_eq!(addr.get_raw_path(), "cosmos1...");
+        let addr = AndrAddr(OWNER.to_string());
+        assert_eq!(addr.get_raw_path(), OWNER);
 
         let addr = AndrAddr("ibc://chain/home/app/component".to_string());
         assert_eq!(addr.get_raw_path(), "/home/app/component");
 
-        let addr = AndrAddr("ibc://chain/cosmos1...".to_string());
-        assert_eq!(addr.get_raw_path(), "cosmos1...");
+        let addr = AndrAddr(format!("ibc://chain/{}", OWNER));
+        assert_eq!(addr.get_raw_path(), OWNER);
 
         let addr = AndrAddr("ibc://chain/ibc://chain2/home/app/component".to_string());
         assert_eq!(addr.get_raw_path(), "ibc://chain2/home/app/component");
@@ -425,8 +426,8 @@ mod tests {
         let addr = AndrAddr("ibc://chain/home/user1".to_string());
         assert_eq!(addr.get_root_dir(), "home");
 
-        let addr = AndrAddr("cosmos1...".to_string());
-        assert_eq!(addr.get_root_dir(), "cosmos1...");
+        let addr = AndrAddr(OWNER.to_string());
+        assert_eq!(addr.get_root_dir(), OWNER);
 
         let addr = AndrAddr("./home/user1".to_string());
         assert_eq!(addr.get_root_dir(), "./home/user1");

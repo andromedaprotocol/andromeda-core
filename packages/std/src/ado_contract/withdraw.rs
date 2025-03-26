@@ -222,9 +222,9 @@ mod tests {
         let mut deps = mock_dependencies_custom(&[]);
         ADOContract::default()
             .owner
-            .save(deps.as_mut().storage, &Addr::unchecked("owner"))
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
             .unwrap();
-        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let info = message_info(&Addr::unchecked(OWNER), &[]);
         ADOContract::default()
             .withdrawable_tokens
             .save(
