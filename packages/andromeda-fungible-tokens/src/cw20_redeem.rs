@@ -22,10 +22,6 @@ pub enum ExecuteMsg {
     /// Cancels an ongoing sale
     #[attrs(restricted)]
     CancelRedemptionClause {},
-    /// Purchases tokens with native funds
-    Purchase {
-        recipient: Option<String>,
-    },
     /// Receive for CW20 tokens, used for purchasing and starting sales
     #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
