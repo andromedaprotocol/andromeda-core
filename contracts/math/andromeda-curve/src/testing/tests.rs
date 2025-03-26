@@ -6,6 +6,9 @@ use andromeda_math::curve::{CurveConfig, CurveType};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use test_case::test_case;
 
+pub const USER1: &str = "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg";
+pub const USER2: &str = "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqa";
+
 #[test]
 fn test_instantiation() {
     proper_initialization(
@@ -28,15 +31,15 @@ fn test_reset() {
             multiple_variable_value: None,
             constant_value: None,
         },
-        Some(vec![AndrAddr::from_string("user1")]),
+        Some(vec![AndrAddr::from_string(USER1)]),
     );
 
-    let err_res = reset(deps.as_mut(), "user2").unwrap_err();
+    let err_res = reset(deps.as_mut(), USER2).unwrap_err();
     assert_eq!(err_res, ContractError::Unauthorized {});
 
-    reset(deps.as_mut(), "user1").unwrap();
+    reset(deps.as_mut(), USER1).unwrap();
 
-    let err_res = query_curve_config(deps.as_ref()).unwrap_err();
+    let _err_res = query_curve_config(deps.as_ref()).unwrap_err();
     // assert_eq!(err_res, ContractError::Std(StdError::NotFound { kind: "type: andromeda_math::curve::CurveConfig; key: [63, 75, 72, 76, 65, 5F, 63, 6F, 6E, 66, 69, 67]".to_string() }));
 
     update_curve_config(
@@ -47,7 +50,7 @@ fn test_reset() {
             multiple_variable_value: None,
             constant_value: Some(2),
         },
-        "user1",
+        USER1,
     )
     .unwrap();
 
@@ -72,7 +75,7 @@ fn test_update_curve_config() {
             multiple_variable_value: None,
             constant_value: None,
         },
-        Some(vec![AndrAddr::from_string("user1")]),
+        Some(vec![AndrAddr::from_string(USER1)]),
     );
     let err_res = update_curve_config(
         deps.as_mut(),
@@ -82,7 +85,7 @@ fn test_update_curve_config() {
             multiple_variable_value: None,
             constant_value: Some(2),
         },
-        "user2",
+        USER2,
     )
     .unwrap_err();
     assert_eq!(err_res, ContractError::Unauthorized {});
@@ -95,7 +98,7 @@ fn test_update_curve_config() {
             multiple_variable_value: None,
             constant_value: Some(2),
         },
-        "user1",
+        USER1,
     )
     .unwrap();
 
