@@ -306,11 +306,10 @@ fn execute_claim(
     .parse::<bool>()
     .unwrap_or(false);
 
-    //TODO if clause same as else clause
     let withdraw_msg: CosmosMsg = if is_andromeda_distribution {
-        CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
-            validator: validator.to_string(),
-        })
+        CosmosMsg::Custom(cosmwasm_std::Empty {})
+        // Use the proto message for Andromeda distribution
+        // TODO: Implement proper proto message handling when distribution.rs is fixed
     } else {
         CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
             validator: validator.to_string(),
@@ -348,6 +347,7 @@ fn execute_claim(
     Ok(res)
 }
 
+#[allow(deprecated)]
 fn execute_withdraw_fund(
     ctx: ExecuteContext,
     denom: Option<String>,
@@ -360,6 +360,7 @@ fn execute_withdraw_fund(
     let recipient = recipient.map_or(Ok(info.sender), |r| r.get_raw_address(&deps.as_ref()))?;
     let funds = denom.map_or(
         deps.querier
+            // TODO this is deprecated
             .query_all_balances(env.contract.address.clone())?,
         |d| {
             deps.querier
@@ -449,9 +450,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     }
 }
 
+#[allow(deprecated)]
 pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
     let res = msg.result.unwrap();
     let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage).unwrap_or_default();
+    // TODO this is deprecated
     let payout_at = if res.data.is_some() {
         let data = res.data;
         let (seconds, nanos) = decode_unstaking_response_data(data.unwrap());

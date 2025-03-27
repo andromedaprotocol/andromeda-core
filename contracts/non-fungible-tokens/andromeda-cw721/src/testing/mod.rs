@@ -46,7 +46,13 @@ fn init_setup(
     instantiate(deps.as_mut(), env, info, inst_msg).unwrap();
 }
 
-fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: String, extension: TokenExtension) {
+fn mint_token(
+    deps: DepsMut,
+    env: Env,
+    token_id: String,
+    owner: String,
+    _extension: TokenExtension,
+) {
     let info = message_info(&Addr::unchecked(MINTER), &[]);
     let mint_msg = ExecuteMsg::Mint {
         token_id,

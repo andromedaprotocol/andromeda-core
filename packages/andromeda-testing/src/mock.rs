@@ -12,7 +12,8 @@ use andromeda_std::{
 use andromeda_vfs::mock::mock_andromeda_vfs;
 use cosmwasm_std::{coin, Addr, Coin};
 use cw_multi_test::{
-    App, AppBuilder, BankKeeper, Executor, MockApiBech32, SimpleAddressGenerator, WasmKeeper,
+    App, AppBuilder, BankKeeper, Executor, MockApiBech32, SimpleAddressGenerator, StakeKeeper,
+    WasmKeeper,
 };
 
 use crate::{
@@ -29,6 +30,7 @@ pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
     AppBuilder::new()
         .with_api(MockApiBech32::new("andr"))
         .with_wasm(WasmKeeper::new().with_address_generator(SimpleAddressGenerator))
+        .with_staking(StakeKeeper::new())
         .build(|router, _api, storage| {
             router
                 .bank
@@ -40,10 +42,9 @@ pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
                         .map(|d| coin(u128::MAX, *d))
                         .collect::<Vec<Coin>>(),
                 )
-                .unwrap()
+                .unwrap();
 
             // router
-            //     .staking
             //     .add_validator(
             //         api,
             //         storage,

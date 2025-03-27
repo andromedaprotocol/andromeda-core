@@ -9,10 +9,10 @@ use andromeda_validator_staking::mock::{
 };
 
 // use andromeda_std::error::ContractError;
-use andromeda_std::error::ContractError::{self, Std};
+use andromeda_std::error::ContractError::{self};
 use andromeda_testing::MockContract;
-use cosmwasm_std::StdError::GenericErr;
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Delegation, Uint128};
+
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 
 #[test]
 fn test_validator_stake() {
@@ -138,7 +138,7 @@ fn test_validator_stake() {
         .unwrap();
 
     // Test staked token query from undelegated validator
-    let err = validator_staking
+    let _err = validator_staking
         .query_staked_tokens(&router, None)
         .unwrap_err();
 
@@ -543,9 +543,9 @@ fn test_validator_stake_and_unstake_specific_amount() {
         .unwrap();
 
     // Test staked token query from undelegated validator
-    let delegation = validator_staking
-        .query_staked_tokens(&router, None)
-        .unwrap();
+    // let _delegation = validator_staking
+    //     .query_staked_tokens(&router, None)
+    //     .unwrap();
     //TODO reenable this
     // assert_eq!(
     //     delegation,

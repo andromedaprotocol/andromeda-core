@@ -27,7 +27,6 @@ use crate::{
 
 use super::mock_querier::{mock_campaign_config, mock_campaign_tiers, MOCK_DEFAULT_OWNER};
 
-
 fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
     let msg = InstantiateMsg {
         campaign_config: config,
@@ -99,7 +98,7 @@ mod test {
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
         common::{denom::Asset, encode_binary, Milliseconds},
-        testing::mock_querier::{MOCK_CW20_CONTRACT, MOCK_CW20_CONTRACT_2},
+        testing::mock_querier::MOCK_CW20_CONTRACT,
     };
     use cosmwasm_std::{coin, coins, testing::MOCK_CONTRACT_ADDR, wasm_execute, BankMsg, Coin};
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -161,9 +160,9 @@ mod test {
                     "non_existent_address".to_string(),
                 ))),
                 tiers: mock_campaign_tiers(),
-                expected_res: Err(ContractError::Std(
-                    cosmwasm_std::StdError::generic_err("Error decoding bech32")
-                )),
+                expected_res: Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Error decoding bech32",
+                ))),
             },
             InstantiateTestCase {
                 name: "instantiate with invalid tiers including zero price tier".to_string(),

@@ -401,7 +401,8 @@ fn execute_transfer(
     // token.owner = deps.api.addr_validate(&recipient_address)?;
     // token.approvals.clear();
     // contract.tokens.save(deps.storage, &token_id, &token)?;
-    let res = contract.transfer_nft(
+
+    let response = contract.transfer_nft(
         deps.branch(),
         &env,
         &info,
@@ -410,7 +411,19 @@ fn execute_transfer(
     )?;
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
 
-    Ok(res
+    // Extract elements from the response and include them in the final response
+    let mut response = response;
+    for attr in response.attributes.clone() {
+        resp = resp.add_attribute(attr.key, attr.value);
+    }
+    for event in response.events.clone() {
+        resp = resp.add_event(event);
+    }
+    for submsg in response.messages {
+        resp = resp.add_submessage(submsg);
+    }
+    response = resp;
+    Ok(response
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient_address))
 }
