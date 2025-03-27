@@ -3,17 +3,17 @@ use crate::state::{ADO_DESCRIPTORS, ADO_IDX};
 use andromeda_app::app::{AppComponent, ComponentType, ExecuteMsg, InstantiateMsg};
 use andromeda_std::ado_base::ownership::OwnershipMessage;
 use andromeda_std::testing::mock_querier::{
-    mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT
+    mock_dependencies_custom, MOCK_ANCHOR_CONTRACT, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT,
 };
 mod mock_querier;
-use mock_querier::mock_dependencies_custom_v2;
 use andromeda_std::{ado_base::AndromedaMsg, common::reply::ReplyId, error::ContractError};
 use cosmwasm_std::{
     attr,
     testing::{message_info, mock_env},
-    to_json_binary, Addr, Binary, CosmosMsg, Event, Reply, ReplyOn, Response, StdError,
-    SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
+    to_json_binary, Addr, Binary, CosmosMsg, Event, Reply, ReplyOn, Response, StdError, SubMsg,
+    SubMsgResponse, SubMsgResult, WasmMsg,
 };
+use mock_querier::mock_dependencies_custom_v2;
 
 #[test]
 fn test_empty_instantiation() {
@@ -42,7 +42,7 @@ fn test_instantiation() {
     let creator = deps.api.addr_make("app_creator");
     let info = message_info(&creator, &[]);
     let kernel_addr = deps.api.addr_make("kernel");
-    
+
     // Init contract directly
     let msg = InstantiateMsg {
         app_components: vec![AppComponent {
@@ -55,28 +55,28 @@ fn test_instantiation() {
         owner: None,
         chain_info: None,
     };
-    
+
     let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-    
+
     // Ensure that response has a number of SubMsg
     assert_eq!(res.messages.len(), 2);
-    
+
     // Just check that messages have expected IDs and types, without detailed contents
     let first_msg = &res.messages[0];
     assert_eq!(first_msg.id, ReplyId::RegisterPath.repr());
     match &first_msg.msg {
         CosmosMsg::Wasm(WasmMsg::Execute { .. }) => {
             // VFS message is the correct type
-        },
+        }
         _ => panic!("First message should be a WasmMsg::Execute"),
     }
-    
+
     let second_msg = &res.messages[1];
     assert_eq!(second_msg.id, ReplyId::AssignApp.repr());
     match &second_msg.msg {
         CosmosMsg::Wasm(WasmMsg::Instantiate { .. }) => {
             // Component instantiation is the correct type
-        },
+        }
         _ => panic!("Second message should be a WasmMsg::Instantiate"),
     }
 }
