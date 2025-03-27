@@ -172,7 +172,7 @@ fn test_query_owner_keys() {
             deps.as_mut(),
             &Some(format!("{sender1}-{key}")),
             &data,
-            &sender1.to_string(),
+            sender1.as_ref(),
         )
         .unwrap();
     }
@@ -183,7 +183,7 @@ fn test_query_owner_keys() {
             deps.as_mut(),
             &Some(format!("{sender2}-{key}")),
             &data,
-            &sender2.to_string(),
+            sender2.as_ref(),
         )
         .unwrap();
     }
