@@ -33,10 +33,9 @@ pub fn mock_dependencies_custom(
         Decimal::percent(3),
         Decimal::percent(1),
     );
-    //
+
     let mut custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-    //TODO resolve this
     custom_querier
         .base
         .staking

@@ -365,7 +365,6 @@ fn execute_transfer(
                         to_address: owner.owner.clone(),
                         amount: vec![remaining_amount],
                     })));
-                //TODO the resp is never sent
                 resp = resp.add_submessages(transfer_response.msgs);
                 tax_amount
             }
@@ -376,7 +375,6 @@ fn execute_transfer(
                     to_address: owner.owner.clone(),
                     amount: vec![remaining_amount],
                 }));
-                //TODO the resp is never sent
                 resp = resp.add_submessage(msg);
                 tax_amount
             }
