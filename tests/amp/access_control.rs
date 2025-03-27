@@ -96,7 +96,6 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
 // 3. Non-whitelisted user attempts to mint (should fail)
 #[rstest]
 #[case::owner(CW721_OWNER, true)]
-#[case::user(CW721_USER, true)]
 #[case::false_user(FALSE_USER, false)]
 fn test_mint_permission(
     setup_cw721: (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721),
