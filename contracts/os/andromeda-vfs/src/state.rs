@@ -343,7 +343,9 @@ mod test {
 
     #[test]
     fn test_resolve_pathname() {
-        let path = AndrAddr::from_string("cosmos1...");
+        let path = AndrAddr::from_string(
+            "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9",
+        );
         let res = resolve_pathname(
             &mock_dependencies().storage,
             &mock_dependencies().api,
@@ -351,7 +353,10 @@ mod test {
             &mut vec![],
         )
         .unwrap();
-        assert_eq!(res, Addr::unchecked("cosmos1..."));
+        assert_eq!(
+            res,
+            Addr::unchecked("cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9")
+        );
     }
 
     #[test]
@@ -585,8 +590,8 @@ mod test {
         let username = "u1";
         let first_directory = "d1";
 
-        let username_address = Addr::unchecked("useraddress");
-        let first_directory_address = Addr::unchecked("dir1address");
+        let username_address = deps.api.addr_make("useraddress");
+        let first_directory_address = deps.api.addr_make("dir1address");
 
         USERS
             .save(deps.as_mut().storage, username, &username_address)
@@ -614,7 +619,7 @@ mod test {
         .unwrap();
         assert_eq!(res, first_directory_address);
 
-        let symlink_parent = Addr::unchecked("parentaddress");
+        let symlink_parent = deps.api.addr_make("parentaddress");
         let symlink_name = "symlink";
         let symlink = AndrAddr::from_string(format!("/home/{username}/{first_directory}"));
         let DepsMut { api, storage, .. } = deps.as_mut();
@@ -669,23 +674,25 @@ mod test {
             AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}"))
         );
 
+        let someaddress = deps.api.addr_make("someaddress");
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string("someaddress"),
+            AndrAddr::from_string(someaddress.to_string()),
         )
         .unwrap();
 
-        assert_eq!(res, AndrAddr::from_string("someaddress"));
+        assert_eq!(res, AndrAddr::from_string(someaddress.to_string()));
 
+        let someuser = deps.api.addr_make("someuser");
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string("/home/someuser"),
+            AndrAddr::from_string(format!("/home/{someuser}")),
         )
         .unwrap();
 
-        assert_eq!(res, AndrAddr::from_string("/home/someuser"));
+        assert_eq!(res, AndrAddr::from_string(format!("/home/{someuser}")));
     }
 
     #[test]
@@ -799,8 +806,8 @@ mod test {
         let username = "u1";
         let first_directory = "d1";
 
-        let username_address = Addr::unchecked("useraddress");
-        let first_directory_address = Addr::unchecked("dir1address");
+        let username_address = deps.api.addr_make("useraddress");
+        let first_directory_address = deps.api.addr_make("dir1address");
 
         USERS
             .save(deps.as_mut().storage, username, &username_address)
