@@ -7,12 +7,12 @@ use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CON
 use cosmwasm_std::{
     coin,
     testing::{message_info, mock_env},
-    Addr, DepsMut, Response, StakingMsg,
+    Addr, Response, StakingMsg,
 };
 
 use andromeda_finance::validator_staking::{ExecuteMsg, InstantiateMsg};
 
-const OWNER: &str = "owner";
+const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
 
 fn init(
     deps: &mut cosmwasm_std::OwnedDeps<
@@ -28,8 +28,7 @@ fn init(
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let owner = deps.api.addr_make(OWNER);
-    let info = message_info(&owner, &[]);
+    let info = message_info(&Addr::unchecked(OWNER), &[]);
     instantiate(deps.as_mut(), mock_env(), info, msg)
 }
 
@@ -41,7 +40,7 @@ fn test_instantiate() {
         crate::testing::mock_querier::WasmMockQuerier,
     > = mock_dependencies_custom(&[]);
 
-    let fake_validator = Addr::unchecked("fake_validator");
+    let fake_validator = deps.api.addr_make("fake_validator");
     let res = init(&mut deps, fake_validator);
     assert_eq!(ContractError::InvalidValidator {}, res.unwrap_err());
 
