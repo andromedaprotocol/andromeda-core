@@ -450,9 +450,9 @@ mod tests {
                 )
                 .unwrap();
 
-            let address = String::from("address");
+            let address = deps.api.addr_make("address");
             let msg = AndromedaMsg::UpdateAppContract {
-                address: address.clone(),
+                address: address.to_string(),
             };
 
             let res = contract

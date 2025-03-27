@@ -745,7 +745,7 @@ mod tests {
 
     use cosmwasm_std::{
         testing::{message_info, mock_dependencies, mock_env},
-        Addr, Api,
+        Addr,
     };
 
     use crate::{
@@ -1309,9 +1309,8 @@ mod tests {
     fn test_context_permissions_strict() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let actor = "actor";
-        let actor_addr = deps.api.addr_make(actor);
-        let info = message_info(&actor_addr, &[]);
+        let actor = deps.api.addr_make("actor");
+        let info = message_info(&actor, &[]);
         let action = "action";
 
         let context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
@@ -1333,7 +1332,8 @@ mod tests {
 
         let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
         let permission = Permission::Local(LocalPermission::whitelisted(None, None));
-        ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
+        ADOContract::set_permission(context.deps.storage, action, actor.clone(), permission)
+            .unwrap();
 
         assert!(is_context_permissioned_strict(
             context.deps,
@@ -1357,7 +1357,7 @@ mod tests {
         )
         .unwrap());
 
-        let amp_ctx = AMPPkt::new(&mock_actor, actor, vec![]);
+        let amp_ctx = AMPPkt::new(&mock_actor, &actor, vec![]);
         let context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
