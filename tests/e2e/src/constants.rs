@@ -11,6 +11,40 @@ pub const RECIPIENT_MNEMONIC_2: &str = "envelope loyal junk top magic fun face g
 
 pub const PURCHASER_MNEMONIC_1: &str = "drift taxi hip erosion trade army illegal party eager deliver season nature section brick twin gallery rate visual wood knee veteran regret steel okay";
 
+pub const OSMO_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "osmosis",
+    pub_address_prefix: "osmo",
+    coin_type: 118u32,
+};
+
+pub const OSMO_5: ChainInfo = ChainInfo {
+    kind: ChainKind::Testnet,
+    chain_id: "osmo-test-5",
+    gas_denom: "uosmo",
+    gas_price: 0.025,
+    grpc_urls: &["https://grpc.osmotest5.osmosis.zone:443"],
+    network_info: OSMO_NETWORK,
+    lcd_url: None,
+    fcd_url: None,
+};
+
+pub const NEUTRON_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "neutron",
+    pub_address_prefix: "neutron",
+    coin_type: 118u32,
+};
+
+pub const PION_1: ChainInfo = ChainInfo {
+    kind: ChainKind::Testnet,
+    chain_id: "pion-1",
+    gas_denom: "untrn",
+    gas_price: 0.075,
+    grpc_urls: &["http://grpc-palvus.pion-1.ntrn.tech:80"],
+    network_info: NEUTRON_NETWORK,
+    lcd_url: Some("https://rest-palvus.pion-1.ntrn.tech"),
+    fcd_url: None,
+};
+
 pub const TERRA_NETWORK: NetworkInfo = NetworkInfo {
     chain_name: "terra",
     pub_address_prefix: "terra",
