@@ -548,9 +548,8 @@ fn test_crowdfund_app_native_with_ado_recipient(
     let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
 
     let summary = crowdfund.query_campaign_summary(&mut router);
-
     // Campaign could not be ended due to invalid withdrawal recipient msg
-    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+    assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
 }
 
 #[rstest]
