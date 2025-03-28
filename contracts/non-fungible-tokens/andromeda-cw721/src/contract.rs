@@ -7,7 +7,7 @@ use cosmwasm_std::{
     SubMsg, Uint128,
 };
 use cw721::error::Cw721ContractError;
-use cw721::msg::Cw721InstantiateMsg;
+use cw721::msg::{Cw721InstantiateMsg, OwnerOfResponse};
 use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
@@ -331,7 +331,8 @@ fn execute_transfer(
     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
     let contract = AndrCW721Contract;
 
-    let owner = contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
+    let OwnerOfResponse { owner, .. } =
+        contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
     ensure!(
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
@@ -358,7 +359,7 @@ fn execute_transfer(
                 transfer_response
                     .msgs
                     .push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                        to_address: owner.owner.clone(),
+                        to_address: owner.clone(),
                         amount: vec![remaining_amount],
                     })));
                 resp = resp.add_submessages(transfer_response.msgs);
@@ -368,7 +369,7 @@ fn execute_transfer(
                 let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
                 let tax_amount = Uint128::zero();
                 let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: owner.owner.clone(),
+                    to_address: owner.clone(),
                     amount: vec![remaining_amount],
                 }));
                 resp = resp.add_submessage(msg);
@@ -381,25 +382,26 @@ fn execute_transfer(
 
     let approvals = contract.query_approvals(deps.as_ref(), &env, token_id.clone(), true)?;
     let operators =
-        contract.query_operators(deps.as_ref(), &env, owner.owner.clone(), true, None, None)?;
+        contract.query_operators(deps.as_ref(), &env, owner.clone(), true, None, None)?;
     check_can_send(
         deps.as_ref(),
         env.clone(),
         info.clone(),
         &token_id,
         tax_amount,
-        owner.owner,
+        owner.clone(),
         approvals.approvals,
         operators.operators,
     )?;
-    // token.owner = deps.api.addr_validate(&recipient_address)?;
-    // token.approvals.clear();
-    // contract.tokens.save(deps.storage, &token_id, &token)?;
 
+    // If we reach here we can assume the sender is authorised to transfer the NFT
+    // We mock message info to have the owner of the NFT be the sender to authorise send.
+    let mut transfer_info = info.clone();
+    transfer_info.sender = Addr::unchecked(owner);
     let response = contract.transfer_nft(
         deps.branch(),
         &env,
-        &info,
+        &transfer_info,
         recipient.to_string(),
         token_id.clone(),
     )?;
