@@ -6,6 +6,7 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError,
     SubMsg, Uint128,
 };
+use cw721::error::Cw721ContractError;
 use cw721::msg::Cw721InstantiateMsg;
 use cw721::Approval;
 
@@ -26,6 +27,7 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
+use cw721::state::{Cw721Config, NftInfo};
 use cw721::traits::{Cw721Execute, Cw721Query};
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
@@ -251,7 +253,7 @@ fn execute_mint(
     mut ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
-    owner: String,
+    owner: AndrAddr,
 ) -> Result<Response, ContractError> {
     ensure_can_mint!(ctx);
     mint(ctx, token_id, token_uri, owner)
@@ -261,37 +263,31 @@ fn mint(
     ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
-    owner: String,
+    owner: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let cw721_contract = AndrCW721Contract;
-    // let token = TokenInfo {
-    //     owner: ctx.deps.api.addr_validate(&owner)?,
-    //     approvals: vec![],
-    //     token_uri: token_uri.clone(),
-    //     extension,
-    // };
+    let ExecuteContext { deps, info, .. } = ctx;
+    let owner_addr = owner.get_raw_address(&deps.as_ref())?;
 
-    cw721_contract.mint(
-        ctx.deps,
-        &ctx.env,
-        &ctx.info,
-        token_id.clone(),
-        owner.clone(),
-        token_uri.clone(),
-        Empty::default(),
-    )?;
-    // cw721_contract
-    //     .tokens
-    //     .update(ctx.deps.storage, &token_id, |old| match old {
-    //         Some(_) => Err(ContractError::Claimed {}),
-    //         None => Ok(token),
-    //     })?;
+    let token = NftInfo {
+        owner: owner_addr.clone(),
+        approvals: vec![],
+        token_uri: token_uri.clone(),
+        extension: Empty::default(),
+    };
 
-    // cw721_contract.increment_tokens(ctx.deps.storage)?;
+    let cw721_config = Cw721Config::<Empty>::default();
+    cw721_config
+        .nft_info
+        .update(deps.storage, &token_id, |old| match old {
+            Some(_) => Err(Cw721ContractError::Claimed {}),
+            None => Ok(token),
+        })?;
+
+    cw721_config.increment_tokens(deps.storage)?;
 
     Ok(Response::new()
         .add_attribute("action", "mint")
-        .add_attribute("minter", ctx.info.sender)
+        .add_attribute("minter", info.sender)
         .add_attribute("owner", owner)
         .add_attribute("token_id", token_id))
 }

@@ -135,11 +135,11 @@ pub fn mock_mint_msg(
     token_id: String,
     extension: TokenExtension,
     token_uri: Option<String>,
-    owner: String,
+    owner: impl Into<AndrAddr>,
 ) -> MintMsg {
     MintMsg {
         token_id,
-        owner,
+        owner: owner.into(),
         token_uri,
         extension,
     }

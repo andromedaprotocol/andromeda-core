@@ -592,7 +592,7 @@ fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, Con
                 deps.storage,
                 token_address.to_string(),
                 metadata.clone(),
-                sender.to_string(),
+                sender.clone().into(),
             )?;
             resp = resp
                 .add_attributes(mint_resp.attributes)
@@ -634,7 +634,7 @@ fn mint(
     storage: &mut dyn Storage,
     tier_contract: String,
     tier_metadata: TierMetaData,
-    owner: String,
+    owner: AndrAddr,
 ) -> Result<Response, ContractError> {
     let token_id = get_and_increase_tier_token_id(storage)?.to_string();
 

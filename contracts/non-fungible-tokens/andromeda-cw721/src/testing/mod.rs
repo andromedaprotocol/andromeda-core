@@ -50,13 +50,13 @@ fn mint_token(
     deps: DepsMut,
     env: Env,
     token_id: String,
-    owner: String,
+    owner: impl Into<String>,
     _extension: TokenExtension,
 ) {
     let info = message_info(&Addr::unchecked(MINTER), &[]);
     let mint_msg = ExecuteMsg::Mint {
         token_id,
-        owner,
+        owner: AndrAddr::from_string(owner.into()),
         token_uri: None,
     };
     execute(deps, env, info, mint_msg).unwrap();
@@ -430,7 +430,7 @@ fn test_update_app_contract_invalid_minter() {
 
     let msg = ExecuteMsg::Mint {
         token_id: "1".to_string(),
-        owner: owner.to_string(),
+        owner: owner.into(),
         token_uri: None,
     };
 
@@ -458,7 +458,7 @@ fn test_batch_mint() {
     while i < 5 {
         let mint_msg = MintMsg {
             token_id: i.to_string(),
-            owner: owner.to_string(),
+            owner: owner.clone().into(),
             token_uri: None,
             extension: TokenExtension {},
         };
@@ -534,7 +534,7 @@ fn test_batch_send_nft(
     let mint_msgs: Vec<MintMsg> = (0..num_tokens_to_mint)
         .map(|i| MintMsg {
             token_id: i.to_string(),
-            owner: owner.to_string(),
+            owner: owner.clone().into(),
             token_uri: None,
             extension: TokenExtension {},
         })

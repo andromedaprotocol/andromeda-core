@@ -299,9 +299,21 @@ impl PartialEq<AndrAddr> for String {
     }
 }
 
+impl From<String> for AndrAddr {
+    fn from(addr: String) -> Self {
+        AndrAddr(addr)
+    }
+}
+
 impl From<AndrAddr> for String {
     fn from(addr: AndrAddr) -> Self {
         addr.0
+    }
+}
+
+impl From<Addr> for AndrAddr {
+    fn from(addr: Addr) -> Self {
+        AndrAddr(addr.to_string())
     }
 }
 

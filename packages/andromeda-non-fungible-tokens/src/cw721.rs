@@ -52,7 +52,7 @@ pub struct MintMsg {
     /// Unique ID of the NFT
     pub token_id: String,
     /// The owner of the newly minter NFT
-    pub owner: String,
+    pub owner: AndrAddr,
     /// Universal resource identifier for this NFT
     /// Should point to a JSON file that conforms to the ERC721
     /// Metadata JSON Schema
@@ -69,7 +69,7 @@ pub enum ExecuteMsg {
         /// Unique ID of the NFT
         token_id: String,
         /// The owner of the newly minter NFT
-        owner: String,
+        owner: AndrAddr,
         /// Universal resource identifier for this NFT
         /// Should point to a JSON file that conforms to the ERC721
         /// Metadata JSON Schema
@@ -160,16 +160,6 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
                 Ok(Cw721ExecuteMsg::ApproveAll { operator, expires })
             }
             ExecuteMsg::RevokeAll { operator } => Ok(Cw721ExecuteMsg::RevokeAll { operator }),
-            ExecuteMsg::Mint {
-                token_id,
-                token_uri,
-                owner,
-            } => Ok(Cw721ExecuteMsg::Mint {
-                token_id,
-                token_uri,
-                owner,
-                extension: None,
-            }),
             ExecuteMsg::Burn { token_id } => Ok(Cw721ExecuteMsg::Burn { token_id }),
             _ => Err("Unsupported message".to_string()),
         }

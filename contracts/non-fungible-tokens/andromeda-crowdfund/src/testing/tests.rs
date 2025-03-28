@@ -1305,7 +1305,7 @@ mod test {
                         contract_addr: MOCK_TIER_CONTRACT.to_string(),
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "0".to_string(),
-                            owner: orderer.to_string(),
+                            owner: orderer.clone().into(),
                             token_uri: None,
                         })
                         .unwrap(),
@@ -1315,7 +1315,7 @@ mod test {
                         contract_addr: MOCK_TIER_CONTRACT.to_string(),
                         msg: to_json_binary(&Cw721ExecuteMsg::Mint {
                             token_id: "1".to_string(),
-                            owner: orderer.to_string(),
+                            owner: orderer.clone().into(),
                             token_uri: None,
                         })
                         .unwrap(),
