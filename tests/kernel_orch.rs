@@ -1814,7 +1814,10 @@ fn test_kernel_ibc_funds_only_multi_hop() {
         .query_all_balances(&kernel_andromeda.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, "ibc/channel-0/juno");
+    assert_eq!(
+        balances[0].denom,
+        "ibc/c890986431075905ebdf3dc19ccc882505e0a66eb4347bb3f779355b0f1bba85"
+    );
     assert_eq!(balances[0].amount.u128(), 100);
 }
 

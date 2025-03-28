@@ -27,6 +27,7 @@ use cosmwasm_std::{
     IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
+use cw_orch::mock::cw_multi_test::ibc::types::keccak256;
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
     ensure!(
@@ -322,7 +323,11 @@ fn handle_ibc_transfer_funds_reply(
     );
 
     ics20_packet_info.pending = true;
-    CHANNEL_TO_EXECUTE_MSG.save(deps.storage, (channel_id, sequence), &ics20_packet_info)?;
+    CHANNEL_TO_EXECUTE_MSG.save(
+        deps.storage,
+        (channel_id.clone(), sequence),
+        &ics20_packet_info,
+    )?;
 
     let channel = channel_info
         .direct_channel_id
@@ -344,15 +349,19 @@ fn handle_ibc_transfer_funds_reply(
     if counterparty_denom.starts_with("ibc/") {
         let hops = path_to_hops(_counterparty_denom_info.path)?;
         // cw-orch doesn't correctly hash the denom so we need to manually construct it
-        let _adjusted_path = hops
+        let adjusted_path = hops
             .iter()
             .map(|hop| hop.channel_id.clone())
             .collect::<Vec<String>>()
             .join("/");
 
+        let denom_path = format!("{}/{}", adjusted_path, &ics20_packet_info.funds.denom);
+
+        let new_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
+
         adjusted_funds = Coin::new(
             ics20_packet_info.funds.amount.u128(),
-            "ibc/1b2f8f2baf5b42370343270756f8180dd56acc9aa1699406df7821ae75608c99".to_string(),
+            new_denom, // "ibc/1b2f8f2baf5b42370343270756f8180dd56acc9aa1699406df7821ae75608c99".to_string(),
         );
     }
 
