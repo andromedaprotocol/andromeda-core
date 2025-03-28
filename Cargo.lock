@@ -3324,6 +3324,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-orch",
  "cw-orch-interchain",
+ "hex",
  "rstest",
 ]
 
@@ -5367,6 +5368,7 @@ dependencies = [
  "cw20",
  "cw721",
  "cw721-base",
+ "hex",
  "ibc-relayer-types 0.31.0",
  "rstest",
  "toml",
