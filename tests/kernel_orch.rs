@@ -38,8 +38,8 @@ fn test_kernel_ibc_execute_only() {
     let sender = Addr::unchecked("sender_for_all_chains");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
+        ("juno", sender.as_ref()),
+        ("osmosis", sender.as_ref()),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
@@ -74,11 +74,9 @@ fn test_kernel_ibc_execute_only() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -101,7 +99,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -112,7 +110,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -123,7 +121,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -136,7 +134,7 @@ fn test_kernel_ibc_execute_only() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -147,7 +145,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -157,7 +155,7 @@ fn test_kernel_ibc_execute_only() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -167,7 +165,7 @@ fn test_kernel_ibc_execute_only() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -177,7 +175,7 @@ fn test_kernel_ibc_execute_only() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -187,7 +185,7 @@ fn test_kernel_ibc_execute_only() {
                 key: "economics".to_string(),
                 value: economics_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -199,7 +197,7 @@ fn test_kernel_ibc_execute_only() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -211,7 +209,7 @@ fn test_kernel_ibc_execute_only() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -228,7 +226,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
     let kernel_juno_send_request = kernel_juno
@@ -250,7 +248,7 @@ fn test_kernel_ibc_execute_only() {
                     },
                 },
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -285,7 +283,7 @@ fn test_kernel_ibc_execute_only() {
                     None,
                 )],
             )),
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -314,8 +312,8 @@ fn test_kernel_ibc_execute_only_with_username() {
     let sender = Addr::unchecked("sender_for_all_chains");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
+        ("juno", sender.as_ref()),
+        ("osmosis", sender.as_ref()),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
@@ -349,11 +347,9 @@ fn test_kernel_ibc_execute_only_with_username() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -376,7 +372,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -387,7 +383,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -398,7 +394,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -409,7 +405,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -422,7 +418,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -432,7 +428,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -442,7 +438,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -452,7 +448,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -462,7 +458,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 key: "economics".to_string(),
                 value: economics_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -474,7 +470,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -486,7 +482,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -503,7 +499,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -515,7 +511,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 username: "az".to_string(),
                 address: Some(kernel_juno.address().unwrap()),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -526,7 +522,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                 username: "az".to_string(),
                 address: Some(kernel_osmosis.address().unwrap()),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -550,7 +546,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                     },
                 },
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -590,7 +586,7 @@ fn test_kernel_ibc_execute_only_with_username() {
                     None,
                 )],
             )),
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -624,9 +620,9 @@ fn test_kernel_ibc_execute_only_multi_hop() {
     let sender = Addr::unchecked("sender_for_all_chains");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
-        ("andromeda", &sender.to_string()),
+        ("juno", sender.as_ref()),
+        ("osmosis", sender.as_ref()),
+        ("andromeda", sender.as_ref()),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
@@ -660,11 +656,9 @@ fn test_kernel_ibc_execute_only_multi_hop() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -687,7 +681,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -698,7 +692,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -709,7 +703,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -722,7 +716,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -732,7 +726,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -742,7 +736,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -752,7 +746,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -764,7 +758,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -776,7 +770,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -793,7 +787,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
     let andromeda = interchain.get_chain("andromeda").unwrap();
@@ -815,7 +809,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
     };
 
     kernel_andromeda
-        .instantiate(init_msg_andromeda, None, &vec![])
+        .instantiate(init_msg_andromeda, None, &[])
         .unwrap();
 
     vfs_andromeda
@@ -825,7 +819,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -836,7 +830,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -847,7 +841,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -860,7 +854,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -870,7 +864,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 key: "adodb".to_string(),
                 value: adodb_andromeda.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -880,7 +874,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 key: "economics".to_string(),
                 value: economics_andromeda.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -905,7 +899,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 chain: "andromeda".to_string(),
                 kernel_address: kernel_andromeda.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -917,7 +911,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -934,7 +928,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -957,7 +951,7 @@ fn test_kernel_ibc_execute_only_multi_hop() {
                     },
                 },
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -988,10 +982,10 @@ fn test_kernel_ibc_funds_only() {
     let sender = "sender_for_all_chains";
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
+        ("juno", sender),
+        ("osmosis", sender),
         // Dummy chain to create unequal ports to test counterparty denom properly
-        ("cosmoshub", &sender.to_string()),
+        ("cosmoshub", sender),
     ]);
 
     let sender_addr =
@@ -1040,11 +1034,9 @@ fn test_kernel_ibc_funds_only() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -1105,7 +1097,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1116,7 +1108,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1127,7 +1119,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1138,7 +1130,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1148,7 +1140,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "economics".to_string(),
                 value: economics_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1159,7 +1151,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1169,7 +1161,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1179,7 +1171,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "adodb".to_string(),
                 value: adodb_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1189,7 +1181,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1199,7 +1191,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1211,7 +1203,7 @@ fn test_kernel_ibc_funds_only() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1223,7 +1215,7 @@ fn test_kernel_ibc_funds_only() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1289,7 +1281,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "trigger_key".to_string(),
                 value: sender_addr.to_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1301,7 +1293,7 @@ fn test_kernel_ibc_funds_only() {
                 channel_id: channel.0.channel.clone().unwrap().to_string(),
                 packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1336,7 +1328,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1350,7 +1342,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1370,7 +1362,7 @@ fn test_kernel_ibc_funds_only() {
                     description: None,
                 }),
             }),
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1381,7 +1373,7 @@ fn test_kernel_ibc_funds_only() {
                 owner: sender_addr.to_string(),
                 token_uri: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1403,7 +1395,7 @@ fn test_kernel_ibc_funds_only() {
                 token_id: "1".to_string(),
                 msg: to_json_binary(&receive_msg).unwrap(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
     juno.wait_seconds(1).unwrap();
@@ -1428,7 +1420,7 @@ fn test_kernel_ibc_funds_only() {
                 token_id: "1".to_string(),
                 token_address: cw721_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
     let packet_lifetime = interchain.await_packets("juno", claim_request).unwrap();
@@ -1458,7 +1450,7 @@ fn test_kernel_ibc_funds_only() {
                 channel_id: channel.0.channel.clone().unwrap().to_string(),
                 packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1527,11 +1519,9 @@ fn test_kernel_ibc_funds_only_multi_hop() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -1579,7 +1569,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1590,7 +1580,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1601,7 +1591,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1611,7 +1601,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1621,7 +1611,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1631,7 +1621,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1643,7 +1633,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1655,7 +1645,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
     // Connecting Andromeda part
@@ -1676,7 +1666,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
     };
 
     kernel_andromeda
-        .instantiate(init_msg_andromeda, None, &vec![])
+        .instantiate(init_msg_andromeda, None, &[])
         .unwrap();
 
     vfs_andromeda
@@ -1686,7 +1676,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1697,7 +1687,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1707,7 +1697,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 key: "adodb".to_string(),
                 value: adodb_andromeda.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1732,7 +1722,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 chain: "andromeda".to_string(),
                 kernel_address: kernel_andromeda.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1744,7 +1734,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1756,7 +1746,7 @@ fn test_kernel_ibc_funds_only_multi_hop() {
                 chain: "andromeda".to_string(),
                 kernel_address: kernel_andromeda.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1873,11 +1863,9 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -1938,7 +1926,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1949,7 +1937,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1960,7 +1948,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1971,7 +1959,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1984,7 +1972,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -1994,7 +1982,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2004,7 +1992,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2014,7 +2002,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2024,7 +2012,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 key: "economics".to_string(),
                 value: economics_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2036,7 +2024,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2048,7 +2036,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2073,7 +2061,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 default_recipient: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2128,7 +2116,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                     key: "trigger_key".to_string(),
                     value: sender_addr.to_string(),
                 },
-                &vec![],
+                &[],
             )
             .unwrap();
         // Construct an Execute msg from the kernel on juno inteded for the splitter on osmosis
@@ -2139,7 +2127,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                     channel_id: channel.0.channel.clone().unwrap().to_string(),
                     packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
                 },
-                &vec![],
+                &[],
             )
             .unwrap();
 
@@ -2179,8 +2167,8 @@ fn test_kernel_ibc_funds_only_unhappy() {
     let sender_addr =
         Addr::unchecked("cosmwasm1s3ul5svzwn3hamk4w434tch9tcqrgl3drjcsju768sk6dxzjvq0qe4umm9");
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &"sender_for_all_chains".to_string()),
-        ("osmosis", &"sender_for_all_chains".to_string()),
+        ("juno", "sender_for_all_chains"),
+        ("osmosis", "sender_for_all_chains"),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
@@ -2214,11 +2202,9 @@ fn test_kernel_ibc_funds_only_unhappy() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -2266,7 +2252,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2277,7 +2263,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2288,7 +2274,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2301,7 +2287,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2311,7 +2297,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2321,7 +2307,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2331,7 +2317,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2343,7 +2329,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2355,7 +2341,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
     let balances = juno.query_all_balances(&sender_addr).unwrap();
@@ -2409,7 +2395,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                     key: "trigger_key".to_string(),
                     value: sender_addr.to_string(),
                 },
-                &vec![],
+                &[],
             )
             .unwrap();
         let kernel_juno_splitter_request = kernel_juno
@@ -2419,7 +2405,7 @@ fn test_kernel_ibc_funds_only_unhappy() {
                     channel_id: channel.0.channel.clone().unwrap().to_string(),
                     packet_ack: to_json_binary(&StdAck::Error("error".to_string())).unwrap(),
                 },
-                &vec![],
+                &[],
             )
             .unwrap();
         let _packet_lifetime = interchain
@@ -2487,11 +2473,9 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -2539,7 +2523,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2550,7 +2534,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2561,7 +2545,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2572,7 +2556,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2585,7 +2569,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2598,7 +2582,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2608,7 +2592,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2618,7 +2602,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2628,7 +2612,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2638,7 +2622,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 key: "economics".to_string(),
                 value: economics_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2650,7 +2634,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2662,7 +2646,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2687,7 +2671,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                 default_recipient: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -2754,7 +2738,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                     key: "trigger_key".to_string(),
                     value: sender_addr.to_string(),
                 },
-                &vec![],
+                &[],
             )
             .unwrap();
 
@@ -2766,7 +2750,7 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
                     channel_id: channel.0.channel.clone().unwrap().to_string(),
                     packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
                 },
-                &vec![],
+                &[],
             )
             .unwrap();
         // We call UpadeLock, a Msg that doesn't accept funds. So it will error and should trigger a refund from the destination chain

@@ -230,7 +230,7 @@ fn test_send() {
         "payment",
         format!(
             "{}<10cosmwasm1jpev2csrppg792t22rn8z8uew8h3sjcpglcd0qv9g8gj8ky922tscp8avs",
-            rates_recipient.to_string()
+            rates_recipient
         ),
     )]);
 

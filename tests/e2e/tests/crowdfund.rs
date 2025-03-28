@@ -267,7 +267,7 @@ fn setup(
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -287,9 +287,7 @@ fn setup(
 
     let meta_data = TierMetaData {
         token_uri: None,
-        extension: TokenExtension {
-            ..Default::default()
-        },
+        extension: TokenExtension::default(),
     };
     crowdfund_contract
         .add_tier(Tier {

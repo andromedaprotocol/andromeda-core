@@ -55,7 +55,7 @@ fn test_fixed_amount_splitter_ibc() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -71,7 +71,7 @@ fn test_fixed_amount_splitter_ibc() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -142,7 +142,7 @@ fn test_fixed_amount_splitter_ibc() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -164,7 +164,7 @@ fn test_fixed_amount_splitter_ibc() {
                 packet_ack,
                 channel_id,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 

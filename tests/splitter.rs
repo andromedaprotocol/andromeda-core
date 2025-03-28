@@ -327,10 +327,10 @@ fn test_splitter_cross_chain_recipient() {
     let buyer = Addr::unchecked("buyer");
 
     let interchain = MockInterchainEnv::new(vec![
-        ("juno", &sender.to_string()),
-        ("osmosis", &sender.to_string()),
+        ("juno", sender.as_ref()),
+        ("osmosis", sender.as_ref()),
         // Dummy chain to create unequal ports to test counterparty denom properly
-        ("cosmoshub", &sender.to_string()),
+        ("cosmoshub", sender.as_ref()),
     ]);
 
     let juno = interchain.get_chain("juno").unwrap();
@@ -369,11 +369,9 @@ fn test_splitter_cross_chain_recipient() {
         chain_name: "osmosis".to_string(),
     };
 
-    kernel_juno
-        .instantiate(init_msg_juno, None, &vec![])
-        .unwrap();
+    kernel_juno.instantiate(init_msg_juno, None, &[]).unwrap();
     kernel_osmosis
-        .instantiate(init_msg_osmosis, None, &vec![])
+        .instantiate(init_msg_osmosis, None, &[])
         .unwrap();
 
     // Set up channel from juno to osmosis
@@ -434,7 +432,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -445,7 +443,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -456,7 +454,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -469,7 +467,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "1.1.1".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -482,7 +480,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "2.3.0".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -493,7 +491,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -503,7 +501,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "economics".to_string(),
                 value: economics_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -514,7 +512,7 @@ fn test_splitter_cross_chain_recipient() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -527,7 +525,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -540,7 +538,7 @@ fn test_splitter_cross_chain_recipient() {
                 version: "1.1.1".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -550,7 +548,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "vfs".to_string(),
                 value: vfs_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -560,7 +558,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "adodb".to_string(),
                 value: adodb_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -570,7 +568,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "vfs".to_string(),
                 value: vfs_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -580,7 +578,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "adodb".to_string(),
                 value: adodb_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -592,7 +590,7 @@ fn test_splitter_cross_chain_recipient() {
                 chain: "osmosis".to_string(),
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -604,7 +602,7 @@ fn test_splitter_cross_chain_recipient() {
                 chain: "juno".to_string(),
                 kernel_address: kernel_juno.address().unwrap().into_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -644,7 +642,7 @@ fn test_splitter_cross_chain_recipient() {
                 default_recipient: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -688,7 +686,7 @@ fn test_splitter_cross_chain_recipient() {
                 key: "trigger_key".to_string(),
                 value: sender.to_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -700,7 +698,7 @@ fn test_splitter_cross_chain_recipient() {
                 channel_id: channel.0.channel.clone().unwrap().to_string(),
                 packet_ack: to_json_binary(&StdAck::Success(Binary::default())).unwrap(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 

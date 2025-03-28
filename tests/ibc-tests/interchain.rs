@@ -41,7 +41,7 @@ fn test_kernel_ibc_execute_only() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -58,7 +58,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -84,7 +84,7 @@ fn test_kernel_ibc_execute_only() {
                     },
                 },
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -162,7 +162,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -179,7 +179,7 @@ fn test_kernel_ibc_funds_only() {
                 packet_ack,
                 channel_id,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -227,7 +227,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
-            &vec![],
+            &[],
         )
         .unwrap();
     osmosis
@@ -241,7 +241,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -299,7 +299,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 
@@ -316,7 +316,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 packet_ack,
                 channel_id,
             },
-            &vec![],
+            &[],
         )
         .unwrap();
 

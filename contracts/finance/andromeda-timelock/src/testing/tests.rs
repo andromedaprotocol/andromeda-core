@@ -188,7 +188,7 @@ fn test_execute_release_multiple_escrows() {
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::ReleaseFunds {
-        recipient_addr: Some(recipient_addr.to_string().into()),
+        recipient_addr: Some(recipient_addr.to_string()),
         start_after: None,
         limit: None,
     };
@@ -196,11 +196,11 @@ fn test_execute_release_multiple_escrows() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let bank_msg1 = BankMsg::Send {
-        to_address: recipient_addr.to_string().into(),
+        to_address: recipient_addr.to_string(),
         amount: coins(100, "uusd"),
     };
     let bank_msg2 = BankMsg::Send {
-        to_address: recipient_addr.to_string().into(),
+        to_address: recipient_addr.to_string(),
         amount: coins(200, "uusd"),
     };
     assert_eq!(

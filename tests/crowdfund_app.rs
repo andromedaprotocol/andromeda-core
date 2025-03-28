@@ -205,9 +205,7 @@ fn setup(
 
     let meta_data = TierMetaData {
         token_uri: None,
-        extension: TokenExtension {
-            ..Default::default()
-        },
+        extension: TokenExtension::default(),
     };
     crowdfund
         .execute_add_tier(
