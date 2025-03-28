@@ -130,7 +130,7 @@ impl AndrCW721Contract {
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const MINT_ACTION: &str = "Mint";
+pub const MINT_ACTION: &str = "Mint";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(

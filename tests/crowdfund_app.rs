@@ -6,6 +6,7 @@ use andromeda_crowdfund::mock::{
     mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, mock_purchase_cw20_msg, MockCrowdfund,
 };
 use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_minter, MockCW20};
+use andromeda_cw721::contract::MINT_ACTION;
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
@@ -236,16 +237,9 @@ fn setup(
         orderer: buyer_one.clone(),
     }];
 
-    let permission_action_msg = ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
-        action: "Mint".to_string(),
-    });
-    cw721
-        .execute(&mut router, &permission_action_msg, owner.clone(), &[])
-        .unwrap();
-
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(crowdfund.addr().to_string())],
-        action: "Mint".to_string(),
+        action: MINT_ACTION.to_string(),
         permission: Permission::Local(LocalPermission::whitelisted(None, None)),
     });
 
