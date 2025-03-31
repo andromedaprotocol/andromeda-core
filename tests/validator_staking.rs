@@ -13,6 +13,7 @@ use andromeda_std::error::ContractError::{self};
 use andromeda_testing::MockContract;
 
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
+use cw_multi_test::IntoBech32;
 
 #[test]
 fn test_validator_stake() {
@@ -29,7 +30,8 @@ fn test_validator_stake() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-    let validator_1 = router.api().addr_make("validator1");
+
+    let validator_1 = "validator1".into_bech32();
 
     let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
         validator_1.clone(),
@@ -182,7 +184,7 @@ fn test_restake() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-    let validator_1 = router.api().addr_make("validator1");
+    let validator_1 = "validator1".into_bech32();
 
     let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
         validator_1.clone(),
@@ -313,7 +315,7 @@ fn test_validator_redelegate() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-    let validator_1 = router.api().addr_make("validator1");
+    let validator_1 = "validator1".into_bech32();
 
     let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
         validator_1.clone(),
@@ -382,7 +384,7 @@ fn test_validator_redelegate() {
     assert_eq!(contract_balance, coin(50, "TOKEN"));
 
     // Redelegate //
-    let validator_2 = router.api().addr_make("validator2");
+    let validator_2 = "validator2".into_bech32();
 
     // Redelegate with invalid amount
     let err = validator_staking
@@ -441,7 +443,7 @@ fn test_validator_stake_and_unstake_specific_amount() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-    let validator_1 = router.api().addr_make("validator1");
+    let validator_1 = "validator1".into_bech32();
 
     let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
         validator_1.clone(),
@@ -596,9 +598,9 @@ fn test_update_default_validator() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-    let validator_1 = router.api().addr_make("validator1");
-    let validator_2 = router.api().addr_make("validator2");
-    let validator_3 = router.api().addr_make("validator3");
+    let validator_1 = "validator1".into_bech32();
+    let validator_2 = "validator2".into_bech32();
+    let validator_3 = "validator3".into_bech32();
 
     let validator_staking_init_msg = mock_validator_staking_instantiate_msg(
         validator_1.clone(),

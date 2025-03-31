@@ -10,29 +10,25 @@ use andromeda_testing::{
 
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    os::{
-        self,
-    },
+    os::{self},
 };
-use cw_orch_interchain::core::InterchainEnv;
 use cosmwasm_std::{coin, to_json_binary, Coin, Decimal, Empty, Uint128};
+use cw_orch_interchain::core::InterchainEnv;
 
-use andromeda_finance::splitter::{
-    AddressPercent, Cw20HookMsg,
-};
+use andromeda_finance::splitter::{AddressPercent, Cw20HookMsg};
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, MockSplitter,
 };
 // Cross chain test
 
 use andromeda_splitter::SplitterContract;
-use cw_orch::{mock::cw_multi_test::ibc::types::keccak256, prelude::*};
 use cw20::Cw20Coin;
 use cw_multi_test::Contract;
+use cw_orch::{mock::cw_multi_test::ibc::types::keccak256, prelude::*};
 use rstest::{fixture, rstest};
 
-use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use andromeda_kernel::ack::make_ack_success;
+use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 
 struct TestCase {
     router: MockApp,
@@ -316,8 +312,6 @@ fn test_successful_fixed_amount_splitter_cw20_with_remainder(setup: TestCase) {
     assert_eq!(cw20_balance, Uint128::from(1_000_000u128 - 200u128));
 }
 
-
-
 #[test]
 fn test_splitter_cross_chain_recipient() {
     // Initialize the interchain test environment which already has configured chains
@@ -336,7 +330,8 @@ fn test_splitter_cross_chain_recipient() {
     splitter_juno.upload().unwrap();
 
     // Register the splitter in ADODB
-    juno.aos.adodb
+    juno.aos
+        .adodb
         .execute(
             &os::adodb::ExecuteMsg::Publish {
                 code_id: splitter_juno.code_id().unwrap(),
@@ -384,7 +379,6 @@ fn test_splitter_cross_chain_recipient() {
         )
         .unwrap();
 
-    
     // Send funds to splitter
     let splitter_juno_send_request = splitter_juno
         .execute(
@@ -406,10 +400,9 @@ fn test_splitter_cross_chain_recipient() {
     let ibc_denom = format!("{}/{}", ibc_channel, juno.denom);
     let expected_denom = format!("ibc/{}", hex::encode(keccak256(ibc_denom.as_bytes())));
 
-
     // Check if the packet was successful and verify balances
     ensure_packet_success(packet_lifetime);
-    
+
     // Check that the kernel on osmosis received funds
     let balances = osmosis
         .chain
@@ -420,7 +413,8 @@ fn test_splitter_cross_chain_recipient() {
     assert_eq!(balances[0].amount.u128(), 200);
 
     // Register trigger address
-    juno.aos.kernel
+    juno.aos
+        .kernel
         .execute(
             &os::kernel::ExecuteMsg::UpsertKeyAddress {
                 key: "trigger_key".to_string(),
@@ -433,9 +427,11 @@ fn test_splitter_cross_chain_recipient() {
     // Create packet ack for trigger
     let packet_ack = make_ack_success();
     let channel_id = juno.aos.get_aos_channel("osmosis").unwrap().ics20.unwrap();
-    
+
     // Trigger relay to complete the transaction
-    let kernel_juno_trigger_request = juno.aos.kernel
+    let kernel_juno_trigger_request = juno
+        .aos
+        .kernel
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
                 packet_sequence: 1,
@@ -450,7 +446,7 @@ fn test_splitter_cross_chain_recipient() {
     let packet_lifetime = interchain
         .await_packets(&juno.chain_id, kernel_juno_trigger_request)
         .unwrap();
-    
+
     // Verify the trigger was successful
     ensure_packet_success(packet_lifetime);
 

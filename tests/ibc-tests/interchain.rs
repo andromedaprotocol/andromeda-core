@@ -5,7 +5,6 @@ use andromeda_math::counter::{
     CounterRestriction, GetCurrentAmountResponse, InstantiateMsg as CounterInstantiateMsg, State,
 };
 
-use hex;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
     amp::{
@@ -14,6 +13,7 @@ use andromeda_std::{
     },
     os,
 };
+use hex;
 
 use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
@@ -278,7 +278,11 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
-    let denom_path = format!("{}/{}", osmosis.aos.get_aos_channel("juno").unwrap().direct.unwrap(), juno.denom.clone());
+    let denom_path = format!(
+        "{}/{}",
+        osmosis.aos.get_aos_channel("juno").unwrap().direct.unwrap(),
+        juno.denom.clone()
+    );
     let expected_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
 
     // Check kernel balance before trigger execute msg
