@@ -46,5 +46,5 @@ serde = { workspace = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true }
 cw-orch = "=0.24.1"
-cw-orch-interchain = "=0.3.0"
+cw-orch-interchain = "=0.9.0"
 anyhow = "1.0.97"
