@@ -28,6 +28,8 @@ ado_deployer!(
 #[case::juno_to_osmosis("juno", "osmosis")]
 #[case::andromeda_to_juno("andromeda", "juno")]
 fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain2_name: &str) {
+    use cw_orch::mock::cw_multi_test::ibc::types::keccak256;
+
     let InterchainTestEnv {
         juno,
         osmosis,
@@ -116,8 +118,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
-    let ibc_denom = format!(
-        "ibc/{}/{}",
+    let denom_path = format!(
+        "{}/{}",
         chain1
             .aos
             .get_aos_channel(&chain2.chain_name)
@@ -126,8 +128,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
             .unwrap(),
         chain2.denom.clone()
     );
-
-    println!("IBCDenom: {:?}", &ibc_denom);
+    let expected_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
 
     // Setup trigger
     chain2
@@ -174,8 +175,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
 
     let balance2 = chain1.chain.query_all_balances(&recipient2).unwrap();
 
-    assert_eq!(balance1[0].denom, ibc_denom);
-    assert_eq!(balance2[0].denom, ibc_denom);
+    assert_eq!(balance1[0].denom, expected_denom);
+    assert_eq!(balance2[0].denom, expected_denom);
     assert_eq!(balance1[0].amount, Uint128::new(60)); // 60%
     assert_eq!(balance2[0].amount, Uint128::new(40)); // 40%
 }

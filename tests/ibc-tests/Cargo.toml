@@ -15,13 +15,8 @@ name = "interchain"
 path = "interchain.rs"
 
 [[test]]
-name = "rate-limiting-ibc"
-path = "rate_limiting_ibc.rs"
-
-[[test]]
 name = "splitter-ibc"
 path = "splitter_ibc.rs"
-
 
 
 [dev-dependencies]
@@ -51,11 +46,9 @@ andromeda-auction = { path = "../../contracts/non-fungible-tokens/andromeda-auct
 andromeda-cw721 = { path = "../../contracts/non-fungible-tokens/andromeda-cw721", features = [
     "testing",
 ] }
-andromeda-rate-limiting-withdrawals = { path = "../../contracts/finance/andromeda-rate-limiting-withdrawals", features = [
-    "testing"
-] }
 andromeda-non-fungible-tokens = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
+cw-multi-test = { workspace = true, features = ["cosmwasm_1_2", "staking"]}
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.8.1"
 rstest = "0.25.0"

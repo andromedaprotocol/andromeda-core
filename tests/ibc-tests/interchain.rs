@@ -142,18 +142,24 @@ fn test_kernel_ibc_funds_only() {
 
     ensure_packet_success(packet_lifetime);
 
-    let ibc_denom: String = format!(
-        "ibc/{}/{}",
-        osmosis.aos.get_aos_channel("juno").unwrap().ics20.unwrap(),
+    let denom_path = format!(
+        "{}/{}",
+        osmosis
+            .aos
+            .get_aos_channel(&juno.chain_name)
+            .unwrap()
+            .ics20
+            .unwrap(),
         juno.denom.clone()
     );
+    let expected_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
 
     let balances = osmosis
         .chain
         .query_all_balances(&osmosis.aos.kernel.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom);
     assert_eq!(balances[0].amount.u128(), 100);
 
     // Register trigger address
@@ -192,7 +198,7 @@ fn test_kernel_ibc_funds_only() {
 
     let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom);
     assert_eq!(balances[0].amount.u128(), 100);
 }
 
