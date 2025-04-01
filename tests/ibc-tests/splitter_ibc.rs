@@ -1,15 +1,22 @@
 #![cfg(not(target_arch = "wasm32"))]
-use andromeda_finance::splitter::{AddressPercent, InstantiateMsg};
+use andromeda_finance::{
+    splitter::{AddressPercent, InstantiateMsg},
+    vesting::Config,
+};
 use andromeda_kernel::ack::make_ack_success;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
-    amp::{messages::AMPMsg, recipient::Recipient, AndrAddr},
+    amp::{
+        messages::{AMPMsg, AMPMsgConfig},
+        recipient::Recipient,
+        AndrAddr,
+    },
     os,
 };
 use andromeda_testing::{
     ado_deployer, interchain::ensure_packet_success, register_ado, InterchainTestEnv,
 };
-use cosmwasm_std::{to_json_binary, Coin, Decimal, Uint128};
+use cosmwasm_std::{to_json_binary, Coin, Decimal, ReplyOn, Uint128};
 use cw_orch::mock::cw_multi_test::MockApiBech32;
 use cw_orch::mock::MockBase;
 use cw_orch::prelude::*;
@@ -242,44 +249,48 @@ fn test_splitter_ibc_update_recipients() {
         )
         .unwrap();
 
-    let updated_recipients = andromeda_finance::splitter::ExecuteMsg::UpdateRecipients {
-        recipients: vec![
-            AddressPercent {
-                recipient: Recipient {
-                    address: AndrAddr::from_string(recipient1),
-                    msg: None,
-                    ibc_recovery_address: None,
-                },
-                percent: Decimal::percent(50),
+    let recipients = vec![
+        AddressPercent {
+            recipient: Recipient {
+                address: recipient1.into(),
+                msg: None,
+                ibc_recovery_address: None,
             },
-            AddressPercent {
-                recipient: Recipient {
-                    address: AndrAddr::from_string(recipient2),
-                    msg: None,
-                    ibc_recovery_address: None,
-                },
-                percent: Decimal::percent(50),
+            percent: Decimal::percent(50),
+        },
+        AddressPercent {
+            recipient: Recipient {
+                address: recipient2.into(),
+                msg: None,
+                ibc_recovery_address: None,
             },
-        ],
-    };
+            percent: Decimal::percent(50),
+        },
+    ];
 
-    let splitter_addr = splitter_osmosis.address().unwrap();
-    let osmosis_recipient =
-        AndrAddr::from_string(format!("ibc://{}/{}", osmosis.chain_name, splitter_addr));
-
-    let ibc_update_msg = AMPMsg::new(
-        osmosis_recipient,
-        to_json_binary(&updated_recipients).unwrap(),
-        Some(vec![]),
-    );
-
-    // 5) Send the IBC message from Juno.
     let kernel_tx = juno
         .aos
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send {
-                message: ibc_update_msg,
+                message: AMPMsg {
+                    recipient: AndrAddr::from_string(format!(
+                        "ibc://osmosis/{}",
+                        splitter_osmosis.address().unwrap()
+                    )),
+                    message: to_json_binary(
+                        &andromeda_splitter::mock::mock_splitter_update_recipients_msg(recipients),
+                    )
+                    .unwrap(),
+                    funds: vec![],
+                    config: AMPMsgConfig {
+                        reply_on: cosmwasm_std::ReplyOn::Always,
+                        exit_at_error: false,
+                        gas_limit: None,
+                        direct: true,
+                        ibc_config: None,
+                    },
+                },
             },
             &[],
         )

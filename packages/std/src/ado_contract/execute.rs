@@ -355,6 +355,7 @@ macro_rules! unwrap_amp_msg {
 
         if let ExecuteMsg::AMPReceive(mut pkt) = msg {
             ctx.deps.api.debug("Unwrapping AMP Packet");
+
             ctx.info = MessageInfo {
                 sender: ctx.deps.api.addr_validate(
                     pkt.get_verified_origin(&ctx.info.clone(), &ctx.deps.as_ref())
