@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: macro error crate references [(#799)](https://github.com/andromedaprotocol/andromeda-core/pull/799)
 - fix: Prevent duplicate relay in Kernel [(#802)](https://github.com/andromedaprotocol/andromeda-core/pull/802)
 - fix: ibc username not working for ibc send with funds [(#814)](https://github.com/andromedaprotocol/andromeda-core/pull/814)
+- fix: kernel's handle_local not resolving AndrAddr [(#846)](https://github.com/andromedaprotocol/andromeda-core/pull/846)
 
 ## Release 4
 

@@ -420,7 +420,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(4_u128, "uandr"), Coin::new(1_u128, "uandr")]),
             1,
         )
@@ -461,7 +461,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(2_u128, "uandr"), Coin::new(1_u128, "uandr")]),
             1,
         )
@@ -502,7 +502,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![
                 Coin::new(50_u128, "uandr"),
                 Coin::new(50_u128, "uandr"),
@@ -613,7 +613,7 @@ fn test_execute_send_ado_recipient() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![
                 Coin::new(1000_u128, "uluna"),
                 Coin::new(2000_u128, "uluna"),
@@ -902,7 +902,7 @@ fn test_execute_send_with_multiple_thresholds() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(2_u128, "uandr"), Coin::new(4_u128, "uandr")]),
             1,
         )
@@ -946,7 +946,7 @@ fn test_execute_send_with_multiple_thresholds() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(7_u128, "uandr"), Coin::new(7_u128, "uandr")]),
             1,
         )
@@ -987,7 +987,7 @@ fn test_execute_send_with_multiple_thresholds() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(1_u128, "uandr"), Coin::new(4_u128, "uandr")]),
             1,
         )

@@ -8,20 +8,18 @@ use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg, MockSplitter,
 };
 use andromeda_std::{
-    amp::{AndrAddr, Recipient},
+    amp::{messages::AMPMsg, AndrAddr, Recipient},
     error::ContractError,
+    os::{self, kernel::Cw20HookMsg},
 };
 use andromeda_testing::{
+    ado_deployer,
     mock::mock_app,
     mock_builder::MockAndromedaBuilder,
     mock_contract::{MockADO, MockContract},
+    InterchainTestEnv,
 };
-use cosmwasm_std::{coin, Addr, Binary, Decimal};
-
-use andromeda_std::os::kernel::Cw20HookMsg;
-use andromeda_std::{amp::messages::AMPMsg, os};
-use andromeda_testing::{ado_deployer, InterchainTestEnv};
-use cosmwasm_std::{to_json_binary, Coin, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Coin, Decimal, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_orch::prelude::*;
 use rstest::*;

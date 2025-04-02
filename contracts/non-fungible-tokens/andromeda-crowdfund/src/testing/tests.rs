@@ -1022,7 +1022,7 @@ mod test {
         );
         let amp_msg = amp_pkt
             .to_sub_msg(
-                MOCK_KERNEL_CONTRACT,
+                Addr::unchecked(MOCK_KERNEL_CONTRACT),
                 Some(coins(10000, MOCK_NATIVE_DENOM)),
                 1,
             )

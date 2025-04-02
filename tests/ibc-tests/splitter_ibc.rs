@@ -1,8 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
-use andromeda_finance::{
-    splitter::{AddressPercent, InstantiateMsg},
-    vesting::Config,
-};
+use andromeda_finance::splitter::{AddressPercent, InstantiateMsg};
 use andromeda_kernel::ack::make_ack_success;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
@@ -16,7 +13,7 @@ use andromeda_std::{
 use andromeda_testing::{
     ado_deployer, interchain::ensure_packet_success, register_ado, InterchainTestEnv,
 };
-use cosmwasm_std::{to_json_binary, Coin, Decimal, ReplyOn, Uint128};
+use cosmwasm_std::{to_json_binary, Coin, Decimal, Uint128};
 use cw_orch::mock::cw_multi_test::MockApiBech32;
 use cw_orch::mock::MockBase;
 use cw_orch::prelude::*;

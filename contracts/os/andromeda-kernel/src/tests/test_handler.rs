@@ -59,7 +59,11 @@ fn test_handle_local() {
                     None,
                 )],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
@@ -77,7 +81,11 @@ fn test_handle_local() {
                     None,
                 )],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
@@ -100,7 +108,7 @@ fn test_handle_local() {
                 )],
             )
             .to_sub_msg(
-                MOCK_APP_CONTRACT,
+                Addr::unchecked(MOCK_APP_CONTRACT),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
                 ReplyId::AMPMsg.repr(),
             )
@@ -199,11 +207,11 @@ fn test_handle_local() {
         TestHandleLocalCase {
             name: "Bank send no funds",
             sender: "sender",
-            msg: AMPMsg::new("receiver", Binary::default(), None),
+            msg: AMPMsg::new(RECEIVER, Binary::default(), None),
             ctx: None,
             expected_submessage: SubMsg::reply_on_error(
                 BankMsg::Send {
-                    to_address: "receiver".to_string(),
+                    to_address: RECEIVER.to_string(),
                     amount: vec![],
                 },
                 ReplyId::AMPMsg.repr(),
@@ -222,7 +230,11 @@ fn test_handle_local() {
                 SENDER,
                 vec![create_test_msg_with_config(config)],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },

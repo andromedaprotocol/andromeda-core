@@ -331,12 +331,12 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let summary = crowdfund.query_campaign_summary(&mut router);
     assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
-    let recipient_balance = router
+    let recipient_balance: Uint128 = router
         .wrap()
         .query_balance(recipient.clone().address, "uandr")
         .unwrap()
         .amount;
-    assert_eq!(summary.current_capital, recipient_balance.into());
+    assert_eq!(summary.current_capital, recipient_balance.u128());
 
     // Claim tier
     let _ = crowdfund
@@ -706,8 +706,8 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let summary = crowdfund.query_campaign_summary(&mut router);
     assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
-    let recipient_balance = cw20.query_balance(&router, recipient.clone().address);
-    assert_eq!(summary.current_capital, recipient_balance.into());
+    let recipient_balance: Uint128 = cw20.query_balance(&router, recipient.clone().address);
+    assert_eq!(summary.current_capital, recipient_balance.u128());
 
     // Claim tier
     let _ = crowdfund

@@ -230,7 +230,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![
                 Coin::new(1_u128, "uandr"),
                 Coin::new(1_u128, "uandr"),
@@ -289,7 +289,7 @@ fn test_execute_send() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(1_u128, "uandr"), Coin::new(30_u128, "usdc")]),
             1,
         )
@@ -364,7 +364,7 @@ fn test_execute_send_ado_recipient() {
     );
     let amp_msg = amp_pkt
         .to_sub_msg(
-            MOCK_KERNEL_CONTRACT,
+            Addr::unchecked(MOCK_KERNEL_CONTRACT),
             Some(vec![Coin::new(1_u128, "uandr"), Coin::new(1_u128, "uandr")]),
             1,
         )

@@ -71,6 +71,9 @@ pub fn handle_local(
         ref config,
         ref recipient,
     } = amp_message;
+
+    let recipient_addr = recipient.get_raw_address(&deps.as_ref())?;
+
     // Handle empty message - send funds only
     if message == &Binary::default() {
         ensure!(
@@ -80,11 +83,8 @@ pub fn handle_local(
             }
         );
 
-        let (bank_msg, attrs) = create_bank_send_msg(
-            &recipient.get_raw_address(&deps.as_ref())?,
-            funds,
-            ReplyId::AMPMsg.repr(),
-        );
+        let (bank_msg, attrs) =
+            create_bank_send_msg(&recipient_addr, funds, ReplyId::AMPMsg.repr());
 
         return Ok(Response::default()
             .add_submessage(bank_msg)
@@ -101,16 +101,13 @@ pub fn handle_local(
 
     // Generate submessage based on whether recipient is an ADO or if the message is direct
     let sub_msg = if config.direct || !is_ado {
-        amp_message.generate_sub_msg_direct(
-            recipient.get_raw_address(&deps.as_ref())?,
-            ReplyId::AMPMsg.repr(),
-        )
+        amp_message.generate_sub_msg_direct(recipient_addr, ReplyId::AMPMsg.repr())
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
         let previous_sender = info.sender.to_string();
 
         AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]).to_sub_msg(
-            recipient.get_raw_address(&deps.as_ref())?,
+            recipient_addr,
             Some(funds.clone()),
             ReplyId::AMPMsg.repr(),
         )?
@@ -461,8 +458,7 @@ pub fn amp_receive(
             .flat_map(|m| m.funds.clone())
             .collect::<Vec<Coin>>();
 
-        let new_pkt_msg =
-            new_pkt.to_sub_msg(env.contract.address.to_string(), Some(new_funds), 0)?;
+        let new_pkt_msg = new_pkt.to_sub_msg(env.contract.address, Some(new_funds), 0)?;
         res.messages.extend_from_slice(&[new_pkt_msg]);
     }
 
