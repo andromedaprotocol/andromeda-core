@@ -13,7 +13,6 @@ use andromeda_std::{
     },
     os,
 };
-use hex;
 
 use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
