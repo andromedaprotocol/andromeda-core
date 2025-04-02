@@ -521,8 +521,7 @@ fn withdraw_to_recipient(
 ) -> Result<SubMsg, ContractError> {
     match denom {
         Asset::NativeToken(denom) => {
-            let kernel_address =
-                ADOContract::default().get_kernel_address(ctx.deps.as_ref().storage)?;
+            let kernel_address = ctx.contract.get_kernel_address(ctx.deps.as_ref().storage)?;
 
             let owner = ADOContract::default().owner(ctx.deps.as_ref().storage)?;
             let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string())

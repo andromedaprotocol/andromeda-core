@@ -315,7 +315,7 @@ pub fn execute_store_user_coordinate(
         if let Ok(contract_info) = contract_info {
             let code_id = contract_info.code_id;
             let adodb_addr =
-                ADOContract::default().get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
+                ctx.contract.get_adodb_address(ctx.deps.storage, &ctx.deps.querier)?;
             let ado_type = AOSQuerier::ado_type_getter(&ctx.deps.querier, &adodb_addr, code_id)?;
 
             if ado_type.is_none() {

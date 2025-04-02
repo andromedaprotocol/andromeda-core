@@ -158,7 +158,7 @@ pub fn execute_start_sale(
         ContractError::InvalidZeroAmount {}
     );
     ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
+        ctx.contract.is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
     // Message sender in this case should be the token address

@@ -38,8 +38,8 @@ pub fn handle_add_app_component(
     let idx = add_app_component(ctx.deps.storage, &component)?;
     ensure!(idx < 50, ContractError::TooManyAppComponents {});
 
-    let adodb_addr = ADOContract::default().get_adodb_address(ctx.deps.storage, querier)?;
-    let vfs_addr = ADOContract::default().get_vfs_address(ctx.deps.storage, querier)?;
+    let adodb_addr = ctx.contract.get_adodb_address(ctx.deps.storage, querier)?;
+    let vfs_addr = ctx.contract.get_vfs_address(ctx.deps.storage, querier)?;
 
     let mut resp = Response::new()
         .add_attribute("method", "add_app_component")
@@ -198,7 +198,7 @@ pub fn update_address(
         .add_attribute("address", addr.clone());
 
     if !name.starts_with('.') {
-        let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
+        let kernel_address = ctx.contract.get_kernel_address(deps.storage)?;
         let register_component_path_msg = register_component_path(
             kernel_address,
             &deps.querier,
