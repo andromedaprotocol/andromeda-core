@@ -121,7 +121,6 @@ pub fn execute_receive(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn execute_set_redemption_clause_cw20(
     ctx: ExecuteContext,
     amount_sent: Uint128,
@@ -138,17 +137,8 @@ pub fn execute_set_redemption_clause_cw20(
         ContractError::InvalidZeroAmount {}
     );
 
-    // Check if the creator of the redemption clause is either the cw20 contract owner or admin
-    let cw20_address = TOKEN_ADDRESS
-        .load(deps.storage)?
-        .get_raw_address(&deps.as_ref())?;
-    let contract_info = deps
-        .querier
-        .query_wasm_contract_info(cw20_address.clone())?;
-    let cw20_owner = contract_info.creator;
-
     ensure!(
-        cw20_owner == sender || contract_info.admin == Some(sender.to_string()),
+        ctx.contract.is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
 
@@ -195,7 +185,6 @@ pub fn execute_set_redemption_clause_cw20(
     ]))
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn execute_set_redemption_clause_native(
     ctx: ExecuteContext,
     exchange_rate: Uint128,
@@ -220,20 +209,6 @@ pub fn execute_set_redemption_clause_native(
     ensure!(
         !exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
-    );
-
-    // Check if the creator of the redemption clause is either the cw20 contract owner or admin
-    let cw20_address = TOKEN_ADDRESS
-        .load(deps.storage)?
-        .get_raw_address(&deps.as_ref())?;
-    let contract_info = deps
-        .querier
-        .query_wasm_contract_info(cw20_address.clone())?;
-    let cw20_owner = contract_info.creator;
-
-    ensure!(
-        cw20_owner == info.sender || contract_info.admin == Some(info.sender.to_string()),
-        ContractError::Unauthorized {}
     );
 
     // Check if a redemption clause already exists

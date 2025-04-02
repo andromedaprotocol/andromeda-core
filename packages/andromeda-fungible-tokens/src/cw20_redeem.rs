@@ -26,6 +26,7 @@ pub enum ExecuteMsg {
     #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
     /// Starts a redemption with the native funds sent
+    #[attrs(restricted)]
     SetRedemptionClause {
         exchange_rate: Uint128,
         start_time: Option<Expiry>,
