@@ -36,6 +36,7 @@ serde = { workspace = true }
 schemars = "0.8.22"
 hex = "0.4.3"
 sha2 = "0.10.8"
+cw-orch = { workspace = true }
 
 
 andromeda-std = { workspace = true }
@@ -43,7 +44,6 @@ andromeda-std = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true, optional = true }
-cw-orch = { workspace = true }
 
 [dev-dependencies]
 # andromeda-testing = { workspace = true, optional = true }
