@@ -158,7 +158,7 @@ pub fn execute_start_sale(
         ContractError::InvalidZeroAmount {}
     );
     ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
+        ctx.contract.is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
     // Message sender in this case should be the token address
@@ -195,7 +195,6 @@ pub fn execute_start_sale(
         recipient: recipient.unwrap_or(sender),
         start_time: start_expiration,
         end_time: end_expiration,
-        start_amount: amount,
     };
     SALE.save(deps.storage, &asset.to_string(), &sale)?;
 
@@ -206,7 +205,6 @@ pub fn execute_start_sale(
         attr("amount", amount),
         attr("start_time", start_expiration.to_string()),
         attr("end_time", end_expiration.to_string()),
-        attr("start_amount", amount),
     ]))
 }
 
@@ -339,9 +337,7 @@ pub fn execute_purchase_native(
     let sender = info.sender.to_string();
 
     // Only allow one coin for purchasing
-    one_coin(info)?;
-
-    let payment = info.funds.first().unwrap();
+    let payment = one_coin(info)?;
     let asset = AssetInfo::Native(payment.denom.to_string());
     let amount = payment.amount;
 

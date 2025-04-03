@@ -103,7 +103,7 @@ pub fn store_matrix(
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         STORE_MATRIX_ACTION,
@@ -140,7 +140,7 @@ pub fn delete_matrix(
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         DELETE_MATRIX_ACTION,

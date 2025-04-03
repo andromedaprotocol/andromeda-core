@@ -404,7 +404,7 @@ pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractEr
 //     let state = STATE.load(deps.storage)?;
 //     // CHECK :: Only Owner can call this function
 //     ensure!(
-//         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+//         ctx.contract.is_contract_owner(deps.storage, info.sender.as_str())?,
 //         ContractError::Unauthorized {}
 //     );
 
