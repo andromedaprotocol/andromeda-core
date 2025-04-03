@@ -561,6 +561,8 @@ mod tests {
             let permission = Permission::Local(LocalPermission::Whitelisted {
                 start: None,
                 expiration: None,
+                frequency: None,
+                last_used: None,
             });
 
             // Save the permission in storage
