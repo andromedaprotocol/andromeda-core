@@ -27,6 +27,7 @@ use cosmwasm_std::{
     IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
+#[cfg(not(target_arch = "wasm32"))]
 use cw_orch::mock::cw_multi_test::ibc::types::keccak256;
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
@@ -356,10 +357,7 @@ fn handle_ibc_transfer_funds_reply(
 
         let new_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
 
-        adjusted_funds = Coin::new(
-            ics20_packet_info.funds.amount.u128(),
-            new_denom, // "ibc/1b2f8f2baf5b42370343270756f8180dd56acc9aa1699406df7821ae75608c99".to_string(),
-        );
+        adjusted_funds = Coin::new(ics20_packet_info.funds.amount.u128(), new_denom);
     }
 
     let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
