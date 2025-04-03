@@ -266,7 +266,7 @@ impl ADOVersion {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::mock_dependencies;
-
+    const CW20: &str = "cosmwasm1tckpxnyvy0tulzz56yenztghjkx3gqyl28sytat22v5zwr8nffds7j04g6";
     use super::*;
 
     #[test]
@@ -313,7 +313,7 @@ mod tests {
         let deps = mock_dependencies();
         let action_fee = ActionFee::new(
             "action".to_string(),
-            "cw20:address".to_string(),
+            format!("cw20:{}", CW20),
             Uint128::zero(),
         );
         assert!(action_fee.validate_asset(deps.as_ref().api).is_ok());

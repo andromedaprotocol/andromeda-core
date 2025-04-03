@@ -46,10 +46,12 @@ use ::prost::Message;
 /// Adapted from https://github.com/osmosis-labs/osmosis/blob/main/cosmwasm/contracts/crosschain-swaps/src/execute.rs#L301
 ///
 /// Handles the reply from sending an IBC hooks packet and creates an appropriate recovery
+#[allow(deprecated)]
 pub fn on_reply_ibc_hooks_packet_send(
     deps: DepsMut,
     msg: Reply,
 ) -> Result<Response, ContractError> {
+    // TODO this is deprecated
     let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
         return Err(ContractError::InvalidPacket {
             error: Some(format!("ibc hooks: failed reply: {:?}", msg.result)),
@@ -95,11 +97,13 @@ pub fn on_reply_ibc_hooks_packet_send(
 }
 
 // Handles the reply from an ICS20 funds transfer that did inlcude a message
+#[allow(deprecated)]
 pub fn on_reply_ibc_transfer(
     deps: DepsMut,
     _env: Env,
     msg: Reply,
 ) -> Result<Response, ContractError> {
+    // TODO this is deprecated
     if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
         let MsgTransferResponse { sequence } =
             MsgTransferResponse::decode(&b[..]).map_err(|_e| ContractError::InvalidPacket {
@@ -123,6 +127,8 @@ pub fn on_reply_ibc_transfer(
     if let Reply {
         id: 106,
         result: SubMsgResult::Ok(SubMsgResponse { events, .. }),
+        payload: _,
+        gas_used: _,
     } = msg.clone()
     {
         if let Some(send_packet_event) = events.iter().find(|e| e.ty == "send_packet") {
@@ -204,6 +210,7 @@ pub fn on_reply_refund_ibc_transfer_with_msg(
         to_address: refund_data.original_sender.clone(),
         amount: refund_data.funds.clone(),
         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+        memo: None,
     };
     REFUND_DATA.remove(deps.storage);
     Ok(Response::default()

@@ -314,9 +314,7 @@ mod tests {
                 label: "tier 1".to_string(),
                 metadata: TierMetaData {
                     token_uri: None,
-                    extension: TokenExtension {
-                        ..Default::default()
-                    },
+                    extension: TokenExtension::default(),
                 },
             },
             Tier {
@@ -326,9 +324,7 @@ mod tests {
                 label: "tier 2".to_string(),
                 metadata: TierMetaData {
                     token_uri: None,
-                    extension: TokenExtension {
-                        ..Default::default()
-                    },
+                    extension: TokenExtension::default(),
                 },
             },
         ];

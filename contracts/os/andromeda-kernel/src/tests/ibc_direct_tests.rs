@@ -6,7 +6,7 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::VFS_KEY;
 use andromeda_std::error::ContractError;
 use andromeda_std::os::kernel::{ChannelInfo, IbcExecuteMsg};
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 use cosmwasm_std::{from_json, Addr, Binary, Coin, CosmosMsg, IbcMsg, ReplyOn, Uint128};
 
 // Helper function to set up common test state
@@ -33,7 +33,8 @@ fn test_handle_ibc_direct_success() {
     // Setup
     let mut deps = mock_dependencies();
     let env: cosmwasm_std::Env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Set up test state with mocked storage values
     setup_test_state(&mut deps);
@@ -92,7 +93,7 @@ fn test_handle_ibc_direct_success() {
                     );
 
                     // Check the context
-                    assert_eq!(amp_packet.ctx.get_origin(), "sender");
+                    assert_eq!(amp_packet.ctx.get_origin(), sender.to_string());
 
                     // Should have one hop with correct source and destination chains
                     assert_eq!(amp_packet.ctx.previous_hops.len(), 1);
@@ -133,7 +134,8 @@ fn test_handle_ibc_direct_success() {
 fn test_handle_ibc_direct_empty_message() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Set up test state
     setup_test_state(&mut deps);
@@ -176,7 +178,8 @@ fn test_handle_ibc_direct_empty_message() {
 fn test_handle_ibc_direct_no_direct_channel() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Set up test state
     setup_test_state(&mut deps);
@@ -225,7 +228,8 @@ fn test_handle_ibc_direct_no_direct_channel() {
 fn test_handle_ibc_direct_with_existing_context() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Set up test state
     setup_test_state(&mut deps);
@@ -316,7 +320,8 @@ fn test_handle_ibc_direct_with_existing_context() {
 fn test_handle_ibc_direct_with_complex_path() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Set up test state
     setup_test_state(&mut deps);
@@ -384,7 +389,8 @@ fn test_handle_ibc_direct_with_complex_path() {
 fn test_handle_ibc_direct_with_custom_config() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Set up test state
     setup_test_state(&mut deps);
@@ -452,7 +458,8 @@ fn test_handle_ibc_direct_with_custom_config() {
 fn test_handle_ibc_direct_with_funds_attempt() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Set up test state
     setup_test_state(&mut deps);

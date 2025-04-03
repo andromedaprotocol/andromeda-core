@@ -28,7 +28,7 @@ impl IndexList<AuctionInfo> for AuctionIdIndices<'_> {
     }
 }
 
-pub fn auction_infos<'a>() -> IndexedMap<'a, &'a str, AuctionInfo, AuctionIdIndices<'a>> {
+pub fn auction_infos() -> IndexedMap<String, AuctionInfo, AuctionIdIndices<'static>> {
     let indexes = AuctionIdIndices {
         token: MultiIndex::new(
             |_pk: &[u8], r| r.token_address.clone(),
@@ -97,7 +97,7 @@ pub fn read_auction_infos(
 
     let mut res: Vec<AuctionInfo> = vec![];
     for key in keys.iter() {
-        res.push(auction_infos().load(storage, key)?);
+        res.push(auction_infos().load(storage, key.to_string())?);
     }
     Ok(res)
 }

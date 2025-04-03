@@ -10,9 +10,10 @@ use andromeda_std::{
     os::adodb::ADOVersion,
 };
 use andromeda_vfs::mock::mock_andromeda_vfs;
-use cosmwasm_std::{coin, Addr, BlockInfo, Coin, Decimal, Timestamp, Validator};
+use cosmwasm_std::{coin, Addr, BlockInfo, Coin, Timestamp, Validator};
 use cw_multi_test::{
-    App, AppBuilder, BankKeeper, Executor, MockAddressGenerator, MockApiBech32, WasmKeeper,
+    App, AppBuilder, BankKeeper, Executor, IntoBech32, MockApiBech32, SimpleAddressGenerator,
+    StakeKeeper, WasmKeeper,
 };
 
 use crate::{
@@ -26,10 +27,29 @@ pub type MockApp = App<BankKeeper, MockApiBech32>;
 
 pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
     let denoms = denoms.unwrap_or(vec!["uandr", "uusd"]);
+    let validator_addr_one = "validator1".into_bech32();
+
+    let validator_one = Validator::new(
+        validator_addr_one.to_string(),
+        cosmwasm_std::Decimal::zero(),
+        cosmwasm_std::Decimal::percent(20),
+        cosmwasm_std::Decimal::percent(1),
+    );
+
+    let validator_addr_two = "validator2".into_bech32();
+
+    let validator_two = Validator::new(
+        validator_addr_two.to_string(),
+        cosmwasm_std::Decimal::zero(),
+        cosmwasm_std::Decimal::percent(20),
+        cosmwasm_std::Decimal::percent(1),
+    );
+
     AppBuilder::new()
         .with_api(MockApiBech32::new("andr"))
-        .with_wasm(WasmKeeper::new().with_address_generator(MockAddressGenerator))
-        .build(|router, api, storage| {
+        .with_wasm(WasmKeeper::new().with_address_generator(SimpleAddressGenerator))
+        .with_staking(StakeKeeper::new())
+        .build(|router, _api, storage| {
             router
                 .bank
                 .init_balance(
@@ -41,46 +61,30 @@ pub fn mock_app(denoms: Option<Vec<&str>>) -> MockApp {
                         .collect::<Vec<Coin>>(),
                 )
                 .unwrap();
-
             router
                 .staking
                 .add_validator(
-                    api,
+                    _api,
                     storage,
                     &BlockInfo {
                         height: 0,
                         time: Timestamp::default(),
                         chain_id: "andromeda".to_string(),
                     },
-                    Validator {
-                        address: MockApiBech32::new("andr")
-                            .addr_make("validator1")
-                            .to_string(),
-                        commission: Decimal::zero(),
-                        max_commission: Decimal::percent(20),
-                        max_change_rate: Decimal::percent(1),
-                    },
+                    validator_one,
                 )
                 .unwrap();
-
             router
                 .staking
                 .add_validator(
-                    api,
+                    _api,
                     storage,
                     &BlockInfo {
                         height: 0,
                         time: Timestamp::default(),
-                        chain_id: "andromeda-1".to_string(),
+                        chain_id: "andromeda".to_string(),
                     },
-                    Validator {
-                        address: MockApiBech32::new("andr")
-                            .addr_make("validator2")
-                            .to_string(),
-                        commission: Decimal::zero(),
-                        max_commission: Decimal::percent(20),
-                        max_change_rate: Decimal::percent(1),
-                    },
+                    validator_two,
                 )
                 .unwrap();
         })

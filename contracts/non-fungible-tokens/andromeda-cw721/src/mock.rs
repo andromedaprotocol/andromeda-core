@@ -12,7 +12,7 @@ use andromeda_testing::{
 };
 use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty};
-use cw721::OwnerOfResponse;
+use cw721::msg::OwnerOfResponse;
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCW721(Addr);
@@ -135,11 +135,11 @@ pub fn mock_mint_msg(
     token_id: String,
     extension: TokenExtension,
     token_uri: Option<String>,
-    owner: String,
+    owner: impl Into<AndrAddr>,
 ) -> MintMsg {
     MintMsg {
         token_id,
-        owner,
+        owner: owner.into(),
         token_uri,
         extension,
     }
@@ -150,9 +150,7 @@ pub fn mock_mint_msg(
 pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
     let mut mint_msgs: Vec<MintMsg> = Vec::new();
     for i in 1..=amount {
-        let extension = TokenExtension {
-            publisher: owner.clone(),
-        };
+        let extension = TokenExtension {};
 
         let msg = mock_mint_msg(i.to_string(), extension, None, owner.clone());
         mint_msgs.push(msg);

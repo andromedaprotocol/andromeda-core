@@ -8,7 +8,7 @@ use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, BlockInfo, MessageInfo, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw721::{Cw721ReceiveMsg, Expiration};
+use cw721::{receiver::Cw721ReceiveMsg, Expiration};
 
 #[andr_instantiate]
 #[cw_serde]

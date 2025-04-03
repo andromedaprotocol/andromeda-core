@@ -1,6 +1,6 @@
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{message_info, mock_env};
 use cosmwasm_std::{
-    coin, from_json, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    coin, from_json, Addr, BankMsg, CosmosMsg, Decimal, Deps, Empty, Env, MessageInfo, Response,
 };
 
 use cw2::{get_contract_version, ContractVersion};
@@ -36,7 +36,7 @@ fn voter<T: Into<String>>(addr: T, weight: u64) -> Voter {
     }
 }
 
-const OWNER: &str = "admin0001";
+pub const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
 const VOTER1: &str = "voter0001";
 const VOTER2: &str = "voter0002";
 const VOTER3: &str = "voter0003";
@@ -48,21 +48,33 @@ const SOMEBODY: &str = "somebody";
 
 #[track_caller]
 fn setup_test_case(
-    deps: DepsMut,
+    deps: &mut cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        andromeda_std::testing::mock_querier::WasmMockQuerier,
+    >,
     info: MessageInfo,
     threshold: Threshold,
     max_voting_period: Duration,
 ) -> Result<Response<Empty>, ContractError> {
+    let voter1 = deps.api.addr_make(VOTER1);
+    let voter2 = deps.api.addr_make(VOTER2);
+    let voter3 = deps.api.addr_make(VOTER3);
+    let voter4 = deps.api.addr_make(VOTER4);
+    let voter5 = deps.api.addr_make(VOTER5);
+    let voter6 = deps.api.addr_make(VOTER6);
+    let noweight_voter = deps.api.addr_make(NOWEIGHT_VOTER);
+
     // Instantiate a contract with voters
     let voters = vec![
         voter(&info.sender, 1),
-        voter(VOTER1, 1),
-        voter(VOTER2, 2),
-        voter(VOTER3, 3),
-        voter(VOTER4, 4),
-        voter(VOTER5, 5),
-        voter(VOTER6, 1),
-        voter(NOWEIGHT_VOTER, 0),
+        voter(voter1, 1),
+        voter(voter2, 2),
+        voter(voter3, 3),
+        voter(voter4, 4),
+        voter(voter5, 5),
+        voter(voter6, 1),
+        voter(noweight_voter, 0),
     ];
 
     let instantiate_msg = InstantiateMsg {
@@ -72,7 +84,7 @@ fn setup_test_case(
         threshold,
         max_voting_period,
     };
-    instantiate(deps, mock_env(), info, instantiate_msg)
+    instantiate(deps.as_mut(), mock_env(), info, instantiate_msg)
 }
 
 fn get_tally(deps: Deps, proposal_id: u64) -> u64 {
@@ -94,8 +106,13 @@ fn get_tally(deps: Deps, proposal_id: u64) -> u64 {
 
 #[test]
 fn test_instantiate_works() {
-    let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info(OWNER, &[]);
+    let mut deps: cosmwasm_std::OwnedDeps<
+        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockApi,
+        andromeda_std::testing::mock_querier::WasmMockQuerier,
+    > = mock_dependencies_custom(&[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     let max_voting_period = Duration::Time(1234567);
 
@@ -137,8 +154,7 @@ fn test_instantiate_works() {
 
     // Total weight less than required weight not allowed
     let threshold = Threshold::AbsoluteCount { weight: 100 };
-    let err =
-        setup_test_case(deps.as_mut(), info.clone(), threshold, max_voting_period).unwrap_err();
+    let err = setup_test_case(&mut deps, info.clone(), threshold, max_voting_period).unwrap_err();
     assert_eq!(
         err,
         ContractError::Threshold(cw_utils::ThresholdError::UnreachableWeight {})
@@ -146,7 +162,7 @@ fn test_instantiate_works() {
 
     // All valid
     let threshold = Threshold::AbsoluteCount { weight: 1 };
-    setup_test_case(deps.as_mut(), info, threshold, max_voting_period).unwrap();
+    setup_test_case(&mut deps, info, threshold, max_voting_period).unwrap();
 
     // Verify
     assert_eq!(
@@ -165,17 +181,20 @@ fn zero_weight_member_cant_vote() {
     let threshold = Threshold::AbsoluteCount { weight: 4 };
     let voting_period = Duration::Time(2000000);
 
-    let info = mock_info(OWNER, &[]);
-    setup_test_case(deps.as_mut(), info, threshold, voting_period).unwrap();
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
+    setup_test_case(&mut deps, info, threshold, voting_period).unwrap();
 
+    let somebody = deps.api.addr_make(SOMEBODY);
     let bank_msg = BankMsg::Send {
-        to_address: SOMEBODY.into(),
+        to_address: somebody.into(),
         amount: vec![coin(1, "uandr")],
     };
     let msgs = vec![CosmosMsg::Bank(bank_msg)];
 
+    let non_voter = deps.api.addr_make(NOWEIGHT_VOTER);
     // Voter without voting power still can create proposal
-    let info = mock_info(NOWEIGHT_VOTER, &[]);
+    let info = message_info(&non_voter, &[]);
     let proposal = ExecuteMsg::Propose {
         title: "Rewarding somebody".to_string(),
         description: "Do we reward her?".to_string(),
@@ -193,7 +212,7 @@ fn zero_weight_member_cant_vote() {
         vote: Vote::No,
     };
     // Only voters with weight can vote
-    let info = mock_info(NOWEIGHT_VOTER, &[]);
+    let info = message_info(&Addr::unchecked(NOWEIGHT_VOTER), &[]);
     let err = execute(deps.as_mut(), mock_env(), info, no_vote).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 }
@@ -205,8 +224,9 @@ fn test_propose_works() {
     let threshold = Threshold::AbsoluteCount { weight: 4 };
     let voting_period = Duration::Time(2000000);
 
-    let info = mock_info(OWNER, &[]);
-    setup_test_case(deps.as_mut(), info, threshold, voting_period).unwrap();
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
+    setup_test_case(&mut deps, info, threshold, voting_period).unwrap();
 
     let bank_msg = BankMsg::Send {
         to_address: SOMEBODY.into(),
@@ -215,7 +235,7 @@ fn test_propose_works() {
     let msgs = vec![CosmosMsg::Bank(bank_msg)];
 
     // Only voters can propose
-    let info = mock_info(SOMEBODY, &[]);
+    let info = message_info(&Addr::unchecked(SOMEBODY), &[]);
     let proposal = ExecuteMsg::Propose {
         title: "Rewarding somebody".to_string(),
         description: "Do we reward her?".to_string(),
@@ -226,7 +246,8 @@ fn test_propose_works() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Wrong expiration option fails
-    let info = mock_info(OWNER, &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     let proposal_wrong_exp = ExecuteMsg::Propose {
         title: "Rewarding somebody".to_string(),
         description: "Do we reward her?".to_string(),
@@ -241,12 +262,14 @@ fn test_propose_works() {
         }
     );
 
+    let voter3 = deps.api.addr_make(VOTER3);
     // Proposal from voter works
-    let info = mock_info(VOTER3, &[]);
+    let info = message_info(&voter3, &[]);
     execute(deps.as_mut(), mock_env(), info, proposal.clone()).unwrap();
 
+    let voter4 = deps.api.addr_make(VOTER4);
     // Proposal from voter with enough vote power directly passes
-    let info = mock_info(VOTER4, &[]);
+    let info = message_info(&voter4, &[]);
     execute(deps.as_mut(), mock_env(), info, proposal).unwrap();
 }
 
@@ -257,8 +280,9 @@ fn test_vote_works() {
     let threshold = Threshold::AbsoluteCount { weight: 3 };
     let voting_period = Duration::Time(2000000);
 
-    let info = mock_info(OWNER, &[]);
-    setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
+    setup_test_case(&mut deps, info.clone(), threshold, voting_period).unwrap();
 
     // Propose
     let bank_msg = BankMsg::Send {
@@ -291,12 +315,13 @@ fn test_vote_works() {
     );
 
     // Only voters can vote
-    let info = mock_info(SOMEBODY, &[]);
+    let info = message_info(&Addr::unchecked(SOMEBODY), &[]);
     let err = execute(deps.as_mut(), mock_env(), info, yes_vote.clone()).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 
     // But voter1 can
-    let info = mock_info(VOTER1, &[]);
+    let voter1 = deps.api.addr_make(VOTER1);
+    let info = message_info(&voter1, &[]);
     execute(deps.as_mut(), mock_env(), info, yes_vote.clone()).unwrap();
 
     // No/Veto votes have no effect on the tally
@@ -311,7 +336,8 @@ fn test_vote_works() {
         proposal_id,
         vote: Vote::No,
     };
-    let info = mock_info(VOTER2, &[]);
+    let voter2 = deps.api.addr_make(VOTER2);
+    let info = message_info(&voter2, &[]);
     execute(deps.as_mut(), mock_env(), info, no_vote.clone()).unwrap();
 
     // Cast a Veto vote
@@ -319,7 +345,8 @@ fn test_vote_works() {
         proposal_id,
         vote: Vote::Veto,
     };
-    let info = mock_info(VOTER3, &[]);
+    let voter3 = deps.api.addr_make(VOTER3);
+    let info = message_info(&voter3, &[]);
     execute(deps.as_mut(), mock_env(), info.clone(), veto_vote).unwrap();
 
     // Verify
@@ -343,16 +370,19 @@ fn test_vote_works() {
     let err = execute(deps.as_mut(), env, info, no_vote).unwrap_err();
     assert_eq!(err, ContractError::Expired {});
 
+    let voter4 = deps.api.addr_make(VOTER4);
     // Vote it again, so it passes
-    let info = mock_info(VOTER4, &[]);
+    let info = message_info(&voter4, &[]);
     execute(deps.as_mut(), mock_env(), info, yes_vote.clone()).unwrap();
 
     // Passed proposals can still be voted (while they are not expired or executed)
-    let info = mock_info(VOTER5, &[]);
+    let voter5 = deps.api.addr_make(VOTER5);
+    let info = message_info(&voter5, &[]);
     execute(deps.as_mut(), mock_env(), info, yes_vote).unwrap();
 
     // Propose
-    let info = mock_info(OWNER, &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
     let bank_msg = BankMsg::Send {
         to_address: SOMEBODY.into(),
         amount: vec![coin(1, "BTC")],
@@ -375,28 +405,29 @@ fn test_vote_works() {
         vote: Vote::No,
     };
     // Voter1 vote no, weight 1
-    let info = mock_info(VOTER1, &[]);
+    let info = message_info(&voter1, &[]);
     execute(deps.as_mut(), mock_env(), info, no_vote.clone()).unwrap();
 
     // Voter 4 votes no, weight 4, total weight for no so far 5, need 14 to reject
-    let info = mock_info(VOTER4, &[]);
+    let info = message_info(&voter4, &[]);
     execute(deps.as_mut(), mock_env(), info, no_vote.clone()).unwrap();
 
     // Voter 3 votes no, weight 3, total weight for no far 8, need 14
-    let info = mock_info(VOTER3, &[]);
+    let info = message_info(&voter3, &[]);
     let _res = execute(deps.as_mut(), mock_env(), info, no_vote.clone()).unwrap();
 
     // Voter 5 votes no, weight 5, total weight for no far 13, need 14
-    let info = mock_info(VOTER5, &[]);
+    let info = message_info(&voter5, &[]);
     execute(deps.as_mut(), mock_env(), info, no_vote.clone()).unwrap();
 
     // Voter 2 votes no, weight 2, total weight for no so far 15, need 14.
     // Can now reject
-    let info = mock_info(VOTER2, &[]);
+    let info = message_info(&voter2, &[]);
     execute(deps.as_mut(), mock_env(), info, no_vote).unwrap();
 
     // Rejected proposals can still be voted (while they are not expired)
-    let info = mock_info(VOTER6, &[]);
+    let voter6 = deps.api.addr_make(VOTER6);
+    let info = message_info(&voter6, &[]);
     let yes_vote = ExecuteMsg::Vote {
         proposal_id,
         vote: Vote::Yes,
@@ -411,12 +442,14 @@ fn test_execute_works() {
     let threshold = Threshold::AbsoluteCount { weight: 3 };
     let voting_period = Duration::Time(2000000);
 
-    let info = mock_info(OWNER, &[]);
-    setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
+    setup_test_case(&mut deps, info.clone(), threshold, voting_period).unwrap();
 
     // Propose
+    let somebody = deps.api.addr_make(SOMEBODY);
     let bank_msg = BankMsg::Send {
-        to_address: SOMEBODY.into(),
+        to_address: somebody.into(),
         amount: vec![coin(1, "BTC")],
     };
     let msgs = vec![CosmosMsg::Bank(bank_msg)];
@@ -446,7 +479,8 @@ fn test_execute_works() {
         proposal_id,
         vote: Vote::Yes,
     };
-    let info = mock_info(VOTER3, &[]);
+    let voter3 = deps.api.addr_make(VOTER3);
+    let info = message_info(&voter3, &[]);
     execute(deps.as_mut(), mock_env(), info.clone(), vote).unwrap();
 
     // In passing: Try to close Passed fails
@@ -460,7 +494,8 @@ fn test_execute_works() {
     );
 
     // Execute works. Anybody can execute Passed proposals
-    let info = mock_info(SOMEBODY, &[]);
+    let somebody = deps.api.addr_make(SOMEBODY);
+    let info = message_info(&somebody, &[]);
     execute(deps.as_mut(), mock_env(), info.clone(), execution).unwrap();
 
     // In passing: Try to close Executed fails
@@ -484,12 +519,14 @@ fn proposal_pass_on_expiration() {
     };
     let voting_period = Duration::Time(2000000);
 
-    let info = mock_info(OWNER, &[]);
-    setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
+    setup_test_case(&mut deps, info.clone(), threshold, voting_period).unwrap();
 
     // Propose
+    let somebody = deps.api.addr_make(SOMEBODY);
     let bank_msg = BankMsg::Send {
-        to_address: SOMEBODY.into(),
+        to_address: somebody.into(),
         amount: vec![coin(1, "BTC")],
     };
     let msgs = vec![CosmosMsg::Bank(bank_msg)];
@@ -509,7 +546,8 @@ fn proposal_pass_on_expiration() {
         proposal_id,
         vote: Vote::Yes,
     };
-    let info = mock_info(VOTER3, &[]);
+    let voter3 = deps.api.addr_make(VOTER3);
+    let info = message_info(&voter3, &[]);
     execute(deps.as_mut(), mock_env(), info, vote).unwrap();
 
     // Wait until the voting period is over
@@ -531,7 +569,8 @@ fn proposal_pass_on_expiration() {
     assert_eq!(prop.status, Status::Passed);
 
     // Closing should NOT be possible
-    let info = mock_info(SOMEBODY, &[]);
+    let somebody = deps.api.addr_make(SOMEBODY);
+    let info = message_info(&somebody, &[]);
     let err = execute(
         deps.as_mut(),
         env.clone(),
@@ -558,7 +597,7 @@ fn proposal_pass_on_expiration() {
         res.attributes,
         Response::<Empty>::new()
             .add_attribute("action", "execute")
-            .add_attribute("sender", SOMEBODY)
+            .add_attribute("sender", somebody)
             .add_attribute("proposal_id", proposal_id.to_string())
             .attributes
     )
@@ -571,8 +610,9 @@ fn test_close_works() {
     let threshold = Threshold::AbsoluteCount { weight: 3 };
     let voting_period = Duration::Height(2000000);
 
-    let info = mock_info(OWNER, &[]);
-    setup_test_case(deps.as_mut(), info.clone(), threshold, voting_period).unwrap();
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
+    setup_test_case(&mut deps, info.clone(), threshold, voting_period).unwrap();
 
     // Propose
     let bank_msg = BankMsg::Send {
@@ -594,7 +634,8 @@ fn test_close_works() {
     let closing = ExecuteMsg::Close { proposal_id };
 
     // Anybody can close
-    let info = mock_info(SOMEBODY, &[]);
+    let somebody = deps.api.addr_make(SOMEBODY);
+    let info = message_info(&somebody, &[]);
 
     // Non-expired proposals cannot be closed
     let err = execute(deps.as_mut(), mock_env(), info, closing).unwrap_err();
@@ -606,7 +647,8 @@ fn test_close_works() {
     );
 
     // Expired proposals can be closed
-    let info = mock_info(OWNER, &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     let proposal = ExecuteMsg::Propose {
         title: "(Try to) pay somebody".to_string(),
@@ -626,7 +668,7 @@ fn test_close_works() {
     execute(
         deps.as_mut(),
         env,
-        mock_info(SOMEBODY, &[]),
+        message_info(&somebody, &[]),
         closing.clone(),
     )
     .unwrap();

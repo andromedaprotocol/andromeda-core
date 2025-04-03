@@ -85,7 +85,7 @@ impl IndexList<SaleInfo> for SaleIdIndices<'_> {
     }
 }
 
-pub fn sale_infos<'a>() -> IndexedMap<'a, &'a str, SaleInfo, SaleIdIndices<'a>> {
+pub fn sale_infos() -> IndexedMap<String, SaleInfo, SaleIdIndices<'static>> {
     let indexes = SaleIdIndices {
         token: MultiIndex::new(
             |_pk: &[u8], r| r.token_address.clone(),
@@ -115,7 +115,7 @@ pub fn read_sale_infos(
 
     let mut res: Vec<SaleInfo> = vec![];
     for key in keys.iter() {
-        res.push(sale_infos().load(storage, key)?);
+        res.push(sale_infos().load(storage, key.to_string())?);
     }
     Ok(res)
 }

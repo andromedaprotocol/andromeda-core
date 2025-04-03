@@ -11,7 +11,7 @@ use andromeda_std::{
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coin,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockStorage},
     to_json_binary, Env, MessageInfo, OwnedDeps, QuerierWrapper, Response,
 };
 use cw_utils::PaymentError;
@@ -45,7 +45,8 @@ fn setup() -> (OwnedDeps<MockStorage, MockApi, WasmMockQuerier>, Env) {
     let mut deps = mock_dependencies_custom(&[]);
     let querier = QuerierWrapper::new(&deps.querier);
     let env = mock_env();
-    let info = mock_info(OWNER, &[]);
+    let owner = deps.api.addr_make(OWNER);
+    let info = message_info(&owner, &[]);
 
     ADOContract::default()
         .instantiate(
@@ -97,7 +98,7 @@ fn test_exec_fn_direct(
     let (mut deps, env) = setup;
 
     // Test case with no funds
-    let send_info_no_funds = mock_info(case.1, &[]);
+    let send_info_no_funds = message_info(case.1, &[]);
     let res_no_funds = execute(
         deps.as_mut(),
         env.clone(),
@@ -111,7 +112,7 @@ fn test_exec_fn_direct(
     }
 
     // Test case with funds
-    let send_info_with_funds = mock_info(case.1, &[coin(100, "uatom")]);
+    let send_info_with_funds = message_info(case.1, &[coin(100, "uatom")]);
     let res_with_funds = execute(deps.as_mut(), env, send_info_with_funds, case.0);
 
     match case.3 {
@@ -158,7 +159,7 @@ fn test_exec_fn_amp_receive(
     let (mut deps, env) = setup;
 
     // Test case with no funds
-    let send_info_no_funds = mock_info(case.1, &[]);
+    let send_info_no_funds = message_info(case.1, &[]);
     let amp_msg_no_funds = AMPMsg::new(
         env.contract.address.clone(),
         to_json_binary(&case.0.clone()).unwrap(),
@@ -182,7 +183,7 @@ fn test_exec_fn_amp_receive(
     }
 
     // Test case with funds
-    let send_info_with_funds = mock_info(case.1, &[coin(100, "uatom")]);
+    let send_info_with_funds = message_info(case.1, &[coin(100, "uatom")]);
     let amp_msg_with_funds = AMPMsg::new(
         env.contract.address.clone(),
         to_json_binary(&case.0.clone()).unwrap(),
@@ -209,7 +210,7 @@ fn test_exec_fn_amp_receive(
 #[test]
 fn test_unwrap_amp_msg() {
     let (mut deps, env) = setup();
-    let info: MessageInfo = mock_info(MOCK_KERNEL_CONTRACT, &[]);
+    let info: MessageInfo = message_info(MOCK_KERNEL_CONTRACT, &[]);
 
     let sent_msg = ExecuteMsg::Restricted;
     let amp_msg = AMPMsg::new(

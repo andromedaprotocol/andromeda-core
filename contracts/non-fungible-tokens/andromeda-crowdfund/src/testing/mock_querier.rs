@@ -7,16 +7,21 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::denom::Asset,
-    testing::mock_querier::{WasmMockQuerier, MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
+    testing::mock_querier::{WasmMockQuerier, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage},
     Coin, OwnedDeps, QuerierWrapper, Uint128, Uint64,
 };
 
-pub const MOCK_DEFAULT_OWNER: &str = "owner";
-pub const MOCK_TIER_CONTRACT: &str = "tier_contract";
-pub const MOCK_WITHDRAWAL_ADDRESS: &str = "withdrawal_address";
+pub const MOCK_DEFAULT_OWNER: &str =
+    "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
+pub const RANDOM_USER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053x";
+pub const ORDERER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053z";
+pub const MOCK_TIER_CONTRACT: &str =
+    "cosmwasm1jnurcdh67h0xwma5pfps9k9xzrl0gs4yjglkf4z66sc6z6f94frqp5kmk2";
+pub const MOCK_WITHDRAWAL_ADDRESS: &str =
+    "cosmwasm1dkt8wpsymxpna9gktg23henclzgs8vkv4tjcqm0h7qv32kzu0d7sw8kt6u";
 pub const MOCK_DEFAULT_LIMIT: u128 = 100000;
 
 pub fn mock_campaign_config(denom: Asset) -> CampaignConfig {
@@ -41,9 +46,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             limit: None,
             price: Uint128::new(10u128),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         },
@@ -53,9 +56,7 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             limit: Some(Uint128::new(MOCK_DEFAULT_LIMIT)),
             price: Uint128::new(10u128),
             metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
+                extension: TokenExtension {},
                 token_uri: None,
             },
         },
@@ -69,9 +70,7 @@ pub fn mock_zero_price_tier(level: Uint64) -> Tier {
         limit: None,
         price: Uint128::zero(),
         metadata: TierMetaData {
-            extension: TokenExtension {
-                publisher: MOCK_ADO_PUBLISHER.to_string(),
-            },
+            extension: TokenExtension {},
             token_uri: None,
         },
     }
@@ -92,13 +91,14 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let sender = deps.api.addr_make("sender");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info(&sender, &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),

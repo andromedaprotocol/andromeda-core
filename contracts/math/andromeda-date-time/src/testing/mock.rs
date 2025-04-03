@@ -6,7 +6,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockStorage},
     Deps, MessageInfo, OwnedDeps,
 };
 
@@ -16,7 +16,8 @@ pub type MockDeps = OwnedDeps<MockStorage, MockApi, WasmMockQuerier>;
 
 pub fn proper_initialization() -> (MockDeps, MessageInfo) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

@@ -10,7 +10,7 @@ use andromeda_std::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
-use cw721::{Cw721ReceiveMsg, Expiration};
+use cw721::{receiver::Cw721ReceiveMsg, Expiration};
 use std::fmt::{Display, Formatter, Result};
 
 #[andr_instantiate]

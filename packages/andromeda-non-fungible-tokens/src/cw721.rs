@@ -4,7 +4,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin, CustomMsg};
 use cw721::Expiration;
 
-use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
+use cw721_base::{msg::ExecuteMsg as Cw721ExecuteMsg, msg::QueryMsg as Cw721QueryMsg};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -42,10 +42,7 @@ pub struct MetadataAttribute {
 /// Replicates OpenSea Metadata Standards
 #[cw_serde]
 #[derive(Default)]
-pub struct TokenExtension {
-    /// The original publisher of the token
-    pub publisher: String,
-}
+pub struct TokenExtension {}
 
 impl CustomMsg for ExecuteMsg {}
 impl CustomMsg for QueryMsg {}
@@ -55,7 +52,7 @@ pub struct MintMsg {
     /// Unique ID of the NFT
     pub token_id: String,
     /// The owner of the newly minter NFT
-    pub owner: String,
+    pub owner: AndrAddr,
     /// Universal resource identifier for this NFT
     /// Should point to a JSON file that conforms to the ERC721
     /// Metadata JSON Schema
@@ -72,13 +69,11 @@ pub enum ExecuteMsg {
         /// Unique ID of the NFT
         token_id: String,
         /// The owner of the newly minter NFT
-        owner: String,
+        owner: AndrAddr,
         /// Universal resource identifier for this NFT
         /// Should point to a JSON file that conforms to the ERC721
         /// Metadata JSON Schema
         token_uri: Option<String>,
-        /// Any custom extension used by this contract
-        extension: TokenExtension,
     },
     /// Transfers ownership of a token
     TransferNft {
@@ -128,7 +123,7 @@ pub struct BatchSendMsg {
     pub contract_addr: AndrAddr,
     pub msg: Binary,
 }
-impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
+impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
     type Error = String;
 
     fn try_from(msg: ExecuteMsg) -> Result<Self, Self::Error> {
@@ -165,17 +160,6 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
                 Ok(Cw721ExecuteMsg::ApproveAll { operator, expires })
             }
             ExecuteMsg::RevokeAll { operator } => Ok(Cw721ExecuteMsg::RevokeAll { operator }),
-            ExecuteMsg::Mint {
-                extension,
-                token_id,
-                token_uri,
-                owner,
-            } => Ok(Cw721ExecuteMsg::Mint {
-                extension,
-                token_id,
-                token_uri,
-                owner,
-            }),
             ExecuteMsg::Burn { token_id } => Ok(Cw721ExecuteMsg::Burn { token_id }),
             _ => Err("Unsupported message".to_string()),
         }
@@ -187,13 +171,13 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg<TokenExtension, ExecuteMsg> {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Owner of the given token by ID
-    #[returns(cw721::OwnerOfResponse)]
+    #[returns(cw721::msg::OwnerOfResponse)]
     OwnerOf {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// Approvals for a given address (paginated)
-    #[returns(cw721::OperatorsResponse)]
+    #[returns(cw721::msg::OperatorsResponse)]
     AllOperators {
         owner: String,
         include_expired: Option<bool>,
@@ -201,26 +185,26 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Amount of tokens minted by the contract
-    #[returns(cw721::NumTokensResponse)]
+    #[returns(cw721::msg::NumTokensResponse)]
     NumTokens {},
     /// The data of a token
-    #[returns(cw721::NftInfoResponse<TokenExtension>)]
+    #[returns(cw721::msg::NftInfoResponse<TokenExtension>)]
     NftInfo { token_id: String },
     /// The data of a token and any approvals assigned to it
-    #[returns(cw721::AllNftInfoResponse<TokenExtension>)]
+    #[returns(cw721::msg::AllNftInfoResponse<TokenExtension>)]
     AllNftInfo {
         token_id: String,
         include_expired: Option<bool>,
     },
     /// All tokens minted by the contract owned by a given address (paginated)
-    #[returns(cw721::TokensResponse)]
+    #[returns(cw721::msg::TokensResponse)]
     Tokens {
         owner: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// All tokens minted by the contract (paginated)
-    #[returns(cw721::TokensResponse)]
+    #[returns(cw721::msg::TokensResponse)]
     AllTokens {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -232,11 +216,11 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(cw721::ContractInfoResponse)]
+    #[returns(cw721::msg::CollectionInfoAndExtensionResponse<cw721::DefaultOptionalCollectionExtension>)]
     ContractInfo {},
-    #[returns(cw721_base::MinterResponse)]
+    #[returns(cw721::msg::MinterResponse)]
     Minter {},
-    #[returns(cw721::ApprovalResponse)]
+    #[returns(cw721::msg::ApprovalResponse)]
     Approval {
         token_id: String,
         spender: String,
@@ -244,7 +228,7 @@ pub enum QueryMsg {
     },
     /// Return approvals that a token has
     /// Return type: `ApprovalsResponse`
-    #[returns(cw721::ApprovalsResponse)]
+    #[returns(cw721::msg::ApprovalsResponse)]
     Approvals {
         token_id: String,
         include_expired: Option<bool>,
@@ -255,7 +239,7 @@ pub struct IsArchivedResponse {
     pub is_archived: bool,
 }
 
-impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
+impl From<QueryMsg> for Cw721QueryMsg {
     fn from(msg: QueryMsg) -> Self {
         match msg {
             QueryMsg::OwnerOf {
@@ -277,7 +261,7 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
                 limit,
             },
             QueryMsg::NumTokens {} => Cw721QueryMsg::NumTokens {},
-            QueryMsg::ContractInfo {} => Cw721QueryMsg::ContractInfo {},
+            QueryMsg::ContractInfo {} => Cw721QueryMsg::GetCollectionInfoAndExtension {},
             QueryMsg::NftInfo { token_id } => Cw721QueryMsg::NftInfo { token_id },
             QueryMsg::AllNftInfo {
                 token_id,
@@ -298,7 +282,7 @@ impl From<QueryMsg> for Cw721QueryMsg<QueryMsg> {
             QueryMsg::AllTokens { start_after, limit } => {
                 Cw721QueryMsg::AllTokens { start_after, limit }
             }
-            QueryMsg::Minter {} => Cw721QueryMsg::Minter {},
+            QueryMsg::Minter {} => Cw721QueryMsg::GetMinterOwnership {},
             QueryMsg::Approval {
                 token_id,
                 spender,

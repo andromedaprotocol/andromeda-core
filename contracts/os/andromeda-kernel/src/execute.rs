@@ -27,6 +27,8 @@ use cosmwasm_std::{
     IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
+#[cfg(not(target_arch = "wasm32"))]
+use cw_orch::mock::cw_multi_test::ibc::types::keccak256;
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
     ensure!(
@@ -136,7 +138,7 @@ pub fn handle_receive_cw20(
         Cw20HookMsg::Send { message } => {
             ensure!(
                 has_coins_merged(
-                    vec![Coin::new(amount_sent.into(), &asset_sent)].as_slice(),
+                    vec![Coin::new(amount_sent.u128(), &asset_sent)].as_slice(),
                     message.funds.as_slice()
                 ),
                 ContractError::InsufficientFunds {}
@@ -154,7 +156,7 @@ pub fn handle_receive_cw20(
             info,
             env,
             packet,
-            vec![Coin::new(amount_sent.into(), &asset_sent)],
+            vec![Coin::new(amount_sent.u128(), &asset_sent)],
         ),
     }
 }
@@ -240,7 +242,6 @@ pub fn trigger_relay(
     channel_id: String,
     packet_ack_msg: Binary,
 ) -> Result<Response, ContractError> {
-    //TODO Only the authorized address to handle replies can call this function
     ensure!(
         ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
         ContractError::Unauthorized {}
@@ -320,7 +321,11 @@ fn handle_ibc_transfer_funds_reply(
     );
 
     ics20_packet_info.pending = true;
-    CHANNEL_TO_EXECUTE_MSG.save(deps.storage, (channel_id, sequence), &ics20_packet_info)?;
+    CHANNEL_TO_EXECUTE_MSG.save(
+        deps.storage,
+        (channel_id.clone(), sequence),
+        &ics20_packet_info,
+    )?;
 
     let channel = channel_info
         .direct_channel_id
@@ -335,10 +340,7 @@ fn handle_ibc_transfer_funds_reply(
         &ics20_packet_info.channel,
     )?;
     #[allow(unused_assignments, unused_mut)]
-    let mut adjusted_funds = Coin::new(
-        ics20_packet_info.funds.amount.u128(),
-        counterparty_denom.clone(),
-    );
+    let mut adjusted_funds = Coin::new(ics20_packet_info.funds.amount.u128(), &counterparty_denom);
 
     // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
     #[cfg(not(target_arch = "wasm32"))]
@@ -351,13 +353,11 @@ fn handle_ibc_transfer_funds_reply(
             .collect::<Vec<String>>()
             .join("/");
 
-        adjusted_funds = Coin::new(
-            ics20_packet_info.funds.amount.u128(),
-            format!(
-                "ibc/{}/{}",
-                adjusted_path, _counterparty_denom_info.base_denom
-            ),
-        );
+        let denom_path = format!("{}/{}", adjusted_path, &ics20_packet_info.funds.denom);
+
+        let new_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
+
+        adjusted_funds = Coin::new(ics20_packet_info.funds.amount.u128(), new_denom);
     }
 
     let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
@@ -1236,6 +1236,8 @@ pub(crate) fn handle_ibc_transfer_funds(
         to_address: channel_info.kernel_address.clone(),
         amount: coin.clone(),
         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+        // TODO allow optional memo
+        memo: None,
     };
     let mut resp = Response::default();
 
@@ -1256,6 +1258,7 @@ pub(crate) fn handle_ibc_transfer_funds(
         msg: CosmosMsg::Ibc(msg),
         gas_limit: None,
         reply_on: cosmwasm_std::ReplyOn::Always,
+        payload: Binary::default(),
     });
 
     Ok(resp

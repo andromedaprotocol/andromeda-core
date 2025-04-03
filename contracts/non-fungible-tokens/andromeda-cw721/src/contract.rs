@@ -6,10 +6,13 @@ use cosmwasm_std::{
     CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError,
     SubMsg, Uint128,
 };
+use cw721::error::Cw721ContractError;
+use cw721::msg::{Cw721InstantiateMsg, OwnerOfResponse};
+use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TransferAgreement,
 };
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
@@ -24,31 +27,134 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
-use cw721::{ContractInfoResponse, Cw721Execute};
-use cw721_base::{state::TokenInfo, Cw721Contract, ExecuteMsg as Cw721ExecuteMsg};
+use cw721::state::{Cw721Config, NftInfo};
+use cw721::traits::{Cw721Execute, Cw721Query};
+use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
-pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
+// executeCw721
+// pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
+#[derive(Default)]
+pub struct AndrCW721Contract;
+// TNftExtensionMsg, TCollectionExtensionMsg, TExtensionMsg>
+impl Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty> for AndrCW721Contract {}
+impl Cw721Query<Empty, Empty, Empty> for AndrCW721Contract {}
+
+// Add a custom query method to handle the conversion
+impl AndrCW721Contract {
+    pub fn query(&self, deps: Deps, env: &Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+        // Convert QueryMsg to a compatible type for the trait implementation
+        let cw721_msg = match msg {
+            QueryMsg::OwnerOf {
+                token_id,
+                include_expired,
+            } => cw721::msg::Cw721QueryMsg::OwnerOf {
+                token_id,
+                include_expired,
+            },
+            QueryMsg::NftInfo { token_id } => cw721::msg::Cw721QueryMsg::NftInfo { token_id },
+            // Add other conversions as needed
+            QueryMsg::AllNftInfo {
+                token_id,
+                include_expired,
+            } => cw721::msg::Cw721QueryMsg::AllNftInfo {
+                token_id,
+                include_expired,
+            },
+            _ => return Err(ContractError::new("Unsupported query message")),
+        };
+
+        // Call the trait implementation's query method and convert the error type
+        match <Self as Cw721Query<Empty, Empty, Empty>>::query(self, deps, env, cw721_msg) {
+            Ok(binary) => Ok(binary),
+            Err(_) => Err(ContractError::new("Error executing CW721 query")),
+        }
+    }
+
+    pub fn execute(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        msg: Cw721ExecuteMsg,
+    ) -> Result<Response, ContractError> {
+        // Convert the message to a compatible type for the trait implementation
+        let cw721_msg = match msg {
+            Cw721ExecuteMsg::TransferNft {
+                recipient,
+                token_id,
+            } => cw721::msg::Cw721ExecuteMsg::TransferNft {
+                recipient,
+                token_id,
+            },
+            Cw721ExecuteMsg::SendNft {
+                contract,
+                token_id,
+                msg,
+            } => cw721::msg::Cw721ExecuteMsg::SendNft {
+                contract,
+                token_id,
+                msg,
+            },
+            Cw721ExecuteMsg::Approve {
+                spender,
+                token_id,
+                expires,
+            } => cw721::msg::Cw721ExecuteMsg::Approve {
+                spender,
+                token_id,
+                expires,
+            },
+            Cw721ExecuteMsg::Revoke { spender, token_id } => {
+                cw721::msg::Cw721ExecuteMsg::Revoke { spender, token_id }
+            }
+            Cw721ExecuteMsg::ApproveAll { operator, expires } => {
+                cw721::msg::Cw721ExecuteMsg::ApproveAll { operator, expires }
+            }
+            Cw721ExecuteMsg::RevokeAll { operator } => {
+                cw721::msg::Cw721ExecuteMsg::RevokeAll { operator }
+            }
+            Cw721ExecuteMsg::Burn { token_id } => cw721::msg::Cw721ExecuteMsg::Burn { token_id },
+            // Add other conversions as needed
+            _ => return Err(ContractError::new("Unsupported execute message")),
+        };
+
+        // Call the trait implementation's execute method and convert the error type
+        match <Self as Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty>>::execute(
+            self, deps, env, info, cw721_msg,
+        ) {
+            Ok(response) => Ok(response),
+            Err(_) => Err(ContractError::new("Error executing CW721 command")),
+        }
+    }
+}
+
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const MINT_ACTION: &str = "Mint";
+pub const MINT_ACTION: &str = "Mint";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let contract_info = ContractInfoResponse {
+    let cw721_instantiate_msg: Cw721InstantiateMsg<Empty> = Cw721InstantiateMsg {
         name: msg.name,
         symbol: msg.symbol,
+        minter: Some(msg.minter.to_string()),
+        collection_info_extension: Empty::default(),
+        creator: None,
+        withdraw_address: None,
     };
 
-    // Do this directly instead of with cw721_contract.instantiate because we want to have minter
-    // be an AndrAddress, which cannot be validated right away.
-    AndrCW721Contract::default()
-        .contract_info
-        .save(deps.storage, &contract_info)?;
+    let res = AndrCW721Contract::instantiate(
+        &AndrCW721Contract,
+        deps.branch(),
+        &env,
+        &info,
+        cw721_instantiate_msg,
+    )?;
 
     let contract = ADOContract::default();
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
@@ -69,7 +175,9 @@ pub fn instantiate(
         },
     )?;
 
-    Ok(resp.add_attributes(vec![attr("minter", msg.minter)]))
+    Ok(res
+        .add_attributes(vec![attr("minter", msg.minter)])
+        .add_submessages(resp.messages))
 }
 
 #[andr_execute_fn]
@@ -86,8 +194,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             token_id,
             token_uri,
             owner,
-            extension,
-        } => execute_mint(ctx, token_id, token_uri, owner, extension),
+        } => execute_mint(ctx, token_id, token_uri, owner),
         ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens),
         ExecuteMsg::TransferNft {
             recipient,
@@ -115,12 +222,9 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     Ok(res)
 }
 
-fn execute_cw721(
-    ctx: ExecuteContext,
-    msg: Cw721ExecuteMsg<TokenExtension, ExecuteMsg>,
-) -> Result<Response, ContractError> {
-    let contract = AndrCW721Contract::default();
-    Ok(contract.execute(ctx.deps, ctx.env, ctx.info, msg)?)
+pub fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract;
+    contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)
 }
 
 macro_rules! ensure_can_mint {
@@ -129,7 +233,7 @@ macro_rules! ensure_can_mint {
             .load($ctx.deps.storage)?
             .get_raw_address(&$ctx.deps.as_ref())?;
 
-        let is_minter = $ctx.info.sender == minter.as_str();
+        let is_minter = $ctx.info.sender == minter;
         // We check if the sender is the minter before checking if they have the mint permission
         // to prevent consuming unnecessary limited permission usage.
         let has_mint_permission = is_minter
@@ -149,40 +253,41 @@ fn execute_mint(
     mut ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
-    owner: String,
-    extension: TokenExtension,
+    owner: AndrAddr,
 ) -> Result<Response, ContractError> {
     ensure_can_mint!(ctx);
-    mint(ctx, token_id, token_uri, owner, extension)
+    mint(ctx, token_id, token_uri, owner)
 }
 
 fn mint(
     ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
-    owner: String,
-    extension: TokenExtension,
+    owner: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let cw721_contract = AndrCW721Contract::default();
-    let token = TokenInfo {
-        owner: ctx.deps.api.addr_validate(&owner)?,
+    let ExecuteContext { deps, info, .. } = ctx;
+    let owner_addr = owner.get_raw_address(&deps.as_ref())?;
+
+    let token = NftInfo {
+        owner: owner_addr.clone(),
         approvals: vec![],
-        token_uri,
-        extension,
+        token_uri: token_uri.clone(),
+        extension: Empty::default(),
     };
 
-    cw721_contract
-        .tokens
-        .update(ctx.deps.storage, &token_id, |old| match old {
-            Some(_) => Err(ContractError::Claimed {}),
+    let cw721_config = Cw721Config::<Empty>::default();
+    cw721_config
+        .nft_info
+        .update(deps.storage, &token_id, |old| match old {
+            Some(_) => Err(Cw721ContractError::Claimed {}),
             None => Ok(token),
         })?;
 
-    cw721_contract.increment_tokens(ctx.deps.storage)?;
+    cw721_config.increment_tokens(deps.storage)?;
 
     Ok(Response::new()
         .add_attribute("action", "mint")
-        .add_attribute("minter", ctx.info.sender)
+        .add_attribute("minter", info.sender)
         .add_attribute("owner", owner)
         .add_attribute("token_id", token_id))
 }
@@ -195,14 +300,12 @@ fn execute_batch_mint(
     ensure_can_mint!(ctx);
     ensure!(
         !tokens_to_mint.is_empty(),
-        ContractError::Std(cosmwasm_std::StdError::GenericErr {
-            msg: String::from("No tokens to mint")
-        })
+        ContractError::new("No tokens to mint")
     );
     for msg in tokens_to_mint {
         let mut ctx = ExecuteContext::new(ctx.deps.branch(), ctx.info.clone(), ctx.env.clone());
         ctx.amp_ctx = ctx.amp_ctx.clone();
-        let mint_resp = mint(ctx, msg.token_id, msg.token_uri, msg.owner, msg.extension)?;
+        let mint_resp = mint(ctx, msg.token_id, msg.token_uri, msg.owner)?;
         resp = resp
             .add_attributes(mint_resp.attributes)
             .add_submessages(mint_resp.messages);
@@ -217,7 +320,7 @@ fn execute_transfer(
     token_id: String,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps,
+        mut deps,
         info,
         env,
         contract: base_contract,
@@ -226,8 +329,10 @@ fn execute_transfer(
     // Reduce all responses into one.
     let mut resp = Response::new();
     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
-    let contract = AndrCW721Contract::default();
-    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    let contract = AndrCW721Contract;
+
+    let OwnerOfResponse { owner, .. } =
+        contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
     ensure!(
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
@@ -254,7 +359,7 @@ fn execute_transfer(
                 transfer_response
                     .msgs
                     .push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                        to_address: token.owner.to_string(),
+                        to_address: owner.clone(),
                         amount: vec![remaining_amount],
                     })));
                 resp = resp.add_submessages(transfer_response.msgs);
@@ -264,7 +369,7 @@ fn execute_transfer(
                 let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
                 let tax_amount = Uint128::zero();
                 let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: token.owner.to_string(),
+                    to_address: owner.clone(),
                     amount: vec![remaining_amount],
                 }));
                 resp = resp.add_submessage(msg);
@@ -275,12 +380,46 @@ fn execute_transfer(
         Uint128::zero()
     };
 
-    check_can_send(deps.as_ref(), env, info, &token_id, &token, tax_amount)?;
-    token.owner = deps.api.addr_validate(&recipient_address)?;
-    token.approvals.clear();
+    let approvals = contract.query_approvals(deps.as_ref(), &env, token_id.clone(), true)?;
+    let operators =
+        contract.query_operators(deps.as_ref(), &env, owner.clone(), true, None, None)?;
+    check_can_send(
+        deps.as_ref(),
+        env.clone(),
+        info.clone(),
+        &token_id,
+        tax_amount,
+        owner.clone(),
+        approvals.approvals,
+        operators.operators,
+    )?;
+
+    // If we reach here we can assume the sender is authorised to transfer the NFT
+    // We mock message info to have the owner of the NFT be the sender to authorise send.
+    let mut transfer_info = info.clone();
+    transfer_info.sender = Addr::unchecked(owner);
+    let response = contract.transfer_nft(
+        deps.branch(),
+        &env,
+        &transfer_info,
+        recipient.to_string(),
+        token_id.clone(),
+    )?;
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
-    contract.tokens.save(deps.storage, &token_id, &token)?;
-    Ok(resp
+
+    // Extract elements from the response and include them in the final response
+    let mut response = response;
+    for attr in response.attributes.clone() {
+        resp = resp.add_attribute(attr.key, attr.value);
+    }
+    for event in response.events.clone() {
+        resp = resp.add_event(event);
+    }
+    for submsg in response.messages {
+        resp = resp.add_submessage(submsg);
+    }
+    response = resp;
+    Ok(response
         .add_attribute("action", "transfer")
         .add_attribute("recipient", recipient_address))
 }
@@ -294,16 +433,19 @@ fn get_transfer_agreement_amount(
     Ok(agreement_amount)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_can_send(
     deps: Deps,
     env: Env,
     info: MessageInfo,
     token_id: &str,
-    token: &TokenInfo<TokenExtension>,
     tax_amount: Uint128,
+    owner: String,
+    approvals: Vec<Approval>,
+    operators: Vec<Approval>,
 ) -> Result<(), ContractError> {
     // owner can send
-    if token.owner == info.sender {
+    if owner == info.sender.as_str() {
         return Ok(());
     }
 
@@ -321,14 +463,13 @@ fn check_can_send(
             ),
             ContractError::InsufficientFunds {}
         );
-        if agreement.purchaser == info.sender || agreement.purchaser == "*" {
+        if agreement.purchaser == info.sender.as_str() || agreement.purchaser == "*" {
             return Ok(());
         }
     }
 
     // any non-expired token approval can send
-    if token
-        .approvals
+    if approvals
         .iter()
         .any(|apr| apr.spender == info.sender && !apr.is_expired(&env.block))
     {
@@ -336,9 +477,9 @@ fn check_can_send(
     }
 
     // operator can send
-    let op = AndrCW721Contract::default()
-        .operators
-        .may_load(deps.storage, (&token.owner, &info.sender))?;
+    let op = operators
+        .iter()
+        .find(|op| op.spender == info.sender && !op.is_expired(&env.block));
     match op {
         Some(ex) => {
             if ex.is_expired(&env.block) {
@@ -356,10 +497,13 @@ fn execute_update_transfer_agreement(
     token_id: String,
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(deps.storage, &token_id)?;
-    ensure!(token.owner == info.sender, ContractError::Unauthorized {});
+    let ExecuteContext { deps, ref info, .. } = ctx;
+    let contract = AndrCW721Contract;
+    let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
+    ensure!(
+        token_owner.owner == info.sender.as_ref(),
+        ContractError::Unauthorized {}
+    );
     ensure!(
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
@@ -368,16 +512,33 @@ fn execute_update_transfer_agreement(
         TRANSFER_AGREEMENTS.save(deps.storage, &token_id, xfer_agreement)?;
         if xfer_agreement.purchaser != "*" {
             deps.api.addr_validate(&xfer_agreement.purchaser)?;
+            contract.approve(
+                deps,
+                &ctx.env,
+                &ctx.info,
+                xfer_agreement.purchaser.clone(),
+                token_id.clone(),
+                None,
+            )?;
         }
     } else {
         TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
+        contract.revoke_all(deps, &ctx.env, &ctx.info, token_id.clone())?;
     }
 
-    contract
-        .tokens
-        .save(deps.storage, token_id.as_str(), &token)?;
+    let mut attributes = vec![
+        attr("action", "update_transfer_agreement"),
+        attr("token_id", token_id),
+    ];
 
-    Ok(Response::default())
+    if let Some(xfer_agreement) = &agreement {
+        attributes.push(attr("purchaser", &xfer_agreement.purchaser));
+        attributes.push(attr("amount", xfer_agreement.amount.to_string()));
+    } else {
+        attributes.push(attr("agreement", "removed"));
+    }
+
+    Ok(Response::default().add_attributes(attributes))
 }
 
 fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
@@ -386,37 +547,47 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
-    let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(deps.storage, &token_id)?;
-    ensure!(token.owner == info.sender, ContractError::Unauthorized {});
+    let contract = AndrCW721Contract;
+    let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
+    ensure!(
+        token_owner.owner == info.sender.as_ref(),
+        ContractError::Unauthorized {}
+    );
 
     ARCHIVED.save(deps.storage, &token_id, &true)?;
 
-    contract.tokens.save(deps.storage, &token_id, &token)?;
+    // TODO should we call contract in this function?
+    // contract.tokens.save(deps.storage, &token_id, &token)?;
 
     Ok(Response::default())
 }
 
 fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-    let contract = AndrCW721Contract::default();
-    let token = contract.tokens.load(deps.storage, &token_id)?;
-    ensure!(token.owner == info.sender, ContractError::Unauthorized {});
+    let ExecuteContext { deps, ref info, .. } = ctx;
+    let contract = AndrCW721Contract;
+    // let token = contract.tokens.load(deps.storage, &token_id)?;
+    let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
+    ensure!(
+        token_owner.owner == info.sender.as_ref(),
+        ContractError::Unauthorized {}
+    );
     ensure!(
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
 
-    contract.tokens.remove(deps.storage, &token_id)?;
+    // contract.tokens.remove(deps.storage, &token_id)?;
 
-    // Decrement token count.
-    let count = contract.token_count.load(deps.storage)?;
-    contract.token_count.save(deps.storage, &(count - 1))?;
+    // // Decrement token count.
+    // let count = contract.token_count.load(deps.storage)?;
+    // contract.token_count.save(deps.storage, &(count - 1))?;
+
+    contract.burn_nft(deps, &ctx.env, &ctx.info, token_id.clone())?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "burn"),
         attr("token_id", token_id),
-        attr("sender", info.sender),
+        attr("sender", info.sender.as_str()),
     ]))
 }
 
@@ -429,11 +600,11 @@ fn execute_send_nft(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    let contract = AndrCW721Contract::default();
+    let contract = AndrCW721Contract;
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
-    Ok(contract.send_nft(deps, env, info, contract_addr, token_id, msg)?)
+    Ok(contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)?)
 }
 
 fn execute_batch_send_nft(
@@ -469,9 +640,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             let serialized = to_json_binary(&msg)?;
             match from_json::<AndromedaQuery>(&serialized) {
                 Ok(msg) => ADOContract::default().query(deps, env, msg),
-                _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
+                _ => AndrCW721Contract.query(deps, &env, msg),
             }
-        } // _ => Ok(AndrCW721Contract::default().query(deps, env, msg.into())?),
+        }
     }
 }
 

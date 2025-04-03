@@ -32,7 +32,7 @@ fn test_marketplace_migration() {
 
     juno.set_balance(
         sender.clone().into_string().clone(),
-        vec![Coin::new(100000000000000, "juno")],
+        vec![Coin::new(10000u1280000000000, "juno")],
     )
     .unwrap();
 
