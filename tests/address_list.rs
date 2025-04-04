@@ -1,5 +1,6 @@
 use andromeda_address_list::mock::{
-    mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
+    mock_address_list_instantiate_msg, mock_andromeda_address_list, mock_query_permission_msg,
+    MockAddressList,
 };
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
@@ -8,6 +9,7 @@ use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
+use andromeda_modules::address_list::ActorPermissionResponse;
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission},
     amp::{
@@ -56,6 +58,7 @@ fn test_permission_frequency() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
+    // Permission the marketplace contract that will
     let address_list_init_msg =
         mock_address_list_instantiate_msg(andr.kernel.addr().to_string(), None, None);
 
@@ -140,25 +143,6 @@ fn test_permission_frequency() {
         chain_id: block_info.chain_id,
     });
 
-    // Try adding limited permission in address list, should error
-    let err: ContractError = address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::limited(None, None, 1),
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-
-    assert_eq!(
-        err,
-        ContractError::InvalidPermission {
-            msg: "Limited permission is not supported in address list contract".to_string(),
-        }
-    );
-
     // Blacklist buyer in address list
     address_list
         .execute_actor_permission(
@@ -234,21 +218,40 @@ fn test_permission_frequency() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Set valid frequence and last used
+    let valid_permission = LocalPermission::whitelisted(
+        None,
+        None,
+        // 1 hour cooldown for each action
+        Some(Milliseconds::from_seconds(3600)),
+        // Last used 2 hours ago
+        Some(Milliseconds::from_seconds(
+            current_time.minus_hours(2).seconds(),
+        )),
+    );
     address_list
         .execute_actor_permission(
             &mut router,
             owner.clone(),
             vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::whitelisted(
-                None,
-                None,
-                // 1 hour cooldown for each action
-                Some(Milliseconds::from_seconds(3600)),
-                // Last used 2 hours ago
-                Some(Milliseconds::from_seconds(
-                    current_time.minus_hours(2).seconds(),
-                )),
-            ),
+            valid_permission.clone(),
+        )
+        .unwrap();
+
+    // Query the permission
+    let query_msg = mock_query_permission_msg(buyer.clone());
+
+    let query: ActorPermissionResponse = address_list.query(&router, query_msg);
+    assert_eq!(query.permission, valid_permission);
+
+    // Permission the marketplace contract for it to be able to call the address list
+
+    address_list
+        .execute_set_permission_actor(
+            &mut router,
+            owner.clone(),
+            vec![AndrAddr::from_string("./marketplace")],
+            "PermissionActors".to_string(),
+            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
         )
         .unwrap();
 
@@ -268,4 +271,19 @@ fn test_permission_frequency() {
 
     let balance = router.wrap().query_balance(owner, "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::new(100u128));
+
+    let updated_permission = LocalPermission::whitelisted(
+        None,
+        None,
+        // 1 hour cooldown for each action
+        Some(Milliseconds::from_seconds(3600)),
+        // Last used now
+        Some(Milliseconds::from_seconds(current_time.seconds())),
+    );
+
+    // Query the permission
+    let query_msg = mock_query_permission_msg(buyer.clone());
+
+    let query: ActorPermissionResponse = address_list.query(&router, query_msg);
+    assert_eq!(query.permission, updated_permission);
 }

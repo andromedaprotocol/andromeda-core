@@ -196,25 +196,6 @@ fn test_marketplace_app() {
         chain_id: block_info.chain_id,
     });
 
-    // Try adding limited permission in address list, should error
-    let err: ContractError = address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::limited(None, None, 1),
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-
-    assert_eq!(
-        err,
-        ContractError::InvalidPermission {
-            msg: "Limited permission is not supported in address list contract".to_string(),
-        }
-    );
-
     // Blacklist buyer in address list
     address_list
         .execute_actor_permission(

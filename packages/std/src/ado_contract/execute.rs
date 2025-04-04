@@ -393,15 +393,17 @@ macro_rules! unwrap_amp_msg {
             ctx.amp_ctx = Some(pkt);
         }
 
+        let (is_permissioned, submsg) =
+            ::andromeda_std::ado_contract::permissioning::is_context_permissioned(
+                &mut ctx.deps,
+                &ctx.info,
+                &ctx.env,
+                &ctx.amp_ctx,
+                msg.as_ref(),
+            )?;
+
         ::cosmwasm_std::ensure!(
-            msg.is_permissionless()
-                || ::andromeda_std::ado_contract::permissioning::is_context_permissioned(
-                    &mut ctx.deps,
-                    &ctx.info,
-                    &ctx.env,
-                    &ctx.amp_ctx,
-                    msg.as_ref(),
-                )?,
+            msg.is_permissionless() || is_permissioned,
             ::andromeda_std::error::ContractError::Unauthorized {}
         );
 
@@ -413,7 +415,7 @@ macro_rules! unwrap_amp_msg {
             msg.as_ref(),
         )?;
 
-        (ctx, msg, action_response)
+        (ctx, msg, action_response, submsg)
     }};
 }
 

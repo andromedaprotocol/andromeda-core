@@ -2,7 +2,10 @@ use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResp
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{permissioning::LocalPermission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
     ado_contract::ADOContract,
     amp::AndrAddr,
     andr_execute_fn,
@@ -29,13 +32,6 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     // If the user provided an actor and permission, save them.
     if let Some(mut actor_permission) = msg.actor_permission {
-        // Permissions of type Limited local permissions aren't allowed in the address list contract
-        if let LocalPermission::Limited { .. } = actor_permission.permission {
-            return Err(ContractError::InvalidPermission {
-                msg: "Limited permission is not supported in address list contract".to_string(),
-            });
-        }
-
         ensure!(
             !actor_permission.actors.is_empty(),
             ContractError::NoActorsProvided {}
@@ -65,6 +61,15 @@ pub fn instantiate(
             add_actors_permission(deps.storage, verified_actor, &actor_permission.permission)?;
         }
     }
+
+    ADOContract::default().permission_action(deps.storage, "PermissionActors".to_string())?;
+    ADOContract::set_permission(
+        deps.storage,
+        "PermissionActors".to_string(),
+        info.sender.clone(),
+        Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+    )?;
+
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -99,11 +104,7 @@ fn execute_permission_actors(
     permission: LocalPermission,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
-    if let LocalPermission::Limited { .. } = permission {
-        return Err(ContractError::InvalidPermission {
-            msg: "Limited permission is not supported in address list contract".to_string(),
-        });
-    }
+
     ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
     permission.validate_times(&env)?;
     for actor in actors.clone() {

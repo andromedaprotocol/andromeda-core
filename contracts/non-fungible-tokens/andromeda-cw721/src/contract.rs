@@ -139,7 +139,8 @@ macro_rules! ensure_can_mint {
                 &$ctx.env,
                 &$ctx.amp_ctx,
                 MINT_ACTION,
-            )?;
+            )?
+            .0;
 
         ensure!(has_mint_permission, ContractError::Unauthorized {});
     };

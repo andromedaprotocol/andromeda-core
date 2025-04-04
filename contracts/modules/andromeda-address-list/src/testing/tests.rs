@@ -98,6 +98,8 @@ fn test_add_remove_actor() {
     let new_permission = PERMISSIONS.load(deps.as_ref().storage, &actor).unwrap();
     assert_eq!(new_permission, permission);
 
+    // make permission actor a permissioned action
+
     // Try with unauthorized address
     let unauth_info = mock_info("anyone", &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
