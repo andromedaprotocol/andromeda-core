@@ -932,7 +932,6 @@ pub fn validate_id(
     }
 
     let [chain_id, block_height_str, index_str] = [parts[0], parts[1], parts[2]];
-
     // Validate chain_id
     if chain_id.is_empty() {
         return Err(ContractError::InvalidPacket {
@@ -956,7 +955,8 @@ pub fn validate_id(
 
     //TODO discuss validation for cross chain packets
     if chain_id == current_chain_id
-        && (block_height != current_block_height || index != current_index)
+        && (block_height != current_block_height
+            || index.checked_add(Uint128::one())? != current_index)
     {
         return Err(ContractError::InvalidPacket {
             error: Some(
