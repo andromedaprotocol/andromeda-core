@@ -7,13 +7,29 @@ use crate::{
     common::{context::ExecuteContext, OrderBy},
     error::ContractError,
 };
-use cosmwasm_std::{ensure, Deps, DepsMut, Env, MessageInfo, Order, Response, Storage};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{
+    ensure, to_json_binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, Storage,
+    SubMsg, WasmMsg,
+};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
 use super::ADOContract;
 
 const MAX_QUERY_LIMIT: u32 = 50;
 const DEFAULT_QUERY_LIMIT: u32 = 25;
+
+#[cw_serde]
+pub enum AddressListExecuteMsg {
+    /// Adds an actor key and a permission value
+    PermissionActors {
+        actors: Vec<AndrAddr>,
+        permission: LocalPermission,
+    },
+    // /// Removes actor alongisde his permission
+    // #[attrs(restricted, nonpayable)]
+    // RemovePermissions { actors: Vec<AndrAddr> },
+}
 
 pub struct PermissionsIndices<'a> {
     /// PK: action + actor
@@ -77,13 +93,13 @@ impl ADOContract<'_> {
         env: Env,
         action: impl Into<String>,
         actor: impl Into<String>,
-    ) -> Result<(), ContractError> {
+    ) -> Result<Option<SubMsg>, ContractError> {
         // Converted to strings for cloning
         let action_string: String = action.into();
         let actor_string: String = actor.into();
 
         if self.is_contract_owner(deps.as_ref().storage, actor_string.as_str())? {
-            return Ok(());
+            return Ok(None);
         }
 
         let permission = Self::get_permission(
@@ -99,6 +115,7 @@ impl ADOContract<'_> {
             Some(mut some_permission) => {
                 match some_permission {
                     Permission::Local(ref mut local_permission) => {
+                        println!("Local permission: {:?}", local_permission);
                         ensure!(
                             local_permission.is_permissioned(&env, permissioned_action),
                             ContractError::Unauthorized {}
@@ -124,24 +141,40 @@ impl ADOContract<'_> {
                                 )?;
                             }
                         }
+                        Ok(None)
                     }
                     Permission::Contract(contract_address) => {
                         // Query contract that we'll be referencing the permissions from
                         let addr = contract_address.get_raw_address(&deps.as_ref())?;
-                        let local_permission =
+                        let mut local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
 
                         ensure!(
                             local_permission.is_permissioned(&env, permissioned_action),
                             ContractError::Unauthorized {}
                         );
+                        // Update last used
+                        if let LocalPermission::Whitelisted { last_used, .. } =
+                            &mut local_permission
+                        {
+                            last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
+                        }
+                        // Contsruct Sub Msg to update the permission in the address list contract
+                        let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: addr.to_string(),
+                            msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
+                                actors: vec![AndrAddr::from_string(&actor_string)],
+                                permission: local_permission,
+                            })?,
+                            funds: vec![],
+                        }));
+                        Ok(Some(sub_msg))
                     }
-                };
-                Ok(())
+                }
             }
             None => {
                 ensure!(!permissioned_action, ContractError::Unauthorized {});
-                Ok(())
+                Ok(None)
             }
         }
     }
@@ -157,13 +190,13 @@ impl ADOContract<'_> {
         env: Env,
         action: impl Into<String>,
         actor: impl Into<String>,
-    ) -> Result<(), ContractError> {
+    ) -> Result<Option<SubMsg>, ContractError> {
         // Converted to strings for cloning
         let action_string: String = action.into();
         let actor_string: String = actor.into();
 
         if self.is_contract_owner(deps.storage, actor_string.as_str())? {
-            return Ok(());
+            return Ok(None);
         }
 
         let permission =
@@ -195,18 +228,34 @@ impl ADOContract<'_> {
                                 },
                             )?;
                         }
+                        Ok(None)
                     }
                     Permission::Contract(ref contract_address) => {
                         let addr = contract_address.get_raw_address(&deps.as_ref())?;
-                        let local_permission =
+                        let mut local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
                         ensure!(
                             local_permission.is_permissioned(&env, true),
                             ContractError::Unauthorized {}
                         );
+                        // Update last used
+                        if let LocalPermission::Whitelisted { last_used, .. } =
+                            &mut local_permission
+                        {
+                            last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
+                        }
+                        // Contsruct Sub Msg to update the permission in the address list contract
+                        let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                            contract_addr: addr.to_string(),
+                            msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
+                                actors: vec![AndrAddr::from_string(&actor_string)],
+                                permission: local_permission,
+                            })?,
+                            funds: vec![],
+                        }));
+                        Ok(Some(sub_msg))
                     }
                 }
-                Ok(())
             }
             None => Err(ContractError::Unauthorized {}),
         }

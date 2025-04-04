@@ -28,18 +28,38 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     // If the user provided an actor and permission, save them.
-    if let Some(actor_permission) = msg.actor_permission {
+    if let Some(mut actor_permission) = msg.actor_permission {
         // Permissions of type Limited local permissions aren't allowed in the address list contract
         if let LocalPermission::Limited { .. } = actor_permission.permission {
             return Err(ContractError::InvalidPermission {
                 msg: "Limited permission is not supported in address list contract".to_string(),
             });
         }
+
         ensure!(
             !actor_permission.actors.is_empty(),
             ContractError::NoActorsProvided {}
         );
         actor_permission.permission.validate_times(&env)?;
+
+        // If the permission is a whitelist, make sure to set last used time as none
+        actor_permission.permission = if let LocalPermission::Whitelisted {
+            start,
+            expiration,
+            frequency,
+            ..
+        } = actor_permission.permission
+        {
+            LocalPermission::Whitelisted {
+                start,
+                expiration,
+                frequency,
+                last_used: None,
+            }
+        } else {
+            actor_permission.permission
+        };
+
         for actor in actor_permission.actors {
             let verified_actor = actor.get_raw_address(&deps.as_ref())?;
             add_actors_permission(deps.storage, verified_actor, &actor_permission.permission)?;

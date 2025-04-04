@@ -171,6 +171,11 @@ impl LocalPermission {
                         // Get current time
                         let current_time = env.block.time.seconds();
                         let time_elapsed_since_last_use = current_time - last_used.seconds();
+                        println!(
+                            "Time elapsed since last use: {}",
+                            time_elapsed_since_last_use
+                        );
+                        println!("Frequency: {}", frequency.seconds());
 
                         if time_elapsed_since_last_use < frequency.seconds() {
                             return !strict;

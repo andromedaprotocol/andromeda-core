@@ -74,3 +74,7 @@ pub fn mock_add_actor_permission_msg(
 ) -> ExecuteMsg {
     ExecuteMsg::PermissionActors { actors, permission }
 }
+
+pub fn mock_query_permission_msg(actor: Addr) -> QueryMsg {
+    QueryMsg::ActorPermission { actor }
+}
