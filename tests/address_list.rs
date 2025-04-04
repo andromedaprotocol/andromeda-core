@@ -1,40 +1,30 @@
 use andromeda_address_list::mock::{
-    mock_address_list_instantiate_msg, mock_andromeda_address_list, mock_query_permission_msg,
-    MockAddressList,
+    mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
 };
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
-use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_minter, MockCW20};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
-use andromeda_finance::splitter::AddressPercent;
 use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
-use andromeda_modules::address_list::ActorPermissionResponse;
-use andromeda_non_fungible_tokens::marketplace::Cw20HookMsg;
-use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg, MockRates};
-use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
+use andromeda_std::{
+    ado_base::permissioning::{LocalPermission, Permission},
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        AndrAddr,
+    },
+    common::{denom::Asset, Milliseconds},
+    error::ContractError,
 };
-use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
-use andromeda_std::ado_base::rates::{AllRatesResponse, LocalRate};
-use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate, Rate};
-use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
-use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::denom::Asset;
-use andromeda_std::common::Milliseconds;
-use andromeda_std::error::ContractError;
-use andromeda_testing::mock::mock_app;
-use andromeda_testing::mock_builder::MockAndromedaBuilder;
-use andromeda_testing::MockADO;
-use andromeda_testing::MockContract;
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
-use cw20::Cw20Coin;
+use andromeda_testing::{
+    mock::mock_app, mock_builder::MockAndromedaBuilder, MockADO, MockContract,
+};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw_multi_test::Executor;
 
 #[test]
-fn test_marketplace_app() {
+fn test_permission_frequency() {
     let mut router = mock_app(None);
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
         .with_wallets(vec![
@@ -46,13 +36,11 @@ fn test_marketplace_app() {
             ("app-contract", mock_andromeda_app()),
             ("cw721", mock_andromeda_cw721()),
             ("marketplace", mock_andromeda_marketplace()),
-            ("rates", mock_andromeda_rates()),
             ("address-list", mock_andromeda_address_list()),
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
     let buyer = andr.get_wallet("buyer");
-    let rates_receiver = andr.get_wallet("receiver");
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
@@ -67,23 +55,6 @@ fn test_marketplace_app() {
         "cw721".to_string(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
-    // Set a royalty which is worth as much as the marketplace sale price
-    // The sale recipient will not receive any funds because they're all going to the royalty recipient
-    let local_rate = LocalRate {
-        rate_type: LocalRateType::Deductive,
-        recipient: Recipient::from_string(rates_receiver.to_string()),
-        value: LocalRateValue::Flat(coin(100, "uandr")),
-        description: None,
-    };
-
-    let rates_init_msg = mock_rates_instantiate_msg(
-        "Buy".to_string(),
-        local_rate,
-        andr.kernel.addr().to_string(),
-        None,
-    );
-    let rates_component =
-        AppComponent::new("rates", "rates", to_json_binary(&rates_init_msg).unwrap());
 
     let address_list_init_msg =
         mock_address_list_instantiate_msg(andr.kernel.addr().to_string(), None, None);
@@ -105,7 +76,6 @@ fn test_marketplace_app() {
     // Create App
     let app_components = vec![
         cw721_component.clone(),
-        rates_component.clone(),
         address_list_component.clone(),
         marketplace_component.clone(),
     ];
@@ -128,35 +98,6 @@ fn test_marketplace_app() {
         app.query_ado_by_component_name(&router, marketplace_component.name);
     let address_list: MockAddressList =
         app.query_ado_by_component_name(&router, address_list_component.name);
-    let rates: MockRates = app.query_ado_by_component_name(&router, rates_component.name);
-
-    // Set contract rate linked to the above rates contract
-    marketplace
-        .execute_set_rate(
-            &mut router,
-            owner.clone(),
-            "Buy",
-            Rate::Contract(AndrAddr::from_string(rates.addr())),
-        )
-        .unwrap();
-
-    let rate = marketplace
-        .query_rates(&mut router, "Buy".to_string())
-        .unwrap();
-
-    assert_eq!(rate, Rate::Contract(AndrAddr::from_string(rates.addr())));
-
-    let all_rates: AllRatesResponse = marketplace.query_all_rates(&mut router);
-
-    assert_eq!(
-        all_rates,
-        AllRatesResponse {
-            all_rates: vec![(
-                "Buy".to_string(),
-                Rate::Contract(AndrAddr::from_string(rates.addr()))
-            )]
-        }
-    );
 
     // Mint Tokens
     cw721
@@ -253,8 +194,12 @@ fn test_marketplace_app() {
         .unwrap();
     assert_eq!(err, ContractError::Unauthorized {});
 
-    let current_time = router.block_info().time.seconds();
-    println!("Current time: {}", current_time);
+    // Permission action for it to become strict
+    marketplace
+        .execute_permission_action(&mut router, owner.clone(), "Buy")
+        .unwrap();
+
+    let current_time = router.block_info().time;
 
     // WHitelist buyer with frequency
     address_list
@@ -265,8 +210,44 @@ fn test_marketplace_app() {
             LocalPermission::whitelisted(
                 None,
                 None,
+                // 1 hour cooldown for each action
                 Some(Milliseconds::from_seconds(3600)),
-                Some(Milliseconds::from_seconds(current_time)),
+                // Last used 1 minute ago
+                Some(Milliseconds::from_seconds(
+                    current_time.minus_minutes(1).seconds(),
+                )),
+            ),
+        )
+        .unwrap();
+
+    let err: ContractError = router
+        .execute_contract(
+            buyer.clone(),
+            Addr::unchecked(marketplace.addr()),
+            &receive_packet_msg,
+            // We're sending the exact amount required, which is the price + tax
+            &[coin(100, "uandr")],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Set valid frequence and last used
+    address_list
+        .execute_actor_permission(
+            &mut router,
+            owner.clone(),
+            vec![AndrAddr::from_string(buyer.clone())],
+            LocalPermission::whitelisted(
+                None,
+                None,
+                // 1 hour cooldown for each action
+                Some(Milliseconds::from_seconds(3600)),
+                // Last used 2 hours ago
+                Some(Milliseconds::from_seconds(
+                    current_time.minus_hours(2).seconds(),
+                )),
             ),
         )
         .unwrap();
@@ -285,12 +266,6 @@ fn test_marketplace_app() {
     let owner_of_token = cw721.query_owner_of(&router, token_id);
     assert_eq!(owner_of_token, buyer.to_string());
 
-    let balance = router
-        .wrap()
-        .query_balance(rates_receiver, "uandr")
-        .unwrap();
-    assert_eq!(balance.amount, Uint128::from(100u128));
-
     let balance = router.wrap().query_balance(owner, "uandr").unwrap();
-    assert_eq!(balance.amount, Uint128::zero());
+    assert_eq!(balance.amount, Uint128::new(100u128));
 }
