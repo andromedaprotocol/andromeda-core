@@ -578,8 +578,8 @@ pub fn is_context_permissioned(
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
-            if is_origin_permissioned.is_ok() {
-                return Ok((true, is_origin_permissioned.unwrap()));
+            if let Ok(submsg) = is_origin_permissioned {
+                return Ok((true, submsg));
             }
             let is_previous_sender_permissioned = contract.is_permissioned(
                 deps.branch(),
@@ -588,9 +588,9 @@ pub fn is_context_permissioned(
                 amp_ctx.ctx.get_previous_sender().as_str(),
             );
             match is_previous_sender_permissioned {
-                Ok(Some(submsg)) => return Ok((true, Some(submsg))),
-                Ok(None) => return Ok((true, None)),
-                Err(_) => return Ok((false, None)),
+                Ok(Some(submsg)) => Ok((true, Some(submsg))),
+                Ok(None) => Ok((true, None)),
+                Err(_) => Ok((false, None)),
             }
         }
         None => {
@@ -601,9 +601,9 @@ pub fn is_context_permissioned(
                 info.sender.to_string(),
             );
             match is_sender_permissioned {
-                Ok(Some(submsg)) => return Ok((true, Some(submsg))),
-                Ok(None) => return Ok((true, None)),
-                Err(_) => return Ok((false, None)),
+                Ok(Some(submsg)) => Ok((true, Some(submsg))),
+                Ok(None) => Ok((true, None)),
+                Err(_) => Ok((false, None)),
             }
         }
     }
