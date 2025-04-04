@@ -26,7 +26,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     coin, from_json,
     testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps,
+    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps, Uint128,
 };
 use rstest::*;
 
@@ -611,14 +611,14 @@ fn test_query_pending_packets(
     "cosmos-1.1234.5",    // id
     "cosmos-1",           // current_chain_id
     1234,                 // current_block_height
-    5,                    // current_index
+    Uint128::new(5),
     Ok("cosmos-1.1234.5".to_string())
 )]
 #[case::different_chain(
     "osmosis-1.5678.3",   // id from different chain
     "cosmos-1",           // current_chain_id
     1234,                 // current_block_height
-    5,                    // current_index
+    Uint128::new(5),
     Ok("osmosis-1.5678.3".to_string())
 )]
 // Error cases
@@ -626,7 +626,7 @@ fn test_query_pending_packets(
     "cosmos-1.1234",      // missing index
     "cosmos-1",
     1234,
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Invalid packet ID format. Expected: chain_id.block_height.index".to_string()) 
     })
@@ -635,7 +635,7 @@ fn test_query_pending_packets(
     ".1234.5",
     "cosmos-1",
     1234,
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Chain ID cannot be empty".to_string()) 
     })
@@ -644,7 +644,7 @@ fn test_query_pending_packets(
     "cosmos-1.invalid.5",
     "cosmos-1",
     1234,
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Invalid block height format".to_string()) 
     })
@@ -653,7 +653,7 @@ fn test_query_pending_packets(
     "cosmos-1.1234.5",
     "cosmos-1",
     1235,                 // different block height
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Block height or transaction index does not match the current values".to_string()) 
     })
@@ -662,7 +662,7 @@ fn test_query_pending_packets(
     "cosmos-1.1234.5",
     "cosmos-1",
     1234,
-    6,                    // different index
+    Uint128::new(6),                    // different index
     Err(ContractError::InvalidPacket {
         error: Some("Block height or transaction index does not match the current values".to_string()) 
     })
@@ -671,7 +671,7 @@ fn test_validate_id(
     #[case] id: &str,
     #[case] current_chain_id: &str,
     #[case] current_block_height: u64,
-    #[case] current_index: u32,
+    #[case] current_index: Uint128,
     #[case] expected: Result<String, ContractError>,
 ) {
     let result = validate_id(id, current_chain_id, current_block_height, current_index);
