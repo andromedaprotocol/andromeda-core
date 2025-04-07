@@ -899,17 +899,21 @@ fn generate_or_validate_packet_id(
     env: &Env,
     existing_id: Option<String>,
 ) -> Result<String, ContractError> {
-    let tx_index = TX_INDEX.may_load(deps.storage)?.unwrap_or_default();
+    let current_tx_index = TX_INDEX.may_load(deps.storage)?.unwrap_or(Uint128::zero());
 
-    TX_INDEX.save(deps.storage, &tx_index.checked_add(Uint128::one())?)?;
+    let new_tx_index = current_tx_index
+        .checked_add(Uint128::one())
+        .unwrap_or(Uint128::zero());
+
+    TX_INDEX.save(deps.storage, &new_tx_index)?;
 
     match existing_id {
         // Generate unique ID if the packet doesn't already have one
-        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index),
+        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, current_tx_index),
         // Not using "-" as a separator since chain id can contain it
         None => Ok(format!(
             "{}.{}.{}",
-            env.block.chain_id, env.block.height, tx_index
+            env.block.chain_id, env.block.height, current_tx_index
         )),
     }
 }
@@ -955,8 +959,7 @@ pub fn validate_id(
 
     //TODO discuss validation for cross chain packets
     if chain_id == current_chain_id
-        && (block_height != current_block_height
-            || index.checked_add(Uint128::one())? != current_index)
+        && (block_height != current_block_height || index != current_index)
     {
         return Err(ContractError::InvalidPacket {
             error: Some(
