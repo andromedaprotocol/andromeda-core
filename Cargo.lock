@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-address-list"
-version = "2.1.0"
+version = "2.1.0-b.1"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -810,7 +810,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.7"
+version = "1.5.1-b.8"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
