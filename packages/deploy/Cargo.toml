@@ -76,7 +76,7 @@ andromeda-point = { path = "../../contracts/math/andromeda-point" }
 andromeda-std = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test = { version = "1.0.0" }
+cw-multi-test = { version = "2.3.3" }
 
 [profile.release]
 opt-level = 3
