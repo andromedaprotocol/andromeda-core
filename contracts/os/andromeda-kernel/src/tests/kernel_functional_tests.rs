@@ -612,7 +612,9 @@ fn test_query_pending_packets(
     "cosmos-1",           // current_chain_id
     1234,                 // current_block_height
     Uint128::new(5),
-    Ok("cosmos-1.1234.5".to_string())
+    Err(ContractError::InvalidPacket {
+        error: Some("Block height or transaction index does not match the current values".to_string())
+    })
 )]
 #[case::different_chain(
     "osmosis-1.5678.3",   // id from different chain
@@ -662,10 +664,8 @@ fn test_query_pending_packets(
     "cosmos-1.1234.5",
     "cosmos-1",
     1234,
-    Uint128::new(6),                    // different index
-    Err(ContractError::InvalidPacket {
-        error: Some("Block height or transaction index does not match the current values".to_string()) 
-    })
+    Uint128::new(6),
+    Ok("cosmos-1.1234.5".to_string())
 )]
 fn test_validate_id(
     #[case] id: &str,

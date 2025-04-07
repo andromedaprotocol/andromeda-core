@@ -957,9 +957,10 @@ pub fn validate_id(
             error: Some("Invalid transaction index format".to_string()),
         })?;
 
+    let incremented_index = index.checked_add(Uint128::one()).unwrap_or(Uint128::zero());
     //TODO discuss validation for cross chain packets
     if chain_id == current_chain_id
-        && (block_height != current_block_height || index != current_index)
+        && (block_height != current_block_height || incremented_index != current_index)
     {
         return Err(ContractError::InvalidPacket {
             error: Some(
