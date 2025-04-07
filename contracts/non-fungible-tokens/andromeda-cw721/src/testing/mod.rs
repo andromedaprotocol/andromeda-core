@@ -3,7 +3,6 @@ use andromeda_non_fungible_tokens::cw721::{
     BatchSendMsg, ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg,
     TokenExtension, TransferAgreement,
 };
-use andromeda_std::testing::mock_querier;
 use andromeda_std::{
     amp::addresses::AndrAddr,
     error::ContractError,
@@ -22,13 +21,12 @@ const MINTER: &str = "cosmwasm1h6t805h2vjfzpa3m9n8kyadyng9xf604nhvev8tf5qdg65jh3
 const SYMBOL: &str = "TT";
 const NAME: &str = "TestToken";
 const _ADDRESS_LIST: &str = "addresslist";
-// const RATES: &str = "rates";
 
 fn init_setup(
     deps: &mut cosmwasm_std::OwnedDeps<
         cosmwasm_std::MemoryStorage,
         cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
+        andromeda_std::testing::mock_querier::WasmMockQuerier,
     >,
     env: Env,
 ) {
