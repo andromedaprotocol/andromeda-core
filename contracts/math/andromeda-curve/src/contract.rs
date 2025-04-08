@@ -60,13 +60,13 @@ pub fn instantiate(
                 deps.storage,
                 UPDATE_CURVE_CONFIG_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
             )?;
             ADOContract::set_permission(
                 deps.storage,
                 RESET_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
             )?;
         }
     }

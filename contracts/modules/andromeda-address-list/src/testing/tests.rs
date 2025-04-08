@@ -26,7 +26,7 @@ fn init(deps: DepsMut, info: MessageInfo) {
             owner: None,
             actor_permission: Some(ActorPermission {
                 actors: vec![AndrAddr::from_string("actor")],
-                permission: LocalPermission::whitelisted(None, None),
+                permission: LocalPermission::whitelisted(None, None, None, None),
             }),
         },
     )
@@ -97,6 +97,8 @@ fn test_add_remove_actor() {
     // Check that the actor and permission have been saved.
     let new_permission = PERMISSIONS.load(deps.as_ref().storage, &actor).unwrap();
     assert_eq!(new_permission, permission);
+
+    // make permission actor a permissioned action
 
     // Try with unauthorized address
     let unauth_info = mock_info("anyone", &[]);

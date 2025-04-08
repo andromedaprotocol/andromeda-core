@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Batch send NFTs [(#816)](https://github.com/andromedaprotocol/andromeda-core/pull/816)
 - feat: Added Permissionless attribute to relevant messages [(#825)](https://github.com/andromedaprotocol/andromeda-core/pull/825)
 - feat: Apply Serde default to previous_hops [(#829)](https://github.com/andromedaprotocol/andromeda-core/pull/829)
+- feat: Frequency in Permissioning [(#855)](https://github.com/andromedaprotocol/andromeda-core/pull/855)
 
 ### Changed
 

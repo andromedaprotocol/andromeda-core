@@ -2,7 +2,10 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_modules::address_list::{ActorPermission, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::{ado_base::permissioning::LocalPermission, amp::AndrAddr};
+use andromeda_std::{
+    ado_base::permissioning::{LocalPermission, Permission, PermissioningMessage},
+    amp::AndrAddr,
+};
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
 };
@@ -49,6 +52,22 @@ impl MockAddressList {
             &[],
         )
     }
+
+    pub fn execute_set_permission_actor(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actors: Vec<AndrAddr>,
+        action: String,
+        permission: Permission,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &mock_set_permission_actor_msg(actors, action, permission),
+            sender,
+            &[],
+        )
+    }
 }
 
 pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
@@ -68,9 +87,29 @@ pub fn mock_address_list_instantiate_msg(
     }
 }
 
+pub fn mock_permission_action_msg(action: String) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction { action })
+}
+
 pub fn mock_add_actor_permission_msg(
     actors: Vec<AndrAddr>,
     permission: LocalPermission,
 ) -> ExecuteMsg {
     ExecuteMsg::PermissionActors { actors, permission }
+}
+
+pub fn mock_set_permission_actor_msg(
+    actors: Vec<AndrAddr>,
+    action: String,
+    permission: Permission,
+) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
+        actors,
+        action,
+        permission,
+    })
+}
+
+pub fn mock_query_permission_msg(actor: Addr) -> QueryMsg {
+    QueryMsg::ActorPermission { actor }
 }

@@ -57,13 +57,13 @@ pub fn instantiate(
                 deps.storage,
                 STORE_MATRIX_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
             )?;
             ADOContract::set_permission(
                 deps.storage,
                 DELETE_MATRIX_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
             )?;
         }
     }

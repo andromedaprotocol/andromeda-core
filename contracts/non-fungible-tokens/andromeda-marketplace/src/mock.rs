@@ -100,6 +100,15 @@ impl MockMarketplace {
         )
     }
 
+    pub fn execute_permission_action(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        action: impl Into<String>,
+    ) -> ExecuteResult {
+        self.execute(app, &mock_permission_action(action), sender, &[])
+    }
+
     pub fn query_rates(&self, app: &mut MockApp, action: String) -> Option<Rate> {
         let msg = mock_get_rates(action);
         self.query(app, msg)
@@ -165,6 +174,12 @@ pub fn mock_update_sale(
         coin_denom,
         recipient,
     }
+}
+
+pub fn mock_permission_action(action: impl Into<String>) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
+        action: action.into(),
+    })
 }
 
 pub fn mock_buy_token(token_address: impl Into<String>, token_id: impl Into<String>) -> ExecuteMsg {
