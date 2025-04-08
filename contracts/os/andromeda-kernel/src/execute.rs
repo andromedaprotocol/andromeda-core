@@ -894,7 +894,7 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
 }
 
 /// Generates or validates a packet ID using chain ID, block height and transaction index
-fn generate_or_validate_packet_id(
+pub(super) fn generate_or_validate_packet_id(
     deps: &mut DepsMut,
     env: &Env,
     existing_id: Option<String>,

@@ -4,7 +4,7 @@ use andromeda_kernel::ack::make_ack_success;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
     amp::{messages::AMPMsg, recipient::Recipient, AndrAddr},
-    os,
+    os::{self, kernel::TxIndexResponse},
 };
 use andromeda_testing::{
     ado_deployer, interchain::ensure_packet_success, register_ado, InterchainTestEnv,
@@ -99,12 +99,22 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         }]),
     );
 
+    let tx_index: TxIndexResponse = chain1
+        .aos
+        .kernel
+        .query(&andromeda_std::os::kernel::QueryMsg::TxIndex {})
+        .unwrap();
+
+    assert_eq!(tx_index.tx_index, Uint128::zero());
+
     // Send funds from chain2
     let chain2_send_request = chain2
         .aos
         .kernel
         .execute(
-            &os::kernel::ExecuteMsg::Send { message },
+            &os::kernel::ExecuteMsg::Send {
+                message: message.clone(),
+            },
             Some(&[Coin {
                 denom: chain2.denom.clone(),
                 amount: Uint128::new(100),
@@ -157,8 +167,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
                 packet_sequence: 1,
-                packet_ack,
-                channel_id,
+                packet_ack: packet_ack.clone(),
+                channel_id: channel_id.clone(),
             },
             None,
         )
@@ -178,6 +188,56 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
     assert_eq!(balance2[0].denom, ibc_denom);
     assert_eq!(balance1[0].amount, Uint128::new(60)); // 60%
     assert_eq!(balance2[0].amount, Uint128::new(40)); // 40%
+
+    let tx_index: TxIndexResponse = chain1
+        .aos
+        .kernel
+        .query(&andromeda_std::os::kernel::QueryMsg::TxIndex {})
+        .unwrap();
+
+    assert_eq!(tx_index.tx_index, Uint128::one());
+
+    let chain2_send_request = chain2
+        .aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::Send { message },
+            Some(&[Coin {
+                denom: chain2.denom.clone(),
+                amount: Uint128::new(100),
+            }]),
+        )
+        .unwrap();
+    let packet_lifetime = interchain
+        .await_packets(&chain2.chain_id, chain2_send_request)
+        .unwrap();
+    ensure_packet_success(packet_lifetime);
+
+    let kernel_chain2_splitter = chain2
+        .aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::TriggerRelay {
+                packet_sequence: 2,
+                packet_ack,
+                channel_id,
+            },
+            None,
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets(&chain2.chain_id, kernel_chain2_splitter)
+        .unwrap();
+    ensure_packet_success(packet_lifetime);
+
+    let tx_index: TxIndexResponse = chain1
+        .aos
+        .kernel
+        .query(&andromeda_std::os::kernel::QueryMsg::TxIndex {})
+        .unwrap();
+
+    assert_eq!(tx_index.tx_index, Uint128::new(2));
 }
 
 #[test]

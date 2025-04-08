@@ -5,15 +5,15 @@ use andromeda_std::{
         aos_querier::AOSQuerier,
         kernel::{
             ChainNameResponse, ChannelInfoResponse, EnvResponse, PacketInfoAndSequence,
-            PendingPacketResponse, VerifyAddressResponse,
+            PendingPacketResponse, TxIndexResponse, VerifyAddressResponse,
         },
     },
 };
-use cosmwasm_std::{Addr, Coin, Deps, Order};
+use cosmwasm_std::{Addr, Coin, Deps, Order, Uint128};
 
 use crate::state::{
     CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN, ENV_VARIABLES,
-    IBC_FUND_RECOVERY, KERNEL_ADDRESSES,
+    IBC_FUND_RECOVERY, KERNEL_ADDRESSES, TX_INDEX,
 };
 
 pub fn key_address(deps: Deps, key: String) -> Result<Addr, ContractError> {
@@ -70,6 +70,16 @@ pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
 pub fn chain_name(deps: Deps) -> Result<ChainNameResponse, ContractError> {
     Ok(ChainNameResponse {
         chain_name: CURR_CHAIN.may_load(deps.storage)?.unwrap_or_default(),
+    })
+}
+
+pub fn tx_index(deps: Deps) -> Result<TxIndexResponse, ContractError> {
+    println!(
+        "reaching tx_index: {:?}",
+        TX_INDEX.may_load(deps.storage)?.unwrap_or(Uint128::zero())
+    );
+    Ok(TxIndexResponse {
+        tx_index: TX_INDEX.may_load(deps.storage)?.unwrap_or(Uint128::zero()),
     })
 }
 

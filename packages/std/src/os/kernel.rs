@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Coin};
+use cosmwasm_std::{Addr, Binary, Coin, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
@@ -124,6 +124,11 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct TxIndexResponse {
+    pub tx_index: Uint128,
+}
+
+#[cw_serde]
 pub struct PendingPacketResponse {
     pub packets: Vec<PacketInfoAndSequence>,
 }
@@ -155,6 +160,8 @@ pub enum QueryMsg {
     Recoveries { addr: Addr },
     #[returns(ChainNameResponse)]
     ChainName {},
+    #[returns(TxIndexResponse)]
+    TxIndex {},
     // Base queries
     #[returns(crate::ado_base::version::VersionResponse)]
     Version {},

@@ -168,6 +168,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ChannelInfo { chain } => encode_binary(&query::channel_info(deps, chain)?),
         QueryMsg::Recoveries { addr } => encode_binary(&query::recoveries(deps, addr)?),
         QueryMsg::ChainName {} => encode_binary(&query::chain_name(deps)?),
+        QueryMsg::TxIndex {} => encode_binary(&query::tx_index(deps)?),
         // Base queries
         QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
         QueryMsg::AdoType {} => encode_binary(&ADOContract::default().query_type(deps)?),
