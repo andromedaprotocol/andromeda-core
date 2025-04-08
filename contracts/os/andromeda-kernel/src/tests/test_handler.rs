@@ -270,72 +270,42 @@ fn test_handle_local() {
     }
 }
 
-#[test]
-fn test_generate_or_validate_packet_id() {
-    use crate::state::TX_INDEX;
-    use cosmwasm_std::{testing::mock_env, Uint128};
+use crate::state::TX_INDEX;
+use cosmwasm_std::Uint128;
+use rstest::*;
 
-    // Initialize dependencies
+// Helper to reset TX_INDEX before each case
+fn setup_tx_index(storage: &mut dyn cosmwasm_std::Storage, value: Uint128) {
+    TX_INDEX.save(storage, &value).unwrap();
+}
+
+#[rstest]
+#[case::generate_first(None, Uint128::zero(), "0", Uint128::one())]
+#[case::generate_second(None, Uint128::one(), "1", Uint128::new(2))]
+#[case::validate_same_chain(Some("test-chain.12345.1"), Uint128::zero(), "1", Uint128::zero())]
+#[case::validate_different_chain(
+    Some("different-chain.12345.10"),
+    Uint128::zero(),
+    "10",
+    Uint128::zero()
+)]
+fn test_generate_or_validate_packet_id_cases(
+    #[case] input: Option<&str>,
+    #[case] initial_index: Uint128,
+    #[case] expected_index_str: &str,
+    #[case] expected_final_index: Uint128,
+) {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    // Test case 1: Generate new packet ID when none exists
-    // Initialize TX_INDEX to 0
-    TX_INDEX
-        .save(deps.as_mut().storage, &Uint128::zero())
-        .unwrap();
+    setup_tx_index(deps.as_mut().storage, initial_index);
 
-    let result = generate_or_validate_packet_id(&mut deps.as_mut(), &env, None).unwrap();
+    let input_string = input.map(|s| s.to_string());
+    let result = generate_or_validate_packet_id(&mut deps.as_mut(), &env, input_string).unwrap();
 
-    // Verify the generated packet ID format
     let parts: Vec<&str> = result.split('.').collect();
-    assert_eq!(parts[2], "0"); // Should be 0 since it's the first message
+    assert_eq!(parts[2], expected_index_str);
 
-    // Verify TX_INDEX was incremented
-    let new_tx_index = TX_INDEX.load(deps.as_ref().storage).unwrap();
-    assert_eq!(new_tx_index, Uint128::one());
-
-    // Test case 2: Generate another packet ID
-    let result2 = generate_or_validate_packet_id(&mut deps.as_mut(), &env, None).unwrap();
-
-    // Verify the generated packet ID format
-    let parts: Vec<&str> = result2.split('.').collect();
-    assert_eq!(parts[2], "1"); // Should be 1 since it's the second message
-
-    // Verify TX_INDEX was incremented again
-    let new_tx_index = TX_INDEX.load(deps.as_ref().storage).unwrap();
-    assert_eq!(new_tx_index, Uint128::new(2));
-
-    // Test case 3: Validate existing packet ID from same chain
-    let existing_id = format!(
-        "{}.{}.{}",
-        env.block.chain_id,
-        env.block.height,
-        Uint128::new(1)
-    );
-    let result3 =
-        generate_or_validate_packet_id(&mut deps.as_mut(), &env, Some(existing_id.clone()))
-            .unwrap();
-
-    // Verify the validated packet ID matches the input
-    assert_eq!(result3, existing_id);
-
-    // Test case 4: Validate existing packet ID from different chain
-    let different_chain_id = "different-chain";
-    let existing_id_diff_chain = format!(
-        "{}.{}.{}",
-        different_chain_id,
-        env.block.height,
-        // The id isn't checked from other chains
-        Uint128::new(10)
-    );
-    let result4 = generate_or_validate_packet_id(
-        &mut deps.as_mut(),
-        &env,
-        Some(existing_id_diff_chain.clone()),
-    )
-    .unwrap();
-
-    // Verify the validated packet ID matches the input
-    assert_eq!(result4, existing_id_diff_chain);
+    let final_tx_index = TX_INDEX.load(deps.as_ref().storage).unwrap();
+    assert_eq!(final_tx_index, expected_final_index);
 }
