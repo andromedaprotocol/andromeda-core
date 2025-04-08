@@ -728,8 +728,9 @@ fn update_staker_reward_info(
     let rewards = staker_share.checked_mul_floor(reward_token.index - staker_reward_info.index)?;
 
     staker_reward_info.index = reward_token.index;
-    //TODO check if this is correct
-    staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
+    staker_reward_info.pending_rewards = staker_reward_info
+        .pending_rewards
+        .checked_add(Decimal256::from_ratio(rewards, 1u128))?;
     Ok(())
 }
 
