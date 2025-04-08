@@ -4,7 +4,7 @@ use andromeda_kernel::ack::make_ack_success;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::{
     amp::{messages::AMPMsg, recipient::Recipient, AndrAddr},
-    os,
+    os::{self},
 };
 use andromeda_testing::{
     ado_deployer, interchain::ensure_packet_success, register_ado, InterchainTestEnv,
@@ -104,7 +104,9 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .aos
         .kernel
         .execute(
-            &os::kernel::ExecuteMsg::Send { message },
+            &os::kernel::ExecuteMsg::Send {
+                message: message.clone(),
+            },
             Some(&[Coin {
                 denom: chain2.denom.clone(),
                 amount: Uint128::new(100),
@@ -157,8 +159,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
                 packet_sequence: 1,
-                packet_ack,
-                channel_id,
+                packet_ack: packet_ack.clone(),
+                channel_id: channel_id.clone(),
             },
             None,
         )
