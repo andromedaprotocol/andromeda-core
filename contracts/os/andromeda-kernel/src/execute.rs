@@ -901,20 +901,21 @@ fn generate_or_validate_packet_id(
 ) -> Result<String, ContractError> {
     let current_tx_index = TX_INDEX.may_load(deps.storage)?.unwrap_or(Uint128::zero());
 
-    let new_tx_index = current_tx_index
-        .checked_add(Uint128::one())
-        .unwrap_or(Uint128::zero());
-
-    TX_INDEX.save(deps.storage, &new_tx_index)?;
-
     match existing_id {
-        // Generate unique ID if the packet doesn't already have one
         Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, current_tx_index),
-        // Not using "-" as a separator since chain id can contain it
-        None => Ok(format!(
-            "{}.{}.{}",
-            env.block.chain_id, env.block.height, current_tx_index
-        )),
+        // Generate unique ID if the packet doesn't already have one
+        None => {
+            let new_tx_index = current_tx_index
+                .checked_add(Uint128::one())
+                .unwrap_or(Uint128::zero());
+
+            TX_INDEX.save(deps.storage, &new_tx_index)?;
+            // Not using "-" as a separator since chain id can contain it
+            Ok(format!(
+                "{}.{}.{}",
+                env.block.chain_id, env.block.height, current_tx_index
+            ))
+        }
     }
 }
 
