@@ -1,134 +1,129 @@
-// use andromeda_fungible_tokens::airdrop::{
-//     ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
-//     MerkleRootResponse, QueryMsg, TotalClaimedResponse,
-// };
-// use andromeda_std::{
-//     ado_contract::ADOContract,
-//     amp::AndrAddr,
-//     common::{denom::Asset, expiration::Expiry, Milliseconds},
-//     error::ContractError,
-//     testing::mock_querier::{MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT},
-// };
-// use cosmwasm_schema::{cw_serde, serde::Deserialize};
-// use cosmwasm_std::{
-//     attr, coin, from_json,
-//     testing::{message_info, mock_env},
-//     to_json_binary, BankMsg, Coin, CosmosMsg, SubMsg, Timestamp, Uint128, WasmMsg,
-// };
-// use cw20::Cw20ExecuteMsg;
+use andromeda_fungible_tokens::airdrop::{
+    ConfigResponse, ExecuteMsg, InstantiateMsg, LatestStageResponse, MerkleRootResponse, QueryMsg,
+};
+use andromeda_std::{
+    ado_contract::ADOContract,
+    amp::AndrAddr,
+    common::{denom::Asset, expiration::Expiry, Milliseconds},
+    error::ContractError,
+    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT},
+};
+use cosmwasm_schema::{cw_serde, serde::Deserialize};
+use cosmwasm_std::{
+    attr, from_json,
+    testing::{message_info, mock_env},
+    Addr, Timestamp, Uint128,
+};
 
-// use crate::{
-//     contract::{execute, instantiate, query},
-//     testing::mock_querier::mock_dependencies_custom,
-// };
+use crate::contract::{execute, instantiate, query};
 
-// const MOCK_NATIVE_DENOM: &str = "uandr";
+const _MOCK_NATIVE_DENOM: &str = "uandr";
 
-// #[test]
-// fn proper_instantiation() {
-//     let mut deps = mock_dependencies_custom(&[]);
+#[test]
+fn proper_instantiation() {
+    let mut deps = mock_dependencies_custom(&[]);
 
-//     let mock_cw20_contract = deps.api.addr_make(MOCK_CW20_CONTRACT);
-//     let mock_kernel_address = deps.api.addr_make("mock_kernel_address");
+    let mock_cw20_contract = Addr::unchecked(MOCK_CW20_CONTRACT);
+    let mock_kernel_address = deps.api.addr_make("mock_kernel_address");
 
-//     let msg = InstantiateMsg {
-//         asset_info: Asset::Cw20Token(AndrAddr::from_string(mock_cw20_contract.to_string())),
-//         kernel_address: mock_kernel_address.to_string(),
-//         owner: None,
-//     };
+    let msg = InstantiateMsg {
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(mock_cw20_contract.to_string())),
+        kernel_address: mock_kernel_address.to_string(),
+        owner: None,
+    };
 
-//     let env = mock_env();
-//     let owner0000 = deps.api.addr_make("owner0000");
-//     let info = message_info(&owner0000, &[]);
+    let env = mock_env();
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
 
-//     // we can just call .unwrap() to assert this was a success
-//     let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    // we can just call .unwrap() to assert this was a success
+    let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-//     // it worked, let's query the state
-//     let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
-//     let config: ConfigResponse = from_json(res).unwrap();
-//     assert!(ADOContract::default()
-//         .is_contract_owner(deps.as_ref().storage, owner0000.as_str())
-//         .unwrap());
-//     assert_eq!(
-//         Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
-//         config.asset_info
-//     );
+    // it worked, let's query the state
+    let res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
+    let config: ConfigResponse = from_json(res).unwrap();
+    assert!(ADOContract::default()
+        .is_contract_owner(deps.as_ref().storage, owner0000.as_str())
+        .unwrap());
+    assert_eq!(
+        Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        config.asset_info
+    );
 
-//     let res = query(deps.as_ref(), env, QueryMsg::LatestStage {}).unwrap();
-//     let latest_stage: LatestStageResponse = from_json(res).unwrap();
-//     assert_eq!(0u8, latest_stage.latest_stage);
-// }
+    let res = query(deps.as_ref(), env, QueryMsg::LatestStage {}).unwrap();
+    let latest_stage: LatestStageResponse = from_json(res).unwrap();
+    assert_eq!(0u8, latest_stage.latest_stage);
+}
 
-// #[test]
-// fn register_merkle_root() {
-//     let mut deps = mock_dependencies_custom(&[]);
+#[test]
+fn register_merkle_root() {
+    let mut deps = mock_dependencies_custom(&[]);
 
-//     let msg = InstantiateMsg {
-//         asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
-//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//         owner: None,
-//     };
+    let msg = InstantiateMsg {
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
 
-//     let env = mock_env();
-//     let owner0000 = deps.api.addr_make("owner0000");
-//     let info = message_info(&owner0000, &[]);
-//     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    let env = mock_env();
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
+    let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//     // register new merkle root
-//     let env = mock_env();
-//     let owner0000 = deps.api.addr_make("owner0000");
-//     let info = message_info(&owner0000, &[]);
-//     let msg = ExecuteMsg::RegisterMerkleRoot {
-//         merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
-//         expiration: None,
+    // register new merkle root
+    let env = mock_env();
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
+        merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
+        expiration: None,
 
-//         total_amount: None,
-//     };
+        total_amount: None,
+    };
 
-//     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-//     assert_eq!(
-//         res.attributes,
-//         vec![
-//             attr("action", "register_merkle_root"),
-//             attr("stage", "1"),
-//             attr(
-//                 "merkle_root",
-//                 "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
-//             ),
-//             attr("total_amount", "0")
-//         ]
-//     );
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("action", "register_merkle_root"),
+            attr("stage", "1"),
+            attr(
+                "merkle_root",
+                "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
+            ),
+            attr("total_amount", "0")
+        ]
+    );
 
-//     let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
-//     let latest_stage: LatestStageResponse = from_json(res).unwrap();
-//     assert_eq!(1u8, latest_stage.latest_stage);
+    let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
+    let latest_stage: LatestStageResponse = from_json(res).unwrap();
+    assert_eq!(1u8, latest_stage.latest_stage);
 
-//     let res = query(
-//         deps.as_ref(),
-//         env,
-//         QueryMsg::MerkleRoot {
-//             stage: latest_stage.latest_stage,
-//         },
-//     )
-//     .unwrap();
-//     let merkle_root: MerkleRootResponse = from_json(res).unwrap();
-//     assert_eq!(
-//         "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
-//         merkle_root.merkle_root
-//     );
-// }
+    let res = query(
+        deps.as_ref(),
+        env,
+        QueryMsg::MerkleRoot {
+            stage: latest_stage.latest_stage,
+        },
+    )
+    .unwrap();
+    let merkle_root: MerkleRootResponse = from_json(res).unwrap();
+    assert_eq!(
+        "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
+        merkle_root.merkle_root
+    );
+}
 
-// const TEST_DATA_1: &[u8] = include_bytes!("../testdata/airdrop_stage_1_test_data.json");
-// const TEST_DATA_2: &[u8] = include_bytes!("../testdata/airdrop_stage_2_test_data.json");
+const _TEST_DATA_1: &[u8] = include_bytes!("../testdata/airdrop_stage_1_test_data.json");
+const _TEST_DATA_2: &[u8] = include_bytes!("../testdata/airdrop_stage_2_test_data.json");
 
-// #[cw_serde]
-// struct Encoded {
-//     account: String,
-//     amount: Uint128,
-//     root: String,
-//     proofs: Vec<String>,
-// }
+#[cw_serde]
+struct Encoded {
+    account: String,
+    amount: Uint128,
+    root: String,
+    proofs: Vec<String>,
+}
 
 // #[test]
 // fn test_claim() {
@@ -153,7 +148,6 @@
 //     let msg = ExecuteMsg::RegisterMerkleRoot {
 //         merkle_root: test_data.root,
 //         expiration: None,
-
 //         total_amount: None,
 //     };
 //     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -283,21 +277,22 @@
 //     );
 // }
 
-// const TEST_DATA_1_MULTI: &[u8] = include_bytes!("../testdata/airdrop_stage_1_test_multi_data.json");
+const _TEST_DATA_1_MULTI: &[u8] =
+    include_bytes!("../testdata/airdrop_stage_1_test_multi_data.json");
 
-// #[cw_serde]
-// struct Proof {
-//     account: String,
-//     amount: Uint128,
-//     proofs: Vec<String>,
-// }
+#[cw_serde]
+struct Proof {
+    account: String,
+    amount: Uint128,
+    proofs: Vec<String>,
+}
 
-// #[derive(Deserialize, Debug)]
-// struct MultipleData {
-//     total_claimed_amount: Uint128,
-//     root: String,
-//     accounts: Vec<Proof>,
-// }
+#[derive(Deserialize, Debug)]
+struct MultipleData {
+    _total_claimed_amount: Uint128,
+    _root: String,
+    _accounts: Vec<Proof>,
+}
 
 // #[test]
 // fn test_claim_native() {
@@ -460,88 +455,88 @@
 //     );
 // }
 
-// // Check expiration. Chain height in tests is 12345
-// #[test]
-// fn test_stage_expires() {
-//     let mut deps = mock_dependencies_custom(&[]);
+// Check expiration. Chain height in tests is 12345
+#[test]
+fn test_stage_expires() {
+    let mut deps = mock_dependencies_custom(&[]);
 
-//     let msg = InstantiateMsg {
-//         asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
-//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//         owner: None,
-//     };
+    let msg = InstantiateMsg {
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
 
-//     let env = mock_env();
-//     let owner0000 = deps.api.addr_make("owner0000");
-//     let info = message_info(&owner0000, &[]);
-//     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    let env = mock_env();
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
+    let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//     // can register merkle root
-//     let env = mock_env();
-//     let owner0000 = deps.api.addr_make("owner0000");
-//     let info = message_info(&owner0000, &[]);
-//     let msg = ExecuteMsg::RegisterMerkleRoot {
-//         merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
-//         expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
-//         total_amount: None,
-//     };
-//     execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    // can register merkle root
+    let env = mock_env();
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
+        merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
+        expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
+        total_amount: None,
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-//     // can't claim expired
-//     let msg = ExecuteMsg::Claim {
-//         amount: Uint128::new(5),
-//         stage: 1u8,
-//         proof: vec![],
-//     };
+    // can't claim expired
+    let msg = ExecuteMsg::Claim {
+        amount: Uint128::new(5),
+        stage: 1u8,
+        proof: vec![],
+    };
 
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-//     assert_eq!(
-//         res,
-//         ContractError::StageExpired {
-//             stage: 1,
-//             expiration: Milliseconds::from_nanos(100_000_000)
-//         }
-//     )
-// }
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(
+        res,
+        ContractError::StageExpired {
+            stage: 1,
+            expiration: Milliseconds::from_nanos(100_000_000)
+        }
+    )
+}
 
-// #[test]
-// fn test_cant_burn() {
-//     let mut deps = mock_dependencies_custom(&[]);
+#[test]
+fn test_cant_burn() {
+    let mut deps = mock_dependencies_custom(&[]);
 
-//     let msg = InstantiateMsg {
-//         asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
-//         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-//         owner: None,
-//     };
+    let msg = InstantiateMsg {
+        asset_info: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT)),
+        kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+        owner: None,
+    };
 
-//     let env = mock_env();
-//     let owner0000 = deps.api.addr_make("owner0000");
-//     let info = message_info(&owner0000, &[]);
-//     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    let env = mock_env();
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
+    let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-//     // can register merkle root
-//     let mut env = mock_env();
-//     let owner0000 = deps.api.addr_make("owner0000");
-//     let info = message_info(&owner0000, &[]);
-//     let msg = ExecuteMsg::RegisterMerkleRoot {
-//         merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
-//         expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
-//         total_amount: Some(Uint128::new(100000)),
-//     };
-//     execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+    // can register merkle root
+    let mut env = mock_env();
+    let owner0000 = deps.api.addr_make("owner0000");
+    let info = message_info(&owner0000, &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
+        merkle_root: "5d4f48f147cb6cb742b376dce5626b2a036f69faec10cd73631c791780e150fc".to_string(),
+        expiration: Some(Expiry::AtTime(Milliseconds::from_nanos(100_000_000))),
+        total_amount: Some(Uint128::new(100000)),
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-//     // Can't burn not expired stage
-//     let msg = ExecuteMsg::Burn { stage: 1u8 };
-//     env.block.time = Timestamp::from_nanos(10_000_000);
-//     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
-//     assert_eq!(
-//         res,
-//         ContractError::StageNotExpired {
-//             stage: 1,
-//             expiration: Milliseconds::from_nanos(100_000_000)
-//         }
-//     )
-// }
+    // Can't burn not expired stage
+    let msg = ExecuteMsg::Burn { stage: 1u8 };
+    env.block.time = Timestamp::from_nanos(10_000_000);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(
+        res,
+        ContractError::StageNotExpired {
+            stage: 1,
+            expiration: Milliseconds::from_nanos(100_000_000)
+        }
+    )
+}
 
 // #[test]
 // fn test_can_burn() {

@@ -1,10 +1,7 @@
 use crate::{
     ibc::PACKET_LIFETIME,
     proto::MsgTransferResponse,
-    state::{
-        IBCHooksPacketSendState, OutgoingPacket, ADO_OWNER, CHANNEL_TO_EXECUTE_MSG,
-        OUTGOING_IBC_HOOKS_PACKETS, OUTGOING_IBC_PACKETS, PENDING_MSG_AND_FUNDS, REFUND_DATA,
-    },
+    state::{ADO_OWNER, CHANNEL_TO_EXECUTE_MSG, PENDING_MSG_AND_FUNDS, REFUND_DATA},
 };
 use andromeda_std::{
     ado_base::{ownership::OwnershipMessage, AndromedaMsg},
@@ -14,9 +11,10 @@ use andromeda_std::{
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    ensure, to_json_string, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, IbcMsg, Reply,
-    Response, SubMsg, SubMsgResponse, SubMsgResult,
+    to_json_string, wasm_execute, Addr, CosmosMsg, DepsMut, Empty, Env, IbcMsg, Reply, Response,
+    SubMsg, SubMsgResponse, SubMsgResult,
 };
+use prost::Message;
 
 /// Handles the reply from an ADO creation
 ///
@@ -40,60 +38,6 @@ pub fn on_reply_create_ado(deps: DepsMut, env: Env, msg: Reply) -> Result<Respon
     }
 
     Ok(res)
-}
-
-use ::prost::Message;
-/// Adapted from https://github.com/osmosis-labs/osmosis/blob/main/cosmwasm/contracts/crosschain-swaps/src/execute.rs#L301
-///
-/// Handles the reply from sending an IBC hooks packet and creates an appropriate recovery
-#[allow(deprecated)]
-pub fn on_reply_ibc_hooks_packet_send(
-    deps: DepsMut,
-    msg: Reply,
-) -> Result<Response, ContractError> {
-    // TODO this is deprecated
-    let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result else {
-        return Err(ContractError::InvalidPacket {
-            error: Some(format!("ibc hooks: failed reply: {:?}", msg.result)),
-        });
-    };
-
-    let MsgTransferResponse { sequence } =
-        MsgTransferResponse::decode(&b[..]).map_err(|_e| ContractError::InvalidPacket {
-            error: Some(format!("ibc hooks: could not decode response: {b}")),
-        })?;
-
-    let mut outgoing_packets = OUTGOING_IBC_HOOKS_PACKETS
-        .load(deps.as_ref().storage)
-        .unwrap_or_default();
-    ensure!(
-        !outgoing_packets.is_empty(),
-        ContractError::InvalidPacket {
-            error: Some("ibc hooks: no outgoing packets".to_string())
-        }
-    );
-
-    let IBCHooksPacketSendState {
-        channel_id,
-        recovery_addr,
-        amount,
-    } = outgoing_packets.remove(0);
-
-    OUTGOING_IBC_HOOKS_PACKETS.save(deps.storage, &outgoing_packets)?;
-    OUTGOING_IBC_PACKETS.save(
-        deps.storage,
-        (&channel_id, sequence),
-        &OutgoingPacket {
-            recovery_addr: recovery_addr.clone(),
-            amount,
-        },
-    )?;
-
-    Ok(Response::default()
-        .add_attribute("action", "ibc_hooks_packet_send")
-        .add_attribute("channel_id", channel_id)
-        .add_attribute("sequence", sequence.to_string())
-        .add_attribute("recovery_addr", recovery_addr))
 }
 
 // Handles the reply from an ICS20 funds transfer that did inlcude a message

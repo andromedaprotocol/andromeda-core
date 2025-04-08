@@ -31,7 +31,7 @@ impl WithdrawalType {
         match self {
             WithdrawalType::Percentage(percent) => {
                 ensure!(*percent <= Decimal::one(), ContractError::InvalidRate {});
-                Ok(balance.mul_floor(*percent))
+                Ok(balance.checked_mul_floor(*percent)?)
             }
             WithdrawalType::Amount(amount) => Ok(cmp::min(*amount, balance)),
         }

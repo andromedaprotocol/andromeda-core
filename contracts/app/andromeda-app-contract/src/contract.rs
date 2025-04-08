@@ -33,7 +33,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     APP_NAME.save(deps.storage, &msg.name)?;
-    // Removed debug print that was causing compile error since DepsMut doesn't implement Debug
+
     ensure!(
         msg.app_components.len() <= 50,
         ContractError::TooManyAppComponents {}

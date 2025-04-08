@@ -287,7 +287,6 @@ impl AOSQuerier {
         Ok(denom_info_response.denom_info)
     }
 
-    // #[cfg(feature = "ibc")]
     pub fn get_counterparty_denom(
         querier: &QuerierWrapper,
         denom_trace: &DenomInfo,

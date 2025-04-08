@@ -161,7 +161,7 @@ fn test_validator_stake() {
     });
 
     validator_staking
-        .execute_withdraw_fund(&mut router, owner.clone())
+        .execute_withdraw_fund(&mut router, owner.clone(), "TOKEN".to_string())
         .unwrap();
 
     let owner_balance = router.wrap().query_balance(owner, "TOKEN").unwrap();
@@ -579,7 +579,7 @@ fn test_validator_stake_and_unstake_specific_amount() {
     });
 
     validator_staking
-        .execute_withdraw_fund(&mut router, owner.clone())
+        .execute_withdraw_fund(&mut router, owner.clone(), "TOKEN".to_string())
         .unwrap();
 
     let owner_balance = router.wrap().query_balance(owner, "TOKEN").unwrap();

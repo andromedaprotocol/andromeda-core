@@ -14,8 +14,7 @@ use crate::execute::handle_receive_cw20;
 // use crate::execute::handle_receive_cw20;
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{
-    on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer,
-    on_reply_refund_ibc_transfer_with_msg,
+    on_reply_create_ado, on_reply_ibc_transfer, on_reply_refund_ibc_transfer_with_msg,
 };
 use crate::state::CURR_CHAIN;
 use crate::{execute, query, sudo};
@@ -71,7 +70,6 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> Result<Response, Contra
 
     match ReplyId::from_repr(msg.id) {
         Some(ReplyId::CreateADO) => on_reply_create_ado(deps, env, msg),
-        Some(ReplyId::IBCHooksPacketSend) => on_reply_ibc_hooks_packet_send(deps, msg),
         Some(ReplyId::IBCTransfer) => on_reply_ibc_transfer(deps, env, msg),
         _ => Ok(Response::default()),
     }

@@ -347,10 +347,9 @@ fn execute_claim(
     Ok(res)
 }
 
-#[allow(deprecated)]
 fn execute_withdraw_fund(
     ctx: ExecuteContext,
-    denom: Option<String>,
+    denom: String,
     recipient: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -358,17 +357,9 @@ fn execute_withdraw_fund(
     } = ctx;
 
     let recipient = recipient.map_or(Ok(info.sender), |r| r.get_raw_address(&deps.as_ref()))?;
-    let funds = denom.map_or(
-        deps.querier
-            // TODO this is deprecated
-            .query_all_balances(env.contract.address.clone())?,
-        |d| {
-            deps.querier
-                .query_balance(env.contract.address.clone(), d)
-                .map(|fund| vec![fund])
-                .expect("Invalid denom")
-        },
-    );
+    let funds = deps
+        .querier
+        .query_balance(env.contract.address.clone(), denom)?;
 
     // Remove expired unstaking requests
     let mut unstaking_queue = UNSTAKING_QUEUE.load(deps.storage)?;
@@ -376,7 +367,7 @@ fn execute_withdraw_fund(
     UNSTAKING_QUEUE.save(deps.storage, &unstaking_queue)?;
 
     ensure!(
-        !funds.is_empty(),
+        !funds.amount.is_zero(),
         ContractError::InvalidWithdrawal {
             msg: Some("No funds to withdraw".to_string())
         }
@@ -385,7 +376,7 @@ fn execute_withdraw_fund(
     let res = Response::new()
         .add_message(BankMsg::Send {
             to_address: recipient.to_string(),
-            amount: funds,
+            amount: vec![funds],
         })
         .add_attribute("action", "withdraw-funds")
         .add_attribute("from", env.contract.address)
@@ -461,6 +452,15 @@ pub fn on_validator_unstake(deps: DepsMut, msg: Reply) -> Result<Response, Contr
         let payout_at = Timestamp::from_seconds(seconds);
         payout_at.plus_nanos(nanos)
     } else {
+        // let mut payout_at = Timestamp::default();
+        // for response in res.msg_responses {
+        //     let data = response.value;
+        //     let (seconds, nanos) = decode_unstaking_response_data(data);
+        //     payout_at = Timestamp::from_seconds(seconds);
+        //     payout_at = payout_at.plus_nanos(nanos);
+        //     break; // Use the first response
+        // }
+        // payout_at
         let attributes = &res
             .events
             .first()

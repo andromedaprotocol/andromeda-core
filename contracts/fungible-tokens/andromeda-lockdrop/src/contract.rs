@@ -264,7 +264,7 @@ pub fn execute_withdraw_native(
     let max_withdrawal_percent = Decimal::one();
     let max_withdrawal_allowed = user_info
         .total_native_locked
-        .mul_floor(max_withdrawal_percent);
+        .checked_mul_floor(max_withdrawal_percent)?;
     let withdraw_amount = withdraw_amount.unwrap_or(max_withdrawal_allowed);
     ensure!(
         withdraw_amount <= max_withdrawal_allowed,

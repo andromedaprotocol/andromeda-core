@@ -361,6 +361,8 @@ fn handle_ibc_transfer_funds_reply(
     }
 
     let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
+    println!("reaching here");
+    println!("adjusted_funds: {:?}", adjusted_funds);
 
     // Add the orginal sender's username if it exists
     let potential_username = ctx.try_add_origin_username(

@@ -67,6 +67,7 @@ cw-multi-test = "2.3.3"
 serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
 cw-orch = "0.27.0"
+cw-orch-daemon = "0.29.1"
 jsonschema-valid = { version = "0.5.2" }
 serde_json = { version = "1.0.140" }
 rstest = "0.25.0"

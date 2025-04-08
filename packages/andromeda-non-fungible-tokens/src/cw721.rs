@@ -1,8 +1,9 @@
+use andromeda_std::error::ContractError;
 use andromeda_std::{amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cosmwasm_std::{Binary, Coin, CustomMsg};
-use cw721::Expiration;
+use cosmwasm_std::{Binary, Coin, CustomMsg, DepsMut, Empty, Env, MessageInfo, Response};
+use cw721::{CollectionExtension, Expiration, RoyaltyInfo};
 
 use cw721_base::{msg::ExecuteMsg as Cw721ExecuteMsg, msg::QueryMsg as Cw721QueryMsg};
 
@@ -17,6 +18,76 @@ pub struct InstantiateMsg {
     /// This is designed for a base NFT that is controlled by an external program
     /// or contract. You will likely replace this with custom logic in custom NFTs
     pub minter: AndrAddr,
+}
+
+use cw721::traits::{Cw721Execute, Cw721Query};
+
+#[derive(Default)]
+pub struct AndrCW721Contract;
+impl Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty> for AndrCW721Contract {}
+impl Cw721Query<Option<Empty>, Option<CollectionExtension<RoyaltyInfo>>, Empty>
+    for AndrCW721Contract
+{
+}
+
+// Add a custom query method to handle the conversion
+impl AndrCW721Contract {
+    pub fn execute(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        msg: Cw721ExecuteMsg,
+    ) -> Result<Response, ContractError> {
+        // Convert the message to a compatible type for the trait implementation
+        let cw721_msg = match msg {
+            Cw721ExecuteMsg::TransferNft {
+                recipient,
+                token_id,
+            } => cw721::msg::Cw721ExecuteMsg::TransferNft {
+                recipient,
+                token_id,
+            },
+            Cw721ExecuteMsg::SendNft {
+                contract,
+                token_id,
+                msg,
+            } => cw721::msg::Cw721ExecuteMsg::SendNft {
+                contract,
+                token_id,
+                msg,
+            },
+            Cw721ExecuteMsg::Approve {
+                spender,
+                token_id,
+                expires,
+            } => cw721::msg::Cw721ExecuteMsg::Approve {
+                spender,
+                token_id,
+                expires,
+            },
+            Cw721ExecuteMsg::Revoke { spender, token_id } => {
+                cw721::msg::Cw721ExecuteMsg::Revoke { spender, token_id }
+            }
+            Cw721ExecuteMsg::ApproveAll { operator, expires } => {
+                cw721::msg::Cw721ExecuteMsg::ApproveAll { operator, expires }
+            }
+            Cw721ExecuteMsg::RevokeAll { operator } => {
+                cw721::msg::Cw721ExecuteMsg::RevokeAll { operator }
+            }
+            Cw721ExecuteMsg::Burn { token_id } => cw721::msg::Cw721ExecuteMsg::Burn { token_id },
+            // Add other conversions as needed
+            _ => return Err(ContractError::new("Unsupported execute message")),
+        };
+
+        // Call the trait implementation's execute method and convert the error type
+        match <Self as Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty>>::execute(
+            self, deps, env, info, cw721_msg,
+        ) {
+            Ok(response) => Ok(response),
+            Err(_) => Err(ContractError::new("Error executing CW721 command")),
+        }
+    }
 }
 
 #[cw_serde]

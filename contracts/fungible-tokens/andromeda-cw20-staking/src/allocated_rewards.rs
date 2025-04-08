@@ -59,12 +59,12 @@ pub(crate) fn update_allocated_index(
                 cur_timestamp.milliseconds(),
                 last_distribution_next_timestamp,
             ),
-        );
+        )?;
         state.current_cycle_rewards = calculate_cycle_rewards(
             state.current_cycle_rewards,
             config.reward_increase.unwrap_or_else(Decimal::zero),
             state.current_cycle == last_distribution_cycle,
-        );
+        )?;
         state.last_distributed = Milliseconds(std::cmp::min(
             cur_timestamp.milliseconds(),
             last_distribution_next_timestamp,
@@ -128,20 +128,21 @@ fn rewards_distributed_for_cycle(
     rewards_per_sec: Decimal,
     from_timestamp: u64,
     till_timestamp: u64,
-) -> Uint128 {
+) -> Result<Uint128, ContractError> {
     if till_timestamp <= from_timestamp {
-        return Uint128::zero();
+        return Ok(Uint128::zero());
     }
-    Uint128::from(till_timestamp - from_timestamp).mul_floor(rewards_per_sec)
+    Ok(Uint128::from(till_timestamp - from_timestamp).checked_mul_floor(rewards_per_sec)?)
 }
 
 fn calculate_cycle_rewards(
     current_cycle_rewards: Uint128,
     reward_increase_percent: Decimal,
     is_same_cycle: bool,
-) -> Uint128 {
+) -> Result<Uint128, ContractError> {
     if is_same_cycle {
-        return current_cycle_rewards;
+        return Ok(current_cycle_rewards);
     }
-    current_cycle_rewards + (current_cycle_rewards.mul_floor(reward_increase_percent))
+    Ok(current_cycle_rewards
+        + (current_cycle_rewards.checked_mul_floor(reward_increase_percent)?))
 }

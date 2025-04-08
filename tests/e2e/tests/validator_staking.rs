@@ -62,7 +62,7 @@ fn test_validator_staking() {
     daemon.wait_seconds(61).unwrap();
 
     validator_staking_contract
-        .withdraw_funds(Some(denom.to_string()), None)
+        .withdraw_funds(denom.to_string(), None)
         .unwrap();
 
     let contract_balance = daemon
@@ -143,7 +143,7 @@ fn test_kicked_validator() {
     daemon.wait_seconds(61).unwrap();
 
     validator_staking_contract
-        .withdraw_funds(Some(denom.to_string()), None)
+        .withdraw_funds(denom.to_string(), None)
         .unwrap();
 
     let contract_balance = daemon

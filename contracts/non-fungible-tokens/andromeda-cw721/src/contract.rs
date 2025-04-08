@@ -12,7 +12,8 @@ use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TransferAgreement,
+    AndrCW721Contract, BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg,
+    TransferAgreement,
 };
 use andromeda_std::common::rates::get_tax_amount;
 use andromeda_std::{
@@ -30,103 +31,6 @@ use andromeda_std::{
 use cw721::state::{Cw721Config, NftInfo};
 use cw721::traits::{Cw721Execute, Cw721Query};
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
-
-// executeCw721
-// pub type AndrCW721Contract<'a> = Cw721Contract<'a, TokenExtension, Empty, ExecuteMsg, QueryMsg>;
-#[derive(Default)]
-pub struct AndrCW721Contract;
-// TNftExtensionMsg, TCollectionExtensionMsg, TExtensionMsg>
-impl Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty> for AndrCW721Contract {}
-impl Cw721Query<Empty, Empty, Empty> for AndrCW721Contract {}
-
-// Add a custom query method to handle the conversion
-impl AndrCW721Contract {
-    pub fn query(&self, deps: Deps, env: &Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-        // Convert QueryMsg to a compatible type for the trait implementation
-        let cw721_msg = match msg {
-            QueryMsg::OwnerOf {
-                token_id,
-                include_expired,
-            } => cw721::msg::Cw721QueryMsg::OwnerOf {
-                token_id,
-                include_expired,
-            },
-            QueryMsg::NftInfo { token_id } => cw721::msg::Cw721QueryMsg::NftInfo { token_id },
-            // Add other conversions as needed
-            QueryMsg::AllNftInfo {
-                token_id,
-                include_expired,
-            } => cw721::msg::Cw721QueryMsg::AllNftInfo {
-                token_id,
-                include_expired,
-            },
-            _ => return Err(ContractError::new("Unsupported query message")),
-        };
-
-        // Call the trait implementation's query method and convert the error type
-        match <Self as Cw721Query<Empty, Empty, Empty>>::query(self, deps, env, cw721_msg) {
-            Ok(binary) => Ok(binary),
-            Err(_) => Err(ContractError::new("Error executing CW721 query")),
-        }
-    }
-
-    pub fn execute(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        msg: Cw721ExecuteMsg,
-    ) -> Result<Response, ContractError> {
-        // Convert the message to a compatible type for the trait implementation
-        let cw721_msg = match msg {
-            Cw721ExecuteMsg::TransferNft {
-                recipient,
-                token_id,
-            } => cw721::msg::Cw721ExecuteMsg::TransferNft {
-                recipient,
-                token_id,
-            },
-            Cw721ExecuteMsg::SendNft {
-                contract,
-                token_id,
-                msg,
-            } => cw721::msg::Cw721ExecuteMsg::SendNft {
-                contract,
-                token_id,
-                msg,
-            },
-            Cw721ExecuteMsg::Approve {
-                spender,
-                token_id,
-                expires,
-            } => cw721::msg::Cw721ExecuteMsg::Approve {
-                spender,
-                token_id,
-                expires,
-            },
-            Cw721ExecuteMsg::Revoke { spender, token_id } => {
-                cw721::msg::Cw721ExecuteMsg::Revoke { spender, token_id }
-            }
-            Cw721ExecuteMsg::ApproveAll { operator, expires } => {
-                cw721::msg::Cw721ExecuteMsg::ApproveAll { operator, expires }
-            }
-            Cw721ExecuteMsg::RevokeAll { operator } => {
-                cw721::msg::Cw721ExecuteMsg::RevokeAll { operator }
-            }
-            Cw721ExecuteMsg::Burn { token_id } => cw721::msg::Cw721ExecuteMsg::Burn { token_id },
-            // Add other conversions as needed
-            _ => return Err(ContractError::new("Unsupported execute message")),
-        };
-
-        // Call the trait implementation's execute method and convert the error type
-        match <Self as Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty>>::execute(
-            self, deps, env, info, cw721_msg,
-        ) {
-            Ok(response) => Ok(response),
-            Err(_) => Err(ContractError::new("Error executing CW721 command")),
-        }
-    }
-}
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -148,13 +52,8 @@ pub fn instantiate(
         withdraw_address: None,
     };
 
-    let res = AndrCW721Contract::instantiate(
-        &AndrCW721Contract,
-        deps.branch(),
-        &env,
-        &info,
-        cw721_instantiate_msg,
-    )?;
+    let cw721_contract = AndrCW721Contract;
+    let res = cw721_contract.instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
     let contract = ADOContract::default();
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
@@ -222,9 +121,10 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     Ok(res)
 }
 
-pub fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
+fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract;
-    contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)
+
+    Ok(contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?)
 }
 
 macro_rules! ensure_can_mint {
@@ -576,12 +476,6 @@ fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, Contr
         ContractError::TokenIsArchived {}
     );
 
-    // contract.tokens.remove(deps.storage, &token_id)?;
-
-    // // Decrement token count.
-    // let count = contract.token_count.load(deps.storage)?;
-    // contract.token_count.save(deps.storage, &(count - 1))?;
-
     contract.burn_nft(deps, &ctx.env, &ctx.info, token_id.clone())?;
 
     Ok(Response::default().add_attributes(vec![
@@ -640,7 +534,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             let serialized = to_json_binary(&msg)?;
             match from_json::<AndromedaQuery>(&serialized) {
                 Ok(msg) => ADOContract::default().query(deps, env, msg),
-                _ => AndrCW721Contract.query(deps, &env, msg),
+                _ => Ok(AndrCW721Contract.query(deps, &env, msg.into())?),
             }
         }
     }

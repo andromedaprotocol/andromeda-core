@@ -1,7 +1,7 @@
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    BatchSendMsg, ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg,
-    TokenExtension, TransferAgreement,
+    AndrCW721Contract, BatchSendMsg, ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg,
+    QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::{
     amp::addresses::AndrAddr,

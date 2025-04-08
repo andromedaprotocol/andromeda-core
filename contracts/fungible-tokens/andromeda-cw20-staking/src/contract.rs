@@ -699,7 +699,7 @@ fn update_staker_rewards(
         let mut staker_reward_info = STAKER_REWARD_INFOS
             .may_load(storage, (staker_address, &token_string))?
             .unwrap_or_default();
-        update_staker_reward_info(staker, &mut staker_reward_info, token);
+        update_staker_reward_info(staker, &mut staker_reward_info, token)?;
         STAKER_REWARD_INFOS.save(
             storage,
             (staker_address, &token_string),
@@ -723,13 +723,14 @@ fn update_staker_reward_info(
     staker: &Staker,
     staker_reward_info: &mut StakerRewardInfo,
     reward_token: RewardToken,
-) {
+) -> Result<(), ContractError> {
     let staker_share = Uint256::from(staker.share);
-    let rewards = staker_share.mul_floor(reward_token.index - staker_reward_info.index);
+    let rewards = staker_share.checked_mul_floor(reward_token.index - staker_reward_info.index)?;
 
     staker_reward_info.index = reward_token.index;
     //TODO check if this is correct
     staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
+    Ok(())
 }
 
 pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {
@@ -809,7 +810,7 @@ pub(crate) fn get_pending_rewards(
             &state,
             &mut token,
         )?;
-        update_staker_reward_info(staker, &mut staker_reward_info, token);
+        update_staker_reward_info(staker, &mut staker_reward_info, token)?;
         pending_rewards.push((
             token_string,
             Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
