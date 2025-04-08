@@ -124,7 +124,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract;
 
-    Ok(contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?)
+    contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)
 }
 
 macro_rules! ensure_can_mint {
