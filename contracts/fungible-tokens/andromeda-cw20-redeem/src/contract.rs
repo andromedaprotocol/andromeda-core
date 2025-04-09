@@ -125,6 +125,7 @@ pub fn execute_receive(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn execute_set_redemption_clause_cw20(
     ctx: ExecuteContext,
     amount_sent: Uint128,
