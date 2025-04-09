@@ -1,5 +1,5 @@
 use andromeda_std::{
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, MillisecondsDuration},
 };
@@ -29,6 +29,7 @@ pub enum ExecuteMsg {
     #[attrs(restricted)]
     SetRedemptionClause {
         exchange_rate: Uint128,
+        recipient: Option<Recipient>,
         start_time: Option<Expiry>,
         duration: Option<MillisecondsDuration>,
     },
@@ -39,7 +40,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub struct RedemptionClause {
     /// Recipient of the redeemed tokens
-    pub recipient: String,
+    pub recipient: Recipient,
     /// The asset that may be used to redeem the tokens with
     pub asset: AssetInfo,
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
@@ -58,6 +59,7 @@ pub enum Cw20HookMsg {
     StartRedemptionClause {
         /// The amount of the above asset required to purchase a single token
         exchange_rate: Uint128,
+        recipient: Option<Recipient>,
         start_time: Option<Expiry>,
         duration: Option<MillisecondsDuration>,
     },

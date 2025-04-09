@@ -5,20 +5,22 @@ use andromeda_fungible_tokens::cw20_redeem::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    amp::Recipient,
     andr_execute_fn,
     common::{
         context::ExecuteContext,
         encode_binary,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        msg_generation::generate_transfer_message,
         Milliseconds, MillisecondsDuration,
     },
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, Uint128,
 };
-use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg};
+use cw20::{BalanceResponse, Cw20Coin, Cw20QueryMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_utils::{one_coin, Expiration};
 
@@ -27,13 +29,6 @@ use crate::state::{REDEMPTION_CLAUSE, TOKEN_ADDRESS};
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-redeem";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// ID used for any refund sub messgaes
-const REFUND_REPLY_ID: u64 = 1;
-/// ID used for any purchased token transfer sub messages
-// const PURCHASE_REPLY_ID: u64 = 2;
-/// ID used for transfer to sale recipient
-const RECIPIENT_REPLY_ID: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -79,9 +74,16 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         ExecuteMsg::SetRedemptionClause {
             exchange_rate,
+            recipient,
             start_time,
             duration,
-        } => execute_set_redemption_clause_native(ctx, exchange_rate, start_time, duration),
+        } => execute_set_redemption_clause_native(
+            ctx,
+            exchange_rate,
+            recipient,
+            start_time,
+            duration,
+        ),
         ExecuteMsg::CancelRedemptionClause {} => execute_cancel_redemption_clause(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -92,7 +94,7 @@ pub fn execute_receive(
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
-    let asset_sent = AssetInfo::Cw20(info.sender.clone());
+    let asset_info = AssetInfo::Cw20(info.sender.clone());
     let amount_sent = receive_msg.amount;
     let sender = receive_msg.sender;
 
@@ -106,18 +108,20 @@ pub fn execute_receive(
     match from_json(&receive_msg.msg)? {
         Cw20HookMsg::StartRedemptionClause {
             exchange_rate,
+            recipient,
             start_time,
             duration,
         } => execute_set_redemption_clause_cw20(
             ctx,
             amount_sent,
-            asset_sent,
+            asset_info,
             sender,
             exchange_rate,
+            recipient,
             start_time,
             duration,
         ),
-        Cw20HookMsg::Redeem {} => execute_redeem(ctx, amount_sent, asset_sent, &sender),
+        Cw20HookMsg::Redeem {} => execute_redeem(ctx, amount_sent, asset_info, &sender),
     }
 }
 
@@ -127,6 +131,7 @@ pub fn execute_set_redemption_clause_cw20(
     asset_sent: AssetInfo,
     sender: String,
     exchange_rate: Uint128,
+    recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
@@ -165,8 +170,15 @@ pub fn execute_set_redemption_clause_cw20(
         ContractError::RedemptionClauseAlreadyExists {}
     );
 
+    let recipient = if let Some(recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+        recipient
+    } else {
+        Recipient::new(sender, None)
+    };
+
     let redemption_clause = RedemptionClause {
-        recipient: sender.to_string(),
+        recipient,
         asset: asset_sent.clone(),
         amount: amount_sent,
         exchange_rate,
@@ -188,6 +200,7 @@ pub fn execute_set_redemption_clause_cw20(
 pub fn execute_set_redemption_clause_native(
     ctx: ExecuteContext,
     exchange_rate: Uint128,
+    recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
@@ -237,8 +250,15 @@ pub fn execute_set_redemption_clause_native(
         Expiration::Never {}
     };
 
+    let recipient = if let Some(recipient) = recipient {
+        recipient.validate(&deps.as_ref())?;
+        recipient
+    } else {
+        Recipient::new(info.sender.to_string(), None)
+    };
+
     let redemption_clause = RedemptionClause {
-        recipient: info.sender.to_string(),
+        recipient,
         asset: asset.clone(),
         amount,
         exchange_rate,
@@ -257,38 +277,10 @@ pub fn execute_set_redemption_clause_native(
     ]))
 }
 
-/// Generates a transfer message given an asset and an amount
-fn generate_transfer_message(
-    asset: AssetInfo,
-    amount: Uint128,
-    recipient: String,
-    id: u64,
-) -> Result<SubMsg, ContractError> {
-    match asset.clone() {
-        AssetInfo::Native(denom) => {
-            let bank_msg = BankMsg::Send {
-                to_address: recipient,
-                amount: vec![coin(amount.u128(), denom)],
-            };
-
-            Ok(SubMsg::reply_on_error(CosmosMsg::Bank(bank_msg), id))
-        }
-        AssetInfo::Cw20(addr) => {
-            let transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
-            let wasm_msg = wasm_execute(addr, &transfer_msg, vec![])?;
-            Ok(SubMsg::reply_on_error(CosmosMsg::Wasm(wasm_msg), id))
-        }
-        // Does not support 1155 currently
-        _ => Err(ContractError::InvalidAsset {
-            asset: asset.to_string(),
-        }),
-    }
-}
-
 pub fn execute_redeem(
     ctx: ExecuteContext,
     amount_sent: Uint128,
-    asset_sent: AssetInfo,
+    asset_info: AssetInfo,
     sender: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
@@ -339,24 +331,34 @@ pub fn execute_redeem(
         redemption_clause.asset.clone(),
         redeemed_amount,
         sender.to_string(),
-        RECIPIENT_REPLY_ID,
+        None,
     )?);
 
-    // Transfer accepted amount to the redemption clause recipient
-    messages.push(generate_transfer_message(
-        asset_sent.clone(),
-        accepted_amount,
-        redemption_clause.recipient.clone(),
-        RECIPIENT_REPLY_ID,
-    )?);
+    match asset_info {
+        cw_asset::AssetInfoBase::Cw20(ref address) => {
+            let recipient_msg = redemption_clause.recipient.generate_msg_cw20(
+                &deps.as_ref(),
+                Cw20Coin {
+                    address: address.to_string(),
+                    amount: accepted_amount,
+                }
+                .clone(),
+            )?;
+            messages.push(recipient_msg);
+            Ok(())
+        }
+        _ => Err(ContractError::InvalidAsset {
+            asset: asset_info.to_string(),
+        }),
+    }?;
 
     // If there's a refund, send it back to the sender
     if !refund_amount.is_zero() {
         messages.push(generate_transfer_message(
-            asset_sent.clone(),
+            asset_info.clone(),
             refund_amount,
             sender.to_string(),
-            RECIPIENT_REPLY_ID,
+            None,
         )?);
     }
 
@@ -368,7 +370,7 @@ pub fn execute_redeem(
         attr("action", "redeem"),
         attr("purchaser", sender),
         attr("amount", redeemed_amount),
-        attr("purchase_asset", asset_sent.to_string()),
+        attr("purchase_asset", asset_info.to_string()),
         attr("purchase_asset_amount_accepted", accepted_amount),
     ];
 
@@ -398,7 +400,7 @@ pub fn execute_cancel_redemption_clause(ctx: ExecuteContext) -> Result<Response,
                 redemption_clause.asset.clone(),
                 redemption_clause.amount,
                 info.sender.to_string(),
-                REFUND_REPLY_ID,
+                None,
             )?)
             .add_attribute("refunded_amount", redemption_clause.amount);
     }

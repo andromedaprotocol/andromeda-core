@@ -4,22 +4,20 @@ use andromeda_cw20::mock::{
     mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_get_cw20_balance,
     mock_minter,
 };
-use andromeda_cw20_redeem::mock::mock_andromeda_cw20_redeem;
-use andromeda_cw20_redeem::mock::mock_cw20_redeem_cancel_redemption_clause_msg;
-use andromeda_cw20_redeem::mock::mock_cw20_redeem_hook_redeem_msg;
-use andromeda_cw20_redeem::mock::mock_cw20_redeem_instantiate_msg;
-use andromeda_cw20_redeem::mock::mock_cw20_redeem_start_redemption_clause_hook_msg;
-use andromeda_cw20_redeem::mock::mock_cw20_set_redemption_clause_native_msg;
-use andromeda_cw20_redeem::mock::mock_get_redemption_clause;
+use andromeda_cw20_redeem::mock::{
+    mock_andromeda_cw20_redeem, mock_cw20_redeem_cancel_redemption_clause_msg,
+    mock_cw20_redeem_hook_redeem_msg, mock_cw20_redeem_instantiate_msg,
+    mock_cw20_redeem_start_redemption_clause_hook_msg, mock_cw20_set_redemption_clause_native_msg,
+    mock_get_redemption_clause,
+};
 use andromeda_fungible_tokens::cw20_redeem::RedemptionResponse;
-
+use andromeda_std::amp::Recipient;
 use andromeda_testing::{
     mock::{mock_app, MockAndromeda, MockApp},
     mock_builder::MockAndromedaBuilder,
     MockContract,
 };
-use cosmwasm_std::Addr;
-use cosmwasm_std::{coin, to_json_binary, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfo;
 use cw_multi_test::Executor;
@@ -200,7 +198,7 @@ fn test_cw20_redeem_app_native() {
 
     // Start native redemption clause
     let start_redemption_clause_msg =
-        mock_cw20_set_redemption_clause_native_msg(Uint128::new(2), None, None);
+        mock_cw20_set_redemption_clause_native_msg(Uint128::new(2), None, None, None);
 
     router
         .execute_contract(
@@ -228,7 +226,7 @@ fn test_cw20_redeem_app_native() {
     );
     assert_eq!(
         redemption_clause.redemption.clone().unwrap().recipient,
-        owner.to_string()
+        Recipient::new(owner.to_string(), None)
     );
 
     // Let user 1 redeem
@@ -290,7 +288,7 @@ fn test_cw20_redeem_app_native_refund() {
 
     // Start native redemption clause
     let start_redemption_clause_msg =
-        mock_cw20_set_redemption_clause_native_msg(Uint128::new(2), None, None);
+        mock_cw20_set_redemption_clause_native_msg(Uint128::new(2), None, None, None);
 
     router
         .execute_contract(
@@ -315,7 +313,7 @@ fn test_cw20_redeem_app_native_refund() {
         .execute_contract(user1.clone(), cw20_addr_2.clone(), &send_msg, &[])
         .unwrap();
 
-    // Check that the redeemer has received 200 uandr and that the remetion clause recipient received 10 cw20 tokens
+    // Check that the redeemer has received 20 uandr and that the remetion clause recipient received 10 cw20 tokens
     let balance_one: Uint128 =
         query_cw20_balance(&mut router, cw20_addr_2.to_string(), owner.to_string());
     assert_eq!(balance_one, Uint128::from(10u128));
@@ -367,7 +365,7 @@ fn test_cw20_redeem_app_cw20() {
 
     // Start cw20 redemption clause
     let start_redemption_clause_msg =
-        mock_cw20_redeem_start_redemption_clause_hook_msg(Uint128::new(2), None, None);
+        mock_cw20_redeem_start_redemption_clause_hook_msg(Uint128::new(2), None, None, None);
 
     let send_msg = mock_cw20_send(
         cw20_redeem_addr.clone(),

@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20_redeem::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::{expiration::Expiry, MillisecondsDuration};
 use cosmwasm_std::{Empty, Uint128};
 use cw_multi_test::{Contract, ContractWrapper};
@@ -26,12 +26,13 @@ pub fn mock_cw20_redeem_instantiate_msg(
 
 pub fn mock_cw20_redeem_start_redemption_clause_hook_msg(
     exchange_rate: Uint128,
+    recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> Cw20HookMsg {
     Cw20HookMsg::StartRedemptionClause {
         exchange_rate,
-
+        recipient,
         start_time,
         duration,
     }
@@ -43,11 +44,13 @@ pub fn mock_cw20_redeem_hook_redeem_msg() -> Cw20HookMsg {
 
 pub fn mock_cw20_set_redemption_clause_native_msg(
     exchange_rate: Uint128,
+    recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> ExecuteMsg {
     ExecuteMsg::SetRedemptionClause {
         exchange_rate,
+        recipient,
         start_time,
         duration,
     }
