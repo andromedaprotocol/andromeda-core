@@ -5103,6 +5103,7 @@ dependencies = [
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing",
+ "andromeda-timelock",
  "andromeda-validator-staking",
  "andromeda-vesting",
  "andromeda-vfs",

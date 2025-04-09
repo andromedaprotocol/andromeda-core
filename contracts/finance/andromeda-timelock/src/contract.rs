@@ -1,5 +1,5 @@
 use andromeda_finance::timelock::{
-    Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsForRecipientResponse,
+    Escrow, EscrowConditionInput, ExecuteMsg, GetLockedFundsForRecipientResponse,
     GetLockedFundsResponse, InstantiateMsg, QueryMsg,
 };
 use andromeda_std::{
@@ -69,7 +69,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 
 fn execute_hold_funds(
     ctx: ExecuteContext,
-    condition: Option<EscrowCondition>,
+    condition: Option<EscrowConditionInput>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -85,7 +85,7 @@ fn execute_hold_funds(
     let key = get_key(info.sender.as_str(), recipient_addr.as_str());
     let mut escrow = Escrow {
         coins: info.funds,
-        condition,
+        condition: condition.map(|c| c.to_condition(&env.block)),
         recipient: rec,
         recipient_addr: recipient_addr.into_string(),
     };
@@ -119,7 +119,7 @@ fn execute_release_funds(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    let recipient_addr = recipient_addr.unwrap_or_else(|| info.sender.to_string());
+    let recipient_addr = recipient_addr.unwrap_or(info.sender.to_string());
 
     let keys = get_keys_for_recipient(deps.storage, &recipient_addr, start_after, limit)?;
 
