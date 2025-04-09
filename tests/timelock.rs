@@ -38,7 +38,7 @@ fn test_timelock() {
     let app_components = vec![timelock_component.clone()];
     let app = MockAppContract::instantiate(
         andr.get_code_id(&mut router, "app-contract"),
-        &owner,
+        owner,
         &mut router,
         "timelock App",
         app_components,
