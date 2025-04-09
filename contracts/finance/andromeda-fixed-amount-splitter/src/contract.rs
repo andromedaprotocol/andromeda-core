@@ -206,7 +206,7 @@ fn execute_send_cw20(
         msgs.push(cw20_msg);
     }
 
-    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+    let kernel_address = ctx.contract.get_kernel_address(deps.as_ref().storage)?;
     if !pkt.messages.is_empty() && !amp_funds.is_empty() {
         let distro_msg = pkt.to_sub_msg_cw20(kernel_address, amp_funds.clone(), 1)?;
         msgs.push(distro_msg.clone());
@@ -342,7 +342,7 @@ fn execute_send(
         }
     }
 
-    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+    let kernel_address = ctx.contract.get_kernel_address(deps.as_ref().storage)?;
 
     if !pkt.messages.is_empty() {
         let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;

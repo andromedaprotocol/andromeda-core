@@ -1,7 +1,6 @@
 use andromeda_data_storage::form::SubmissionInfo;
 use andromeda_modules::schema::{QueryMsg as SchemaQueryMsg, ValidateDataResponse};
 use andromeda_std::{
-    ado_contract::ADOContract,
     amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary, Milliseconds},
     error::ContractError,
@@ -21,7 +20,7 @@ pub fn execute_submit_form(
     data: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SUBMIT_FORM_ACTION,

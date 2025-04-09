@@ -9,13 +9,14 @@ use andromeda_std::{
     common::{
         context::ExecuteContext,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        msg_generation::generate_transfer_message,
         Milliseconds, MillisecondsDuration,
     },
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, coin, ensure, entry_point, from_json, to_json_binary, wasm_execute, BankMsg, Binary,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, from_json, to_json_binary, wasm_execute, Binary, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
@@ -158,7 +159,7 @@ pub fn execute_start_sale(
         ContractError::InvalidZeroAmount {}
     );
     ensure!(
-        ADOContract::default().is_contract_owner(deps.storage, &sender)?,
+        ctx.contract.is_contract_owner(deps.storage, &sender)?,
         ContractError::Unauthorized {}
     );
     // Message sender in this case should be the token address
@@ -195,7 +196,6 @@ pub fn execute_start_sale(
         recipient: recipient.unwrap_or(sender),
         start_time: start_expiration,
         end_time: end_expiration,
-        start_amount: amount,
     };
     SALE.save(deps.storage, &asset.to_string(), &sale)?;
 
@@ -206,36 +206,7 @@ pub fn execute_start_sale(
         attr("amount", amount),
         attr("start_time", start_expiration.to_string()),
         attr("end_time", end_expiration.to_string()),
-        attr("start_amount", amount),
     ]))
-}
-
-/// Generates a transfer message given an asset and an amount
-fn generate_transfer_message(
-    asset: AssetInfo,
-    amount: Uint128,
-    recipient: String,
-    id: u64,
-) -> Result<SubMsg, ContractError> {
-    match asset.clone() {
-        AssetInfo::Native(denom) => {
-            let bank_msg = BankMsg::Send {
-                to_address: recipient,
-                amount: vec![coin(amount.u128(), denom)],
-            };
-
-            Ok(SubMsg::reply_on_error(CosmosMsg::Bank(bank_msg), id))
-        }
-        AssetInfo::Cw20(addr) => {
-            let transfer_msg = Cw20ExecuteMsg::Transfer { recipient, amount };
-            let wasm_msg = wasm_execute(addr, &transfer_msg, vec![])?;
-            Ok(SubMsg::reply_on_error(CosmosMsg::Wasm(wasm_msg), id))
-        }
-        // Does not support 1155 currently
-        _ => Err(ContractError::InvalidAsset {
-            asset: asset.to_string(),
-        }),
-    }
 }
 
 pub fn execute_purchase(
@@ -283,7 +254,7 @@ pub fn execute_purchase(
                 asset_sent.clone(),
                 remainder,
                 sender.to_string(),
-                REFUND_REPLY_ID,
+                Some(REFUND_REPLY_ID),
             )?)
             .add_attribute("refunded_amount", remainder);
     }
@@ -311,7 +282,7 @@ pub fn execute_purchase(
         asset_sent.clone(),
         amount_sent - remainder,
         sale.recipient.clone(),
-        RECIPIENT_REPLY_ID,
+        Some(RECIPIENT_REPLY_ID),
     )?);
 
     Ok(resp.add_attributes(vec![
@@ -339,9 +310,7 @@ pub fn execute_purchase_native(
     let sender = info.sender.to_string();
 
     // Only allow one coin for purchasing
-    one_coin(info)?;
-
-    let payment = info.funds.first().unwrap();
+    let payment = one_coin(info)?;
     let asset = AssetInfo::Native(payment.denom.to_string());
     let amount = payment.amount;
 
@@ -372,7 +341,7 @@ pub fn execute_cancel_sale(
                 token,
                 sale.amount,
                 info.sender.to_string(),
-                REFUND_REPLY_ID,
+                Some(REFUND_REPLY_ID),
             )?)
             .add_attribute("refunded_amount", sale.amount);
     }
