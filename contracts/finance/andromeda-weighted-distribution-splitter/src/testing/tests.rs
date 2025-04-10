@@ -21,13 +21,7 @@ use crate::{
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
     let some_address = deps.api.addr_make("some_address");
     let mock_recipient: Vec<AddressWeight> = vec![AddressWeight {
         recipient: Recipient::from_string(some_address.to_string()),
@@ -1697,6 +1691,8 @@ fn test_execute_send() {
     assert_eq!(res, expected_res);
 }
 use rstest::*;
+
+use super::mock_querier::TestDeps;
 
 #[fixture]
 fn locked_splitter() -> (

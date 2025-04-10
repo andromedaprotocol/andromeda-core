@@ -40,13 +40,9 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::receiver::Cw721ReceiveMsg;
 use cw_utils::Expiration;
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+use super::mock_querier::TestDeps;
+
+fn init(deps: &mut TestDeps) -> Response {
     let mock_token_address = Addr::unchecked(MOCK_TOKEN_ADDR);
     let msg = InstantiateMsg {
         owner: None,
@@ -62,14 +58,7 @@ fn init(
     instantiate(deps.as_mut(), mock_env(), info, msg).unwrap()
 }
 
-fn init_cw20(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-    _modules: Option<Vec<Module>>,
-) -> Response {
+fn init_cw20(deps: &mut TestDeps, _modules: Option<Vec<Module>>) -> Response {
     let mock_token_address = Addr::unchecked(MOCK_TOKEN_ADDR);
     let mock_cw20_address = Addr::unchecked(MOCK_CW20_CONTRACT);
     let msg = InstantiateMsg {
@@ -99,11 +88,7 @@ fn current_time() -> u64 {
 }
 
 fn start_auction(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
+    deps: &mut TestDeps,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
@@ -134,11 +119,7 @@ fn start_auction(
 }
 
 fn start_auction_cw20(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
+    deps: &mut TestDeps,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
@@ -167,11 +148,7 @@ fn start_auction_cw20(
 }
 
 fn assert_auction_created(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
+    deps: &mut TestDeps,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,

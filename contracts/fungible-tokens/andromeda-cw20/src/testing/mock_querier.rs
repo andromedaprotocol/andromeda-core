@@ -12,6 +12,11 @@ use cosmwasm_std::{
 
 pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";
 
+pub type TestDeps = cosmwasm_std::OwnedDeps<
+    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockApi,
+    WasmMockQuerier,
+>;
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {

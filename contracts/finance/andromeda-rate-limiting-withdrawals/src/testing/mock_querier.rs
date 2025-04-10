@@ -11,6 +11,12 @@ use cosmwasm_std::{
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
+pub type TestDeps = cosmwasm_std::OwnedDeps<
+    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockApi,
+    WasmMockQuerier,
+>;
+
 // pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 // pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
 

@@ -28,13 +28,9 @@ use crate::{
     testing::mock_querier::mock_dependencies_custom,
 };
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Result<Response, ContractError> {
+use super::mock_querier::TestDeps;
+
+fn init(deps: &mut TestDeps) -> Result<Response, ContractError> {
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
     let mock_token_address = deps.api.addr_make(MOCK_TOKEN_ADDRESS);

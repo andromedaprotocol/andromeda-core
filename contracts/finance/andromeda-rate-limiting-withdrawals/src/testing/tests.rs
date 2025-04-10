@@ -12,7 +12,7 @@ pub const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94j
 pub const ANDROMEDAUSER: &str =
     "cosmwasm163rntam8lncj2azj9jg67xll2sfqw0fpt3aj2j6uqy6xnwqy05kqhpagcm";
 
-use super::mock_querier::MOCK_KERNEL_CONTRACT;
+use super::mock_querier::{TestDeps, MOCK_KERNEL_CONTRACT};
 
 use crate::{
     contract::{execute, instantiate},
@@ -25,13 +25,7 @@ use andromeda_finance::rate_limiting_withdrawals::{
 
 use rstest::*;
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),

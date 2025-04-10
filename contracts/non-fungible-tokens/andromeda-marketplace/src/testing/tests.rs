@@ -28,7 +28,7 @@ use cw20::Cw20ReceiveMsg;
 use cw721::{msg::Cw721ExecuteMsg, receiver::Cw721ReceiveMsg};
 use cw_utils::Expiration;
 
-use super::mock_querier::MOCK_KERNEL_CONTRACT;
+use super::mock_querier::{TestDeps, MOCK_KERNEL_CONTRACT};
 use crate::{
     contract::{execute, instantiate, query},
     state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
@@ -103,11 +103,7 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
 }
 
 fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
+    deps: &mut TestDeps,
     authorized_cw20_addresses: Option<Vec<AndrAddr>>,
     authorized_token_addresses: Option<Vec<AndrAddr>>,
 ) -> Response {

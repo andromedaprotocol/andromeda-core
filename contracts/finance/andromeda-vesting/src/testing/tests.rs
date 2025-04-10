@@ -17,14 +17,10 @@ use cosmwasm_std::{
 
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 
+use super::mock_querier::TestDeps;
+
 const MOCK_NATIVE_DENOM: &str = "uusd";
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
     let recipient = deps.api.addr_make("recipient");
     let msg = InstantiateMsg {
         recipient: Recipient::from_string(recipient.to_string()),
@@ -39,11 +35,7 @@ fn init(
 }
 
 fn create_batch(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
+    deps: &mut TestDeps,
     lockup_duration: Option<Milliseconds>,
     release_duration: Milliseconds,
     release_amount: WithdrawalType,

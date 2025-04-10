@@ -15,7 +15,7 @@ pub const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94j
 pub const SOME_ADDRESS: &str =
     "cosmwasm1l0v84hl0scufx9dyyqdwva4rywcyrwl675tgugzrdxwpdfmaza4q9nc57q";
 
-use super::mock_querier::MOCK_KERNEL_CONTRACT;
+use super::mock_querier::{TestDeps, MOCK_KERNEL_CONTRACT};
 
 use crate::{
     contract::{execute, instantiate, query},
@@ -30,13 +30,7 @@ use andromeda_finance::{
     splitter::AddressPercent,
 };
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),

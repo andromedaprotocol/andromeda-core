@@ -17,15 +17,9 @@ use cosmwasm_std::{
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::state::BALANCES;
 
-use super::mock_querier::MOCK_CW20_CONTRACT;
+use super::mock_querier::{TestDeps, MOCK_CW20_CONTRACT};
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
     let sender = deps.api.addr_make("sender");
     let rates_recipient = deps.api.addr_make("rates_recipient");
     let royalty_recipient = deps.api.addr_make("royalty_recipient");

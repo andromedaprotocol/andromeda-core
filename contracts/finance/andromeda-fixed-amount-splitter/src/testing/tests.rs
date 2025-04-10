@@ -13,7 +13,7 @@ use cosmwasm_std::{
 };
 pub const OWNER: &str = "creator";
 
-use super::mock_querier::MOCK_KERNEL_CONTRACT;
+use super::mock_querier::{TestDeps, MOCK_KERNEL_CONTRACT};
 
 use crate::{
     contract::{execute, instantiate, query},
@@ -24,13 +24,7 @@ use andromeda_finance::fixed_amount_splitter::{
     AddressAmount, ExecuteMsg, GetSplitterConfigResponse, InstantiateMsg, QueryMsg, Splitter,
 };
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
     let some_address = deps.api.addr_make("some_address");
     let mock_recipient: Vec<AddressAmount> = vec![AddressAmount {
         recipient: Recipient::from_string(String::from(some_address)),

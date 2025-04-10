@@ -18,15 +18,11 @@ use cosmwasm_std::{
     Addr, BankMsg, Coin, Response, Timestamp,
 };
 
+use super::mock_querier::TestDeps;
+
 const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_string()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),

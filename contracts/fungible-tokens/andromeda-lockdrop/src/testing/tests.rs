@@ -23,17 +23,13 @@ use cosmwasm_std::{
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
+use super::mock_querier::TestDeps;
+
 const MOCK_INCENTIVE_TOKEN: &str = "mock_incentive_token";
 const DEPOSIT_WINDOW: u64 = 5;
 const WITHDRAWAL_WINDOW: u64 = 4;
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-) -> Result<Response, ContractError> {
+fn init(deps: &mut TestDeps) -> Result<Response, ContractError> {
     let env = mock_env();
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);

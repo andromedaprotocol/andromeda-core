@@ -28,6 +28,8 @@ use andromeda_fungible_tokens::cw20_staking::{
 };
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
+use super::mock_querier::TestDeps;
+
 const MOCK_STAKING_TOKEN: &str =
     "cosmwasm1hrv0heesws23cq05sy6hjuyhuc5jk94ngcs8f4u0ryew8cq8yn6q83zkk9";
 const MOCK_INCENTIVE_TOKEN: &str =
@@ -38,11 +40,7 @@ const MOCK_ALLOCATED_TOKEN: &str =
 const USER1: &str = "cosmwasm1pgzph9rze2j2xxavx4n7pdhxlkgsq7rak245x0vk7mgh3j4le6gqmlwcfu";
 
 fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
+    deps: &mut TestDeps,
     additional_rewards: Option<Vec<RewardTokenUnchecked>>,
 ) -> Result<Response, ContractError> {
     let owner = deps.api.addr_make("owner");

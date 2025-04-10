@@ -16,14 +16,9 @@ use cosmwasm_std::{
     MessageInfo, Response,
 };
 
-fn init(
-    deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
-        cosmwasm_std::testing::MockApi,
-        crate::testing::mock_querier::WasmMockQuerier,
-    >,
-    info: MessageInfo,
-) {
+use super::mock_querier::TestDeps;
+
+fn init(deps: &mut TestDeps, info: MessageInfo) {
     let actor = deps.api.addr_make("actor");
     instantiate(
         deps.as_mut(),
