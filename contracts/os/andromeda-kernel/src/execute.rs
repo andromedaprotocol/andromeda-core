@@ -335,7 +335,7 @@ fn handle_ibc_transfer_funds_reply(
         })?;
 
     // TODO: We should send denom info to the counterparty chain with amp message
-    let (counterparty_denom, _counterparty_denom_info) = get_counterparty_denom(
+    let (counterparty_denom, counterparty_denom_info) = get_counterparty_denom(
         &deps.as_ref(),
         &ics20_packet_info.funds.denom,
         &ics20_packet_info.channel,
@@ -346,7 +346,7 @@ fn handle_ibc_transfer_funds_reply(
     // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
     #[cfg(not(target_arch = "wasm32"))]
     if counterparty_denom.starts_with("ibc/") {
-        let hops = path_to_hops(_counterparty_denom_info.path)?;
+        let hops = path_to_hops(counterparty_denom_info.path)?;
         // cw-orch doesn't correctly hash the denom so we need to manually construct it
         let adjusted_path = hops
             .iter()
@@ -362,8 +362,6 @@ fn handle_ibc_transfer_funds_reply(
     }
 
     let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
-    println!("reaching here");
-    println!("adjusted_funds: {:?}", adjusted_funds);
 
     // Add the orginal sender's username if it exists
     let potential_username = ctx.try_add_origin_username(
