@@ -293,7 +293,8 @@ fn test_timelock() {
     assert_eq!(recipient_balance.amount, Uint128::from(1000u128));
 
     // Test case 5, recipient is a splitter contract and has NO message attached to it
-    let splitter: MockSplitter = app.query_ado_by_component_name(&router, splitter_component.name);
+    let splitter: MockSplitter =
+        app.query_ado_by_component_name(&router, splitter_component.name.clone());
 
     // Hold Funds for 1 day in milliseconds
     let escrow_condition =
@@ -335,6 +336,57 @@ fn test_timelock() {
 
     let recipient_balance = router.wrap().query_balance(recipient, "uandr").unwrap();
     assert_eq!(recipient_balance.amount, Uint128::from(1000u128));
+
+    let splitter_balance = router
+        .wrap()
+        .query_balance(splitter.addr(), "uandr")
+        .unwrap();
+    assert_eq!(splitter_balance.amount, Uint128::from(1000u128));
+
+    // Test case 6, recipient is a splitter contract and has NO message attached to it and no hold funds condition
+    let splitter: MockSplitter = app.query_ado_by_component_name(&router, splitter_component.name);
+    let splitter_send_msg = mock_splitter_send_msg(None);
+    // Hold Funds for 1 day in milliseconds
+    timelock
+        .execute_hold_funds(
+            &mut router,
+            owner.clone(),
+            &[coin(1000, "uandr")],
+            None,
+            Some(Recipient::new(
+                splitter.addr(),
+                Some(to_json_binary(&splitter_send_msg).unwrap()),
+            )),
+        )
+        .unwrap();
+
+    // Let two days elapse
+    let block_time_plus_2d = router.block_info().time.plus_days(2);
+    router.update_block(|block| {
+        block.time = block_time_plus_2d;
+    });
+
+    // Release funds - should succeed
+    timelock
+        .execute_release_funds(
+            &mut router,
+            owner.clone(),
+            &[],
+            // We get a NoFundsLocked error if we don't specify the recipient
+            Some(splitter.addr().clone().into_string()),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let owner_balance = router.wrap().query_balance(owner, "uandr").unwrap();
+    assert_eq!(
+        owner_balance.amount,
+        Uint128::from(ORIGINAL_BALANCE - 3000u128)
+    );
+
+    let recipient_balance = router.wrap().query_balance(recipient, "uandr").unwrap();
+    assert_eq!(recipient_balance.amount, Uint128::from(2000u128));
 
     let splitter_balance = router
         .wrap()
