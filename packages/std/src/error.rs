@@ -170,6 +170,12 @@ pub enum ContractError {
     #[error("UnsupportedNFT")]
     UnsupportedNFT {},
 
+    #[error("UnsupportedQuery")]
+    UnsupportedQuery {},
+
+    #[error("UnsupportedExecuteMsg")]
+    UnsupportedExecuteMsg {},
+
     #[error("UnsupportedReturnType")]
     UnsupportedReturnType {},
 

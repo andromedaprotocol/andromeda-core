@@ -188,30 +188,26 @@ pub enum ExecuteMsg {
     BatchSend { batch: Vec<BatchSendMsg> },
 }
 
-#[cw_serde]
-pub struct BatchSendMsg {
-    pub token_id: String,
-    pub contract_addr: AndrAddr,
-    pub msg: Binary,
-}
+use std::convert::TryFrom;
+
 impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
-    type Error = String;
+    type Error = ContractError;
 
     fn try_from(msg: ExecuteMsg) -> Result<Self, Self::Error> {
         match msg {
             ExecuteMsg::TransferNft {
                 recipient,
                 token_id,
-            } => Ok(Cw721ExecuteMsg::TransferNft {
-                recipient: recipient.to_string(),
+            } => Ok(Self::TransferNft {
+                recipient: recipient.into_string(), // Assuming AndrAddr implements `Into<String>`
                 token_id,
             }),
             ExecuteMsg::SendNft {
                 contract,
                 token_id,
                 msg,
-            } => Ok(Cw721ExecuteMsg::SendNft {
-                contract: contract.to_string(),
+            } => Ok(Self::SendNft {
+                contract: contract.into_string(),
                 token_id,
                 msg,
             }),
@@ -219,22 +215,39 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
                 spender,
                 token_id,
                 expires,
-            } => Ok(Cw721ExecuteMsg::Approve {
+            } => Ok(Self::Approve {
                 spender,
                 token_id,
                 expires,
             }),
-            ExecuteMsg::Revoke { spender, token_id } => {
-                Ok(Cw721ExecuteMsg::Revoke { spender, token_id })
-            }
+            ExecuteMsg::Revoke { spender, token_id } => Ok(Self::Revoke { spender, token_id }),
             ExecuteMsg::ApproveAll { operator, expires } => {
-                Ok(Cw721ExecuteMsg::ApproveAll { operator, expires })
+                Ok(Self::ApproveAll { operator, expires })
             }
-            ExecuteMsg::RevokeAll { operator } => Ok(Cw721ExecuteMsg::RevokeAll { operator }),
-            ExecuteMsg::Burn { token_id } => Ok(Cw721ExecuteMsg::Burn { token_id }),
-            _ => Err("Unsupported message".to_string()),
+            ExecuteMsg::RevokeAll { operator } => Ok(Self::RevokeAll { operator }),
+            ExecuteMsg::Burn { token_id } => Ok(Self::Burn { token_id }),
+
+            // These are not part of the cw721_base standard
+            ExecuteMsg::Mint {
+                token_id,
+                owner,
+                token_uri,
+            } => Ok(Self::Mint {
+                token_id,
+                owner: owner.into_string(),
+                token_uri,
+                extension: None,
+            }),
+            _ => Err(ContractError::UnsupportedExecuteMsg {}),
         }
     }
+}
+
+#[cw_serde]
+pub struct BatchSendMsg {
+    pub token_id: String,
+    pub contract_addr: AndrAddr,
+    pub msg: Binary,
 }
 
 #[andr_query]
@@ -310,67 +323,69 @@ pub struct IsArchivedResponse {
     pub is_archived: bool,
 }
 
-impl From<QueryMsg> for Cw721QueryMsg {
-    fn from(msg: QueryMsg) -> Self {
+impl TryFrom<QueryMsg> for Cw721QueryMsg {
+    type Error = ContractError;
+
+    fn try_from(msg: QueryMsg) -> Result<Self, Self::Error> {
         match msg {
             QueryMsg::OwnerOf {
                 token_id,
                 include_expired,
-            } => Cw721QueryMsg::OwnerOf {
+            } => Ok(Cw721QueryMsg::OwnerOf {
                 token_id,
                 include_expired,
-            },
+            }),
             QueryMsg::AllOperators {
                 owner,
                 include_expired,
                 start_after,
                 limit,
-            } => Cw721QueryMsg::AllOperators {
+            } => Ok(Cw721QueryMsg::AllOperators {
                 owner,
                 include_expired,
                 start_after,
                 limit,
-            },
-            QueryMsg::NumTokens {} => Cw721QueryMsg::NumTokens {},
-            QueryMsg::ContractInfo {} => Cw721QueryMsg::GetCollectionInfoAndExtension {},
-            QueryMsg::NftInfo { token_id } => Cw721QueryMsg::NftInfo { token_id },
+            }),
+            QueryMsg::NumTokens {} => Ok(Cw721QueryMsg::NumTokens {}),
+            QueryMsg::ContractInfo {} => Ok(Cw721QueryMsg::GetCollectionInfoAndExtension {}),
+            QueryMsg::NftInfo { token_id } => Ok(Cw721QueryMsg::NftInfo { token_id }),
             QueryMsg::AllNftInfo {
                 token_id,
                 include_expired,
-            } => Cw721QueryMsg::AllNftInfo {
+            } => Ok(Cw721QueryMsg::AllNftInfo {
                 token_id,
                 include_expired,
-            },
+            }),
             QueryMsg::Tokens {
                 owner,
                 start_after,
                 limit,
-            } => Cw721QueryMsg::Tokens {
+            } => Ok(Cw721QueryMsg::Tokens {
                 owner,
                 start_after,
                 limit,
-            },
+            }),
             QueryMsg::AllTokens { start_after, limit } => {
-                Cw721QueryMsg::AllTokens { start_after, limit }
+                Ok(Cw721QueryMsg::AllTokens { start_after, limit })
             }
-            QueryMsg::Minter {} => Cw721QueryMsg::GetMinterOwnership {},
+            QueryMsg::Minter {} => Ok(Cw721QueryMsg::GetMinterOwnership {}),
             QueryMsg::Approval {
                 token_id,
                 spender,
                 include_expired,
-            } => Cw721QueryMsg::Approval {
+            } => Ok(Cw721QueryMsg::Approval {
                 token_id,
                 spender,
                 include_expired,
-            },
+            }),
             QueryMsg::Approvals {
                 token_id,
                 include_expired,
-            } => Cw721QueryMsg::Approvals {
+            } => Ok(Cw721QueryMsg::Approvals {
                 token_id,
                 include_expired,
-            },
-            _ => panic!("Unsupported message"),
+            }),
+            _ => Err(ContractError::UnsupportedQuery {}),
         }
     }
 }

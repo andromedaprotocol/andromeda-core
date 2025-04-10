@@ -124,7 +124,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract;
 
-    contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)
+    let res = contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?;
+    Ok(res)
 }
 
 macro_rules! ensure_can_mint {
@@ -534,7 +535,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             let serialized = to_json_binary(&msg)?;
             match from_json::<AndromedaQuery>(&serialized) {
                 Ok(msg) => ADOContract::default().query(deps, env, msg),
-                _ => Ok(AndrCW721Contract.query(deps, &env, msg.into())?),
+                _ => Ok(AndrCW721Contract.query(deps, &env, msg.try_into()?)?),
             }
         }
     }
