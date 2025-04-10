@@ -2,13 +2,10 @@
 use andromeda_finance::splitter::{AddressPercent, InstantiateMsg};
 use andromeda_kernel::ack::make_ack_success;
 use andromeda_splitter::SplitterContract;
+use andromeda_std::amp::messages::AMPMsgConfig;
 use andromeda_std::{
-    amp::{
-        messages::{AMPMsg, AMPMsgConfig},
-        recipient::Recipient,
-        AndrAddr,
-    },
-    os,
+    amp::{messages::AMPMsg, recipient::Recipient, AndrAddr},
+    os::{self},
 };
 use andromeda_testing::{
     ado_deployer, interchain::ensure_packet_success, register_ado, InterchainTestEnv,
@@ -162,8 +159,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .execute(
             &os::kernel::ExecuteMsg::TriggerRelay {
                 packet_sequence: 1,
-                packet_ack,
-                channel_id,
+                packet_ack: packet_ack.clone(),
+                channel_id: channel_id.clone(),
             },
             &[],
         )

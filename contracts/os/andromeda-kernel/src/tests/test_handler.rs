@@ -1,3 +1,4 @@
+use crate::execute::generate_or_validate_packet_id;
 #[cfg(test)]
 use crate::{execute::handle_local, state::KERNEL_ADDRESSES};
 use andromeda_std::{
@@ -268,4 +269,44 @@ fn test_handle_local() {
             test.name
         );
     }
+}
+
+use crate::state::TX_INDEX;
+use cosmwasm_std::Uint128;
+use rstest::*;
+
+// Helper to reset TX_INDEX before each case
+fn setup_tx_index(storage: &mut dyn cosmwasm_std::Storage, value: Uint128) {
+    TX_INDEX.save(storage, &value).unwrap();
+}
+
+#[rstest]
+#[case::generate_first(None, Uint128::zero(), "0", Uint128::one())]
+#[case::generate_second(None, Uint128::one(), "1", Uint128::new(2))]
+#[case::validate_same_chain(Some("test-chain.12345.1"), Uint128::zero(), "1", Uint128::zero())]
+#[case::validate_different_chain(
+    Some("different-chain.12345.10"),
+    Uint128::zero(),
+    "10",
+    Uint128::zero()
+)]
+fn test_generate_or_validate_packet_id_cases(
+    #[case] input: Option<&str>,
+    #[case] initial_index: Uint128,
+    #[case] expected_index_str: &str,
+    #[case] expected_final_index: Uint128,
+) {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+
+    setup_tx_index(deps.as_mut().storage, initial_index);
+
+    let input_string = input.map(|s| s.to_string());
+    let result = generate_or_validate_packet_id(&mut deps.as_mut(), &env, input_string).unwrap();
+
+    let parts: Vec<&str> = result.split('.').collect();
+    assert_eq!(parts[2], expected_index_str);
+
+    let final_tx_index = TX_INDEX.load(deps.as_ref().storage).unwrap();
+    assert_eq!(final_tx_index, expected_final_index);
 }

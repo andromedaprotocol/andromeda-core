@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore: refactored tests to be more readable, fixed ibc direct packet bug and test setup [(#808)](https://github.com/andromedaprotocol/andromeda-core/pull/808)
 - feat: deploy script validate & build steps [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
 - ref: Simplify the kernel's handling of its Send ExecuteMsg [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
+- fix: kernel's tx id generation [(#851)](https://github.com/andromedaprotocol/andromeda-core/pull/851)
 
 ### Fixed
 

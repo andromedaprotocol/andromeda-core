@@ -3,6 +3,7 @@ use crate::query;
 use crate::state::{
     ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
     ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+    TX_INDEX,
 };
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
@@ -24,7 +25,7 @@ use andromeda_std::os::kernel::{
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
-    IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
+    IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
 #[cfg(not(target_arch = "wasm32"))]
@@ -442,7 +443,11 @@ pub fn amp_receive(
     res.events.extend_from_slice(&msg_res.events);
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
-    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(
+        deps,
+        &env,
+        packet.ctx.id.clone(),
+    )?);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -505,7 +510,11 @@ pub fn amp_receive_cw20(
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
 
-    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(
+        deps,
+        &env,
+        packet.ctx.id.clone(),
+    )?);
 
     let mut res = Response::default();
     ensure!(
@@ -887,26 +896,28 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
 }
 
 /// Generates or validates a packet ID using chain ID, block height and transaction index
-fn generate_or_validate_packet_id(
-    existing_id: Option<String>,
+pub(super) fn generate_or_validate_packet_id(
+    deps: &mut DepsMut,
     env: &Env,
+    existing_id: Option<String>,
 ) -> Result<String, ContractError> {
-    let tx_index =
-        env.transaction
-            .as_ref()
-            .map(|tx| tx.index)
-            .ok_or(ContractError::InvalidPacket {
-                error: Some("Transaction index not available".to_string()),
-            })?;
+    let current_tx_index = TX_INDEX.may_load(deps.storage)?.unwrap_or(Uint128::zero());
 
     match existing_id {
+        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, current_tx_index),
         // Generate unique ID if the packet doesn't already have one
-        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index),
-        // Not using "-" as a separator since chain id can contain it
-        None => Ok(format!(
-            "{}.{}.{}",
-            env.block.chain_id, env.block.height, tx_index
-        )),
+        None => {
+            let new_tx_index = current_tx_index
+                .checked_add(Uint128::one())
+                .unwrap_or(Uint128::zero());
+
+            TX_INDEX.save(deps.storage, &new_tx_index)?;
+            // Not using "-" as a separator since chain id can contain it
+            Ok(format!(
+                "{}.{}.{}",
+                env.block.chain_id, env.block.height, current_tx_index
+            ))
+        }
     }
 }
 
@@ -915,7 +926,7 @@ pub fn validate_id(
     id: &str,
     current_chain_id: &str,
     current_block_height: u64,
-    current_index: u32,
+    current_index: Uint128,
 ) -> Result<String, ContractError> {
     // Split the ID into chain_id, block_height, and index parts
     let parts: Vec<&str> = id.split('.').collect();
@@ -928,7 +939,6 @@ pub fn validate_id(
     }
 
     let [chain_id, block_height_str, index_str] = [parts[0], parts[1], parts[2]];
-
     // Validate chain_id
     if chain_id.is_empty() {
         return Err(ContractError::InvalidPacket {
@@ -945,14 +955,15 @@ pub fn validate_id(
             })?;
 
     let index = index_str
-        .parse::<u32>()
+        .parse::<Uint128>()
         .map_err(|_| ContractError::InvalidPacket {
             error: Some("Invalid transaction index format".to_string()),
         })?;
 
+    let incremented_index = index.checked_add(Uint128::one()).unwrap_or(Uint128::zero());
     //TODO discuss validation for cross chain packets
     if chain_id == current_chain_id
-        && (block_height != current_block_height || index != current_index)
+        && (block_height != current_block_height || incremented_index != current_index)
     {
         return Err(ContractError::InvalidPacket {
             error: Some(
