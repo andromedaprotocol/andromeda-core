@@ -7,3 +7,6 @@ mod testing;
 mod interface;
 #[cfg(not(target_arch = "wasm32"))]
 pub use crate::interface::TimelockContract;
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
+pub mod mock;
