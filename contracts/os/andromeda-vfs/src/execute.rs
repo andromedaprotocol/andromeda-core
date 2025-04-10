@@ -124,7 +124,7 @@ pub fn add_child(
     validate_component_name(name.clone())?;
     let parent_address = resolve_pathname(deps.storage, deps.api, parent_address, &mut vec![])?;
     let existing = paths()
-        .load(deps.storage, &(parent_address.clone(), name.clone()))
+        .load(deps.storage, (parent_address.clone(), name.clone()))
         .ok();
     // Ensure that this path is not already added or if already added it should point to same address as above. This prevent external users to override existing paths.
     // Only add path method can override existing paths as its safe because only owner of the path can execute it

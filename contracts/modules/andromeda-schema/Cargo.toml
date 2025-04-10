@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-schema"
-version = "0.1.0-a.1"
+version = "0.1.0-a.2"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -8,8 +8,7 @@ rust-version = "1.75.0"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+
 # use library feature to disable all instantiate/execute/query exports
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]
@@ -19,7 +18,7 @@ testing = ["cw-multi-test", "andromeda-testing"]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
-cw-json = { git = "https://github.com/SlayerAnsh/cw-json.git" }
+andromeda-cw-json = { workspace = true }
 serde_json = { workspace = true }
 test-case = { workspace = true }
 

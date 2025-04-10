@@ -16,7 +16,7 @@ use cosmwasm_std::{from_json, to_json_binary, Binary, Deps, Env};
 use cw2::get_contract_version;
 use serde::Serialize;
 
-impl ADOContract<'_> {
+impl ADOContract {
     #[allow(unreachable_patterns)]
     pub fn query(
         &self,
@@ -80,7 +80,7 @@ impl ADOContract<'_> {
     }
 }
 
-impl ADOContract<'_> {
+impl ADOContract {
     #[inline]
     pub fn query_contract_owner(&self, deps: Deps) -> Result<ContractOwnerResponse, ContractError> {
         let owner = self.owner.load(deps.storage)?;

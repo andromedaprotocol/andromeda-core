@@ -1,43 +1,45 @@
-use cosmwasm_std::{Decimal, Validator};
-
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::testing::message_info;
 use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
+use cosmwasm_std::{Decimal, Validator};
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 
-pub const DEFAULT_VALIDATOR: &str = "default_validator";
-pub const VALID_VALIDATOR: &str = "valid_validator";
+pub const DEFAULT_VALIDATOR: &str =
+    "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
+pub const VALID_VALIDATOR: &str =
+    "cosmwasm1apn5stna323kg5fgzpg9hepc2c6crh8qumwe72z0nqgcdq7wltqszqkzm2";
 
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
-    let default_validator = Validator {
-        address: String::from(DEFAULT_VALIDATOR),
-        commission: Decimal::percent(1),
-        max_commission: Decimal::percent(3),
-        max_change_rate: Decimal::percent(1),
-    };
+    let default_validator = Validator::create(
+        String::from(DEFAULT_VALIDATOR),
+        Decimal::percent(1),
+        Decimal::percent(3),
+        Decimal::percent(1),
+    );
 
-    let valid_validator = Validator {
-        address: String::from(VALID_VALIDATOR),
-        commission: Decimal::percent(1),
-        max_commission: Decimal::percent(3),
-        max_change_rate: Decimal::percent(1),
-    };
-    //
+    let valid_validator = Validator::create(
+        String::from(VALID_VALIDATOR),
+        Decimal::percent(1),
+        Decimal::percent(3),
+        Decimal::percent(1),
+    );
+
     let mut custom_querier: WasmMockQuerier =
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
     custom_querier
         .base
-        .update_staking("uandr", &[default_validator, valid_validator], &[]);
+        .staking
+        .update("uandr", &[default_validator, valid_validator], &[]);
     let storage = MockStorage::default();
     let mut deps = OwnedDeps {
         storage,
@@ -45,17 +47,17 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let sender = deps.api.addr_make("sender");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info(&sender, &[]),
             InstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: "test".to_string(),
-
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

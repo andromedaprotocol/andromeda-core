@@ -11,27 +11,31 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, coins, from_json,
-    testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR},
-    BankMsg, Decimal, DepsMut, Response, Uint128,
+    testing::{message_info, mock_env, MOCK_CONTRACT_ADDR},
+    BankMsg, Decimal, Response, Uint128,
 };
 
 use andromeda_finance::vesting::{BatchResponse, Config, ExecuteMsg, InstantiateMsg, QueryMsg};
 
+use super::mock_querier::TestDeps;
+
 const MOCK_NATIVE_DENOM: &str = "uusd";
-fn init(deps: DepsMut) -> Response {
+fn init(deps: &mut TestDeps) -> Response {
+    let recipient = deps.api.addr_make("recipient");
     let msg = InstantiateMsg {
-        recipient: Recipient::from_string("recipient"),
+        recipient: Recipient::from_string(recipient.to_string()),
         denom: "uusd".to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
 
-    let info = mock_info("owner", &[]);
-    instantiate(deps, mock_env(), info, msg).unwrap()
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap()
 }
 
 fn create_batch(
-    deps: DepsMut,
+    deps: &mut TestDeps,
     lockup_duration: Option<Milliseconds>,
     release_duration: Milliseconds,
     release_amount: WithdrawalType,
@@ -42,28 +46,28 @@ fn create_batch(
         release_duration,
         release_amount,
     };
-
-    let info = mock_info("owner", &coins(100, "uusd"));
-    execute(deps, mock_env(), info, msg).unwrap()
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
+    execute(deps.as_mut(), mock_env(), info, msg).unwrap()
 }
 
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    let res = init(deps.as_mut());
-
+    let res = init(&mut deps);
+    let owner = deps.api.addr_make("owner");
     assert_eq!(
         Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("type", "vesting")
             .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", "owner"),
+            .add_attribute("owner", owner.to_string()),
         res
     );
-
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Config {
-            recipient: Recipient::from_string("recipient"),
+            recipient: Recipient::from_string(recipient.to_string()),
             denom: "uusd".to_string(),
         },
         CONFIG.load(deps.as_ref().storage).unwrap()
@@ -73,15 +77,16 @@ fn test_instantiate() {
 #[test]
 fn test_instantiate_invalid_denom() {
     let mut deps = mock_dependencies_custom(&[coin(100000, "uandr")]);
-
+    let recipient = deps.api.addr_make("recipient");
     let msg = InstantiateMsg {
-        recipient: Recipient::from_string("recipient"),
+        recipient: Recipient::from_string(recipient.to_string()),
         denom: MOCK_NATIVE_DENOM.to_string(),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(
         err,
@@ -102,7 +107,8 @@ fn test_instantiate_invalid_address() {
         owner: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     assert_eq!(err, ContractError::InvalidAddress {})
 }
@@ -110,9 +116,10 @@ fn test_instantiate_invalid_address() {
 #[test]
 fn test_create_batch_unauthorized() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("not_owner", &[]);
+    let not_owner = deps.api.addr_make("not_owner");
+    let info = message_info(&not_owner, &[]);
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -129,9 +136,10 @@ fn test_create_batch_unauthorized() {
 fn test_create_batch_no_funds() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
 
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("owner", &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -152,9 +160,10 @@ fn test_create_batch_no_funds() {
 #[test]
 fn test_create_batch_invalid_denom() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("owner", &coins(500, "uluna"));
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(500, "uluna"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -175,9 +184,10 @@ fn test_create_batch_invalid_denom() {
 #[test]
 fn test_create_batch_valid_denom_zero_amount() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("owner", &coins(0, "uusd"));
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(0, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -193,9 +203,10 @@ fn test_create_batch_valid_denom_zero_amount() {
 #[test]
 fn test_create_batch_release_duration_zero() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -211,9 +222,10 @@ fn test_create_batch_release_duration_zero() {
 #[test]
 fn test_create_batch_release_amount_zero() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -229,9 +241,10 @@ fn test_create_batch_release_amount_zero() {
 #[test]
 fn test_create_batch() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("owner", &coins(100, "uusd"));
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let msg = ExecuteMsg::CreateBatch {
         lockup_duration: None,
@@ -313,9 +326,10 @@ fn test_create_batch() {
 #[test]
 fn test_claim_batch_unauthorized() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
-    let info = mock_info("not_owner", &[]);
+    let not_owner = deps.api.addr_make("not_owner");
+    let info = message_info(&not_owner, &[]);
 
     let msg = ExecuteMsg::Claim {
         number_of_claims: None,
@@ -330,8 +344,9 @@ fn test_claim_batch_unauthorized() {
 #[test]
 fn test_claim_batch_still_locked() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
@@ -348,7 +363,7 @@ fn test_claim_batch_still_locked() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg);
+    let res = execute(deps.as_mut(), mock_env(), message_info(&owner, &[]), msg);
 
     assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
 }
@@ -356,8 +371,9 @@ fn test_claim_batch_still_locked() {
 #[test]
 fn test_claim_batch_no_funds_available() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     // Create batch.
     let msg = ExecuteMsg::CreateBatch {
@@ -374,7 +390,7 @@ fn test_claim_batch_no_funds_available() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), mock_env(), mock_info("owner", &[]), msg);
+    let res = execute(deps.as_mut(), mock_env(), message_info(&owner, &[]), msg);
 
     // This is because, the first payment becomes available after 10 seconds.
     assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
@@ -383,8 +399,9 @@ fn test_claim_batch_no_funds_available() {
 #[test]
 fn test_claim_batch_single_claim() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -399,6 +416,7 @@ fn test_claim_batch_single_claim() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Skip time.
@@ -432,12 +450,13 @@ fn test_claim_batch_single_claim() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(10, "uusd")
             })
             .add_attribute("action", "claim")
@@ -464,8 +483,9 @@ fn test_claim_batch_single_claim() {
 #[test]
 fn test_claim_batch_not_nice_numbers_single_release() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(10, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(10, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -480,6 +500,7 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(7, "uusd"));
 
     // Skip time.
@@ -493,12 +514,12 @@ fn test_claim_batch_not_nice_numbers_single_release() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
-
+    let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(7, "uusd")
             })
             .add_attribute("action", "claim")
@@ -525,9 +546,10 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 #[test]
 fn test_claim_batch_not_nice_numbers_multiple_releases() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
     let vesting_amount = 1_000_000_000_000_000_000u128;
-    let info = mock_info("owner", &coins(vesting_amount, "uusd"));
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(vesting_amount, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(1); // 1 second
     let duration: u64 = 60 * 60 * 24 * 365 * 5; // 5 years
@@ -544,6 +566,7 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(vesting_amount, "uusd"));
 
     // Skip time.
@@ -560,15 +583,16 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
     let res = execute(
         deps.as_mut(),
         env.clone(),
-        mock_info("owner", &[]),
+        message_info(&owner, &[]),
         msg.clone(),
     )
     .unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(12683916792, "uusd")
             })
             .add_attribute("action", "claim")
@@ -593,11 +617,12 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
     env.block.time = env.block.time.plus_seconds(duration);
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(vesting_amount - 12683916792, "uusd")
             })
             .add_attribute("action", "claim")
@@ -623,8 +648,9 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 #[test]
 fn test_claim_batch_middle_of_interval() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -639,6 +665,7 @@ fn test_claim_batch_middle_of_interval() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     // Claim batch.
@@ -654,7 +681,7 @@ fn test_claim_batch_middle_of_interval() {
     let res = execute(
         deps.as_mut(),
         env.clone(),
-        mock_info("owner", &[]),
+        message_info(&owner, &[]),
         msg.clone(),
     );
 
@@ -662,12 +689,13 @@ fn test_claim_batch_middle_of_interval() {
 
     // First release available and halfway to second -> result is rounding down.
     env.block.time = env.block.time.plus_seconds(release_duration.seconds());
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(10, "uusd")
             })
             .add_attribute("action", "claim")
@@ -694,8 +722,9 @@ fn test_claim_batch_middle_of_interval() {
 #[test]
 fn test_claim_batch_multiple_claims() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -710,6 +739,7 @@ fn test_claim_batch_multiple_claims() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -722,12 +752,13 @@ fn test_claim_batch_multiple_claims() {
         number_of_claims: Some(1),
         batch_id: 1,
     };
-    let res = execute(deps.as_mut(), env.clone(), mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env.clone(), message_info(&owner, &[]), msg).unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(10, "uusd")
             })
             .add_attribute("action", "claim")
@@ -755,12 +786,13 @@ fn test_claim_batch_multiple_claims() {
         number_of_claims: None,
         batch_id: 1,
     };
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(30, "uusd")
             })
             .add_attribute("action", "claim")
@@ -787,8 +819,9 @@ fn test_claim_batch_multiple_claims() {
 #[test]
 fn test_claim_batch_all_releases() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -803,6 +836,7 @@ fn test_claim_batch_all_releases() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -819,15 +853,16 @@ fn test_claim_batch_all_releases() {
     let res = execute(
         deps.as_mut(),
         env.clone(),
-        mock_info("owner", &[]),
+        message_info(&owner, &[]),
         msg.clone(),
     )
     .unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 amount: coins(100, "uusd")
             })
             .add_attribute("action", "claim")
@@ -851,7 +886,7 @@ fn test_claim_batch_all_releases() {
     );
 
     // Try to claim again.
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg);
+    let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg);
 
     assert_eq!(ContractError::WithdrawalIsEmpty {}, res.unwrap_err());
 }
@@ -859,8 +894,9 @@ fn test_claim_batch_all_releases() {
 #[test]
 fn test_claim_batch_too_high_of_claim() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-    let info = mock_info("owner", &coins(100, "uusd"));
+    init(&mut deps);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &coins(100, "uusd"));
 
     let release_duration = Milliseconds::from_seconds(10);
 
@@ -875,6 +911,7 @@ fn test_claim_batch_too_high_of_claim() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(100, "uusd"));
 
     let mut env = mock_env();
@@ -887,12 +924,13 @@ fn test_claim_batch_too_high_of_claim() {
         batch_id: 1,
     };
 
-    let res = execute(deps.as_mut(), env, mock_info("owner", &[]), msg).unwrap();
+    let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 // Only one gets claim
                 amount: coins(10, "uusd")
             })
@@ -920,9 +958,9 @@ fn test_claim_batch_too_high_of_claim() {
 #[test]
 fn test_claim_all_unauthorized() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
-
-    let info = mock_info("not_owner", &[]);
+    init(&mut deps);
+    let not_owner = deps.api.addr_make("not_owner");
+    let info = message_info(&not_owner, &[]);
 
     let msg = ExecuteMsg::ClaimAll {
         up_to_time: None,
@@ -937,22 +975,17 @@ fn test_claim_all_unauthorized() {
 #[test]
 fn test_claim_all() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-    init(deps.as_mut());
+    init(&mut deps);
 
     let release_duration = Milliseconds::from_seconds(10);
 
     let release_amount = WithdrawalType::Amount(Uint128::new(10));
     // Create batch.
-    create_batch(
-        deps.as_mut(),
-        None,
-        release_duration,
-        release_amount.clone(),
-    );
+    create_batch(&mut deps, None, release_duration, release_amount.clone());
 
     // Create batch with half of the release_duration.
     create_batch(
-        deps.as_mut(),
+        &mut deps,
         None,
         Milliseconds::from_seconds(release_duration.seconds() / 2),
         release_amount.clone(),
@@ -960,7 +993,7 @@ fn test_claim_all() {
 
     // Create batch with a different release_duration scale (not a factor).
     create_batch(
-        deps.as_mut(),
+        &mut deps,
         None,
         Milliseconds::from_seconds(12),
         release_amount.clone(),
@@ -968,7 +1001,7 @@ fn test_claim_all() {
 
     // Create batch that is still locked up.
     create_batch(
-        deps.as_mut(),
+        &mut deps,
         Some(Milliseconds::from_seconds(100)),
         release_duration,
         release_amount.clone(),
@@ -976,6 +1009,7 @@ fn test_claim_all() {
 
     deps.querier
         .base
+        .bank
         .update_balance(MOCK_CONTRACT_ADDR, coins(400, "uusd"));
 
     // Speed up time.
@@ -1047,13 +1081,15 @@ fn test_claim_all() {
         limit: None,
     };
 
-    let info = mock_info("owner", &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
+    let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Response::new()
             .add_message(BankMsg::Send {
-                to_address: "recipient".to_string(),
+                to_address: recipient.to_string(),
                 // 20 from the first, 40 from the second, 10 from the third.
                 amount: coins(20 + 40 + 10, "uusd")
             })

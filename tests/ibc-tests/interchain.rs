@@ -16,6 +16,7 @@ use andromeda_std::{
 
 use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Binary, Decimal, Uint128};
+use cw_orch::mock::cw_multi_test::ibc::types::keccak256;
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 
@@ -41,7 +42,7 @@ fn test_kernel_ibc_execute_only() {
                 version: "1.0.2".to_string(),
                 publisher: None,
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -58,7 +59,7 @@ fn test_kernel_ibc_execute_only() {
                 owner: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -84,7 +85,7 @@ fn test_kernel_ibc_execute_only() {
                     },
                 },
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -127,10 +128,10 @@ fn test_kernel_ibc_funds_only() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 denom: juno.denom.clone(),
                 amount: Uint128::new(100),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -140,18 +141,24 @@ fn test_kernel_ibc_funds_only() {
 
     ensure_packet_success(packet_lifetime);
 
-    let ibc_denom: String = format!(
-        "ibc/{}/{}",
-        osmosis.aos.get_aos_channel("juno").unwrap().ics20.unwrap(),
+    let denom_path = format!(
+        "{}/{}",
+        osmosis
+            .aos
+            .get_aos_channel(&juno.chain_name)
+            .unwrap()
+            .ics20
+            .unwrap(),
         juno.denom.clone()
     );
+    let expected_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
 
     let balances = osmosis
         .chain
         .query_all_balances(&osmosis.aos.kernel.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom);
     assert_eq!(balances[0].amount.u128(), 100);
 
     // Register trigger address
@@ -162,7 +169,7 @@ fn test_kernel_ibc_funds_only() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -179,7 +186,7 @@ fn test_kernel_ibc_funds_only() {
                 packet_ack,
                 channel_id,
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -190,7 +197,7 @@ fn test_kernel_ibc_funds_only() {
 
     let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom);
     assert_eq!(balances[0].amount.u128(), 100);
 }
 
@@ -227,7 +234,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 owner: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
     osmosis
@@ -241,7 +248,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -264,10 +271,10 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 denom: juno.denom.clone(),
                 amount: Uint128::new(100),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -276,19 +283,20 @@ fn test_kernel_ibc_funds_and_execute_msg() {
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
-    // For testing a successful outcome of the first packet sent out in the tx, you can use:
-    let ibc_denom = format!(
-        "ibc/{}/{}",
+    let denom_path = format!(
+        "{}/{}",
         osmosis.aos.get_aos_channel("juno").unwrap().direct.unwrap(),
         juno.denom.clone()
     );
+    let expected_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
+
     // Check kernel balance before trigger execute msg
     let balances = osmosis
         .chain
         .query_all_balances(&osmosis.aos.kernel.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom);
     assert_eq!(balances[0].amount.u128(), 100);
 
     // Register trigger address
@@ -299,7 +307,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -316,7 +324,7 @@ fn test_kernel_ibc_funds_and_execute_msg() {
                 packet_ack,
                 channel_id,
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -328,6 +336,6 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     // Check recipient balance after trigger execute msg
     let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom);
     assert_eq!(balances[0].amount.u128(), 100);
 }

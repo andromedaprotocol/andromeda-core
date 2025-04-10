@@ -14,34 +14,42 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_json,
     testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, Addr, Binary, CodeInfoResponse, Coin, ContractInfoResponse, ContractResult,
-    HexBinary, IbcChannel, IbcEndpoint, IbcOrder, OwnedDeps, Querier, QuerierResult, QueryRequest,
-    SubMsg, SystemError, SystemResult, Uint128, WasmQuery,
+    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, ContractResult, IbcChannel,
+    IbcEndpoint, IbcOrder, OwnedDeps, Querier, QuerierResult, QueryRequest, SubMsg, SystemError,
+    SystemResult, Uint128, WasmQuery,
 };
 #[cfg(feature = "primitive")]
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
 
 /// Mock CW20 Contract Address
-pub const MOCK_CW20_CONTRACT: &str = "cw20_contract";
+pub const MOCK_CW20_CONTRACT: &str =
+    "cosmwasm1epy7ztwxfyl93052dww6aupmjsmykjrhwjxfgx4xfz4k5u27jmgsvj0dty";
+pub const MOCK_CW20_CONTRACT_2: &str =
+    "cosmwasm1epy7ztwxfyl93052dww6aupmjsmykjrhwjxfgx4xfz4k5u27jmgsvj0dtz";
 /// Mock Anchor Contract Address
 pub const MOCK_ANCHOR_CONTRACT: &str = "anchor_contract";
 /// Mock App Contract Address
-pub const MOCK_APP_CONTRACT: &str = "app_contract";
+pub const MOCK_APP_CONTRACT: &str =
+    "cosmwasm1t3hmmkn74pqs5htv9swgzpjf7np9z8zc98hgj8hx879cp5juk4eqmnwcm4";
 /// Mock Primitive Contract Address
 pub const MOCK_PRIMITIVE_CONTRACT: &str = "primitive_contract";
 /// Mock Kernel Contract Address
-pub const MOCK_KERNEL_CONTRACT: &str = "kernel_contract";
+pub const MOCK_KERNEL_CONTRACT: &str =
+    "cosmwasm10ve4qc7y97ks47tmur0j44zx2mhuvlr78wr0y0udsxn7yp5cr30slhc6sx";
 /// Mock Kernel Contract Address on foreign chain
 pub const MOCK_FAKE_KERNEL_CONTRACT: &str = "fake_kernel_contract";
 /// Mock VFS Contract Address
-pub const MOCK_VFS_CONTRACT: &str = "vfs_contract";
+pub const MOCK_VFS_CONTRACT: &str =
+    "cosmwasm1d6zkcymf096kr7u7txgfzseavxag5nqjlp752sh6amdrsvd888tq830ls3";
 /// Mock ADODB Contract Address
-pub const MOCK_ADODB_CONTRACT: &str = "adodb_contract";
+pub const MOCK_ADODB_CONTRACT: &str =
+    "cosmwasm1czczgckw8ffqfdrv864vmr5re5rqn2cvw8t0pttyeanmxvdv99cq9fqslh";
 /// Mock IBC Registry Contract Address
 pub const MOCK_IBC_REGISTRY_CONTRACT: &str = "ibc_registry_contract";
 // Mock ADO Publisher
-pub const MOCK_ADO_PUBLISHER: &str = "ado_publisher";
+pub const MOCK_ADO_PUBLISHER: &str =
+    "cosmwasm1a3dv29r4mu0kruar9fjpxrggxggqpnaw5cj5rq4nytpdg2pxtskqpdxmwr";
 // Mock Osmosis Router
 pub const MOCK_OSMOSIS_ROUTER_CONTRACT: &str = "osmosis_router";
 // Mock Economics Contract
@@ -53,7 +61,10 @@ pub const MOCK_RATES_CONTRACT: &str = "rates_contract";
 pub const MOCK_ADDRESS_LIST_CONTRACT: &str = "address_list_contract";
 
 /// An invalid contract address
-pub const INVALID_CONTRACT: &str = "invalid_contract";
+pub const INVALID_CONTRACT: &str =
+    "cosmwasm1xfwre2uvf2xa9e8qwkkgr58537p88ylyfutgv0gvx5mpdaev945qc5ag7z";
+
+pub const RECEIVER: &str = "cosmwasm1sxawsa4hq5funhkvvz8w64yew75p47su9d45pq9wcftr88ne9c8sy9s57j";
 /// An invalid VFS Path
 pub const FAKE_VFS_PATH: &str = "/f";
 /// An invalid ADODB Key
@@ -65,7 +76,7 @@ pub const RATES_EXCLUDED_ADDRESS: &str = "rates_excluded_address";
 
 pub const MOCK_CHECKSUM: &str = "9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d";
 
-pub const MOCK_WALLET: &str = "mock_wallet";
+pub const MOCK_WALLET: &str = "cosmwasm1ss738deprq7wsjw2un0dhhny9r9smpz6vta7ase5qzws4lzj4yaql34g2e";
 
 pub const MOCK_UANDR: &str = "mock_uandr";
 
@@ -83,6 +94,11 @@ pub struct WasmMockQuerier {
     pub base: MockQuerier,
 }
 
+pub type TestDeps = cosmwasm_std::OwnedDeps<
+    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockApi,
+    WasmMockQuerier,
+>;
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
 /// Automatically assigns a kernel address as MOCK_KERNEL_CONTRACT.
@@ -93,7 +109,7 @@ pub fn mock_dependencies_custom(
         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
     // Add IBC Channels to mock querier
-    custom_querier.base.update_ibc(
+    custom_querier.base.ibc.update(
         TRANSFER_PORT,
         &[IbcChannel::new(
             IbcEndpoint {
@@ -125,7 +141,6 @@ pub fn mock_dependencies_custom(
         .unwrap();
     deps
 }
-
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
@@ -161,16 +176,7 @@ impl WasmMockQuerier {
 
 // NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
 // https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
-#[cw_serde(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    JsonSchema
-)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub struct SupplyResponse {
@@ -190,7 +196,11 @@ impl MockAndromedaQuerier {
     ) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                println!("contract_addr is: {}", contract_addr);
                 match contract_addr.as_str() {
+                    "cosmwasm1n4hmya98y5znc6xpd58kap7fc42a4s5u736trhrpmuc9smyrdz0s5rddag" => {
+                        self.handle_cw20_query(msg)
+                    }
                     MOCK_CW20_CONTRACT => self.handle_cw20_query(msg),
                     MOCK_APP_CONTRACT => self.handle_app_query(msg),
                     #[cfg(feature = "primitive")]
@@ -231,7 +241,8 @@ impl MockAndromedaQuerier {
                         "Not a valid contract".to_string(),
                     ));
                 }
-                let mut resp = ContractInfoResponse::default();
+                let mut resp =
+                    ContractInfoResponse::new(1, Addr::unchecked("creator"), None, false, None);
                 resp.code_id = match contract_addr.as_str() {
                     MOCK_APP_CONTRACT => 3,
                     INVALID_CONTRACT => 2,
@@ -243,8 +254,9 @@ impl MockAndromedaQuerier {
                 if *code_id == 2u64 {
                     return SystemResult::Ok(ContractResult::Err("Invalid Code ID".to_string()));
                 }
-                let mut resp = CodeInfoResponse::default();
-                resp.checksum = HexBinary::from_hex(MOCK_CHECKSUM).unwrap();
+                let resp =
+                    ContractInfoResponse::new(1, Addr::unchecked("creator"), None, false, None);
+                // resp.checksum = HexBinary::from_hex(MOCK_CHECKSUM).unwrap();
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&resp).unwrap()))
             }
             _ => querier.handle_query(request),
@@ -473,8 +485,23 @@ impl MockAndromedaQuerier {
                 to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
             ));
         }
-
-        panic!("Unsupported query for contract: {contract_addr}")
+        if key_str.contains("ado_type1") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+        if key_str.contains("kernel_env_variables") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+        if key_str.contains("ado_type3") {
+            return SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&Addr::unchecked("owner".to_string())).unwrap(),
+            ));
+        }
+        println!("key str is: {}", key_str);
+        panic!("Unsupported query for contract: {contract_addr}");
     }
 
     pub fn handle_kernel_raw_query(&self, key: &Binary, fake: bool) -> QuerierResult {

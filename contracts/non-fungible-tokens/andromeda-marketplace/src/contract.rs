@@ -27,14 +27,17 @@ use andromeda_std::{
 };
 
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
+use cw721::{
+    msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse},
+    receiver::Cw721ReceiveMsg,
+};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
+    WasmMsg, WasmQuery,
 };
 
 use cw_utils::Expiration;
@@ -272,7 +275,7 @@ fn execute_update_sale(
 
     // Only token owner is authorized to update the sale
     ensure!(
-        info.sender == token_sale_state.owner,
+        info.sender.as_str() == token_sale_state.owner,
         ContractError::Unauthorized {}
     );
 
@@ -335,7 +338,7 @@ fn execute_buy(
 
     // The owner can't buy his own NFT
     ensure!(
-        token_sale_state.owner != info.sender,
+        token_sale_state.owner != info.sender.as_str(),
         ContractError::TokenOwnerCannotBuy {}
     );
 
@@ -356,7 +359,7 @@ fn execute_buy(
     ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
-        token_owner == env.contract.address,
+        token_owner == env.contract.address.as_str(),
         ContractError::SaleAlreadyConducted {}
     );
 
@@ -405,7 +408,7 @@ fn execute_buy(
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
                 recipient: info.sender.to_string(),
                 token_id: token_id.clone(),
             })?,
@@ -490,7 +493,7 @@ fn execute_buy_cw20(
     ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
-        token_owner == env.contract.address,
+        token_owner == env.contract.address.as_str(),
         ContractError::SaleAlreadyConducted {}
     );
 
@@ -543,7 +546,7 @@ fn execute_buy_cw20(
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
                 recipient: sender.to_string(),
                 token_id: token_id.clone(),
             })?,
@@ -585,7 +588,7 @@ fn execute_cancel(
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
 
     ensure!(
-        info.sender == token_sale_state.owner,
+        info.sender.as_str() == token_sale_state.owner,
         ContractError::Unauthorized {}
     );
 
@@ -597,7 +600,7 @@ fn execute_cancel(
 
     let messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: token_sale_state.token_address.clone(),
-        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+        msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
             recipient: info.sender.to_string(),
             token_id: token_id.clone(),
         })?,
@@ -724,7 +727,7 @@ fn get_existing_token_sale_state(
     token_address: &str,
 ) -> Result<TokenSaleState, ContractError> {
     let key = token_id.to_owned() + token_address;
-    let latest_sale_id: Uint128 = match sale_infos().may_load(storage, &key)? {
+    let latest_sale_id: Uint128 = match sale_infos().may_load(storage, key)? {
         None => return Err(ContractError::SaleDoesNotExist {}),
         Some(sale_info) => *sale_info.last().unwrap(),
     };
@@ -744,13 +747,13 @@ fn get_and_increment_next_sale_id(
 
     let key = token_id.to_owned() + token_address;
 
-    let mut sale_info = sale_infos().load(storage, &key).unwrap_or_default();
+    let mut sale_info = sale_infos().load(storage, key.clone()).unwrap_or_default();
     sale_info.push(next_sale_id);
     if sale_info.token_address.is_empty() {
         token_address.clone_into(&mut sale_info.token_address);
         token_id.clone_into(&mut sale_info.token_id);
     }
-    sale_infos().save(storage, &key, &sale_info)?;
+    sale_infos().save(storage, key, &sale_info)?;
     Ok(next_sale_id)
 }
 
@@ -798,7 +801,7 @@ fn query_sale_ids(
     token_address: String,
 ) -> Result<SaleIdsResponse, ContractError> {
     let key = token_id + &token_address;
-    let sale_info = sale_infos().may_load(deps.storage, &key)?;
+    let sale_info = sale_infos().may_load(deps.storage, key)?;
     if let Some(sale_info) = sale_info {
         return Ok(SaleIdsResponse {
             sale_ids: sale_info.sale_ids,
@@ -841,7 +844,7 @@ fn query_owner_of(
 ) -> Result<OwnerOfResponse, ContractError> {
     let res: OwnerOfResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token_addr,
-        msg: encode_binary(&Cw721QueryMsg::OwnerOf {
+        msg: encode_binary(&Cw721QueryMsg::<Empty, Empty, Empty>::OwnerOf {
             token_id,
             include_expired: None,
         })?,

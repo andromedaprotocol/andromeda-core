@@ -162,6 +162,8 @@ mod tests {
     use andromeda_std::amp::{AndrAddr, Recipient};
     use cosmwasm_std::testing::mock_dependencies;
     use rstest::rstest;
+    const RECIPIENT: &str = "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
+    const RECIPIENT2: &str = "cosmwasm1apn5stna323kg5fgzpg9hepc2c6crh8qumwe72z0nqgcdq7wltqszqkzm2";
 
     struct TestThresholdValidation {
         name: &'static str,
@@ -183,14 +185,14 @@ mod tests {
                     Threshold::new(
                         Uint128::zero(),
                         vec![AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                             Decimal::zero(),
                         )],
                     ),
                     Threshold::new(
                         Uint128::zero(),
                         vec![AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                             Decimal::zero(),
                         )],
                     ),
@@ -203,11 +205,11 @@ mod tests {
                     Uint128::zero(),
                     vec![
                         AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                             Decimal::zero(),
                         ),
                         AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                             Decimal::zero(),
                         ),
                     ],
@@ -220,11 +222,11 @@ mod tests {
                     Uint128::zero(),
                     vec![
                         AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                             Decimal::one(),
                         ),
                         AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient2"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT2), None),
                             Decimal::one(),
                         ),
                     ],
@@ -241,7 +243,7 @@ mod tests {
                 thresholds: vec![Threshold::new(
                     Uint128::zero(),
                     vec![AddressPercent::new(
-                        Recipient::new(AndrAddr::from_string("recipient"), None),
+                        Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                         Decimal::zero(),
                     )],
                 )],
@@ -254,11 +256,11 @@ mod tests {
                         Uint128::zero(),
                         vec![
                             AddressPercent::new(
-                                Recipient::new(AndrAddr::from_string("recipient"), None),
+                                Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                                 Decimal::zero(),
                             ),
                             AddressPercent::new(
-                                Recipient::new(AndrAddr::from_string("recipient2"), None),
+                                Recipient::new(AndrAddr::from_string(RECIPIENT2), None),
                                 Decimal::new(Uint128::new(20)),
                             ),
                         ],
@@ -266,7 +268,7 @@ mod tests {
                     Threshold::new(
                         Uint128::one(),
                         vec![AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                             Decimal::one(),
                         )],
                     ),
@@ -280,11 +282,11 @@ mod tests {
                         Uint128::new(20),
                         vec![
                             AddressPercent::new(
-                                Recipient::new(AndrAddr::from_string("recipient"), None),
+                                Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                                 Decimal::zero(),
                             ),
                             AddressPercent::new(
-                                Recipient::new(AndrAddr::from_string("recipient2"), None),
+                                Recipient::new(AndrAddr::from_string(RECIPIENT2), None),
                                 Decimal::new(Uint128::new(20)),
                             ),
                         ],
@@ -292,7 +294,7 @@ mod tests {
                     Threshold::new(
                         Uint128::new(50),
                         vec![AddressPercent::new(
-                            Recipient::new(AndrAddr::from_string("recipient"), None),
+                            Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                             Decimal::one(),
                         )],
                     ),
@@ -321,7 +323,7 @@ mod tests {
         vec![Threshold::new(
             Uint128::new(100),
             vec![AddressPercent::new(
-                Recipient::new(AndrAddr::from_string("recipient"), None),
+                Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                 Decimal::one(),
             )],
         )],
@@ -333,7 +335,7 @@ mod tests {
         vec![Threshold::new(
             Uint128::new(100),
             vec![AddressPercent::new(
-                Recipient::new(AndrAddr::from_string("recipient"), None),
+                Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                 Decimal::one(),
             )],
         )],
@@ -345,7 +347,7 @@ mod tests {
         vec![Threshold::new(
             Uint128::new(100),
             vec![AddressPercent::new(
-                Recipient::new(AndrAddr::from_string("recipient"), None),
+                Recipient::new(AndrAddr::from_string(RECIPIENT), None),
                 Decimal::one(),
             )],
         )],
@@ -367,7 +369,7 @@ mod tests {
             Threshold::new(
                 Uint128::new(200),
                 vec![AddressPercent::new(
-                    Recipient::new(AndrAddr::from_string("recipient2"), None),
+                    Recipient::new(AndrAddr::from_string(RECIPIENT2), None),
                     Decimal::one(),
                 )],
             ),
@@ -388,7 +390,7 @@ mod tests {
             Threshold::new(
                 Uint128::new(200),
                 vec![AddressPercent::new(
-                    Recipient::new(AndrAddr::from_string("recipient2"), None),
+                    Recipient::new(AndrAddr::from_string(RECIPIENT2), None),
                     Decimal::one(),
                 )],
             ),
@@ -409,7 +411,7 @@ mod tests {
             Threshold::new(
                 Uint128::new(5),
                 vec![AddressPercent::new(
-                    Recipient::new(AndrAddr::from_string("recipient2"), None),
+                    Recipient::new(AndrAddr::from_string(RECIPIENT2), None),
                     Decimal::one(),
                 )],
             ),

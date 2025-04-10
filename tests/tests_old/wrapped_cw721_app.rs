@@ -15,7 +15,7 @@ use andromeda_wrapped_cw721::mock::{
 };
 use common::primitive::Value;
 use cosmwasm_std::{coin, to_json_binary, Addr};
-use cw721::OwnerOfResponse;
+use cw721::msg::OwnerOfResponse;
 use cw_multi_test::{App, Executor};
 
 fn mock_app() -> App {
@@ -24,7 +24,7 @@ fn mock_app() -> App {
             .bank
             .init_balance(
                 storage,
-                &Addr::unchecked("owner"),
+                &Addr::unchecked(OWNER),
                 [coin(999999, "uandr")].to_vec(),
             )
             .unwrap();

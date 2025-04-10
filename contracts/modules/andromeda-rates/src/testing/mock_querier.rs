@@ -2,7 +2,7 @@ use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::testing::message_info;
 use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
@@ -12,8 +12,6 @@ use cosmwasm_std::{
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 pub const MOCK_OWNER: &str = "owner";
-pub const MOCK_RECIPIENT1: &str = "recipient1";
-pub const _MOCK_RECIPIENT2: &str = "recipient2";
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
@@ -30,17 +28,17 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let sender = deps.api.addr_make("sender");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info(&sender, &[]),
             InstantiateMsg {
                 ado_type: "rates".to_string(),
                 ado_version: "test".to_string(),
-
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

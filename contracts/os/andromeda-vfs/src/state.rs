@@ -25,7 +25,7 @@ impl IndexList<PathInfo> for PathIndices<'_> {
     }
 }
 
-pub fn paths<'a>() -> IndexedMap<'a, &'a (Addr, String), PathInfo, PathIndices<'a>> {
+pub fn paths() -> IndexedMap<(Addr, String), PathInfo, PathIndices<'static>> {
     let indexes = PathIndices {
         address: MultiIndex::new(|_pk: &[u8], r| r.address.clone(), "path", "path_index"),
         parent: MultiIndex::new(
@@ -187,7 +187,7 @@ fn resolve_path(
                 error: Some("Pathname contains a looping reference".to_string())
             }
         );
-        let info = paths().load(storage, &(address.clone(), part.clone()))?;
+        let info = paths().load(storage, (address.clone(), part.clone()))?;
         resolved_paths.push((address, part.clone()));
         address = match info.symlink {
             Some(symlink) => resolve_pathname(storage, api, symlink, resolved_paths)?,
@@ -263,7 +263,7 @@ pub fn add_pathname(
 ) -> Result<(), ContractError> {
     paths().save(
         storage,
-        &(parent_addr.clone(), name.clone()),
+        (parent_addr.clone(), name.clone()),
         &PathInfo {
             name,
             address,
@@ -283,7 +283,7 @@ pub fn add_path_symlink(
 ) -> Result<(), ContractError> {
     paths().save(
         storage,
-        &(parent_addr.clone(), name.clone()),
+        (parent_addr.clone(), name.clone()),
         &PathInfo {
             name: name.clone(),
             address: Addr::unchecked("invalidaddress"),
@@ -318,7 +318,7 @@ pub fn resolve_symlink(
         AndrAddr::from_string(format!("/{reconstructed_addr}"))
     };
     let addr = resolve_pathname(storage, api, remaining_path, &mut vec![])?;
-    let info = paths().load(storage, &(addr, final_part))?;
+    let info = paths().load(storage, (addr, final_part))?;
     match info.symlink {
         Some(symlink) => Ok(symlink),
         None => Ok(path),
@@ -343,7 +343,9 @@ mod test {
 
     #[test]
     fn test_resolve_pathname() {
-        let path = AndrAddr::from_string("cosmos1...");
+        let path = AndrAddr::from_string(
+            "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9",
+        );
         let res = resolve_pathname(
             &mock_dependencies().storage,
             &mock_dependencies().api,
@@ -351,7 +353,10 @@ mod test {
             &mut vec![],
         )
         .unwrap();
-        assert_eq!(res, Addr::unchecked("cosmos1..."));
+        assert_eq!(
+            res,
+            Addr::unchecked("cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9")
+        );
     }
 
     #[test]
@@ -400,7 +405,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(username_address.clone(), first_directory.to_string()),
+                (username_address.clone(), first_directory.to_string()),
                 &PathInfo {
                     name: first_directory.to_string(),
                     address: first_directory_address.clone(),
@@ -430,7 +435,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(
+                (
                     first_directory_address.clone(),
                     second_directory.to_string(),
                 ),
@@ -457,7 +462,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(second_directory_address.clone(), file.to_string()),
+                (second_directory_address.clone(), file.to_string()),
                 &PathInfo {
                     name: file.to_string(),
                     address: file_address.clone(),
@@ -508,7 +513,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(username_address.clone(), first_directory.to_string()),
+                (username_address.clone(), first_directory.to_string()),
                 &PathInfo {
                     name: first_directory.to_string(),
                     address: first_directory_address.clone(),
@@ -530,7 +535,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(
+                (
                     first_directory_address.clone(),
                     second_directory.to_string(),
                 ),
@@ -557,7 +562,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(second_directory_address.clone(), file.to_string()),
+                (second_directory_address.clone(), file.to_string()),
                 &PathInfo {
                     name: file.to_string(),
                     address: file_address.clone(),
@@ -585,8 +590,8 @@ mod test {
         let username = "u1";
         let first_directory = "d1";
 
-        let username_address = Addr::unchecked("useraddress");
-        let first_directory_address = Addr::unchecked("dir1address");
+        let username_address = deps.api.addr_make("useraddress");
+        let first_directory_address = deps.api.addr_make("dir1address");
 
         USERS
             .save(deps.as_mut().storage, username, &username_address)
@@ -595,7 +600,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(username_address.clone(), first_directory.to_string()),
+                (username_address.clone(), first_directory.to_string()),
                 &PathInfo {
                     name: first_directory.to_string(),
                     address: first_directory_address.clone(),
@@ -614,7 +619,7 @@ mod test {
         .unwrap();
         assert_eq!(res, first_directory_address);
 
-        let symlink_parent = Addr::unchecked("parentaddress");
+        let symlink_parent = deps.api.addr_make("parentaddress");
         let symlink_name = "symlink";
         let symlink = AndrAddr::from_string(format!("/home/{username}/{first_directory}"));
         let DepsMut { api, storage, .. } = deps.as_mut();
@@ -669,23 +674,25 @@ mod test {
             AndrAddr::from_string(format!("ibc://chain/home/{symlink_parent}/{symlink}"))
         );
 
+        let someaddress = deps.api.addr_make("someaddress");
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string("someaddress"),
+            AndrAddr::from_string(someaddress.to_string()),
         )
         .unwrap();
 
-        assert_eq!(res, AndrAddr::from_string("someaddress"));
+        assert_eq!(res, AndrAddr::from_string(someaddress.to_string()));
 
+        let someuser = deps.api.addr_make("someuser");
         let res = resolve_symlink(
             deps.as_ref().storage,
             deps.as_ref().api,
-            AndrAddr::from_string("/home/someuser"),
+            AndrAddr::from_string(format!("/home/{someuser}")),
         )
         .unwrap();
 
-        assert_eq!(res, AndrAddr::from_string("/home/someuser"));
+        assert_eq!(res, AndrAddr::from_string(format!("/home/{someuser}")));
     }
 
     #[test]
@@ -744,7 +751,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(Addr::unchecked("u1"), "d0".to_string()),
+                (Addr::unchecked("u1"), "d0".to_string()),
                 &PathInfo {
                     name: "d0".to_string(),
                     address: Addr::unchecked("d0"),
@@ -766,7 +773,7 @@ mod test {
         paths()
             .save(
                 deps.as_mut().storage,
-                &(Addr::unchecked("d0"), "d1".to_string()),
+                (Addr::unchecked("d0"), "d1".to_string()),
                 &PathInfo {
                     name: "d0".to_string(),
                     address: Addr::unchecked("u1"),
@@ -799,8 +806,8 @@ mod test {
         let username = "u1";
         let first_directory = "d1";
 
-        let username_address = Addr::unchecked("useraddress");
-        let first_directory_address = Addr::unchecked("dir1address");
+        let username_address = deps.api.addr_make("useraddress");
+        let first_directory_address = deps.api.addr_make("dir1address");
 
         USERS
             .save(deps.as_mut().storage, username, &username_address)

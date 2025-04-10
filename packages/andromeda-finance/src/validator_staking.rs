@@ -37,7 +37,7 @@ pub enum ExecuteMsg {
     },
     #[attrs(restricted)]
     WithdrawFunds {
-        denom: Option<String>,
+        denom: String,
         recipient: Option<AndrAddr>,
     },
     #[attrs(restricted)]

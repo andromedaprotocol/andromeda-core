@@ -55,7 +55,7 @@ fn test_set_and_update_value() {
 fn test_set_value_with_tax() {
     let (mut deps, info) = proper_initialization(StringStorageRestriction::Private);
     let value = StringStorage::String("value".to_string());
-    let tax_recipient = "tax_recipient";
+    let tax_recipient = deps.api.addr_make("tax_recipient");
 
     // Set percent rates
     let set_percent_rate_msg = ExecuteMsg::Rates(RatesMessage::SetRate {
@@ -108,12 +108,13 @@ fn test_set_value_with_tax() {
         coin(20_u128, "uandr".to_string()),
     )
     .unwrap();
+    let creator = deps.api.addr_make("creator");
     let expected_response: Response = Response::new()
         .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: tax_recipient.to_string(),
             amount: vec![coin(20, "uandr")],
         })))
-        .add_attributes(vec![("method", "set_value"), ("sender", "creator")])
+        .add_attributes(vec![("method", "set_value"), ("sender", creator.as_str())])
         .add_attribute("value", format!("{value:?}"));
     assert_eq!(expected_response, res);
 
@@ -142,10 +143,10 @@ fn test_set_value_with_tax() {
         })))
         // 200 was sent, but the tax is only 20, so we send back the difference
         .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "creator".to_string(),
+            to_address: creator.to_string(),
             amount: vec![coin(180, "uandr")],
         })))
-        .add_attributes(vec![("method", "set_value"), ("sender", "creator")])
+        .add_attributes(vec![("method", "set_value"), ("sender", creator.as_str())])
         .add_attribute("value", format!("{value:?}"));
     assert_eq!(expected_response, res);
 }

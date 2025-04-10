@@ -2,6 +2,7 @@
 use andromeda_finance::splitter::{AddressPercent, InstantiateMsg};
 use andromeda_kernel::ack::make_ack_success;
 use andromeda_splitter::SplitterContract;
+use andromeda_std::amp::messages::AMPMsgConfig;
 use andromeda_std::{
     amp::{messages::AMPMsg, recipient::Recipient, AndrAddr},
     os::{self},
@@ -28,6 +29,8 @@ ado_deployer!(
 #[case::juno_to_osmosis("juno", "osmosis")]
 #[case::andromeda_to_juno("andromeda", "juno")]
 fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain2_name: &str) {
+    use cw_orch::mock::cw_multi_test::ibc::types::keccak256;
+
     let InterchainTestEnv {
         juno,
         osmosis,
@@ -104,13 +107,11 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .aos
         .kernel
         .execute(
-            &os::kernel::ExecuteMsg::Send {
-                message: message.clone(),
-            },
-            Some(&[Coin {
+            &os::kernel::ExecuteMsg::Send { message },
+            &[Coin {
                 denom: chain2.denom.clone(),
                 amount: Uint128::new(100),
-            }]),
+            }],
         )
         .unwrap();
     let packet_lifetime = interchain
@@ -118,8 +119,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
-    let ibc_denom = format!(
-        "ibc/{}/{}",
+    let denom_path = format!(
+        "{}/{}",
         chain1
             .aos
             .get_aos_channel(&chain2.chain_name)
@@ -128,8 +129,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
             .unwrap(),
         chain2.denom.clone()
     );
-
-    println!("IBCDenom: {:?}", &ibc_denom);
+    let expected_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
 
     // Setup trigger
     chain2
@@ -140,7 +140,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
                 key: "trigger_key".to_string(),
                 value: chain2.chain.sender.to_string(),
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -162,7 +162,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
                 packet_ack: packet_ack.clone(),
                 channel_id: channel_id.clone(),
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -176,8 +176,8 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
 
     let balance2 = chain1.chain.query_all_balances(&recipient2).unwrap();
 
-    assert_eq!(balance1[0].denom, ibc_denom);
-    assert_eq!(balance2[0].denom, ibc_denom);
+    assert_eq!(balance1[0].denom, expected_denom);
+    assert_eq!(balance2[0].denom, expected_denom);
     assert_eq!(balance1[0].amount, Uint128::new(60)); // 60%
     assert_eq!(balance2[0].amount, Uint128::new(40)); // 40%
 }
@@ -224,7 +224,7 @@ fn test_splitter_ibc_update_recipients() {
                 default_recipient: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -239,50 +239,54 @@ fn test_splitter_ibc_update_recipients() {
                 publisher: None,
                 action_fees: None,
             },
-            None,
+            &[],
         )
         .unwrap();
 
-    let updated_recipients = andromeda_finance::splitter::ExecuteMsg::UpdateRecipients {
-        recipients: vec![
-            AddressPercent {
-                recipient: Recipient {
-                    address: AndrAddr::from_string(recipient1),
-                    msg: None,
-                    ibc_recovery_address: None,
-                },
-                percent: Decimal::percent(50),
+    let recipients = vec![
+        AddressPercent {
+            recipient: Recipient {
+                address: recipient1.into(),
+                msg: None,
+                ibc_recovery_address: None,
             },
-            AddressPercent {
-                recipient: Recipient {
-                    address: AndrAddr::from_string(recipient2),
-                    msg: None,
-                    ibc_recovery_address: None,
-                },
-                percent: Decimal::percent(50),
+            percent: Decimal::percent(50),
+        },
+        AddressPercent {
+            recipient: Recipient {
+                address: recipient2.into(),
+                msg: None,
+                ibc_recovery_address: None,
             },
-        ],
-    };
+            percent: Decimal::percent(50),
+        },
+    ];
 
-    let splitter_addr = splitter_osmosis.address().unwrap();
-    let osmosis_recipient =
-        AndrAddr::from_string(format!("ibc://{}/{}", osmosis.chain_name, splitter_addr));
-
-    let ibc_update_msg = AMPMsg::new(
-        osmosis_recipient,
-        to_json_binary(&updated_recipients).unwrap(),
-        Some(vec![]),
-    );
-
-    // 5) Send the IBC message from Juno.
     let kernel_tx = juno
         .aos
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send {
-                message: ibc_update_msg,
+                message: AMPMsg {
+                    recipient: AndrAddr::from_string(format!(
+                        "ibc://osmosis/{}",
+                        splitter_osmosis.address().unwrap()
+                    )),
+                    message: to_json_binary(
+                        &andromeda_splitter::mock::mock_splitter_update_recipients_msg(recipients),
+                    )
+                    .unwrap(),
+                    funds: vec![],
+                    config: AMPMsgConfig {
+                        reply_on: cosmwasm_std::ReplyOn::Always,
+                        exit_at_error: false,
+                        gas_limit: None,
+                        direct: true,
+                        ibc_config: None,
+                    },
+                },
             },
-            None,
+            &[],
         )
         .unwrap();
 

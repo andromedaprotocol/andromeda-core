@@ -7,7 +7,7 @@ mod ibc_transfer_tests {
     use andromeda_std::common::reply::ReplyId;
     use andromeda_std::error::ContractError;
     use andromeda_std::os::kernel::ChannelInfo;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{Binary, Coin, CosmosMsg, IbcMsg, SubMsg, Uint128};
 
     #[test]
@@ -15,7 +15,8 @@ mod ibc_transfer_tests {
         // Setup
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create message with funds
         let message = AMPMsg {
@@ -78,7 +79,7 @@ mod ibc_transfer_tests {
 
         // Check storage
         let stored_packet = PENDING_MSG_AND_FUNDS.load(&deps.storage).unwrap();
-        assert_eq!(stored_packet.sender, "sender");
+        assert_eq!(stored_packet.sender, sender.to_string());
         assert_eq!(stored_packet.channel, "channel-0");
         assert_eq!(stored_packet.funds.amount, Uint128::new(100));
         assert_eq!(stored_packet.funds.denom, "uatom");
@@ -88,7 +89,8 @@ mod ibc_transfer_tests {
     fn test_handle_ibc_transfer_funds_no_ics20_channel() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create message
         let message = AMPMsg {
@@ -129,7 +131,8 @@ mod ibc_transfer_tests {
     fn test_handle_ibc_transfer_funds_multiple_coins() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create message with multiple coins
         let message = AMPMsg {
@@ -172,7 +175,8 @@ mod ibc_transfer_tests {
     fn test_handle_ibc_transfer_funds_empty_funds() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create message with empty funds
         let message = AMPMsg {
@@ -206,7 +210,8 @@ mod ibc_transfer_tests {
     fn test_handle_ibc_transfer_funds_no_chain_in_recipient() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create message with no chain in recipient
         let message = AMPMsg {
@@ -243,7 +248,8 @@ mod ibc_transfer_tests {
     fn test_handle_ibc_transfer_funds_response_attributes() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create message
         let message = AMPMsg {
@@ -296,7 +302,8 @@ mod ibc_transfer_tests {
     fn test_handle_ibc_transfer_funds_custom_denom() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create message with custom denom
         let message = AMPMsg {
@@ -345,8 +352,8 @@ mod ibc_transfer_tests {
     fn test_handle_ibc_transfer_funds_with_empty_message() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
-
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
         // Create message with empty binary message (valid case)
         let message = AMPMsg {
             recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
@@ -386,7 +393,8 @@ mod ibc_transfer_tests {
         // Test with different sender addresses
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("another_sender", &[]); // Different sender
+        let another_sender = deps.api.addr_make("another_sender");
+        let info = message_info(&another_sender, &[]); // Different sender
 
         let message = AMPMsg {
             recipient: AndrAddr::from_string("ibc://juno-1/recipient".to_string()),
@@ -418,7 +426,7 @@ mod ibc_transfer_tests {
 
         // Verify stored packet has the correct sender
         let stored_packet = PENDING_MSG_AND_FUNDS.load(&deps.storage).unwrap();
-        assert_eq!(stored_packet.sender, "another_sender");
+        assert_eq!(stored_packet.sender, another_sender.to_string());
     }
 
     #[test]
@@ -426,7 +434,8 @@ mod ibc_transfer_tests {
         // Test that context is ignored as specified in the function signature
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("sender", &[]);
+        let sender = deps.api.addr_make("sender");
+        let info = message_info(&sender, &[]);
 
         // Create a dummy context
         let ctx = Some(AMPPkt::new(
@@ -465,6 +474,6 @@ mod ibc_transfer_tests {
 
         // Function should succeed even with context (which is ignored)
         let stored_packet = PENDING_MSG_AND_FUNDS.load(&deps.storage).unwrap();
-        assert_eq!(stored_packet.sender, "sender"); // Original sender preserved
+        assert_eq!(stored_packet.sender, sender.to_string()); // Original sender preserved
     }
 }

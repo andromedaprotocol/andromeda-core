@@ -22,7 +22,7 @@ fn mock_app() -> App {
             .bank
             .init_balance(
                 storage,
-                &Addr::unchecked("owner"),
+                &Addr::unchecked(OWNER),
                 [coin(999999, "uandr")].to_vec(),
             )
             .unwrap();

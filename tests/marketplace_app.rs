@@ -271,7 +271,7 @@ fn test_marketplace_app() {
 
     // Check final state
     let owner_of_token = cw721.query_owner_of(&router, token_id);
-    assert_eq!(owner_of_token, buyer.to_string());
+    assert_eq!(owner_of_token, buyer);
 
     let balance = router
         .wrap()
@@ -422,7 +422,7 @@ fn test_marketplace_app_recipient() {
 
     // Check final state
     let owner_of_token = cw721.query_owner_of(&router, token_id);
-    assert_eq!(owner_of_token, buyer.to_string());
+    assert_eq!(owner_of_token, buyer);
 
     let balance = router.wrap().query_balance(receiver, "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::from(100u128));
@@ -966,7 +966,7 @@ fn test_marketplace_app_cw20_unrestricted() {
 
     // Check final state
     let owner_of_token = cw721.query_owner_of(&router, token_id);
-    assert_eq!(owner_of_token, buyer.to_string());
+    assert_eq!(owner_of_token, buyer);
 
     // The NFT owner sold it for 200, there's also a 50% tax so the owner should receive 100
     let second_cw20_balance_response = second_cw20.query_balance(&router, owner);

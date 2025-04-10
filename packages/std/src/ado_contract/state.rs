@@ -3,20 +3,20 @@ use crate::ado_base::rates::Rate;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 
-pub struct ADOContract<'a> {
-    pub(crate) owner: Item<'a, Addr>,
-    pub(crate) original_publisher: Item<'a, Addr>,
-    pub(crate) block_height: Item<'a, u64>,
-    pub(crate) ado_type: Item<'a, String>,
-    pub(crate) app_contract: Item<'a, Addr>,
-    pub(crate) kernel_address: Item<'a, Addr>,
-    pub(crate) permissioned_actions: Map<'a, String, bool>,
+pub struct ADOContract {
+    pub(crate) owner: Item<Addr>,
+    pub(crate) original_publisher: Item<Addr>,
+    pub(crate) block_height: Item<u64>,
+    pub(crate) ado_type: Item<String>,
+    pub(crate) app_contract: Item<Addr>,
+    pub(crate) kernel_address: Item<Addr>,
+    pub(crate) permissioned_actions: Map<String, bool>,
     #[cfg(feature = "rates")]
     /// Mapping of action to rate
-    pub rates: Map<'a, &'a str, Rate>,
+    pub rates: Map<String, Rate>,
 }
 
-impl Default for ADOContract<'_> {
+impl Default for ADOContract {
     fn default() -> Self {
         ADOContract {
             owner: Item::new("owner"),

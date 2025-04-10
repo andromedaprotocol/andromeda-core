@@ -159,6 +159,8 @@ pub fn validate_expiry_duration(
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::mock_dependencies;
+    const RECIPIENT: &str = "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
+    const RECIPIENT2: &str = "cosmwasm1apn5stna323kg5fgzpg9hepc2c6crh8qumwe72z0nqgcdq7wltqszqkzm2";
 
     use super::*;
 
@@ -170,7 +172,7 @@ mod tests {
         assert_eq!(res, ContractError::EmptyRecipientsList {});
 
         let inadequate_recipients = vec![AddressPercent {
-            recipient: Recipient::from_string(String::from("abc")),
+            recipient: Recipient::from_string(String::from(RECIPIENT)),
             percent: Decimal::percent(150),
         }];
         let res = validate_recipient_list(deps.as_ref(), inadequate_recipients).unwrap_err();
@@ -178,11 +180,11 @@ mod tests {
 
         let duplicate_recipients = vec![
             AddressPercent {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 percent: Decimal::percent(50),
             },
             AddressPercent {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 percent: Decimal::percent(50),
             },
         ];
@@ -192,11 +194,11 @@ mod tests {
 
         let valid_recipients = vec![
             AddressPercent {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 percent: Decimal::percent(50),
             },
             AddressPercent {
-                recipient: Recipient::from_string(String::from("xyz")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 percent: Decimal::percent(50),
             },
         ];
@@ -205,7 +207,7 @@ mod tests {
         assert!(res.is_ok());
 
         let one_valid_recipient = vec![AddressPercent {
-            recipient: Recipient::from_string(String::from("abc")),
+            recipient: Recipient::from_string(String::from(RECIPIENT)),
             percent: Decimal::percent(50),
         }];
 

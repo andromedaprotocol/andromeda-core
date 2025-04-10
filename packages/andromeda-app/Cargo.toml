@@ -7,7 +7,7 @@ description = "Utility methods and message definitions for the Andromeda App Con
 license = "MIT"
 
 [features]
-backtraces = ["cosmwasm-std/backtraces"]
+
 testing = ["cw-multi-test"]
 library = []
 

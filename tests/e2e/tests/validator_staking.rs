@@ -62,12 +62,12 @@ fn test_validator_staking() {
     daemon.wait_seconds(61).unwrap();
 
     validator_staking_contract
-        .withdraw_funds(Some(denom.to_string()), None)
+        .withdraw_funds(denom.to_string(), None)
         .unwrap();
 
     let contract_balance = daemon
         .balance(
-            validator_staking_contract.addr_str().unwrap(),
+            &validator_staking_contract.address().unwrap(),
             Some(denom.to_string()),
         )
         .unwrap()[0]
@@ -119,7 +119,7 @@ fn test_kicked_validator() {
 
     let contract_balance = daemon
         .balance(
-            validator_staking_contract.addr_str().unwrap(),
+            &validator_staking_contract.address().unwrap(),
             Some(denom.to_string()),
         )
         .unwrap()[0]
@@ -143,12 +143,12 @@ fn test_kicked_validator() {
     daemon.wait_seconds(61).unwrap();
 
     validator_staking_contract
-        .withdraw_funds(Some(denom.to_string()), None)
+        .withdraw_funds(denom.to_string(), None)
         .unwrap();
 
     let contract_balance = daemon
         .balance(
-            validator_staking_contract.addr_str().unwrap(),
+            &validator_staking_contract.address().unwrap(),
             Some(denom.to_string()),
         )
         .unwrap()[0]
