@@ -76,7 +76,7 @@ fn execute_hold_funds(
         deps, info, env, ..
     } = ctx;
 
-    let rec = recipient.unwrap_or_else(|| Recipient::from_string(info.sender.to_string()));
+    let rec = recipient.unwrap_or(Recipient::from_string(info.sender.to_string()));
 
     //Validate recipient address
     let recipient_addr = rec.clone().address;
