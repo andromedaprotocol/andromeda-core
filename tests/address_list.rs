@@ -9,7 +9,7 @@ use andromeda_marketplace::mock::{
     mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
-use andromeda_modules::address_list::ActorPermissionResponse;
+use andromeda_modules::address_list::{ActorPermissionResponse, PERMISSION_ACTORS_ACTION};
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission},
     amp::{
@@ -170,7 +170,6 @@ fn test_permission_frequency() {
             buyer.clone(),
             Addr::unchecked(marketplace.addr()),
             &mock_buy_token(cw721.addr(), token_id),
-            // We're sending the exact amount required, which is the price + tax
             &[coin(100, "uandr")],
         )
         .unwrap_err()
@@ -185,7 +184,7 @@ fn test_permission_frequency() {
 
     let current_time = router.block_info().time;
 
-    // WHitelist buyer with frequency
+    // Whitelist buyer with frequency
     address_list
         .execute_actor_permission(
             &mut router,
@@ -209,7 +208,6 @@ fn test_permission_frequency() {
             buyer.clone(),
             Addr::unchecked(marketplace.addr()),
             &receive_packet_msg,
-            // We're sending the exact amount required, which is the price + tax
             &[coin(100, "uandr")],
         )
         .unwrap_err()
@@ -217,7 +215,7 @@ fn test_permission_frequency() {
         .unwrap();
     assert_eq!(err, ContractError::Unauthorized {});
 
-    // Set valid frequence and last used
+    // Set valid frequency and last used
     let valid_permission = LocalPermission::whitelisted(
         None,
         None,
@@ -244,13 +242,12 @@ fn test_permission_frequency() {
     assert_eq!(query.permission, valid_permission);
 
     // Permission the marketplace contract for it to be able to call the address list
-
     address_list
         .execute_set_permission_actor(
             &mut router,
             owner.clone(),
             vec![AndrAddr::from_string("./marketplace")],
-            "PermissionActors".to_string(),
+            PERMISSION_ACTORS_ACTION.to_string(),
             Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
         )
         .unwrap();
@@ -260,7 +257,6 @@ fn test_permission_frequency() {
             buyer.clone(),
             Addr::unchecked(marketplace.addr()),
             &receive_packet_msg,
-            // We're sending the exact amount required, which is the price + tax
             &[coin(100, "uandr")],
         )
         .unwrap();

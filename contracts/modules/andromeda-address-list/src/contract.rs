@@ -1,4 +1,6 @@
-use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResponse};
+use andromeda_modules::address_list::{
+    ActorPermissionResponse, IncludesActorResponse, PERMISSION_ACTORS_ACTION,
+};
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
@@ -62,10 +64,10 @@ pub fn instantiate(
         }
     }
 
-    ADOContract::default().permission_action(deps.storage, "PermissionActors".to_string())?;
+    ADOContract::default().permission_action(deps.storage, PERMISSION_ACTORS_ACTION)?;
     ADOContract::set_permission(
         deps.storage,
-        "PermissionActors".to_string(),
+        PERMISSION_ACTORS_ACTION.to_string(),
         info.sender.clone(),
         Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
     )?;

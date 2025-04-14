@@ -20,15 +20,13 @@ const MAX_QUERY_LIMIT: u32 = 50;
 const DEFAULT_QUERY_LIMIT: u32 = 25;
 
 #[cw_serde]
+// Importing this enum from the address list contract would result in a circular dependency
 pub enum AddressListExecuteMsg {
     /// Adds an actor key and a permission value
     PermissionActors {
         actors: Vec<AndrAddr>,
         permission: LocalPermission,
     },
-    // /// Removes actor alongisde his permission
-    // #[attrs(restricted, nonpayable)]
-    // RemovePermissions { actors: Vec<AndrAddr> },
 }
 
 pub struct PermissionsIndices<'a> {
@@ -115,7 +113,6 @@ impl ADOContract<'_> {
             Some(mut some_permission) => {
                 match some_permission {
                     Permission::Local(ref mut local_permission) => {
-                        println!("Local permission: {:?}", local_permission);
                         ensure!(
                             local_permission.is_permissioned(&env, permissioned_action),
                             ContractError::Unauthorized {}
@@ -251,6 +248,11 @@ impl ADOContract<'_> {
                             &mut local_permission
                         {
                             last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
+                        }
+                        // Limited section
+                        if let LocalPermission::Limited { .. } = local_permission {
+                            // Always consume a use due to strict setting
+                            local_permission.consume_use()?;
                         }
                         // Contsruct Sub Msg to update the permission in the address list contract
                         let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {

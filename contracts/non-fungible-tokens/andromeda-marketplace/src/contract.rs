@@ -114,7 +114,7 @@ fn handle_receive_cw721(
     mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let sub_msg = ADOContract::default().is_permissioned(
+    let sub_msg = ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,

@@ -5,6 +5,8 @@ use andromeda_std::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 
+pub const PERMISSION_ACTORS_ACTION: &str = "PermissionActors";
+
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
