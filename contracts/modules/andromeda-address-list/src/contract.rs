@@ -44,6 +44,7 @@ pub fn instantiate(
         actor_permission.permission = if let LocalPermission::Whitelisted {
             start,
             expiration,
+            uses,
             frequency,
             ..
         } = actor_permission.permission
@@ -51,6 +52,7 @@ pub fn instantiate(
             LocalPermission::Whitelisted {
                 start,
                 expiration,
+                uses,
                 frequency,
                 last_used: None,
             }
@@ -69,7 +71,7 @@ pub fn instantiate(
         deps.storage,
         PERMISSION_ACTORS_ACTION.to_string(),
         info.sender.clone(),
-        Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+        Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
     )?;
 
     let inst_resp = ADOContract::default().instantiate(

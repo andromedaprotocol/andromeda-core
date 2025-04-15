@@ -124,7 +124,7 @@ fn test_transfer() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Now whitelist the sender, that should allow him to call the function successfully
-    let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None));
+    let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None, None));
     let actors = vec![AndrAddr::from_string("sender")];
     let action = "Transfer";
     let ctx = ExecuteContext::new(deps.as_mut(), mock_info("owner", &[]), mock_env());

@@ -120,11 +120,6 @@ impl ADOContract<'_> {
                         // Update last used
                         if let LocalPermission::Whitelisted { last_used, .. } = local_permission {
                             last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
-
-                        // Consume a use for a limited permission
-                        if let LocalPermission::Limited { .. } = local_permission {
-                            // Only consume a use if the action is permissioned
                             if permissioned_action {
                                 local_permission.consume_use()?;
                                 permissions().save(
@@ -155,10 +150,6 @@ impl ADOContract<'_> {
                             &mut local_permission
                         {
                             last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
-
-                        // Limited section
-                        if let LocalPermission::Limited { .. } = local_permission {
                             // Only consume a use if the action is permissioned
                             if permissioned_action {
                                 local_permission.consume_use()?;
@@ -217,10 +208,6 @@ impl ADOContract<'_> {
                         // Update last used
                         if let LocalPermission::Whitelisted { last_used, .. } = local_permission {
                             last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
-
-                        // Consume a use for a limited permission
-                        if let LocalPermission::Limited { .. } = local_permission {
                             // Always consume a use due to strict setting
                             local_permission.consume_use()?;
                             permissions().save(
@@ -248,9 +235,6 @@ impl ADOContract<'_> {
                             &mut local_permission
                         {
                             last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
-                        // Limited section
-                        if let LocalPermission::Limited { .. } = local_permission {
                             // Always consume a use due to strict setting
                             local_permission.consume_use()?;
                         }
@@ -358,10 +342,11 @@ impl ADOContract<'_> {
             Permission::Local(LocalPermission::Whitelisted {
                 start,
                 expiration,
+                uses,
                 frequency,
                 ..
             }) => Permission::Local(LocalPermission::whitelisted(
-                start, expiration, frequency, None,
+                start, expiration, uses, frequency, None,
             )),
             _ => permission,
         };
@@ -721,9 +706,11 @@ pub mod migrate {
         /// Converts a v1 permission to a modern permission
         fn try_from(value: PermissionV1) -> Result<Self, Self::Error> {
             match value {
-                PermissionV1::Whitelisted(exp) => Ok(Self::whitelisted(None, exp, None, None)),
+                PermissionV1::Whitelisted(exp) => {
+                    Ok(Self::whitelisted(None, exp, None, None, None))
+                }
                 PermissionV1::Limited { expiration, uses } => {
-                    Ok(Self::limited(None, expiration, uses))
+                    Ok(Self::whitelisted(None, expiration, Some(uses), None, None))
                 }
                 PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(None, exp)),
             }
@@ -797,6 +784,7 @@ pub mod migrate {
                 permission: Permission::Local(LocalPermission::Whitelisted {
                     start: None,
                     expiration: None,
+                    uses: None,
                     frequency: None,
                     last_used: None,
                 }),
@@ -874,6 +862,7 @@ mod tests {
         let permission = Permission::Local(LocalPermission::Whitelisted {
             start: None,
             expiration: None,
+            uses: None,
             frequency: None,
             last_used: None,
         });
@@ -889,10 +878,12 @@ mod tests {
         let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
 
         assert!(res.is_err());
-        let permission = Permission::Local(LocalPermission::Limited {
+        let permission = Permission::Local(LocalPermission::Whitelisted {
             start: None,
             expiration: None,
-            uses: 1,
+            uses: Some(1),
+            frequency: None,
+            last_used: None,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -973,6 +964,7 @@ mod tests {
         let permission = Permission::Local(LocalPermission::Whitelisted {
             start: None,
             expiration: None,
+            uses: None,
             frequency: None,
             last_used: None,
         });
@@ -1016,6 +1008,7 @@ mod tests {
             permission: Permission::Local(LocalPermission::Whitelisted {
                 start: None,
                 expiration: None,
+                uses: None,
                 frequency: None,
                 last_used: None,
             }),
@@ -1114,6 +1107,7 @@ mod tests {
         let permission = Permission::Local(LocalPermission::Whitelisted {
             start: None,
             expiration: Some(expiration.clone()),
+            uses: None,
             frequency: None,
             last_used: None,
         });
@@ -1197,6 +1191,7 @@ mod tests {
             Permission::Local(LocalPermission::Whitelisted {
                 start,
                 expiration: None,
+                uses: None,
                 frequency: None,
                 last_used: None,
             })
@@ -1283,6 +1278,7 @@ mod tests {
         let permission = Permission::Local(LocalPermission::Whitelisted {
             start: None,
             expiration: None,
+            uses: None,
             frequency: None,
             last_used: None,
         });
@@ -1398,10 +1394,12 @@ mod tests {
         let previous_sender = "previous_sender";
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone())
             .with_ctx(AMPPkt::new(info.sender, previous_sender, vec![]));
-        let permission = Permission::Local(LocalPermission::Limited {
+        let permission = Permission::Local(LocalPermission::Whitelisted {
             start: None,
             expiration: None,
-            uses: 1,
+            uses: Some(1),
+            frequency: None,
+            last_used: None,
         });
         ADOContract::set_permission(context.deps.storage, action, actor, permission.clone())
             .unwrap();
@@ -1432,7 +1430,13 @@ mod tests {
         assert_eq!(previous_sender_permission, Some(permission));
         assert_eq!(
             actor_permission,
-            Some(Permission::Local(LocalPermission::limited(None, None, 0)))
+            Some(Permission::Local(LocalPermission::whitelisted(
+                None,
+                None,
+                Some(0),
+                None,
+                Some(Milliseconds(1571797419000)),
+            )))
         );
     }
 
@@ -1462,7 +1466,8 @@ mod tests {
         .unwrap());
 
         let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
-        let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None));
+        let permission =
+            Permission::Local(LocalPermission::whitelisted(None, None, None, None, None));
         ADOContract::set_permission(context.deps.storage, action, actor, permission).unwrap();
 
         assert!(is_context_permissioned_strict(
@@ -1536,7 +1541,8 @@ mod tests {
 
         assert!(permissions.is_empty());
 
-        let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None));
+        let permission =
+            Permission::Local(LocalPermission::whitelisted(None, None, None, None, None));
         let action = "action";
 
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
@@ -1557,7 +1563,7 @@ mod tests {
             ),
             (
                 "action3".to_string(),
-                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
             ),
             (
                 "action4".to_string(),
@@ -1565,7 +1571,7 @@ mod tests {
             ),
             (
                 "action5".to_string(),
-                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
             ),
         ];
 

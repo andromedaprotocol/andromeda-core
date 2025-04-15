@@ -236,7 +236,7 @@ fn test_marketplace_app() {
             &mut router,
             owner.clone(),
             vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::whitelisted(None, None, None, None),
+            LocalPermission::whitelisted(None, None, None, None, None),
         )
         .unwrap();
 
@@ -596,7 +596,7 @@ fn test_marketplace_app_cw20_restricted() {
                 AndrAddr::from_string(buyer.clone()),
                 AndrAddr::from_string(owner.clone()),
             ],
-            LocalPermission::whitelisted(None, None, None, None),
+            LocalPermission::whitelisted(None, None, None, None, None),
         )
         .unwrap();
 
@@ -878,7 +878,7 @@ fn test_marketplace_app_cw20_unrestricted() {
                 AndrAddr::from_string(buyer.clone()),
                 AndrAddr::from_string(owner.clone()),
             ],
-            LocalPermission::whitelisted(None, None, None, None),
+            LocalPermission::whitelisted(None, None, None, None, None),
         )
         .unwrap();
 

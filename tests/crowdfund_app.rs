@@ -248,7 +248,7 @@ fn setup(
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(crowdfund.addr().to_string())],
         action: "Mint".to_string(),
-        permission: Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+        permission: Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
     });
 
     cw721

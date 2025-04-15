@@ -60,7 +60,7 @@ pub fn instantiate(
                 None => info.sender,
                 Some(owner) => Addr::unchecked(owner),
             },
-            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+            Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
         )?;
     }
 

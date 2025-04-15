@@ -284,7 +284,7 @@ fn execute_start_auction(
                 deps.storage,
                 auction_id.to_string(),
                 whitelisted_address,
-                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
             )?;
         }
     };
@@ -406,7 +406,7 @@ fn execute_update_auction(
                 deps.storage,
                 token_auction_state.auction_id.to_string(),
                 whitelisted_address,
-                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+                Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
             )?;
         }
     };
