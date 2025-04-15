@@ -198,10 +198,11 @@ impl LocalPermission {
     }
 
     pub fn consume_use(&mut self) -> Result<(), ContractError> {
-        if let Self::Whitelisted { uses, .. } = self {
-            if let Some(uses) = uses {
-                *uses = uses.saturating_sub(1);
-            }
+        if let Self::Whitelisted {
+            uses: Some(uses), ..
+        } = self
+        {
+            *uses = uses.saturating_sub(1);
         }
         Ok(())
     }
