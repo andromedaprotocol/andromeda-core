@@ -123,7 +123,6 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 
 fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract;
-
     let res = contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?;
     Ok(res)
 }
@@ -523,19 +522,33 @@ fn execute_batch_send_nft(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    use QueryMsg::{IsArchived, Minter, TransferAgreement};
     match msg {
-        QueryMsg::IsArchived { token_id } => {
-            Ok(to_json_binary(&is_archived(deps.storage, &token_id)?)?)
+        IsArchived { token_id } => {
+            let res = is_archived(deps.storage, &token_id)?;
+            Ok(to_json_binary(&res)?)
         }
-        QueryMsg::TransferAgreement { token_id } => {
-            Ok(to_json_binary(&query_transfer_agreement(deps, token_id)?)?)
+        TransferAgreement { token_id } => {
+            let res = query_transfer_agreement(deps, token_id)?;
+            Ok(to_json_binary(&res)?)
         }
-        QueryMsg::Minter {} => Ok(to_json_binary(&query_minter(deps)?)?),
-        _ => {
-            let serialized = to_json_binary(&msg)?;
+        Minter {} => {
+            let res = query_minter(deps)?;
+            Ok(to_json_binary(&res)?)
+        }
+        other => {
+            // Try CW721 first
+            if let Ok(cw721_msg) = other.clone().try_into() {
+                return AndrCW721Contract
+                    .query(deps, &env, cw721_msg)
+                    .map_err(Into::into);
+            }
+
+            // Fallback to AndromedaQuery
+            let serialized = to_json_binary(&other)?;
             match from_json::<AndromedaQuery>(&serialized) {
-                Ok(msg) => ADOContract::default().query(deps, env, msg),
-                _ => Ok(AndrCW721Contract.query(deps, &env, msg.try_into()?)?),
+                Ok(am_msg) => ADOContract::default().query(deps, env, am_msg),
+                Err(_) => Err(ContractError::UnsupportedQuery {}),
             }
         }
     }
