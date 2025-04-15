@@ -7,7 +7,7 @@ use cosmwasm_std::{
     SubMsg, Uint128,
 };
 use cw721::error::Cw721ContractError;
-use cw721::msg::{Cw721InstantiateMsg, OwnerOfResponse};
+use cw721::msg::OwnerOfResponse;
 use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
@@ -29,7 +29,6 @@ use andromeda_std::{
     error::ContractError,
 };
 use cw721::state::{Cw721Config, NftInfo};
-use cw721::traits::{Cw721Execute, Cw721Query};
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
@@ -43,17 +42,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let cw721_instantiate_msg: Cw721InstantiateMsg<Empty> = Cw721InstantiateMsg {
-        name: msg.name,
-        symbol: msg.symbol,
-        minter: Some(msg.minter.to_string()),
-        collection_info_extension: Empty::default(),
-        creator: None,
-        withdraw_address: None,
-    };
-
-    let cw721_contract = AndrCW721Contract;
-    let res = cw721_contract.instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
+    let cw721_contract = AndrCW721Contract::new();
+    let res = cw721_contract.instantiate(deps.branch(), &env, &info, msg.clone())?;
 
     let contract = ADOContract::default();
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
@@ -75,7 +65,7 @@ pub fn instantiate(
     )?;
 
     Ok(res
-        .add_attributes(vec![attr("minter", msg.minter)])
+        .add_attributes(vec![attr("minter", msg.minter.to_string())])
         .add_submessages(resp.messages))
 }
 
@@ -122,7 +112,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 }
 
 fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     let res = contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?;
     Ok(res)
 }
@@ -229,7 +219,7 @@ fn execute_transfer(
     // Reduce all responses into one.
     let mut resp = Response::new();
     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
 
     let OwnerOfResponse { owner, .. } =
         contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
@@ -398,7 +388,7 @@ fn execute_update_transfer_agreement(
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, ref info, .. } = ctx;
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
         token_owner.owner == info.sender.as_ref(),
@@ -447,7 +437,7 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
         token_owner.owner == info.sender.as_ref(),
@@ -464,7 +454,7 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
 
 fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
     let ExecuteContext { deps, ref info, .. } = ctx;
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     // let token = contract.tokens.load(deps.storage, &token_id)?;
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
@@ -494,7 +484,7 @@ fn execute_send_nft(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
@@ -539,7 +529,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         other => {
             // Try CW721 first
             if let Ok(cw721_msg) = other.clone().try_into() {
-                return AndrCW721Contract
+                return AndrCW721Contract::new()
                     .query(deps, &env, cw721_msg)
                     .map_err(Into::into);
             }

@@ -14,7 +14,6 @@ use cosmwasm_std::{
     Addr, Binary, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
 use cw721::{msg::AllNftInfoResponse, msg::OwnerOfResponse};
-use cw721_base::traits::Cw721Query;
 use rstest::rstest;
 
 const MINTER: &str = "cosmwasm1h6t805h2vjfzpa3m9n8kyadyng9xf604nhvev8tf5qdg65jh3ruqwwm3zz";
@@ -319,7 +318,7 @@ fn test_burn() {
         res
     );
 
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     let tokens = contract
         .query_all_tokens(deps.as_ref(), &env, None, None)
         .unwrap();
