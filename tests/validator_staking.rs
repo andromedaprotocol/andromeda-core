@@ -275,7 +275,7 @@ fn test_restake() {
             "restake".to_string(),
             andromeda_std::ado_base::permissioning::Permission::Local(
                 andromeda_std::ado_base::permissioning::LocalPermission::whitelisted(
-                    None, None, None, None,
+                    None, None, None, None, None,
                 ),
             ),
         )

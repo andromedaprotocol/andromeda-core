@@ -193,6 +193,7 @@ fn test_permission_frequency() {
             LocalPermission::whitelisted(
                 None,
                 None,
+                None,
                 // 1 hour cooldown for each action
                 Some(Milliseconds::from_seconds(3600)),
                 // Last used 1 minute ago
@@ -217,6 +218,7 @@ fn test_permission_frequency() {
 
     // Set valid frequency and last used
     let valid_permission = LocalPermission::whitelisted(
+        None,
         None,
         None,
         // 1 hour cooldown for each action
@@ -248,7 +250,7 @@ fn test_permission_frequency() {
             owner.clone(),
             vec![AndrAddr::from_string("./marketplace")],
             PERMISSION_ACTORS_ACTION.to_string(),
-            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+            Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
         )
         .unwrap();
 
@@ -269,6 +271,7 @@ fn test_permission_frequency() {
     assert_eq!(balance.amount, Uint128::new(100u128));
 
     let updated_permission = LocalPermission::whitelisted(
+        None,
         None,
         None,
         // 1 hour cooldown for each action

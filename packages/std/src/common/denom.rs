@@ -139,7 +139,7 @@ pub fn authorize_addresses(
             deps.storage,
             action,
             addr.to_string(),
-            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+            Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
         )?;
     }
     Ok(())
@@ -153,11 +153,12 @@ pub fn execute_authorize_contract(
     expiration: Option<Expiry>,
 ) -> Result<Response, ContractError> {
     let permission = expiration.map_or(
-        Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+        Permission::Local(LocalPermission::whitelisted(None, None, None, None, None)),
         |expiration| {
             Permission::Local(LocalPermission::whitelisted(
                 None,
                 Some(expiration),
+                None,
                 None,
                 None,
             ))

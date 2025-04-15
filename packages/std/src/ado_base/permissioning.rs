@@ -60,16 +60,12 @@ pub enum LocalPermission {
         start: Option<Expiry>,
         expiration: Option<Expiry>,
     },
-    Limited {
-        #[serde(default)]
-        start: Option<Expiry>,
-        expiration: Option<Expiry>,
-        uses: u32,
-    },
+
     Whitelisted {
         #[serde(default)]
         start: Option<Expiry>,
         expiration: Option<Expiry>,
+        uses: Option<u32>,
         frequency: Option<Milliseconds>,
         last_used: Option<Milliseconds>,
     },
@@ -80,6 +76,7 @@ impl std::default::Default for LocalPermission {
         Self::Whitelisted {
             start: None,
             expiration: None,
+            uses: None,
             frequency: None,
             last_used: None,
         }
@@ -94,22 +91,32 @@ impl LocalPermission {
     pub fn whitelisted(
         start: Option<Expiry>,
         expiration: Option<Expiry>,
+        uses: Option<u32>,
         frequency: Option<Milliseconds>,
         last_used: Option<Milliseconds>,
     ) -> Self {
         Self::Whitelisted {
             start,
             expiration,
+            uses,
             frequency,
             last_used,
         }
     }
 
-    pub fn limited(start: Option<Expiry>, expiration: Option<Expiry>, uses: u32) -> Self {
-        Self::Limited {
+    pub fn limited(
+        start: Option<Expiry>,
+        expiration: Option<Expiry>,
+        uses: u32,
+        frequency: Option<Milliseconds>,
+        last_used: Option<Milliseconds>,
+    ) -> Self {
+        Self::Whitelisted {
             start,
             expiration,
-            uses,
+            uses: Some(uses),
+            frequency,
+            last_used,
         }
     }
 
@@ -129,29 +136,10 @@ impl LocalPermission {
                 }
                 false
             }
-            Self::Limited {
-                start,
-                expiration,
-                uses,
-            } => {
-                if let Some(start) = start {
-                    if !start.get_time(&env.block).is_expired(&env.block) {
-                        return true;
-                    }
-                }
-                if let Some(expiration) = expiration {
-                    if expiration.get_time(&env.block).is_expired(&env.block) {
-                        return !strict;
-                    }
-                }
-                if *uses == 0 {
-                    return !strict;
-                }
-                true
-            }
             Self::Whitelisted {
                 start,
                 expiration,
+                uses,
                 frequency,
                 last_used,
             } => {
@@ -162,6 +150,11 @@ impl LocalPermission {
                 }
                 if let Some(expiration) = expiration {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
+                        return !strict;
+                    }
+                }
+                if let Some(uses) = uses {
+                    if *uses == 0 {
                         return !strict;
                     }
                 }
@@ -187,9 +180,6 @@ impl LocalPermission {
             Self::Blacklisted { expiration, .. } => {
                 expiration.clone().unwrap_or_default().get_time(&env.block)
             }
-            Self::Limited { expiration, .. } => {
-                expiration.clone().unwrap_or_default().get_time(&env.block)
-            }
             Self::Whitelisted { expiration, .. } => {
                 expiration.clone().unwrap_or_default().get_time(&env.block)
             }
@@ -201,7 +191,6 @@ impl LocalPermission {
             Self::Blacklisted { start, .. } => {
                 start.clone().unwrap_or_default().get_time(&env.block)
             }
-            Self::Limited { start, .. } => start.clone().unwrap_or_default().get_time(&env.block),
             Self::Whitelisted { start, .. } => {
                 start.clone().unwrap_or_default().get_time(&env.block)
             }
@@ -209,19 +198,18 @@ impl LocalPermission {
     }
 
     pub fn consume_use(&mut self) -> Result<(), ContractError> {
-        if let Self::Limited { uses, .. } = self {
+        if let Self::Whitelisted {
+            uses: Some(uses), ..
+        } = self
+        {
             *uses = uses.saturating_sub(1);
         }
-
         Ok(())
     }
 
     pub fn validate_times(&self, env: &Env) -> Result<(), ContractError> {
         let (start, expiration) = match self {
             Self::Blacklisted { start, expiration }
-            | Self::Limited {
-                start, expiration, ..
-            }
             | Self::Whitelisted {
                 start, expiration, ..
             } => (start, expiration),
@@ -261,68 +249,107 @@ impl fmt::Display for LocalPermission {
                 (None, Some(e)) => format!("blacklisted until:{e}"),
                 (None, None) => "blacklisted".to_string(),
             },
-            Self::Limited {
-                start,
-                expiration,
-                uses,
-            } => match (start, expiration) {
-                (Some(s), Some(e)) => format!("limited starting from:{s} until:{e} uses:{uses}"),
-                (Some(s), None) => format!("limited starting from:{s} uses:{uses}"),
-                (None, Some(e)) => format!("limited until:{e} uses:{uses}"),
-                (None, None) => format!("limited uses:{uses}"),
-            },
             Self::Whitelisted {
                 start,
                 expiration,
+                uses,
                 frequency,
                 last_used,
-            } => match (start, expiration, frequency, last_used) {
-                (Some(s), Some(e), Some(f), Some(l)) => {
+            } => match (start, expiration, frequency, last_used, uses) {
+                (Some(s), Some(e), Some(f), Some(l), Some(u)) => {
+                    format!("whitelisted starting from:{s} until:{e} frequency:{f} last_used:{l} uses:{u}")
+                }
+                (Some(s), Some(e), Some(f), Some(l), None) => {
                     format!("whitelisted starting from:{s} until:{e} frequency:{f} last_used:{l}")
                 }
-                (Some(s), Some(e), Some(f), None) => {
+                (Some(s), Some(e), Some(f), None, Some(u)) => {
+                    format!("whitelisted starting from:{s} until:{e} frequency:{f} uses:{u}")
+                }
+                (Some(s), Some(e), Some(f), None, None) => {
                     format!("whitelisted starting from:{s} until:{e} frequency:{f}")
                 }
-                (Some(s), Some(e), None, Some(l)) => {
+                (Some(s), Some(e), None, Some(l), Some(u)) => {
+                    format!("whitelisted starting from:{s} until:{e} last_used:{l} uses:{u}")
+                }
+                (Some(s), Some(e), None, Some(l), None) => {
                     format!("whitelisted starting from:{s} until:{e} last_used:{l}")
                 }
-                (Some(s), Some(e), None, None) => {
+                (Some(s), Some(e), None, None, Some(u)) => {
+                    format!("whitelisted starting from:{s} until:{e} uses:{u}")
+                }
+                (Some(s), Some(e), None, None, None) => {
                     format!("whitelisted starting from:{s} until:{e}")
                 }
-                (Some(s), None, Some(f), Some(l)) => {
+                (Some(s), None, Some(f), Some(l), Some(u)) => {
+                    format!("whitelisted starting from:{s} frequency:{f} last_used:{l} uses:{u}")
+                }
+                (Some(s), None, Some(f), Some(l), None) => {
                     format!("whitelisted starting from:{s} frequency:{f} last_used:{l}")
                 }
-                (Some(s), None, Some(f), None) => {
+                (Some(s), None, Some(f), None, Some(u)) => {
+                    format!("whitelisted starting from:{s} frequency:{f} uses:{u}")
+                }
+                (Some(s), None, Some(f), None, None) => {
                     format!("whitelisted starting from:{s} frequency:{f}")
                 }
-                (Some(s), None, None, Some(l)) => {
+                (Some(s), None, None, Some(l), Some(u)) => {
+                    format!("whitelisted starting from:{s} last_used:{l} uses:{u}")
+                }
+                (Some(s), None, None, Some(l), None) => {
                     format!("whitelisted starting from:{s} last_used:{l}")
                 }
-                (Some(s), None, None, None) => {
+                (Some(s), None, None, None, Some(u)) => {
+                    format!("whitelisted starting from:{s} uses:{u}")
+                }
+                (Some(s), None, None, None, None) => {
                     format!("whitelisted starting from:{s}")
                 }
-                (None, Some(e), Some(f), Some(l)) => {
+                (None, Some(e), Some(f), Some(l), Some(u)) => {
+                    format!("whitelisted until:{e} frequency:{f} last_used:{l} uses:{u}")
+                }
+                (None, Some(e), Some(f), Some(l), None) => {
                     format!("whitelisted until:{e} frequency:{f} last_used:{l}")
                 }
-                (None, Some(e), Some(f), None) => {
+                (None, Some(e), Some(f), None, Some(u)) => {
+                    format!("whitelisted until:{e} frequency:{f} uses:{u}")
+                }
+                (None, Some(e), Some(f), None, None) => {
                     format!("whitelisted until:{e} frequency:{f}")
                 }
-                (None, Some(e), None, Some(l)) => {
+                (None, Some(e), None, Some(l), Some(u)) => {
+                    format!("whitelisted until:{e} last_used:{l} uses:{u}")
+                }
+                (None, Some(e), None, Some(l), None) => {
                     format!("whitelisted until:{e} last_used:{l}")
                 }
-                (None, Some(e), None, None) => {
+                (None, Some(e), None, None, Some(u)) => {
+                    format!("whitelisted until:{e} uses:{u}")
+                }
+                (None, Some(e), None, None, None) => {
                     format!("whitelisted until:{e}")
                 }
-                (None, None, Some(f), Some(l)) => {
+                (None, None, Some(f), Some(l), Some(u)) => {
+                    format!("whitelisted frequency:{f} last_used:{l} uses:{u}")
+                }
+                (None, None, Some(f), Some(l), None) => {
                     format!("whitelisted frequency:{f} last_used:{l}")
                 }
-                (None, None, Some(f), None) => {
+                (None, None, Some(f), None, Some(u)) => {
+                    format!("whitelisted frequency:{f} uses:{u}")
+                }
+                (None, None, Some(f), None, None) => {
                     format!("whitelisted frequency:{f}")
                 }
-                (None, None, None, Some(l)) => {
+                (None, None, None, Some(l), Some(u)) => {
+                    format!("whitelisted last_used:{l} uses:{u}")
+                }
+                (None, None, None, Some(l), None) => {
                     format!("whitelisted last_used:{l}")
                 }
-                (None, None, None, None) => "whitelisted".to_string(),
+                (None, None, None, None, Some(u)) => {
+                    format!("whitelisted uses:{u}")
+                }
+                (None, None, None, None, None) => "whitelisted".to_string(),
             },
         };
         write!(f, "{self_as_string}")
@@ -390,6 +417,7 @@ mod tests {
             expiration: Some(Expiry::AtTime(
                 Milliseconds(exp_offset).plus_seconds(current_time),
             )),
+            uses: None,
             frequency: None,
             last_used: None,
         };
@@ -430,6 +458,7 @@ mod tests {
             expiration: Some(Expiry::AtTime(
                 Milliseconds(exp_offset).plus_seconds(current_time),
             )),
+            uses: None,
             frequency: None,
             last_used: None,
         };
@@ -448,6 +477,7 @@ mod tests {
             expiration: None,
             frequency: None,
             last_used: None,
+            uses: None,
         };
 
         let result = permission.validate_times(&env);
@@ -464,6 +494,7 @@ mod tests {
             expiration: None,
             frequency: None,
             last_used: None,
+            uses: None,
         };
 
         let result = permission.validate_times(&env);
@@ -478,6 +509,7 @@ mod tests {
         let permission = LocalPermission::Whitelisted {
             start: None,
             expiration: Some(Expiry::AtTime(Milliseconds(current_time + 100))),
+            uses: None,
             frequency: None,
             last_used: None,
         };
@@ -546,6 +578,7 @@ mod tests {
             } else {
                 None
             },
+            uses: None,
         };
 
         // Test the permission
@@ -577,6 +610,7 @@ mod tests {
             expiration: None,
             frequency: Some(Milliseconds(frequency_ms)),
             last_used: Some(Milliseconds::from_seconds(last_used)),
+            uses: None,
         };
 
         let is_authorized = permission.is_permissioned(&env, true);
@@ -617,6 +651,7 @@ mod tests {
             )),
             frequency: None,
             last_used: None,
+            uses: None,
         };
 
         let is_authorized = permission.is_permissioned(&env, true);

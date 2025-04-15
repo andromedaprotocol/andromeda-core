@@ -692,7 +692,7 @@ fn test_auction_app_cw20_restricted() {
     // Now whitelist bidder one
     let actors = vec![AndrAddr::from_string(buyer_one.clone())];
     let action = "PlaceBid".to_string();
-    let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None));
+    let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None, None));
     auction
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
