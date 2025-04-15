@@ -2,10 +2,11 @@ use andromeda_std::error::ContractError;
 use andromeda_std::{amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cosmwasm_std::{Binary, Coin, CustomMsg, DepsMut, Empty, Env, MessageInfo, Response};
-use cw721::{CollectionExtension, Expiration, RoyaltyInfo};
+use cosmwasm_std::{Binary, Coin, CustomMsg, DepsMut, Env, MessageInfo, Response};
 
-use cw721_base::{msg::ExecuteMsg as Cw721ExecuteMsg, msg::QueryMsg as Cw721QueryMsg};
+use cw721::Expiration;
+
+use cw721_base::{msg::ExecuteMsg as Cw721ExecuteMsg, msg::QueryMsg as Cw721QueryMsg, Cw721BaseContract, msg::InstantiateMsg as BaseInstantiateMsg};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -20,18 +21,30 @@ pub struct InstantiateMsg {
     pub minter: AndrAddr,
 }
 
-use cw721::traits::{Cw721Execute, Cw721Query};
+use cw721::traits::Cw721Execute;
 
 #[derive(Default)]
-pub struct AndrCW721Contract;
-impl Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty> for AndrCW721Contract {}
-impl Cw721Query<Option<Empty>, Option<CollectionExtension<RoyaltyInfo>>, Empty>
-    for AndrCW721Contract
-{
+pub struct AndrCW721Contract {
+    standard_implementation: Cw721BaseContract<'static>,
 }
+
 
 // Add a custom query method to handle the conversion
 impl AndrCW721Contract {
+    pub fn new() -> Self {
+        Self {
+            standard_implementation: Cw721BaseContract::default(),
+        }
+    }
+    
+    // Entry points
+    pub fn instantiate(&self, deps: DepsMut, env: &Env, info: &MessageInfo, msg: InstantiateMsg) 
+    -> Result<Response, ContractError> {
+        let standard_msg = convert_instantiate_msg(msg);
+        self.standard_implementation.instantiate(deps, env, info, standard_msg)
+            .map_err(|e| ContractError::new(&e.to_string()))
+    }
+
     pub fn execute(
         &self,
         deps: DepsMut,
@@ -39,54 +52,19 @@ impl AndrCW721Contract {
         info: &MessageInfo,
         msg: Cw721ExecuteMsg,
     ) -> Result<Response, ContractError> {
-        // Convert the message to a compatible type for the trait implementation
-        let cw721_msg = match msg {
-            Cw721ExecuteMsg::TransferNft {
-                recipient,
-                token_id,
-            } => cw721::msg::Cw721ExecuteMsg::TransferNft {
-                recipient,
-                token_id,
-            },
-            Cw721ExecuteMsg::SendNft {
-                contract,
-                token_id,
-                msg,
-            } => cw721::msg::Cw721ExecuteMsg::SendNft {
-                contract,
-                token_id,
-                msg,
-            },
-            Cw721ExecuteMsg::Approve {
-                spender,
-                token_id,
-                expires,
-            } => cw721::msg::Cw721ExecuteMsg::Approve {
-                spender,
-                token_id,
-                expires,
-            },
-            Cw721ExecuteMsg::Revoke { spender, token_id } => {
-                cw721::msg::Cw721ExecuteMsg::Revoke { spender, token_id }
-            }
-            Cw721ExecuteMsg::ApproveAll { operator, expires } => {
-                cw721::msg::Cw721ExecuteMsg::ApproveAll { operator, expires }
-            }
-            Cw721ExecuteMsg::RevokeAll { operator } => {
-                cw721::msg::Cw721ExecuteMsg::RevokeAll { operator }
-            }
-            Cw721ExecuteMsg::Burn { token_id } => cw721::msg::Cw721ExecuteMsg::Burn { token_id },
-            // Add other conversions as needed
-            _ => return Err(ContractError::new("Unsupported execute message")),
-        };
+        self.standard_implementation.execute(deps, env, info, msg)
+            .map_err(|e| ContractError::new(&e.to_string()))
+    }
+}
 
-        // Call the trait implementation's execute method and convert the error type
-        match <Self as Cw721Execute<Empty, Empty, Empty, Empty, Empty, Empty>>::execute(
-            self, deps, env, info, cw721_msg,
-        ) {
-            Ok(response) => Ok(response),
-            Err(_) => Err(ContractError::new("Error executing CW721 command")),
-        }
+fn convert_instantiate_msg(msg: InstantiateMsg) -> BaseInstantiateMsg {
+    BaseInstantiateMsg {
+        name: msg.name,
+        symbol: msg.symbol,
+        minter: Some(msg.minter.into_string()),
+        collection_info_extension: None,
+        creator: None,
+        withdraw_address: None,
     }
 }
 

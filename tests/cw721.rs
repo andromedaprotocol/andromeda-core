@@ -28,7 +28,7 @@ fn test_cw721_batch_send() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-
+            
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
