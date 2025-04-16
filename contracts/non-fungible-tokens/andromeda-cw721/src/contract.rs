@@ -8,7 +8,7 @@ use cosmwasm_std::{
 };
 use cw721::error::Cw721ContractError;
 use cw721::msg::OwnerOfResponse;
-use cw721::Approval;
+use cw721::{Approval, DefaultOptionalCollectionExtensionMsg, EmptyOptionalNftExtensionMsg};
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
@@ -28,8 +28,10 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
+use cw721::msg::Cw721ExecuteMsg;
+pub type Cw721ExecuteMsgType =
+    Cw721ExecuteMsg<EmptyOptionalNftExtensionMsg, DefaultOptionalCollectionExtensionMsg, Empty>;
 use cw721::state::{Cw721Config, NftInfo};
-use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -120,7 +122,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     Ok(res)
 }
 
-fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
+fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsgType) -> Result<Response, ContractError> {
     let contract = AndrCW721Contract::default();
     let res = contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?;
     Ok(res)
