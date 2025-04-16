@@ -488,7 +488,7 @@ fn execute_send_nft(
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
-    Ok(contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)?)
+    contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)
 }
 
 fn execute_batch_send_nft(
