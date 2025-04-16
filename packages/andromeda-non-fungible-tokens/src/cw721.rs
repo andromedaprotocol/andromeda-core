@@ -139,7 +139,7 @@ impl AndrCW721Contract {
     ) -> Result<Binary, ContractError> {
         self.standard_implementation
             .query(deps, env, msg)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn query_owner_of(
@@ -151,7 +151,7 @@ impl AndrCW721Contract {
     ) -> Result<OwnerOfResponse, ContractError> {
         self.standard_implementation
             .query_owner_of(deps, env, token_id, include_expired_approval)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn query_approvals(
@@ -163,7 +163,7 @@ impl AndrCW721Contract {
     ) -> Result<ApprovalsResponse, ContractError> {
         self.standard_implementation
             .query_approvals(deps, env, token_id, include_expired_approval)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn query_operators(
@@ -184,7 +184,7 @@ impl AndrCW721Contract {
                 start_after,
                 limit,
             )
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn query_all_tokens(
@@ -196,7 +196,7 @@ impl AndrCW721Contract {
     ) -> Result<TokensResponse, ContractError> {
         self.standard_implementation
             .query_all_tokens(deps, env, start_after, limit)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 }
 
