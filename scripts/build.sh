@@ -18,30 +18,36 @@ get_version_filename (){
 
 build_contract () {
     local CONTRACT_PATH=$1;
-
     local CONTRACT=`basename $CONTRACT_PATH`;
     echo "Building contract $CONTRACT..."
-    if ! cargo wasm -p $CONTRACT -q; then
-        exit 1
+
+    # Detect architecture and use appropriate optimizer image
+    if [[ $(uname -m) == "arm64" ]]; then
+        OPTIMIZER_IMAGE="cosmwasm/optimizer-arm64:0.16.1"
+    else
+        OPTIMIZER_IMAGE="cosmwasm/optimizer:0.16.1"
     fi
 
+    echo "Building $CONTRACT using $OPTIMIZER_IMAGE"
+
+    # Use Docker optimizer for this specific contract
+    docker run --rm -v "$(pwd)":/code \
+        --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+        --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+        $OPTIMIZER_IMAGE $CONTRACT_PATH
+
     local BUILD_TARGET=${CONTRACT//-/_}
-    # local VERSION_FILENAME=$(get_version_filename $CONTRACT);
-    
-    local IN_FILE="./target/wasm32-unknown-unknown/release/$BUILD_TARGET.wasm"
     local OUT_FILE="./artifacts/$BUILD_TARGET.wasm"
     local OUT_FILE_IBC_TEST="./tests/ibc-tests/artifacts/$BUILD_TARGET.wasm"
     local OUT_FILE_PACKAGE="./packages/andromeda-testing-e2e/artifacts/$BUILD_TARGET.wasm"
 
-    wasm-opt -Os $IN_FILE -o $OUT_FILE
-    cp $IN_FILE $OUT_FILE_IBC_TEST
-    cp $IN_FILE $OUT_FILE_PACKAGE
+    # Copy the optimized wasm to required locations
+    cp "./artifacts/$BUILD_TARGET.wasm" $OUT_FILE_IBC_TEST
+    cp "./artifacts/$BUILD_TARGET.wasm" $OUT_FILE_PACKAGE
     
-    # NOT SO IMPORTANT STEPS
-    # Log wasm file sizes at the end of build process
-    local IN_FILESIZE=$(($(wc -c <"$IN_FILE") +0))
-    local OUT_FILESIZE=$(($(wc -c <"$OUT_FILE") +0))
-    local LOG="$BUILD_TARGET \t\t: $IN_FILESIZE \t- $OUT_FILESIZE bytes"
+    # Log file sizes
+    local FILESIZE=$(($(wc -c <"$OUT_FILE") +0))
+    local LOG="$BUILD_TARGET \t\t: $FILESIZE bytes (optimized)"
     FILE_LOG="$FILE_LOG\n$LOG"
 }
 

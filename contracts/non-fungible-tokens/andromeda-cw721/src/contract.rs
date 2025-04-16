@@ -42,11 +42,20 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let cw721_instantiate_msg = InstantiateMsg {
+        name: msg.name.clone(),
+        symbol: msg.symbol.clone(),
+        minter: msg.minter.clone(),
+        kernel_address: msg.kernel_address.clone(),
+        owner: msg.owner.clone(),
+    };
+
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
     let cw721_contract = AndrCW721Contract::new();
-    let res = cw721_contract.instantiate(deps.branch(), &env, &info, msg.clone())?;
+    let res = cw721_contract.instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
     let contract = ADOContract::default();
-    ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
     contract.permission_action(deps.storage, MINT_ACTION)?;
 
@@ -112,7 +121,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 }
 
 fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = AndrCW721Contract::new();
+    let contract = AndrCW721Contract::default();
     let res = contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?;
     Ok(res)
 }

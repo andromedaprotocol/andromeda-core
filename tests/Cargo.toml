@@ -215,3 +215,7 @@ path = "curve_app.rs"
 [[test]]
 name = "set_amount_splitter"
 path = "set_amount_splitter.rs"
+
+[[test]]
+name = "cw721"
+path = "cw721.rs"

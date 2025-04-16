@@ -9,7 +9,7 @@ use cw721::Expiration;
 
 use cw721_base::{
     msg::ExecuteMsg as Cw721ExecuteMsg, msg::InstantiateMsg as BaseInstantiateMsg,
-    msg::QueryMsg as Cw721QueryMsg, Cw721BaseContract,
+    msg::QueryMsg as Cw721QueryMsg, traits::Cw721Query, Cw721BaseContract,
 };
 
 #[andr_instantiate]
@@ -25,7 +25,7 @@ pub struct InstantiateMsg {
     pub minter: AndrAddr,
 }
 
-use cw721::traits::{Cw721Execute, Cw721Query};
+use cw721::traits::Cw721Execute;
 
 #[derive(Default)]
 pub struct AndrCW721Contract {
@@ -51,7 +51,7 @@ impl AndrCW721Contract {
         let standard_msg = convert_instantiate_msg(msg);
         self.standard_implementation
             .instantiate(deps, env, info, standard_msg)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn execute(
@@ -63,7 +63,7 @@ impl AndrCW721Contract {
     ) -> Result<Response, ContractError> {
         self.standard_implementation
             .execute(deps, env, info, msg)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn transfer_nft(
@@ -76,7 +76,7 @@ impl AndrCW721Contract {
     ) -> Result<Response, ContractError> {
         self.standard_implementation
             .transfer_nft(deps, env, info, recipient, token_id)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn revoke_all(
@@ -88,7 +88,7 @@ impl AndrCW721Contract {
     ) -> Result<Response, ContractError> {
         self.standard_implementation
             .revoke_all(deps, env, info, token_id)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn send_nft(
@@ -102,7 +102,7 @@ impl AndrCW721Contract {
     ) -> Result<Response, ContractError> {
         self.standard_implementation
             .send_nft(deps, env, info, contract_addr, token_id, msg)
-            .map_err(|e| ContractError::new(&e.to_string()))
+            .map_err(|e| e.into())
     }
 
     pub fn burn_nft(
