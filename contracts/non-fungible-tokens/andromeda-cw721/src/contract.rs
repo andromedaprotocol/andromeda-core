@@ -7,8 +7,8 @@ use cosmwasm_std::{
     SubMsg, Uint128,
 };
 use cw721::error::Cw721ContractError;
-use cw721::msg::{Cw721InstantiateMsg, OwnerOfResponse};
-use cw721::Approval;
+use cw721::msg::OwnerOfResponse;
+use cw721::{Approval, DefaultOptionalCollectionExtensionMsg, EmptyOptionalNftExtensionMsg};
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
@@ -28,9 +28,10 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
+use cw721::msg::Cw721ExecuteMsg;
+pub type Cw721ExecuteMsgType =
+    Cw721ExecuteMsg<EmptyOptionalNftExtensionMsg, DefaultOptionalCollectionExtensionMsg, Empty>;
 use cw721::state::{Cw721Config, NftInfo};
-use cw721::traits::{Cw721Execute, Cw721Query};
-use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -43,20 +44,20 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let cw721_instantiate_msg: Cw721InstantiateMsg<Empty> = Cw721InstantiateMsg {
-        name: msg.name,
-        symbol: msg.symbol,
-        minter: Some(msg.minter.to_string()),
-        collection_info_extension: Empty::default(),
-        creator: None,
-        withdraw_address: None,
+    let cw721_instantiate_msg = InstantiateMsg {
+        name: msg.name.clone(),
+        symbol: msg.symbol.clone(),
+        minter: msg.minter.clone(),
+        kernel_address: msg.kernel_address.clone(),
+        owner: msg.owner.clone(),
     };
 
-    let cw721_contract = AndrCW721Contract;
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
+    let cw721_contract = AndrCW721Contract::new();
     let res = cw721_contract.instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
     let contract = ADOContract::default();
-    ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
     contract.permission_action(deps.storage, MINT_ACTION)?;
 
@@ -75,7 +76,7 @@ pub fn instantiate(
     )?;
 
     Ok(res
-        .add_attributes(vec![attr("minter", msg.minter)])
+        .add_attributes(vec![attr("minter", msg.minter.to_string())])
         .add_submessages(resp.messages))
 }
 
@@ -121,9 +122,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     Ok(res)
 }
 
-fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsg) -> Result<Response, ContractError> {
-    let contract = AndrCW721Contract;
-
+fn execute_cw721(ctx: ExecuteContext, msg: Cw721ExecuteMsgType) -> Result<Response, ContractError> {
+    let contract = AndrCW721Contract::default();
     let res = contract.execute(ctx.deps, &ctx.env, &ctx.info, msg)?;
     Ok(res)
 }
@@ -230,7 +230,7 @@ fn execute_transfer(
     // Reduce all responses into one.
     let mut resp = Response::new();
     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
 
     let OwnerOfResponse { owner, .. } =
         contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
@@ -399,7 +399,7 @@ fn execute_update_transfer_agreement(
     agreement: Option<TransferAgreement>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, ref info, .. } = ctx;
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
         token_owner.owner == info.sender.as_ref(),
@@ -448,7 +448,7 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
         token_owner.owner == info.sender.as_ref(),
@@ -465,7 +465,7 @@ fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, Co
 
 fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
     let ExecuteContext { deps, ref info, .. } = ctx;
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     // let token = contract.tokens.load(deps.storage, &token_id)?;
     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
     ensure!(
@@ -495,11 +495,11 @@ fn execute_send_nft(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
-    Ok(contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)?)
+    contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)
 }
 
 fn execute_batch_send_nft(
@@ -523,19 +523,33 @@ fn execute_batch_send_nft(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    use QueryMsg::{IsArchived, Minter, TransferAgreement};
     match msg {
-        QueryMsg::IsArchived { token_id } => {
-            Ok(to_json_binary(&is_archived(deps.storage, &token_id)?)?)
+        IsArchived { token_id } => {
+            let res = is_archived(deps.storage, &token_id)?;
+            Ok(to_json_binary(&res)?)
         }
-        QueryMsg::TransferAgreement { token_id } => {
-            Ok(to_json_binary(&query_transfer_agreement(deps, token_id)?)?)
+        TransferAgreement { token_id } => {
+            let res = query_transfer_agreement(deps, token_id)?;
+            Ok(to_json_binary(&res)?)
         }
-        QueryMsg::Minter {} => Ok(to_json_binary(&query_minter(deps)?)?),
-        _ => {
-            let serialized = to_json_binary(&msg)?;
+        Minter {} => {
+            let res = query_minter(deps)?;
+            Ok(to_json_binary(&res)?)
+        }
+        other => {
+            // Try CW721 first
+            if let Ok(cw721_msg) = other.clone().try_into() {
+                return AndrCW721Contract::new()
+                    .query(deps, &env, cw721_msg)
+                    .map_err(Into::into);
+            }
+
+            // Fallback to AndromedaQuery
+            let serialized = to_json_binary(&other)?;
             match from_json::<AndromedaQuery>(&serialized) {
-                Ok(msg) => ADOContract::default().query(deps, env, msg),
-                _ => Ok(AndrCW721Contract.query(deps, &env, msg.try_into()?)?),
+                Ok(am_msg) => ADOContract::default().query(deps, env, am_msg),
+                Err(_) => Err(ContractError::UnsupportedQuery {}),
             }
         }
     }

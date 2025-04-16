@@ -331,7 +331,6 @@ dependencies = [
  "cw-orch-daemon",
  "cw-storage-plus",
  "cw721",
- "cw721-base",
  "rstest",
 ]
 
