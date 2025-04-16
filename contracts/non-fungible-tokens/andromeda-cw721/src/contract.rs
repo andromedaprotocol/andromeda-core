@@ -7,7 +7,7 @@ use cosmwasm_std::{
     SubMsg, Uint128,
 };
 use cw721::error::Cw721ContractError;
-use cw721::msg::{Cw721InstantiateMsg, OwnerOfResponse};
+use cw721::msg::OwnerOfResponse;
 use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
@@ -29,7 +29,6 @@ use andromeda_std::{
     error::ContractError,
 };
 use cw721::state::{Cw721Config, NftInfo};
-use cw721::traits::{Cw721Execute, Cw721Query};
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
@@ -43,7 +42,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-
     let cw721_instantiate_msg = InstantiateMsg {
         name: msg.name.clone(),
         symbol: msg.symbol.clone(),
@@ -58,7 +56,7 @@ pub fn instantiate(
     let res = cw721_contract.instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
     let contract = ADOContract::default();
-    
+
     contract.permission_action(deps.storage, MINT_ACTION)?;
 
     let resp = contract.instantiate(
@@ -76,7 +74,7 @@ pub fn instantiate(
     )?;
 
     Ok(res
-        .add_attributes(vec![attr("minter", msg.minter)])
+        .add_attributes(vec![attr("minter", msg.minter.to_string())])
         .add_submessages(resp.messages))
 }
 
@@ -96,16 +94,16 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             owner,
         } => execute_mint(ctx, token_id, token_uri, owner),
         ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens),
-        // ExecuteMsg::TransferNft {
-        //     recipient,
-        //     token_id,
-        // } => execute_transfer(ctx, recipient, token_id),
-        // ExecuteMsg::TransferAgreement {
-        //     token_id,
-        //     agreement,
-        // } => execute_update_transfer_agreement(ctx, token_id, agreement),
-        // ExecuteMsg::Archive { token_id } => execute_archive(ctx, token_id),
-        // ExecuteMsg::Burn { token_id } => execute_burn(ctx, token_id),
+        ExecuteMsg::TransferNft {
+            recipient,
+            token_id,
+        } => execute_transfer(ctx, recipient, token_id),
+        ExecuteMsg::TransferAgreement {
+            token_id,
+            agreement,
+        } => execute_update_transfer_agreement(ctx, token_id, agreement),
+        ExecuteMsg::Archive { token_id } => execute_archive(ctx, token_id),
+        ExecuteMsg::Burn { token_id } => execute_burn(ctx, token_id),
         ExecuteMsg::SendNft {
             contract,
             token_id,
@@ -215,276 +213,276 @@ fn execute_batch_mint(
     Ok(resp)
 }
 
-// fn execute_transfer(
-//     ctx: ExecuteContext,
-//     recipient: AndrAddr,
-//     token_id: String,
-// ) -> Result<Response, ContractError> {
-//     let ExecuteContext {
-//         mut deps,
-//         info,
-//         env,
-//         contract: base_contract,
-//         ..
-//     } = ctx;
-//     // Reduce all responses into one.
-//     let mut resp = Response::new();
-//     let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
-//     let contract = AndrCW721Contract;
+fn execute_transfer(
+    ctx: ExecuteContext,
+    recipient: AndrAddr,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        mut deps,
+        info,
+        env,
+        contract: base_contract,
+        ..
+    } = ctx;
+    // Reduce all responses into one.
+    let mut resp = Response::new();
+    let recipient_address = recipient.get_raw_address(&deps.as_ref())?.into_string();
+    let contract = AndrCW721Contract::new();
 
-//     let OwnerOfResponse { owner, .. } =
-//         contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
-//     ensure!(
-//         !is_archived(deps.storage, &token_id)?.is_archived,
-//         ContractError::TokenIsArchived {}
-//     );
+    let OwnerOfResponse { owner, .. } =
+        contract.query_owner_of(deps.as_ref(), &env, token_id.clone(), false)?;
+    ensure!(
+        !is_archived(deps.storage, &token_id)?.is_archived,
+        ContractError::TokenIsArchived {}
+    );
 
-//     let tax_amount = if let Some(agreement) =
-//         &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
-//     {
-//         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
-//         let transfer_response = base_contract.query_deducted_funds(
-//             deps.as_ref(),
-//             "Transfer",
-//             Funds::Native(agreement_amount.clone()),
-//         )?;
+    let tax_amount = if let Some(agreement) =
+        &TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?
+    {
+        let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
+        let transfer_response = base_contract.query_deducted_funds(
+            deps.as_ref(),
+            "Transfer",
+            Funds::Native(agreement_amount.clone()),
+        )?;
 
-//         match transfer_response {
-//             Some(mut transfer_response) => {
-//                 let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
-//                 let tax_amount = get_tax_amount(
-//                     &transfer_response.msgs,
-//                     agreement_amount.amount,
-//                     remaining_amount.amount,
-//                 );
-//                 transfer_response
-//                     .msgs
-//                     .push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//                         to_address: owner.clone(),
-//                         amount: vec![remaining_amount],
-//                     })));
-//                 resp = resp.add_submessages(transfer_response.msgs);
-//                 tax_amount
-//             }
-//             None => {
-//                 let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
-//                 let tax_amount = Uint128::zero();
-//                 let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//                     to_address: owner.clone(),
-//                     amount: vec![remaining_amount],
-//                 }));
-//                 resp = resp.add_submessage(msg);
-//                 tax_amount
-//             }
-//         }
-//     } else {
-//         Uint128::zero()
-//     };
+        match transfer_response {
+            Some(mut transfer_response) => {
+                let remaining_amount = transfer_response.leftover_funds.try_get_coin()?;
+                let tax_amount = get_tax_amount(
+                    &transfer_response.msgs,
+                    agreement_amount.amount,
+                    remaining_amount.amount,
+                );
+                transfer_response
+                    .msgs
+                    .push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                        to_address: owner.clone(),
+                        amount: vec![remaining_amount],
+                    })));
+                resp = resp.add_submessages(transfer_response.msgs);
+                tax_amount
+            }
+            None => {
+                let remaining_amount = Funds::Native(agreement_amount).try_get_coin()?;
+                let tax_amount = Uint128::zero();
+                let msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: owner.clone(),
+                    amount: vec![remaining_amount],
+                }));
+                resp = resp.add_submessage(msg);
+                tax_amount
+            }
+        }
+    } else {
+        Uint128::zero()
+    };
 
-//     let approvals = contract.query_approvals(deps.as_ref(), &env, token_id.clone(), true)?;
-//     let operators =
-//         contract.query_operators(deps.as_ref(), &env, owner.clone(), true, None, None)?;
-//     check_can_send(
-//         deps.as_ref(),
-//         env.clone(),
-//         info.clone(),
-//         &token_id,
-//         tax_amount,
-//         owner.clone(),
-//         approvals.approvals,
-//         operators.operators,
-//     )?;
+    let approvals = contract.query_approvals(deps.as_ref(), &env, token_id.clone(), true)?;
+    let operators =
+        contract.query_operators(deps.as_ref(), &env, owner.clone(), true, None, None)?;
+    check_can_send(
+        deps.as_ref(),
+        env.clone(),
+        info.clone(),
+        &token_id,
+        tax_amount,
+        owner.clone(),
+        approvals.approvals,
+        operators.operators,
+    )?;
 
-//     // If we reach here we can assume the sender is authorised to transfer the NFT
-//     // We mock message info to have the owner of the NFT be the sender to authorise send.
-//     let mut transfer_info = info.clone();
-//     transfer_info.sender = Addr::unchecked(owner);
-//     let response = contract.transfer_nft(
-//         deps.branch(),
-//         &env,
-//         &transfer_info,
-//         recipient.to_string(),
-//         token_id.clone(),
-//     )?;
-//     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
+    // If we reach here we can assume the sender is authorised to transfer the NFT
+    // We mock message info to have the owner of the NFT be the sender to authorise send.
+    let mut transfer_info = info.clone();
+    transfer_info.sender = Addr::unchecked(owner);
+    let response = contract.transfer_nft(
+        deps.branch(),
+        &env,
+        &transfer_info,
+        recipient.to_string(),
+        token_id.clone(),
+    )?;
+    TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
 
-//     // Extract elements from the response and include them in the final response
-//     let mut response = response;
-//     for attr in response.attributes.clone() {
-//         resp = resp.add_attribute(attr.key, attr.value);
-//     }
-//     for event in response.events.clone() {
-//         resp = resp.add_event(event);
-//     }
-//     for submsg in response.messages {
-//         resp = resp.add_submessage(submsg);
-//     }
-//     response = resp;
-//     Ok(response
-//         .add_attribute("action", "transfer")
-//         .add_attribute("recipient", recipient_address))
-// }
+    // Extract elements from the response and include them in the final response
+    let mut response = response;
+    for attr in response.attributes.clone() {
+        resp = resp.add_attribute(attr.key, attr.value);
+    }
+    for event in response.events.clone() {
+        resp = resp.add_event(event);
+    }
+    for submsg in response.messages {
+        resp = resp.add_submessage(submsg);
+    }
+    response = resp;
+    Ok(response
+        .add_attribute("action", "transfer")
+        .add_attribute("recipient", recipient_address))
+}
 
-// fn get_transfer_agreement_amount(
-//     _api: &dyn Api,
-//     _querier: &QuerierWrapper,
-//     agreement: &TransferAgreement,
-// ) -> Result<Coin, ContractError> {
-//     let agreement_amount = agreement.amount.clone();
-//     Ok(agreement_amount)
-// }
+fn get_transfer_agreement_amount(
+    _api: &dyn Api,
+    _querier: &QuerierWrapper,
+    agreement: &TransferAgreement,
+) -> Result<Coin, ContractError> {
+    let agreement_amount = agreement.amount.clone();
+    Ok(agreement_amount)
+}
 
-// #[allow(clippy::too_many_arguments)]
-// fn check_can_send(
-//     deps: Deps,
-//     env: Env,
-//     info: MessageInfo,
-//     token_id: &str,
-//     tax_amount: Uint128,
-//     owner: String,
-//     approvals: Vec<Approval>,
-//     operators: Vec<Approval>,
-// ) -> Result<(), ContractError> {
-//     // owner can send
-//     if owner == info.sender.as_str() {
-//         return Ok(());
-//     }
+#[allow(clippy::too_many_arguments)]
+fn check_can_send(
+    deps: Deps,
+    env: Env,
+    info: MessageInfo,
+    token_id: &str,
+    tax_amount: Uint128,
+    owner: String,
+    approvals: Vec<Approval>,
+    operators: Vec<Approval>,
+) -> Result<(), ContractError> {
+    // owner can send
+    if owner == info.sender.as_str() {
+        return Ok(());
+    }
 
-//     // token purchaser can send if correct funds are sent
-//     if let Some(agreement) = &TRANSFER_AGREEMENTS.may_load(deps.storage, token_id)? {
-//         let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
-//         ensure!(
-//             has_coins(
-//                 &info.funds,
-//                 &Coin {
-//                     denom: agreement_amount.denom.to_owned(),
-//                     // Ensure that the taxes came from the sender.
-//                     amount: agreement_amount.amount + tax_amount,
-//                 },
-//             ),
-//             ContractError::InsufficientFunds {}
-//         );
-//         if agreement.purchaser == info.sender.as_str() || agreement.purchaser == "*" {
-//             return Ok(());
-//         }
-//     }
+    // token purchaser can send if correct funds are sent
+    if let Some(agreement) = &TRANSFER_AGREEMENTS.may_load(deps.storage, token_id)? {
+        let agreement_amount = get_transfer_agreement_amount(deps.api, &deps.querier, agreement)?;
+        ensure!(
+            has_coins(
+                &info.funds,
+                &Coin {
+                    denom: agreement_amount.denom.to_owned(),
+                    // Ensure that the taxes came from the sender.
+                    amount: agreement_amount.amount + tax_amount,
+                },
+            ),
+            ContractError::InsufficientFunds {}
+        );
+        if agreement.purchaser == info.sender.as_str() || agreement.purchaser == "*" {
+            return Ok(());
+        }
+    }
 
-//     // any non-expired token approval can send
-//     if approvals
-//         .iter()
-//         .any(|apr| apr.spender == info.sender && !apr.is_expired(&env.block))
-//     {
-//         return Ok(());
-//     }
+    // any non-expired token approval can send
+    if approvals
+        .iter()
+        .any(|apr| apr.spender == info.sender && !apr.is_expired(&env.block))
+    {
+        return Ok(());
+    }
 
-//     // operator can send
-//     let op = operators
-//         .iter()
-//         .find(|op| op.spender == info.sender && !op.is_expired(&env.block));
-//     match op {
-//         Some(ex) => {
-//             if ex.is_expired(&env.block) {
-//                 Err(ContractError::Unauthorized {})
-//             } else {
-//                 Ok(())
-//             }
-//         }
-//         None => Err(ContractError::Unauthorized {}),
-//     }
-// }
+    // operator can send
+    let op = operators
+        .iter()
+        .find(|op| op.spender == info.sender && !op.is_expired(&env.block));
+    match op {
+        Some(ex) => {
+            if ex.is_expired(&env.block) {
+                Err(ContractError::Unauthorized {})
+            } else {
+                Ok(())
+            }
+        }
+        None => Err(ContractError::Unauthorized {}),
+    }
+}
 
-// fn execute_update_transfer_agreement(
-//     ctx: ExecuteContext,
-//     token_id: String,
-//     agreement: Option<TransferAgreement>,
-// ) -> Result<Response, ContractError> {
-//     let ExecuteContext { deps, ref info, .. } = ctx;
-//     let contract = AndrCW721Contract;
-//     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
-//     ensure!(
-//         token_owner.owner == info.sender.as_ref(),
-//         ContractError::Unauthorized {}
-//     );
-//     ensure!(
-//         !is_archived(deps.storage, &token_id)?.is_archived,
-//         ContractError::TokenIsArchived {}
-//     );
-//     if let Some(xfer_agreement) = &agreement {
-//         TRANSFER_AGREEMENTS.save(deps.storage, &token_id, xfer_agreement)?;
-//         if xfer_agreement.purchaser != "*" {
-//             deps.api.addr_validate(&xfer_agreement.purchaser)?;
-//             contract.approve(
-//                 deps,
-//                 &ctx.env,
-//                 &ctx.info,
-//                 xfer_agreement.purchaser.clone(),
-//                 token_id.clone(),
-//                 None,
-//             )?;
-//         }
-//     } else {
-//         TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
-//         contract.revoke_all(deps, &ctx.env, &ctx.info, token_id.clone())?;
-//     }
+fn execute_update_transfer_agreement(
+    ctx: ExecuteContext,
+    token_id: String,
+    agreement: Option<TransferAgreement>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, ref info, .. } = ctx;
+    let contract = AndrCW721Contract::new();
+    let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
+    ensure!(
+        token_owner.owner == info.sender.as_ref(),
+        ContractError::Unauthorized {}
+    );
+    ensure!(
+        !is_archived(deps.storage, &token_id)?.is_archived,
+        ContractError::TokenIsArchived {}
+    );
+    if let Some(xfer_agreement) = &agreement {
+        TRANSFER_AGREEMENTS.save(deps.storage, &token_id, xfer_agreement)?;
+        if xfer_agreement.purchaser != "*" {
+            deps.api.addr_validate(&xfer_agreement.purchaser)?;
+            contract.approve(
+                deps,
+                &ctx.env,
+                &ctx.info,
+                xfer_agreement.purchaser.clone(),
+                token_id.clone(),
+                None,
+            )?;
+        }
+    } else {
+        TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
+        contract.revoke_all(deps, &ctx.env, &ctx.info, token_id.clone())?;
+    }
 
-//     let mut attributes = vec![
-//         attr("action", "update_transfer_agreement"),
-//         attr("token_id", token_id),
-//     ];
+    let mut attributes = vec![
+        attr("action", "update_transfer_agreement"),
+        attr("token_id", token_id),
+    ];
 
-//     if let Some(xfer_agreement) = &agreement {
-//         attributes.push(attr("purchaser", &xfer_agreement.purchaser));
-//         attributes.push(attr("amount", xfer_agreement.amount.to_string()));
-//     } else {
-//         attributes.push(attr("agreement", "removed"));
-//     }
+    if let Some(xfer_agreement) = &agreement {
+        attributes.push(attr("purchaser", &xfer_agreement.purchaser));
+        attributes.push(attr("amount", xfer_agreement.amount.to_string()));
+    } else {
+        attributes.push(attr("agreement", "removed"));
+    }
 
-//     Ok(Response::default().add_attributes(attributes))
-// }
+    Ok(Response::default().add_attributes(attributes))
+}
 
-// fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
-//     let ExecuteContext { deps, info, .. } = ctx;
-//     ensure!(
-//         !is_archived(deps.storage, &token_id)?.is_archived,
-//         ContractError::TokenIsArchived {}
-//     );
-//     let contract = AndrCW721Contract;
-//     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
-//     ensure!(
-//         token_owner.owner == info.sender.as_ref(),
-//         ContractError::Unauthorized {}
-//     );
+fn execute_archive(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    ensure!(
+        !is_archived(deps.storage, &token_id)?.is_archived,
+        ContractError::TokenIsArchived {}
+    );
+    let contract = AndrCW721Contract::new();
+    let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
+    ensure!(
+        token_owner.owner == info.sender.as_ref(),
+        ContractError::Unauthorized {}
+    );
 
-//     ARCHIVED.save(deps.storage, &token_id, &true)?;
+    ARCHIVED.save(deps.storage, &token_id, &true)?;
 
-//     // TODO should we call contract in this function?
-//     // contract.tokens.save(deps.storage, &token_id, &token)?;
+    // TODO should we call contract in this function?
+    // contract.tokens.save(deps.storage, &token_id, &token)?;
 
-//     Ok(Response::default())
-// }
+    Ok(Response::default())
+}
 
-// fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
-//     let ExecuteContext { deps, ref info, .. } = ctx;
-//     let contract = AndrCW721Contract;
-//     // let token = contract.tokens.load(deps.storage, &token_id)?;
-//     let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
-//     ensure!(
-//         token_owner.owner == info.sender.as_ref(),
-//         ContractError::Unauthorized {}
-//     );
-//     ensure!(
-//         !is_archived(deps.storage, &token_id)?.is_archived,
-//         ContractError::TokenIsArchived {}
-//     );
+fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, ref info, .. } = ctx;
+    let contract = AndrCW721Contract::new();
+    // let token = contract.tokens.load(deps.storage, &token_id)?;
+    let token_owner = contract.query_owner_of(deps.as_ref(), &ctx.env, token_id.clone(), false)?;
+    ensure!(
+        token_owner.owner == info.sender.as_ref(),
+        ContractError::Unauthorized {}
+    );
+    ensure!(
+        !is_archived(deps.storage, &token_id)?.is_archived,
+        ContractError::TokenIsArchived {}
+    );
 
-//     contract.burn_nft(deps, &ctx.env, &ctx.info, token_id.clone())?;
+    contract.burn_nft(deps, &ctx.env, &ctx.info, token_id.clone())?;
 
-//     Ok(Response::default().add_attributes(vec![
-//         attr("action", "burn"),
-//         attr("token_id", token_id),
-//         attr("sender", info.sender.as_str()),
-//     ]))
-// }
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "burn"),
+        attr("token_id", token_id),
+        attr("sender", info.sender.as_str()),
+    ]))
+}
 
 fn execute_send_nft(
     ctx: ExecuteContext,
@@ -495,11 +493,11 @@ fn execute_send_nft(
     let ExecuteContext {
         deps, info, env, ..
     } = ctx;
-    let contract = AndrCW721Contract;
+    let contract = AndrCW721Contract::new();
     TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
     let contract_addr = contract_addr.get_raw_address(&deps.as_ref())?.into_string();
 
-    Ok(contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)?)
+    contract.send_nft(deps, &env, &info, contract_addr, token_id, msg)
 }
 
 fn execute_batch_send_nft(
@@ -521,50 +519,64 @@ fn execute_batch_send_nft(
     Ok(resp.add_attribute("action", "batch_send_nft"))
 }
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-//     match msg {
-//         QueryMsg::IsArchived { token_id } => {
-//             Ok(to_json_binary(&is_archived(deps.storage, &token_id)?)?)
-//         }
-//         QueryMsg::TransferAgreement { token_id } => {
-//             Ok(to_json_binary(&query_transfer_agreement(deps, token_id)?)?)
-//         }
-//         QueryMsg::Minter {} => Ok(to_json_binary(&query_minter(deps)?)?),
-//         _ => {
-//             let serialized = to_json_binary(&msg)?;
-//             match from_json::<AndromedaQuery>(&serialized) {
-//                 Ok(msg) => ADOContract::default().query(deps, env, msg),
-//                 _ => Ok(AndrCW721Contract.query(deps, &env, msg.try_into()?)?),
-//             }
-//         }
-//     }
-// }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    use QueryMsg::{IsArchived, Minter, TransferAgreement};
+    match msg {
+        IsArchived { token_id } => {
+            let res = is_archived(deps.storage, &token_id)?;
+            Ok(to_json_binary(&res)?)
+        }
+        TransferAgreement { token_id } => {
+            let res = query_transfer_agreement(deps, token_id)?;
+            Ok(to_json_binary(&res)?)
+        }
+        Minter {} => {
+            let res = query_minter(deps)?;
+            Ok(to_json_binary(&res)?)
+        }
+        other => {
+            // Try CW721 first
+            if let Ok(cw721_msg) = other.clone().try_into() {
+                return AndrCW721Contract::new()
+                    .query(deps, &env, cw721_msg)
+                    .map_err(Into::into);
+            }
 
-// pub fn query_transfer_agreement(
-//     deps: Deps,
-//     token_id: String,
-// ) -> Result<Option<TransferAgreement>, ContractError> {
-//     Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
-// }
+            // Fallback to AndromedaQuery
+            let serialized = to_json_binary(&other)?;
+            match from_json::<AndromedaQuery>(&serialized) {
+                Ok(am_msg) => ADOContract::default().query(deps, env, am_msg),
+                Err(_) => Err(ContractError::UnsupportedQuery {}),
+            }
+        }
+    }
+}
 
-// pub fn query_minter(deps: Deps) -> Result<Addr, ContractError> {
-//     let minter = ANDR_MINTER.load(deps.storage)?;
-//     minter.get_raw_address(&deps)
-// }
+pub fn query_transfer_agreement(
+    deps: Deps,
+    token_id: String,
+) -> Result<Option<TransferAgreement>, ContractError> {
+    Ok(TRANSFER_AGREEMENTS.may_load(deps.storage, &token_id)?)
+}
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-//     ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
-// }
+pub fn query_minter(deps: Deps) -> Result<Addr, ContractError> {
+    let minter = ANDR_MINTER.load(deps.storage)?;
+    minter.get_raw_address(&deps)
+}
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-//     if msg.result.is_err() {
-//         return Err(ContractError::Std(StdError::generic_err(
-//             msg.result.unwrap_err(),
-//         )));
-//     }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
+}
 
-//     Ok(Response::default())
-// }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.result.is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            msg.result.unwrap_err(),
+        )));
+    }
+
+    Ok(Response::default())
+}

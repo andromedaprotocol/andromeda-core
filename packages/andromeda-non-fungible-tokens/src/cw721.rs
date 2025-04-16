@@ -2,11 +2,15 @@ use andromeda_std::error::ContractError;
 use andromeda_std::{amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cosmwasm_std::{Binary, Coin, CustomMsg, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{Binary, Coin, CustomMsg, Deps, DepsMut, Env, MessageInfo, Response};
 
+use cw721::msg::{ApprovalsResponse, OperatorsResponse, OwnerOfResponse, TokensResponse};
 use cw721::Expiration;
 
-use cw721_base::{msg::ExecuteMsg as Cw721ExecuteMsg, msg::QueryMsg as Cw721QueryMsg, Cw721BaseContract, msg::InstantiateMsg as BaseInstantiateMsg};
+use cw721_base::{
+    msg::ExecuteMsg as Cw721ExecuteMsg, msg::InstantiateMsg as BaseInstantiateMsg,
+    msg::QueryMsg as Cw721QueryMsg, traits::Cw721Query, Cw721BaseContract,
+};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -28,7 +32,6 @@ pub struct AndrCW721Contract {
     standard_implementation: Cw721BaseContract<'static>,
 }
 
-
 // Add a custom query method to handle the conversion
 impl AndrCW721Contract {
     pub fn new() -> Self {
@@ -36,13 +39,19 @@ impl AndrCW721Contract {
             standard_implementation: Cw721BaseContract::default(),
         }
     }
-    
+
     // Entry points
-    pub fn instantiate(&self, deps: DepsMut, env: &Env, info: &MessageInfo, msg: InstantiateMsg) 
-    -> Result<Response, ContractError> {
+    pub fn instantiate(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        msg: InstantiateMsg,
+    ) -> Result<Response, ContractError> {
         let standard_msg = convert_instantiate_msg(msg);
-        self.standard_implementation.instantiate(deps, env, info, standard_msg)
-            .map_err(|e| ContractError::new(&e.to_string()))
+        self.standard_implementation
+            .instantiate(deps, env, info, standard_msg)
+            .map_err(|e| e.into())
     }
 
     pub fn execute(
@@ -52,8 +61,142 @@ impl AndrCW721Contract {
         info: &MessageInfo,
         msg: Cw721ExecuteMsg,
     ) -> Result<Response, ContractError> {
-        self.standard_implementation.execute(deps, env, info, msg)
+        self.standard_implementation
+            .execute(deps, env, info, msg)
+            .map_err(|e| e.into())
+    }
+
+    pub fn transfer_nft(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        recipient: String,
+        token_id: String,
+    ) -> Result<Response, ContractError> {
+        self.standard_implementation
+            .transfer_nft(deps, env, info, recipient, token_id)
+            .map_err(|e| e.into())
+    }
+
+    pub fn revoke_all(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        token_id: String,
+    ) -> Result<Response, ContractError> {
+        self.standard_implementation
+            .revoke_all(deps, env, info, token_id)
+            .map_err(|e| e.into())
+    }
+
+    pub fn send_nft(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        contract_addr: String,
+        token_id: String,
+        msg: Binary,
+    ) -> Result<Response, ContractError> {
+        self.standard_implementation
+            .send_nft(deps, env, info, contract_addr, token_id, msg)
+            .map_err(|e| e.into())
+    }
+
+    pub fn burn_nft(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        token_id: String,
+    ) -> Result<Response, ContractError> {
+        self.standard_implementation
+            .burn_nft(deps, env, info, token_id)
             .map_err(|e| ContractError::new(&e.to_string()))
+    }
+
+    pub fn approve(
+        &self,
+        deps: DepsMut,
+        env: &Env,
+        info: &MessageInfo,
+        spender: String,
+        token_id: String,
+        expires: Option<Expiration>,
+    ) -> Result<Response, ContractError> {
+        self.standard_implementation
+            .approve(deps, env, info, spender, token_id, expires)
+            .map_err(|e| ContractError::new(&e.to_string()))
+    }
+
+    pub fn query(
+        &self,
+        deps: Deps,
+        env: &Env,
+        msg: Cw721QueryMsg,
+    ) -> Result<Binary, ContractError> {
+        self.standard_implementation
+            .query(deps, env, msg)
+            .map_err(|e| e.into())
+    }
+
+    pub fn query_owner_of(
+        &self,
+        deps: Deps,
+        env: &Env,
+        token_id: String,
+        include_expired_approval: bool,
+    ) -> Result<OwnerOfResponse, ContractError> {
+        self.standard_implementation
+            .query_owner_of(deps, env, token_id, include_expired_approval)
+            .map_err(|e| e.into())
+    }
+
+    pub fn query_approvals(
+        &self,
+        deps: Deps,
+        env: &Env,
+        token_id: String,
+        include_expired_approval: bool,
+    ) -> Result<ApprovalsResponse, ContractError> {
+        self.standard_implementation
+            .query_approvals(deps, env, token_id, include_expired_approval)
+            .map_err(|e| e.into())
+    }
+
+    pub fn query_operators(
+        &self,
+        deps: Deps,
+        env: &Env,
+        owner: String,
+        include_expired_approval: bool,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<OperatorsResponse, ContractError> {
+        self.standard_implementation
+            .query_operators(
+                deps,
+                env,
+                owner,
+                include_expired_approval,
+                start_after,
+                limit,
+            )
+            .map_err(|e| e.into())
+    }
+
+    pub fn query_all_tokens(
+        &self,
+        deps: Deps,
+        env: &Env,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<TokensResponse, ContractError> {
+        self.standard_implementation
+            .query_all_tokens(deps, env, start_after, limit)
+            .map_err(|e| e.into())
     }
 }
 
