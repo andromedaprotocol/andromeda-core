@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: Prevent duplicate relay in Kernel [(#802)](https://github.com/andromedaprotocol/andromeda-core/pull/802)
 - fix: ibc username not working for ibc send with funds [(#814)](https://github.com/andromedaprotocol/andromeda-core/pull/814)
 - fix: kernel's handle_local not resolving AndrAddr [(#846)](https://github.com/andromedaprotocol/andromeda-core/pull/846)
+- fix: Timelock Release Funds [(#857)](https://github.com/andromedaprotocol/andromeda-core/pull/857)
 - fix: Added missing version bumps [(#858)](https://github.com/andromedaprotocol/andromeda-core/pull/858)
 
 ## Release 4
