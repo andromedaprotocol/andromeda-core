@@ -47,6 +47,8 @@ pub struct RedemptionCondition {
     pub exchange_rate: Uint128,
     /// The amount for redemption at the given rate
     pub amount: Uint128,
+    /// The amount paid out so far in redemptions
+    pub total_amount_redeemed: Uint128,
     /// The time when the redemption starts
     pub start_time: Expiration,
     /// The time when the redemption ends

@@ -257,6 +257,17 @@ fn test_cw20_redeem_app_native() {
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::from(20u128));
 
+    // Query redemption condition
+    let redemption_condition =
+        query_redemption_condition(&mut router, cw20_redeem_addr.to_string());
+    assert_eq!(
+        redemption_condition
+            .redemption
+            .unwrap()
+            .total_amount_redeemed,
+        Uint128::new(20u128)
+    );
+
     // Test cancel redemption condition
 
     // Get native balance of owner before canceling
@@ -420,6 +431,17 @@ fn test_cw20_redeem_app_cw20() {
     assert_eq!(
         redeem_contract_balance,
         OWNER_INITIAL_BALANCE.checked_sub(Uint128::new(20)).unwrap()
+    );
+
+    // Query redemption condition
+    let redemption_condition =
+        query_redemption_condition(&mut router, cw20_redeem_addr.to_string());
+    assert_eq!(
+        redemption_condition
+            .redemption
+            .unwrap()
+            .total_amount_redeemed,
+        Uint128::new(20u128)
     );
 
     // Test cancel redemption condition

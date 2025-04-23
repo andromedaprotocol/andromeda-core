@@ -182,6 +182,7 @@ pub fn execute_set_redemption_condition_cw20(
         recipient,
         asset: asset_sent.clone(),
         amount: amount_sent,
+        total_amount_redeemed: Uint128::zero(),
         exchange_rate,
         start_time: start_expiration,
         end_time: end_expiration,
@@ -262,6 +263,7 @@ pub fn execute_set_redemption_condition_native(
         recipient,
         asset: asset.clone(),
         amount,
+        total_amount_redeemed: Uint128::zero(),
         exchange_rate,
         start_time: start_expiration,
         end_time: end_expiration,
@@ -365,6 +367,9 @@ pub fn execute_redeem(
 
     // Update sale amount remaining
     redemption_condition.amount = redemption_condition.amount.checked_sub(redeemed_amount)?;
+    redemption_condition.total_amount_redeemed = redemption_condition
+        .total_amount_redeemed
+        .checked_add(redeemed_amount)?;
     REDEMPTION_CONDITION.save(deps.storage, &redemption_condition)?;
 
     let mut attributes = vec![
