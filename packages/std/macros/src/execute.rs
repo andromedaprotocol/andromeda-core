@@ -72,7 +72,7 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
             info: ::cosmwasm_std::MessageInfo,
             msg: ExecuteMsg,
         ) -> Result<::cosmwasm_std::Response, ContractError> {
-            let (ctx, msg, resp) = ::andromeda_std::unwrap_amp_msg!(deps, info.clone(), env, msg);
+            let (ctx, msg, resp, submsg) = ::andromeda_std::unwrap_amp_msg!(deps, info.clone(), env, msg);
 
             // Check if the message is restricted to the owner
             if msg.is_restricted() {
@@ -88,7 +88,11 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
                 ::cosmwasm_std::ensure!(info.funds.is_empty(), ::andromeda_std::error::ContractError::Payment(::andromeda_std::error::PaymentError::NonPayable {}));
             }
 
-            let res = execute_inner(ctx, msg)?;
+            let mut res = execute_inner(ctx, msg)?;
+
+            if let Some(submsg) = submsg {
+                res = res.add_submessage(submsg);
+            }
 
             Ok(res
                 .add_submessages(resp.messages)

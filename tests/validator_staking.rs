@@ -274,7 +274,9 @@ fn test_restake() {
             vec![AndrAddr::from_string(permissioned_actor.clone())],
             "restake".to_string(),
             andromeda_std::ado_base::permissioning::Permission::Local(
-                andromeda_std::ado_base::permissioning::LocalPermission::whitelisted(None, None),
+                andromeda_std::ado_base::permissioning::LocalPermission::whitelisted(
+                    None, None, None, None,
+                ),
             ),
         )
         .unwrap();

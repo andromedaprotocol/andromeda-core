@@ -5,7 +5,7 @@ use cosmwasm_std::{Deps, Env};
 
 use crate::{
     amp::AndrAddr,
-    common::{expiration::Expiry, MillisecondsExpiration},
+    common::{expiration::Expiry, Milliseconds, MillisecondsExpiration},
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
@@ -70,6 +70,8 @@ pub enum LocalPermission {
         #[serde(default)]
         start: Option<Expiry>,
         expiration: Option<Expiry>,
+        frequency: Option<Milliseconds>,
+        last_used: Option<Milliseconds>,
     },
 }
 
@@ -78,6 +80,8 @@ impl std::default::Default for LocalPermission {
         Self::Whitelisted {
             start: None,
             expiration: None,
+            frequency: None,
+            last_used: None,
         }
     }
 }
@@ -87,8 +91,18 @@ impl LocalPermission {
         Self::Blacklisted { start, expiration }
     }
 
-    pub fn whitelisted(start: Option<Expiry>, expiration: Option<Expiry>) -> Self {
-        Self::Whitelisted { start, expiration }
+    pub fn whitelisted(
+        start: Option<Expiry>,
+        expiration: Option<Expiry>,
+        frequency: Option<Milliseconds>,
+        last_used: Option<Milliseconds>,
+    ) -> Self {
+        Self::Whitelisted {
+            start,
+            expiration,
+            frequency,
+            last_used,
+        }
     }
 
     pub fn limited(start: Option<Expiry>, expiration: Option<Expiry>, uses: u32) -> Self {
@@ -135,7 +149,12 @@ impl LocalPermission {
                 }
                 true
             }
-            Self::Whitelisted { start, expiration } => {
+            Self::Whitelisted {
+                start,
+                expiration,
+                frequency,
+                last_used,
+            } => {
                 if let Some(start) = start {
                     if !start.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
@@ -144,6 +163,18 @@ impl LocalPermission {
                 if let Some(expiration) = expiration {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
+                    }
+                }
+                if let Some(frequency) = frequency {
+                    // Check if last used is set
+                    if let Some(last_used) = last_used {
+                        // Get current time
+                        let current_time = env.block.time.seconds();
+                        let time_elapsed_since_last_use = current_time - last_used.seconds();
+
+                        if time_elapsed_since_last_use < frequency.seconds() {
+                            return !strict;
+                        }
                     }
                 }
                 true
@@ -191,7 +222,9 @@ impl LocalPermission {
             | Self::Limited {
                 start, expiration, ..
             }
-            | Self::Whitelisted { start, expiration } => (start, expiration),
+            | Self::Whitelisted {
+                start, expiration, ..
+            } => (start, expiration),
         };
 
         if let (Some(start), Some(expiration)) = (start, expiration) {
@@ -238,11 +271,58 @@ impl fmt::Display for LocalPermission {
                 (None, Some(e)) => format!("limited until:{e} uses:{uses}"),
                 (None, None) => format!("limited uses:{uses}"),
             },
-            Self::Whitelisted { start, expiration } => match (start, expiration) {
-                (Some(s), Some(e)) => format!("whitelisted starting from:{s} until:{e}"),
-                (Some(s), None) => format!("whitelisted starting from:{s}"),
-                (None, Some(e)) => format!("whitelisted until:{e}"),
-                (None, None) => "whitelisted".to_string(),
+            Self::Whitelisted {
+                start,
+                expiration,
+                frequency,
+                last_used,
+            } => match (start, expiration, frequency, last_used) {
+                (Some(s), Some(e), Some(f), Some(l)) => {
+                    format!("whitelisted starting from:{s} until:{e} frequency:{f} last_used:{l}")
+                }
+                (Some(s), Some(e), Some(f), None) => {
+                    format!("whitelisted starting from:{s} until:{e} frequency:{f}")
+                }
+                (Some(s), Some(e), None, Some(l)) => {
+                    format!("whitelisted starting from:{s} until:{e} last_used:{l}")
+                }
+                (Some(s), Some(e), None, None) => {
+                    format!("whitelisted starting from:{s} until:{e}")
+                }
+                (Some(s), None, Some(f), Some(l)) => {
+                    format!("whitelisted starting from:{s} frequency:{f} last_used:{l}")
+                }
+                (Some(s), None, Some(f), None) => {
+                    format!("whitelisted starting from:{s} frequency:{f}")
+                }
+                (Some(s), None, None, Some(l)) => {
+                    format!("whitelisted starting from:{s} last_used:{l}")
+                }
+                (Some(s), None, None, None) => {
+                    format!("whitelisted starting from:{s}")
+                }
+                (None, Some(e), Some(f), Some(l)) => {
+                    format!("whitelisted until:{e} frequency:{f} last_used:{l}")
+                }
+                (None, Some(e), Some(f), None) => {
+                    format!("whitelisted until:{e} frequency:{f}")
+                }
+                (None, Some(e), None, Some(l)) => {
+                    format!("whitelisted until:{e} last_used:{l}")
+                }
+                (None, Some(e), None, None) => {
+                    format!("whitelisted until:{e}")
+                }
+                (None, None, Some(f), Some(l)) => {
+                    format!("whitelisted frequency:{f} last_used:{l}")
+                }
+                (None, None, Some(f), None) => {
+                    format!("whitelisted frequency:{f}")
+                }
+                (None, None, None, Some(l)) => {
+                    format!("whitelisted last_used:{l}")
+                }
+                (None, None, None, None) => "whitelisted".to_string(),
             },
         };
         write!(f, "{self_as_string}")
@@ -292,9 +372,9 @@ impl fmt::Display for Permission {
 mod tests {
     use super::*;
     use crate::common::Milliseconds;
+
     use cosmwasm_std::testing::mock_env;
     use rstest::rstest;
-
     #[rstest]
     #[case::valid_future_times(1000, 2000)] // start in 100s, expire in 200s
     #[case::same_start_and_end(1000, 1000)] // edge case: start and end at same time
@@ -310,6 +390,8 @@ mod tests {
             expiration: Some(Expiry::AtTime(
                 Milliseconds(exp_offset).plus_seconds(current_time),
             )),
+            frequency: None,
+            last_used: None,
         };
 
         let result = permission.validate_times(&env);
@@ -348,6 +430,8 @@ mod tests {
             expiration: Some(Expiry::AtTime(
                 Milliseconds(exp_offset).plus_seconds(current_time),
             )),
+            frequency: None,
+            last_used: None,
         };
 
         let result = permission.validate_times(&env);
@@ -362,6 +446,8 @@ mod tests {
         let permission = LocalPermission::Whitelisted {
             start: None,
             expiration: None,
+            frequency: None,
+            last_used: None,
         };
 
         let result = permission.validate_times(&env);
@@ -376,6 +462,8 @@ mod tests {
         let permission = LocalPermission::Whitelisted {
             start: Some(Expiry::AtTime(Milliseconds(current_time + 100))),
             expiration: None,
+            frequency: None,
+            last_used: None,
         };
 
         let result = permission.validate_times(&env);
@@ -390,9 +478,148 @@ mod tests {
         let permission = LocalPermission::Whitelisted {
             start: None,
             expiration: Some(Expiry::AtTime(Milliseconds(current_time + 100))),
+            frequency: None,
+            last_used: None,
         };
 
         let result = permission.validate_times(&env);
         assert!(result.is_ok());
+    }
+
+    #[rstest]
+    // Test cases for whitelisted permissions
+    #[case::no_times_authorized(
+        None, // start
+        None, // expiration
+        None, // frequency
+        true  // expected authorized
+    )]
+    #[case::future_start_unauthorized(
+        Some(1000), // start (in future)
+        None,
+        None,
+        false
+    )]
+    #[case::future_start_authorized(
+        Some(100), // start (in future)
+        None,
+        None,
+        true
+    )]
+    #[case::expired_unauthorized(
+        None,
+        Some(100), // expiration (in past)
+        None,
+        false
+    )]
+    #[case::valid_time_window_authorized(
+        Some(100), // start (in future)
+        Some(2000), // expiration (further in future)
+        None,
+        true
+    )]
+    #[case::frequency_not_met_unauthorized(None, None, Some(1571797419), false)]
+    #[case::frequency_met_authorized(
+        None,
+        None,
+        Some(100), // frequency (0.1 seconds)
+        true
+    )]
+    fn test_whitelisted_permission(
+        #[case] start_offset: Option<u64>,
+        #[case] exp_offset: Option<u64>,
+        #[case] frequency_ms: Option<u64>,
+        #[case] expected_authorized: bool,
+    ) {
+        let env = mock_env();
+        let current_time = env.block.time.seconds();
+
+        // Create permission with provided parameters
+        let permission = LocalPermission::Whitelisted {
+            start: start_offset
+                .map(|offset| Expiry::AtTime(Milliseconds(offset).plus_seconds(current_time))),
+            expiration: exp_offset
+                .map(|offset| Expiry::AtTime(Milliseconds(offset).plus_seconds(current_time))),
+            frequency: frequency_ms.map(Milliseconds),
+            last_used: if frequency_ms.is_some() {
+                Some(Milliseconds::from_seconds(current_time - 200)) // Set last used to 200ms ago
+            } else {
+                None
+            },
+        };
+
+        // Test the permission
+        let is_authorized = permission.is_permissioned(&env, true);
+        assert_eq!(is_authorized, expected_authorized);
+    }
+
+    // Test cases for frequency-based permissions
+    #[rstest]
+    #[case::frequency_not_met(
+        1000, // frequency (1 second)
+        1571797419,  // time since last use (0.5 seconds)
+        false // should not be authorized
+    )]
+    #[case::frequency_met(
+        1000, // frequency (1 second)
+        1571797419 - 10000000, // time since last use (1.5 seconds)
+        true  // should be authorized
+    )]
+    fn test_frequency_based_permission(
+        #[case] frequency_ms: u64,
+        #[case] last_used: u64,
+        #[case] expected_authorized: bool,
+    ) {
+        let env = mock_env();
+
+        let permission = LocalPermission::Whitelisted {
+            start: None,
+            expiration: None,
+            frequency: Some(Milliseconds(frequency_ms)),
+            last_used: Some(Milliseconds::from_seconds(last_used)),
+        };
+
+        let is_authorized = permission.is_permissioned(&env, true);
+        assert_eq!(is_authorized, expected_authorized);
+    }
+
+    // Test cases for time window permissions
+    #[rstest]
+    #[case::before_start_window(
+        1000, // start offset (1 second in future)
+        2000, // expiration offset (2 seconds in future)
+        false // should not be authorized
+    )]
+    #[case::within_window(
+        100,  // start offset (0.1 seconds in future)
+        2000, // expiration offset (2 seconds in future)
+        true  // should be authorized
+    )]
+    #[case::after_expiration(
+        100,  // start offset (0.1 seconds in future)
+        200,  // expiration offset (0.2 seconds in future)
+        false // should not be authorized
+    )]
+    fn test_time_window_permission(
+        #[case] start_offset: u64,
+        #[case] exp_offset: u64,
+        #[case] expected_authorized: bool,
+    ) {
+        let env = mock_env();
+        let current_time = env.block.time.seconds();
+
+        let permission = LocalPermission::Whitelisted {
+            start: Some(Expiry::AtTime(
+                Milliseconds(start_offset).plus_seconds(current_time),
+            )),
+            expiration: Some(Expiry::AtTime(
+                Milliseconds(exp_offset).plus_seconds(current_time),
+            )),
+            frequency: None,
+            last_used: None,
+        };
+
+        let is_authorized = permission.is_permissioned(&env, true);
+        assert_eq!(is_authorized, expected_authorized);
     }
 }
