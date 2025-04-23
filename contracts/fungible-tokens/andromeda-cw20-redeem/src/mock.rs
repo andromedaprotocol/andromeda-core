@@ -24,13 +24,13 @@ pub fn mock_cw20_redeem_instantiate_msg(
     }
 }
 
-pub fn mock_cw20_redeem_start_redemption_clause_hook_msg(
+pub fn mock_cw20_redeem_start_redemption_condition_hook_msg(
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> Cw20HookMsg {
-    Cw20HookMsg::StartRedemptionClause {
+    Cw20HookMsg::StartRedemptionCondition {
         exchange_rate,
         recipient,
         start_time,
@@ -42,13 +42,13 @@ pub fn mock_cw20_redeem_hook_redeem_msg() -> Cw20HookMsg {
     Cw20HookMsg::Redeem {}
 }
 
-pub fn mock_cw20_set_redemption_clause_native_msg(
+pub fn mock_cw20_set_redemption_condition_native_msg(
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> ExecuteMsg {
-    ExecuteMsg::SetRedemptionClause {
+    ExecuteMsg::SetRedemptionCondition {
         exchange_rate,
         recipient,
         start_time,
@@ -56,10 +56,10 @@ pub fn mock_cw20_set_redemption_clause_native_msg(
     }
 }
 
-pub fn mock_cw20_redeem_cancel_redemption_clause_msg() -> ExecuteMsg {
-    ExecuteMsg::CancelRedemptionClause {}
+pub fn mock_cw20_redeem_cancel_redemption_condition_msg() -> ExecuteMsg {
+    ExecuteMsg::CancelRedemptionCondition {}
 }
 
-pub fn mock_get_redemption_clause() -> QueryMsg {
-    QueryMsg::RedemptionClause {}
+pub fn mock_get_redemption_condition() -> QueryMsg {
+    QueryMsg::RedemptionCondition {}
 }

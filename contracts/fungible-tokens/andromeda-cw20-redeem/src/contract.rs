@@ -1,6 +1,6 @@
 use andromeda_fungible_tokens::cw20_redeem::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RedemptionAssetResponse, RedemptionClause,
-    RedemptionResponse, TokenAddressResponse,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RedemptionAssetResponse,
+    RedemptionCondition, RedemptionResponse, TokenAddressResponse,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -24,7 +24,7 @@ use cw20::{BalanceResponse, Cw20Coin, Cw20QueryMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_utils::{one_coin, Expiration};
 
-use crate::state::{REDEMPTION_CLAUSE, TOKEN_ADDRESS};
+use crate::state::{REDEMPTION_CONDITION, TOKEN_ADDRESS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-redeem";
@@ -72,19 +72,19 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
-        ExecuteMsg::SetRedemptionClause {
+        ExecuteMsg::SetRedemptionCondition {
             exchange_rate,
             recipient,
             start_time,
             duration,
-        } => execute_set_redemption_clause_native(
+        } => execute_set_redemption_condition_native(
             ctx,
             exchange_rate,
             recipient,
             start_time,
             duration,
         ),
-        ExecuteMsg::CancelRedemptionClause {} => execute_cancel_redemption_clause(ctx),
+        ExecuteMsg::CancelRedemptionCondition {} => execute_cancel_redemption_condition(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -106,12 +106,12 @@ pub fn execute_receive(
     );
 
     match from_json(&receive_msg.msg)? {
-        Cw20HookMsg::StartRedemptionClause {
+        Cw20HookMsg::StartRedemptionCondition {
             exchange_rate,
             recipient,
             start_time,
             duration,
-        } => execute_set_redemption_clause_cw20(
+        } => execute_set_redemption_condition_cw20(
             ctx,
             amount_sent,
             asset_info,
@@ -126,7 +126,7 @@ pub fn execute_receive(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_set_redemption_clause_cw20(
+pub fn execute_set_redemption_condition_cw20(
     ctx: ExecuteContext,
     amount_sent: Uint128,
     asset_sent: AssetInfo,
@@ -165,10 +165,10 @@ pub fn execute_set_redemption_clause_cw20(
     };
 
     // Do not allow duplicate sales
-    let redemption_clause = REDEMPTION_CLAUSE.may_load(deps.storage)?;
+    let redemption_condition = REDEMPTION_CONDITION.may_load(deps.storage)?;
     ensure!(
-        redemption_clause.is_none(),
-        ContractError::RedemptionClauseAlreadyExists {}
+        redemption_condition.is_none(),
+        ContractError::RedemptionConditionAlreadyExists {}
     );
 
     let recipient = if let Some(recipient) = recipient {
@@ -178,7 +178,7 @@ pub fn execute_set_redemption_clause_cw20(
         Recipient::new(sender, None)
     };
 
-    let redemption_clause = RedemptionClause {
+    let redemption_condition = RedemptionCondition {
         recipient,
         asset: asset_sent.clone(),
         amount: amount_sent,
@@ -186,10 +186,10 @@ pub fn execute_set_redemption_clause_cw20(
         start_time: start_expiration,
         end_time: end_expiration,
     };
-    REDEMPTION_CLAUSE.save(deps.storage, &redemption_clause)?;
+    REDEMPTION_CONDITION.save(deps.storage, &redemption_condition)?;
 
     Ok(Response::default().add_attributes(vec![
-        attr("action", "start_redemption_clause"),
+        attr("action", "start_redemption_condition"),
         attr("asset", asset_sent.to_string()),
         attr("rate", exchange_rate),
         attr("amount", amount_sent),
@@ -198,7 +198,7 @@ pub fn execute_set_redemption_clause_cw20(
     ]))
 }
 
-pub fn execute_set_redemption_clause_native(
+pub fn execute_set_redemption_condition_native(
     ctx: ExecuteContext,
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
@@ -225,13 +225,13 @@ pub fn execute_set_redemption_clause_native(
         ContractError::InvalidZeroAmount {}
     );
 
-    // Check if a redemption clause already exists
-    let redemption_clause = REDEMPTION_CLAUSE.may_load(deps.storage)?;
-    if let Some(clause) = redemption_clause {
-        // If a clause exists, ensure it has expired before allowing a new one
+    // Check if a redemption condition already exists
+    let redemption_condition = REDEMPTION_CONDITION.may_load(deps.storage)?;
+    if let Some(condition) = redemption_condition {
+        // If a condition exists, ensure it has expired before allowing a new one
         ensure!(
-            clause.end_time.is_expired(&env.block),
-            ContractError::RedemptionClauseAlreadyExists {}
+            condition.end_time.is_expired(&env.block),
+            ContractError::RedemptionConditionAlreadyExists {}
         );
     }
 
@@ -258,7 +258,7 @@ pub fn execute_set_redemption_clause_native(
         Recipient::new(info.sender.to_string(), None)
     };
 
-    let redemption_clause = RedemptionClause {
+    let redemption_condition = RedemptionCondition {
         recipient,
         asset: asset.clone(),
         amount,
@@ -266,10 +266,10 @@ pub fn execute_set_redemption_clause_native(
         start_time: start_expiration,
         end_time: end_expiration,
     };
-    REDEMPTION_CLAUSE.save(deps.storage, &redemption_clause)?;
+    REDEMPTION_CONDITION.save(deps.storage, &redemption_condition)?;
 
     Ok(Response::default().add_attributes(vec![
-        attr("action", "start_redemption_clause"),
+        attr("action", "start_redemption_condition"),
         attr("asset", asset.to_string()),
         attr("rate", exchange_rate),
         attr("amount", amount),
@@ -286,22 +286,22 @@ pub fn execute_redeem(
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
 
-    let Some(mut redemption_clause) = REDEMPTION_CLAUSE.may_load(deps.storage)? else {
+    let Some(mut redemption_condition) = REDEMPTION_CONDITION.may_load(deps.storage)? else {
         return Err(ContractError::NoOngoingSale {});
     };
 
     // Check if sale has started
     ensure!(
-        redemption_clause.start_time.is_expired(&ctx.env.block),
+        redemption_condition.start_time.is_expired(&ctx.env.block),
         ContractError::SaleNotStarted {}
     );
     // Check if sale has ended
     ensure!(
-        !redemption_clause.end_time.is_expired(&ctx.env.block),
+        !redemption_condition.end_time.is_expired(&ctx.env.block),
         ContractError::SaleEnded {}
     );
 
-    let potential_redeemed = amount_sent.checked_mul(redemption_clause.exchange_rate)?;
+    let potential_redeemed = amount_sent.checked_mul(redemption_condition.exchange_rate)?;
 
     ensure!(
         !potential_redeemed.is_zero(),
@@ -312,14 +312,14 @@ pub fn execute_redeem(
 
     // Calculate actual redemption amounts
     let (redeemed_amount, accepted_amount, refund_amount) =
-        if potential_redeemed <= redemption_clause.amount {
+        if potential_redeemed <= redemption_condition.amount {
             (potential_redeemed, amount_sent, Uint128::zero())
         } else {
             // If we don't have enough tokens, calculate the partial redemption
-            let actual_redeemed = redemption_clause.amount;
-            let actual_amount_needed = redemption_clause
+            let actual_redeemed = redemption_condition.amount;
+            let actual_amount_needed = redemption_condition
                 .amount
-                .checked_div(redemption_clause.exchange_rate)
+                .checked_div(redemption_condition.exchange_rate)
                 .map_err(|_| ContractError::Overflow {})?;
             let refund = amount_sent.checked_sub(actual_amount_needed)?;
             (actual_redeemed, actual_amount_needed, refund)
@@ -329,7 +329,7 @@ pub fn execute_redeem(
 
     // Transfer redeemed tokens to the user
     messages.push(generate_transfer_message(
-        redemption_clause.asset.clone(),
+        redemption_condition.asset.clone(),
         redeemed_amount,
         sender.to_string(),
         None,
@@ -337,7 +337,7 @@ pub fn execute_redeem(
 
     match asset_info {
         cw_asset::AssetInfoBase::Cw20(ref address) => {
-            let recipient_msg = redemption_clause.recipient.generate_msg_cw20(
+            let recipient_msg = redemption_condition.recipient.generate_msg_cw20(
                 &deps.as_ref(),
                 Cw20Coin {
                     address: address.to_string(),
@@ -364,8 +364,8 @@ pub fn execute_redeem(
     }
 
     // Update sale amount remaining
-    redemption_clause.amount = redemption_clause.amount.checked_sub(redeemed_amount)?;
-    REDEMPTION_CLAUSE.save(deps.storage, &redemption_clause)?;
+    redemption_condition.amount = redemption_condition.amount.checked_sub(redeemed_amount)?;
+    REDEMPTION_CONDITION.save(deps.storage, &redemption_condition)?;
 
     let mut attributes = vec![
         attr("action", "redeem"),
@@ -385,31 +385,31 @@ pub fn execute_redeem(
         .add_attributes(attributes))
 }
 
-pub fn execute_cancel_redemption_clause(ctx: ExecuteContext) -> Result<Response, ContractError> {
+pub fn execute_cancel_redemption_condition(ctx: ExecuteContext) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    let Some(redemption_clause) = REDEMPTION_CLAUSE.may_load(deps.storage)? else {
+    let Some(redemption_condition) = REDEMPTION_CONDITION.may_load(deps.storage)? else {
         return Err(ContractError::NoOngoingSale {});
     };
 
     let mut resp = Response::default();
 
     // Refund any remaining amount
-    if !redemption_clause.amount.is_zero() {
+    if !redemption_condition.amount.is_zero() {
         resp = resp
             .add_submessage(generate_transfer_message(
-                redemption_clause.asset.clone(),
-                redemption_clause.amount,
+                redemption_condition.asset.clone(),
+                redemption_condition.amount,
                 info.sender.to_string(),
                 None,
             )?)
-            .add_attribute("refunded_amount", redemption_clause.amount);
+            .add_attribute("refunded_amount", redemption_condition.amount);
     }
 
-    // Redemption clause can now be removed
-    REDEMPTION_CLAUSE.remove(deps.storage);
+    // Redemption condition can now be removed
+    REDEMPTION_CONDITION.remove(deps.storage);
 
-    Ok(resp.add_attributes(vec![attr("action", "cancel_redemption_clause")]))
+    Ok(resp.add_attributes(vec![attr("action", "cancel_redemption_condition")]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -420,7 +420,7 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, Co
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::RedemptionClause {} => encode_binary(&query_redemption_clause(deps)?),
+        QueryMsg::RedemptionCondition {} => encode_binary(&query_redemption_condition(deps)?),
         QueryMsg::TokenAddress {} => encode_binary(&query_token_address(deps)?),
         QueryMsg::RedemptionAsset {} => encode_binary(&query_redemption_asset(deps)?),
         QueryMsg::RedemptionAssetBalance {} => {
@@ -430,8 +430,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_redemption_clause(deps: Deps) -> Result<RedemptionResponse, ContractError> {
-    let redemption = REDEMPTION_CLAUSE.may_load(deps.storage)?;
+fn query_redemption_condition(deps: Deps) -> Result<RedemptionResponse, ContractError> {
+    let redemption = REDEMPTION_CONDITION.may_load(deps.storage)?;
 
     Ok(RedemptionResponse { redemption })
 }
@@ -446,15 +446,15 @@ fn query_token_address(deps: Deps) -> Result<TokenAddressResponse, ContractError
 }
 
 fn query_redemption_asset(deps: Deps) -> Result<RedemptionAssetResponse, ContractError> {
-    let redemption_clause = REDEMPTION_CLAUSE.load(deps.storage)?;
+    let redemption_condition = REDEMPTION_CONDITION.load(deps.storage)?;
 
     Ok(RedemptionAssetResponse {
-        asset: redemption_clause.asset.to_string(),
+        asset: redemption_condition.asset.to_string(),
     })
 }
 
 fn query_redemption_asset_balance(deps: Deps, env: Env) -> Result<Uint128, ContractError> {
-    let asset = REDEMPTION_CLAUSE.load(deps.storage)?.asset;
+    let asset = REDEMPTION_CONDITION.load(deps.storage)?.asset;
 
     match asset {
         AssetInfo::Native(denom) => {

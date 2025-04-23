@@ -21,13 +21,13 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Cancels an ongoing sale
     #[attrs(restricted)]
-    CancelRedemptionClause {},
+    CancelRedemptionCondition {},
     /// Receive for CW20 tokens, used for purchasing and starting sales
     #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
     /// Starts a redemption with the native funds sent
     #[attrs(restricted)]
-    SetRedemptionClause {
+    SetRedemptionCondition {
         exchange_rate: Uint128,
         recipient: Option<Recipient>,
         start_time: Option<Expiry>,
@@ -38,7 +38,7 @@ pub enum ExecuteMsg {
 
 /// Struct used to define a token redemption. The asset used for the redemption is defined as the key for the storage map.
 #[cw_serde]
-pub struct RedemptionClause {
+pub struct RedemptionCondition {
     /// Recipient of the redeemed tokens
     pub recipient: Recipient,
     /// The asset that may be used to redeem the tokens with
@@ -56,7 +56,7 @@ pub struct RedemptionClause {
 #[cw_serde]
 pub enum Cw20HookMsg {
     /// Starts a sale
-    StartRedemptionClause {
+    StartRedemptionCondition {
         /// The amount of the above asset required to purchase a single token
         exchange_rate: Uint128,
         recipient: Option<Recipient>,
@@ -73,7 +73,7 @@ pub enum Cw20HookMsg {
 pub enum QueryMsg {
     /// Redemption info for a given asset
     #[returns(RedemptionResponse)]
-    RedemptionClause {},
+    RedemptionCondition {},
     /// The address of the token being redeemed
     #[returns(TokenAddressResponse)]
     TokenAddress {},
@@ -96,7 +96,7 @@ pub struct RedemptionAssetBalanceResponse {
 #[cw_serde]
 pub struct RedemptionResponse {
     /// The redemption data if it exists
-    pub redemption: Option<RedemptionClause>,
+    pub redemption: Option<RedemptionCondition>,
 }
 
 #[cw_serde]
