@@ -54,16 +54,13 @@ pub fn instantiate(
 
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
-    let cw721_contract = AndrCW721Contract::new();
-    let res = cw721_contract.instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
-
     let contract = ADOContract::default();
 
     contract.permission_action(deps.storage, MINT_ACTION)?;
 
     let resp = contract.instantiate(
         deps.storage,
-        env,
+        env.clone(),
         deps.api,
         &deps.querier,
         info.clone(),
@@ -74,6 +71,9 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
+
+    let cw721_contract = AndrCW721Contract::new();
+    let res = cw721_contract.instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
     Ok(res
         .add_attributes(vec![attr("minter", msg.minter.to_string())])
