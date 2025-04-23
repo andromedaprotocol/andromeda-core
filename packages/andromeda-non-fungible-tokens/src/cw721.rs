@@ -48,7 +48,7 @@ impl AndrCW721Contract {
         info: &MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        let standard_msg = convert_instantiate_msg(msg);
+        let standard_msg = convert_instantiate_msg(deps.as_ref(), msg)?;
         self.standard_implementation
             .instantiate(deps, env, info, standard_msg)
             .map_err(|e| e.into())
@@ -200,15 +200,19 @@ impl AndrCW721Contract {
     }
 }
 
-fn convert_instantiate_msg(msg: InstantiateMsg) -> BaseInstantiateMsg {
-    BaseInstantiateMsg {
+fn convert_instantiate_msg(
+    deps: Deps,
+    msg: InstantiateMsg,
+) -> Result<BaseInstantiateMsg, ContractError> {
+    let minter_raw_address = msg.minter.get_raw_address(&deps)?;
+    Ok(BaseInstantiateMsg {
         name: msg.name,
         symbol: msg.symbol,
-        minter: Some(msg.minter.into_string()),
+        minter: Some(minter_raw_address.into_string()),
         collection_info_extension: None,
         creator: None,
         withdraw_address: None,
-    }
+    })
 }
 
 #[cw_serde]
