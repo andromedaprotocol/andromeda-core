@@ -30,7 +30,7 @@ build_contract () {
     
     local IN_FILE="./target/wasm32-unknown-unknown/release/$BUILD_TARGET.wasm"
     local OUT_FILE="./artifacts/$BUILD_TARGET.wasm"
-    local OUT_FILE_IBC_TEST="./ibc-tests/artifacts/$BUILD_TARGET.wasm"
+    local OUT_FILE_IBC_TEST="./tests/ibc-tests/artifacts/$BUILD_TARGET.wasm"
     local OUT_FILE_PACKAGE="./packages/andromeda-testing-e2e/artifacts/$BUILD_TARGET.wasm"
 
     wasm-opt -Os $IN_FILE -o $OUT_FILE
@@ -47,7 +47,7 @@ build_contract () {
 
 build_category () {
      for directory in contracts/*/; do
-        if [[ "$(basename $directory)" = "$1" ]]; then
+        if [ "$(basename $directory)" = "$1" ]; then
             echo "Building all contracts in category $(basename $directory)..."
             for contract in $directory/*/; do
                 build_contract $contract;
@@ -67,7 +67,7 @@ build_all() {
 is_contract() {
     for directory in contracts/*/; do
         for contract in $directory/*/; do
-            if [[ "$(basename $contract)" = "$1" ]]; then
+            if [ "$(basename $contract)" = "$1" ]; then
                 return 0
             fi
         done
@@ -77,7 +77,7 @@ is_contract() {
 
 is_category() {
     for directory in contracts/*/; do
-        if [[ "$(basename $directory)" = "$1" ]]; then
+        if [ "$(basename $directory)" = "$1" ]; then
             return 0
         fi
     done
@@ -90,14 +90,14 @@ export RUSTFLAGS="-C link-arg=-s"
 rm -rf ./target
 rm -rf ./artifacts
 rm -rf ./packages/andromeda-testing-e2e/artifacts
-rm -rf ./ibc-tests/artifacts
+rm -rf ./tests/ibc-tests/artifacts
 mkdir artifacts
 mkdir packages/andromeda-testing-e2e/artifacts
-mkdir ibc-tests/artifacts
+mkdir tests/ibc-tests/artifacts
 
 set -e
 for target in "$@"; do
-    if [[ "$target" = "all" ]]; then
+    if [ "$target" = "all" ]; then
         build_all
     elif is_contract $target; then
         build_contract $target

@@ -371,7 +371,7 @@ macro_rules! unwrap_amp_msg {
 
             ::cosmwasm_std::ensure!(
                 maybe_amp_msg.is_some(),
-                ContractError::InvalidPacket {
+                ::andromeda_std::error::ContractError::InvalidPacket {
                     error: Some("AMP Packet received with no messages".to_string()),
                 }
             );
@@ -379,18 +379,31 @@ macro_rules! unwrap_amp_msg {
             msg = ::cosmwasm_std::from_json(&amp_msg.message)?;
             ::cosmwasm_std::ensure!(
                 !msg.must_be_direct(),
-                ContractError::InvalidPacket {
+                ::andromeda_std::error::ContractError::InvalidPacket {
                     error: Some(format!(
                         "{} cannot be received via AMP packet",
                         msg.as_ref()
                     )),
                 }
             );
+
             ctx.deps
                 .api
                 .debug(&format!("Unwrapped msg: {:?}", msg.as_ref()));
             ctx.amp_ctx = Some(pkt);
         }
+
+        ::cosmwasm_std::ensure!(
+            msg.is_permissionless()
+                || ::andromeda_std::ado_contract::permissioning::is_context_permissioned(
+                    &mut ctx.deps,
+                    &ctx.info,
+                    &ctx.env,
+                    &ctx.amp_ctx,
+                    msg.as_ref(),
+                )?,
+            ::andromeda_std::error::ContractError::Unauthorized {}
+        );
 
         let action_response = andromeda_std::common::actions::call_action(
             &mut ctx.deps,

@@ -1,5 +1,7 @@
 # Motivation
 
+Closes: #XXX (Link to Linear ticket)
+
 State the reason or purpose behind this change.
 
 # Implementation

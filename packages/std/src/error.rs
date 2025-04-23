@@ -103,6 +103,9 @@ pub enum ContractError {
     #[error("RewardTooLow")]
     RewardTooLow {},
 
+    #[error("EmptyBatch")]
+    EmptyBatch {},
+
     #[error("InvalidRedelegationAmount. Got {{amount}}, full delegation: {{max}}")]
     InvalidRedelegationAmount { amount: String, max: String },
 

@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-cw721"
-version = "2.2.0-b.1"
+version = "2.2.0-b.3"
 authors = ["Connor Barr <crnbarr@gmail.com>"]
 edition = "2021"
 rust-version = "1.75.0"
@@ -39,3 +39,6 @@ cw-multi-test = { workspace = true, optional = true }
 cw-orch = { workspace = true }
 andromeda-testing = { workspace = true, optional = true }
 cw-orch-daemon = "0.24.2"
+
+[dev-dependencies]
+rstest = { workspace = true }

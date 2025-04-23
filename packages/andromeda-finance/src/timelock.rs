@@ -106,8 +106,7 @@ impl Escrow {
     ///
     /// ## Arguments
     /// * `&mut self`    - Mutable reference to an instance of Escrow
-    /// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the
-    ///                    same denom
+    /// * `coins_to_add` - The `Vec<Coin>` to add, it is assumed that it contains no coins of the same denom
     ///
     /// Returns nothing as it is done in place.
     pub fn add_funds(&mut self, coins_to_add: Vec<Coin>) {
@@ -128,11 +127,13 @@ pub enum ExecuteMsg {
         recipient: Option<Recipient>,
     },
     /// Release funds all held in Escrow for the given recipient
+    #[attrs(permissionless)]
     ReleaseFunds {
         recipient_addr: Option<String>,
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[attrs(permissionless)]
     ReleaseSpecificFunds {
         owner: String,
         recipient_addr: Option<String>,

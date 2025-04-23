@@ -10,15 +10,18 @@ use andromeda_finance::{
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
-    amp::{messages::AMPPkt, Recipient},
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        Recipient,
+    },
     andr_execute_fn,
     common::{encode_binary, expiration::Expiry, Milliseconds},
     error::ContractError,
 };
 use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 use cosmwasm_std::{
-    attr, coin, coins, ensure, entry_point, from_json, Binary, Coin, Deps, DepsMut, Env,
-    MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    attr, coin, coins, ensure, entry_point, from_json, to_json_binary, Binary, Coin, Deps, DepsMut,
+    Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
 
@@ -105,7 +108,7 @@ pub fn handle_receive_cw20(
     let ExecuteContext { ref info, .. } = ctx;
     let asset_sent = info.sender.clone().into_string();
     let amount_sent = receive_msg.amount;
-    let sender = receive_msg.sender;
+    let sender = receive_msg.sender.clone();
 
     ensure!(
         !amount_sent.is_zero(),
@@ -117,6 +120,17 @@ pub fn handle_receive_cw20(
     match from_json(&receive_msg.msg)? {
         Cw20HookMsg::Send { config } => {
             execute_send_cw20(ctx, sender, amount_sent, asset_sent, config)
+        }
+        Cw20HookMsg::AmpReceive(mut packet) => {
+            let msg = to_json_binary(&ExecuteMsg::Receive(Cw20ReceiveMsg {
+                sender: sender.clone(),
+                amount: amount_sent,
+                msg: to_json_binary(&Cw20HookMsg::Send { config: None })?,
+            }))?;
+            let funds = packet.messages[0].funds.clone();
+            let recipient = packet.messages[0].recipient.clone();
+            packet.messages = vec![AMPMsg::new(recipient, msg, Some(funds))];
+            execute(ctx.deps, ctx.env, ctx.info, ExecuteMsg::AMPReceive(packet))
         }
     }
 }
@@ -148,8 +162,10 @@ fn execute_send_cw20(
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
+    let mut amp_funds: Vec<Coin> = Vec::new();
     let mut remainder_funds = coin.amount;
 
+    let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string());
     for recipient in splitter_recipients.clone() {
         // Find the recipient's corresponding denom for the current iteration of the sent funds
         let recipient_coin = recipient
@@ -167,14 +183,12 @@ fn execute_send_cw20(
             let recipient_funds =
                 cosmwasm_std::coin(recipient_coin.amount.u128(), recipient_coin.denom);
 
-            let amp_msg = recipient.recipient.generate_msg_cw20(
-                &deps.as_ref(),
-                Cw20Coin {
-                    address: recipient_funds.denom.clone(),
-                    amount: recipient_funds.amount,
-                },
-            )?;
-            msgs.push(amp_msg);
+            amp_funds.push(recipient_funds.clone());
+
+            let amp_msg = recipient
+                .recipient
+                .generate_amp_msg(&deps.as_ref(), Some(vec![recipient_funds.clone()]))?;
+            pkt = pkt.add_message(amp_msg);
         }
     }
 
@@ -190,6 +204,12 @@ fn execute_send_cw20(
             },
         )?;
         msgs.push(cw20_msg);
+    }
+
+    let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+    if !pkt.messages.is_empty() && !amp_funds.is_empty() {
+        let distro_msg = pkt.to_sub_msg_cw20(kernel_address, amp_funds.clone(), 1)?;
+        msgs.push(distro_msg.clone());
     }
 
     Ok(Response::new()

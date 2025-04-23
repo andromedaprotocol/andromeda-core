@@ -2,12 +2,13 @@ use crate::ado_contract::ADOContract;
 use crate::common::encode_binary;
 use crate::error::ContractError;
 use crate::os::aos_querier::AOSQuerier;
-use crate::os::kernel::ExecuteMsg as KernelExecuteMsg;
+use crate::os::kernel::{Cw20HookMsg, ExecuteMsg as KernelExecuteMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_json_binary, wasm_execute, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty,
-    MessageInfo, QuerierWrapper, QueryRequest, ReplyOn, SubMsg, WasmMsg, WasmQuery,
+    to_json_binary, Addr, Binary, Coin, ContractInfoResponse, CosmosMsg, Deps, Empty, MessageInfo,
+    QuerierWrapper, QueryRequest, ReplyOn, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
+use cw20::Cw20ExecuteMsg;
 
 use super::addresses::AndrAddr;
 use super::ADO_DB_KEY;
@@ -151,11 +152,17 @@ impl AMPMsg {
     }
 
     pub fn generate_sub_msg_direct(&self, addr: Addr, id: u64) -> SubMsg<Empty> {
+        let message: WasmMsg = WasmMsg::Execute {
+            contract_addr: addr.to_string(),
+            msg: self.message.clone(),
+            funds: self.funds.clone(),
+        };
+
         SubMsg {
             id,
             reply_on: self.config.reply_on.clone(),
             gas_limit: self.config.gas_limit,
-            msg: CosmosMsg::Wasm(wasm_execute(addr, &self.message, self.funds.to_vec()).unwrap()),
+            msg: CosmosMsg::Wasm(message),
         }
     }
 
@@ -210,7 +217,9 @@ pub struct AMPCtx {
     origin: String,
     origin_username: Option<AndrAddr>,
     pub previous_sender: String,
-    pub id: u64,
+    pub id: Option<String>,
+    #[serde(default)]
+    pub previous_hops: Vec<CrossChainHop>,
 }
 
 impl AMPCtx {
@@ -218,14 +227,14 @@ impl AMPCtx {
     pub fn new(
         origin: impl Into<String>,
         previous_sender: impl Into<String>,
-        id: u64,
         origin_username: Option<AndrAddr>,
     ) -> AMPCtx {
         AMPCtx {
             origin: origin.into(),
             origin_username,
             previous_sender: previous_sender.into(),
-            id,
+            id: None,
+            previous_hops: vec![],
         }
     }
 
@@ -242,6 +251,71 @@ impl AMPCtx {
     /// Gets the previous sender of a message
     pub fn get_previous_sender(&self) -> String {
         self.previous_sender.clone()
+    }
+
+    /// Gets the previous sender of a message
+    pub fn get_id(&self) -> Option<String> {
+        self.id.clone()
+    }
+
+    /// Adds a cross-chain hop to the context's previous hops
+    pub fn add_hop(&mut self, hop: CrossChainHop) {
+        self.previous_hops.push(hop);
+    }
+
+    /// Adds a username
+    pub fn add_username(&mut self, username: AndrAddr) {
+        self.origin_username = Some(username);
+    }
+
+    pub fn try_add_origin_username(
+        &mut self,
+        querier: &QuerierWrapper,
+        vfs_address: &Addr,
+    ) -> Option<String> {
+        let origin = Addr::unchecked(self.get_origin());
+        if let Ok(Some(username)) = AOSQuerier::get_username(querier, vfs_address, &origin) {
+            if username != origin {
+                self.add_username(AndrAddr::from_string(username.clone()));
+                return Some(username);
+            }
+        }
+        None
+    }
+}
+
+#[cw_serde]
+pub struct CrossChainHop {
+    /// The username of the sender at this hop (if available)
+    pub username: Option<AndrAddr>,
+    /// The address of the sender at this hop
+    pub address: String,
+    /// The chain this hop originated from
+    pub from_chain: String,
+    /// The chain this hop was directed to
+    pub to_chain: String,
+    /// Any funds that were attached to this hop
+    pub funds: Vec<Coin>,
+    /// The IBC channels used for this hop
+    pub channel: String,
+}
+
+impl CrossChainHop {
+    pub fn new(
+        channel: &str,
+        current_chain: String,
+        destination_chain: String,
+        origin_address: String,
+        username: Option<AndrAddr>,
+    ) -> Self {
+        Self {
+            username,
+            address: origin_address,
+            from_chain: current_chain,
+            to_chain: destination_chain,
+            funds: vec![],
+            channel: channel.to_string(),
+        }
     }
 }
 
@@ -265,51 +339,13 @@ impl AMPPkt {
     ) -> AMPPkt {
         AMPPkt {
             messages,
-            ctx: AMPCtx::new(origin, previous_sender, 0, None),
+            ctx: AMPCtx::new(origin, previous_sender, None),
         }
     }
 
     /// Creates a new AMP Packet
-    pub fn new_with_username(
-        origin: impl Into<String>,
-        previous_sender: impl Into<String>,
-        messages: Vec<AMPMsg>,
-        username: Option<AndrAddr>,
-        id: Option<u64>,
-    ) -> AMPPkt {
-        AMPPkt {
-            messages,
-            ctx: AMPCtx::new(origin, previous_sender, id.unwrap_or(0), username),
-        }
-    }
-
-    /// Creates a new AMPPkt with an optional username, it tries to find the username of the origin and if it exists and is not the same as the origin, it will set the username in the context.
-    pub fn update_optional_username(
-        querier: &QuerierWrapper,
-        vfs_address: &Addr,
-        origin: &Addr,
-        contract_address: Addr,
-        id: Option<u64>,
-        messages: Vec<AMPMsg>,
-        username: Option<AndrAddr>,
-    ) -> AMPPkt {
-        if username.is_none() {
-            let username_addr = AOSQuerier::get_username(querier, vfs_address, origin);
-            match username_addr {
-                Ok(Some(username)) if username != *origin => AMPPkt::new_with_username(
-                    origin.clone(),
-                    contract_address,
-                    messages,
-                    Some(AndrAddr::from_string(username)),
-                    id,
-                ),
-                _ => {
-                    AMPPkt::new_with_username(origin.clone(), contract_address, messages, None, id)
-                }
-            }
-        } else {
-            AMPPkt::new_with_username(origin.clone(), contract_address, messages, username, id)
-        }
+    pub fn new_with_ctx(ctx: AMPCtx, messages: Vec<AMPMsg>) -> AMPPkt {
+        AMPPkt { messages, ctx }
     }
 
     pub fn with_origin(&self, origin: impl Into<String>) -> AMPPkt {
@@ -395,7 +431,7 @@ impl AMPPkt {
     /// Generates a SubMsg to send the AMPPkt to the kernel
     pub fn to_sub_msg(
         &self,
-        address: impl Into<String>,
+        address: Addr,
         funds: Option<Vec<Coin>>,
         id: u64,
     ) -> Result<SubMsg, ContractError> {
@@ -410,11 +446,35 @@ impl AMPPkt {
         Ok(sub_msg)
     }
 
-    ///  Attaches an ID to the current packet
-    pub fn with_id(&self, id: u64) -> AMPPkt {
-        let mut new = self.clone();
-        new.ctx.id = id;
-        new
+    /// Generates a CW20 Send SubMsg that contains an AMPReceive message intended for the kernel
+    pub fn to_sub_msg_cw20(
+        &self,
+        kernel_address: impl Into<String>,
+        funds: Vec<Coin>,
+        id: u64,
+    ) -> Result<SubMsg, ContractError> {
+        let contract_addr = funds[0].denom.clone();
+        // Verify that all funds are of the same CW20 token by checking if each fund's denom matches the contract address
+        if !funds.iter().all(|c| c.denom == contract_addr) {
+            return Err(ContractError::InvalidFunds {
+                msg: "All funds must be of the same CW20 token".to_string(),
+            });
+        }
+        // Collect total amount of funds
+        let total_amount = funds.iter().map(|c| c.amount).sum::<Uint128>();
+        let sub_msg = SubMsg::reply_always(
+            WasmMsg::Execute {
+                contract_addr,
+                msg: to_json_binary(&Cw20ExecuteMsg::Send {
+                    contract: kernel_address.into(),
+                    amount: total_amount,
+                    msg: to_json_binary(&Cw20HookMsg::AmpReceive(self.clone()))?,
+                })?,
+                funds: vec![],
+            },
+            id,
+        );
+        Ok(sub_msg)
     }
 
     /// Converts a given AMP Packet to an IBC Hook memo for use with Osmosis' IBC Hooks module
@@ -451,7 +511,7 @@ impl AMPPkt {
         let mut ctx = if let Some(pkt) = ctx {
             pkt.ctx
         } else {
-            AMPCtx::new(current_address.clone(), current_address.clone(), 0, None)
+            AMPCtx::new(current_address.clone(), current_address.clone(), None)
         };
         ctx.previous_sender = current_address;
 
@@ -570,7 +630,7 @@ mod tests {
 
         let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
 
-        let sub_msg = pkt.to_sub_msg("kernel", None, 1).unwrap();
+        let sub_msg = pkt.to_sub_msg(Addr::unchecked("kernel"), None, 1).unwrap();
 
         let expected_msg =
             ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg]));
@@ -591,7 +651,7 @@ mod tests {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
 
         let memo = msg.to_json();
-        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0}}".to_string());
+        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":null,\"previous_hops\":[]}}".to_string());
     }
 
     #[test]
@@ -599,6 +659,6 @@ mod tests {
         let msg = AMPPkt::new("origin", "previoussender", vec![]);
         let contract_addr = "contractaddr";
         let memo = msg.to_ibc_hooks_memo(contract_addr.to_string(), "callback".to_string());
-        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":0}}}},\"ibc_callback\":\"callback\"}".to_string());
+        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":null,\"previous_hops\":[]}}}},\"ibc_callback\":\"callback\"}".to_string());
     }
 }

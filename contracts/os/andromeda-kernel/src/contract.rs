@@ -7,15 +7,17 @@ use andromeda_std::error::ContractError;
 
 use andromeda_std::os::kernel::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Uint128,
 };
 
+use crate::execute::handle_receive_cw20;
+// use crate::execute::handle_receive_cw20;
 use crate::ibc::{IBCLifecycleComplete, SudoMsg};
 use crate::reply::{
     on_reply_create_ado, on_reply_ibc_hooks_packet_send, on_reply_ibc_transfer,
     on_reply_refund_ibc_transfer_with_msg,
 };
-use crate::state::CURR_CHAIN;
+use crate::state::{CURR_CHAIN, TX_INDEX};
 use crate::{execute, query, sudo};
 
 // version info for migration info
@@ -30,6 +32,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     CURR_CHAIN.save(deps.storage, &msg.chain_name)?;
+    TX_INDEX.save(deps.storage, &Uint128::zero())?;
 
     ADOContract::default().instantiate(
         deps.storage,
@@ -91,6 +94,7 @@ pub fn execute(
             execute_env.env,
             packet,
         ),
+        ExecuteMsg::Receive(msg) => handle_receive_cw20(execute_env, msg),
         ExecuteMsg::Send { message } => execute::send(execute_env, message),
         ExecuteMsg::TriggerRelay {
             packet_sequence,
