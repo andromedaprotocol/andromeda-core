@@ -136,7 +136,7 @@ fn handle_receive_cw721(
     mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
@@ -455,7 +455,7 @@ fn execute_place_bid(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
@@ -684,7 +684,7 @@ fn execute_place_bid_cw20(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
@@ -804,7 +804,7 @@ fn execute_buy_now_cw20(
 
     validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
