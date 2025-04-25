@@ -42,7 +42,7 @@ pub fn set_value(
         ensure!(has_permission, ContractError::Unauthorized {});
     } else if restriction == BooleanRestriction::Restricted {
         let addr = sender.as_str();
-        let is_operator = ADOContract::default().is_owner_or_operator(ctx.deps.storage, addr)?;
+        let is_operator = ctx.contract.is_owner_or_operator(ctx.deps.storage, addr)?;
         let allowed = match DATA_OWNER.load(ctx.deps.storage).ok() {
             Some(owner) => sender == owner,
             None => true,
@@ -89,7 +89,7 @@ pub fn delete_value(mut ctx: ExecuteContext) -> Result<Response, ContractError> 
         ensure!(has_permission, ContractError::Unauthorized {});
     } else if restriction == BooleanRestriction::Restricted {
         let addr = sender.as_str();
-        let is_operator = ADOContract::default().is_owner_or_operator(ctx.deps.storage, addr)?;
+        let is_operator = ctx.contract.is_owner_or_operator(ctx.deps.storage, addr)?;
         let allowed = match DATA_OWNER.load(ctx.deps.storage).ok() {
             Some(owner) => sender == owner,
             None => true,

@@ -295,7 +295,7 @@ fn execute_claim(
         ContractError::InvalidClaim {}
     );
 
-    let kernel_addr = ADOContract::default().get_kernel_address(deps.storage)?;
+    let kernel_addr = ctx.contract.get_kernel_address(deps.storage)?;
 
     let is_andromeda_distribution = AOSQuerier::get_env_variable::<String>(
         &deps.querier,
@@ -319,12 +319,8 @@ fn execute_claim(
     // Only one denom is allowed to be restaked at a time
     let res = if restake && res.accumulated_rewards.len() == 1 {
         // Only the contract owner and permissioned actors can restake
-        ADOContract::default().is_permissioned(
-            deps.branch(),
-            env,
-            RESTAKING_ACTION,
-            info.sender,
-        )?;
+        ctx.contract
+            .is_permissioned(deps.branch(), env, RESTAKING_ACTION, info.sender)?;
         RESTAKING_QUEUE.save(deps.storage, &res)?;
         Response::new()
             .add_submessage(SubMsg::reply_always(
@@ -336,7 +332,8 @@ fn execute_claim(
     } else {
         // Ensure msg sender is the contract owner
         ensure!(
-            ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+            ctx.contract
+                .is_contract_owner(deps.storage, info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
         Response::new()

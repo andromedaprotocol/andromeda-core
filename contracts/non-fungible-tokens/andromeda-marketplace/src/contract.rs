@@ -117,7 +117,7 @@ fn handle_receive_cw721(
     mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
@@ -150,7 +150,7 @@ pub fn handle_receive_cw20(
     mut ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_CW20_ACTION,

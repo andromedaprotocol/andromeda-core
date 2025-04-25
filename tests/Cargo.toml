@@ -45,10 +45,14 @@ andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", feature
 andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = [
     "testing",
 ] }
+
+andromeda-cw20-redeem = { path = "../contracts/fungible-tokens/andromeda-cw20-redeem", features = [
+    "testing",
+] }
+
 andromeda-lockdrop = { path = "../contracts/fungible-tokens/andromeda-lockdrop", features = [
     "testing",
 ] }
-# andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
 
 # #Modules
 andromeda-modules = { workspace = true }
@@ -80,6 +84,10 @@ andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator
 ] }
 
 andromeda-rate-limiting-withdrawals = { path = "../contracts/finance/andromeda-rate-limiting-withdrawals", features = [
+    "testing"
+] }
+
+andromeda-timelock = { path = "../contracts/finance/andromeda-timelock", features = [
     "testing"
 ] }
 
@@ -189,6 +197,10 @@ name = "cw20_staking"
 path = "cw20_staking.rs"
 
 [[test]]
+name = "cw20_redeem"
+path = "cw20_redeem.rs"
+
+[[test]]
 name = "ibc_registry"
 path = "ibc_registry.rs"
 
@@ -203,6 +215,10 @@ path = "conditional_splitter.rs"
 [[test]]
 name = "cw20_app"
 path = "cw20_app.rs"
+
+[[test]]
+name = "timelock"
+path = "timelock.rs"
 
 [[test]]
 name = "kernel"

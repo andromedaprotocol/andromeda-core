@@ -4,7 +4,7 @@ use crate::{
 };
 use andromeda_finance::timelock::InstantiateMsg;
 use andromeda_finance::timelock::{
-    Escrow, EscrowCondition, ExecuteMsg, GetLockedFundsResponse, QueryMsg,
+    Escrow, EscrowCondition, EscrowConditionInput, ExecuteMsg, GetLockedFundsResponse, QueryMsg,
 };
 use andromeda_std::{
     amp::Recipient,
@@ -37,7 +37,7 @@ fn test_execute_hold_funds() {
     init(&mut deps);
     let env = mock_env();
     let funds = vec![Coin::new(1000u128, "uusd")];
-    let condition = EscrowCondition::Expiration(Expiry::AtTime(Milliseconds::from_seconds(
+    let condition = EscrowConditionInput::Expiration(Expiry::AtTime(Milliseconds::from_seconds(
         env.block.time.seconds() + 1,
     )));
     let info = message_info(&Addr::unchecked(OWNER), &funds);
@@ -54,7 +54,10 @@ fn test_execute_hold_funds() {
             "recipient",
             format!("{:?}", Recipient::from_string(info.sender.to_string())),
         ),
-        attr("condition", format!("{:?}", Some(condition.clone()))),
+        attr(
+            "condition",
+            format!("{:?}", Some(condition.clone().to_condition(&env.block))),
+        ),
     ]);
     assert_eq!(expected, res);
 
@@ -63,11 +66,11 @@ fn test_execute_hold_funds() {
         recipient: OWNER.to_string(),
     };
 
-    let res = query(deps.as_ref(), env, query_msg).unwrap();
+    let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
     let val: GetLockedFundsResponse = from_json(res).unwrap();
     let expected = Escrow {
         coins: funds,
-        condition: Some(condition),
+        condition: Some(condition.to_condition(&env.block)),
         recipient: Recipient::from_string(OWNER.to_string()),
         recipient_addr: OWNER.to_string(),
     };
@@ -85,7 +88,7 @@ fn test_execute_hold_funds_escrow_updated() {
 
     let recipient = deps.api.addr_make("recipient");
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+        condition: Some(EscrowConditionInput::Expiration(Expiry::AtTime(
             Milliseconds::from_seconds(env.block.time.seconds() + 1),
         ))),
         recipient: Some(Recipient::from_string(recipient.to_string())),
@@ -94,7 +97,7 @@ fn test_execute_hold_funds_escrow_updated() {
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+        condition: Some(EscrowConditionInput::Expiration(Expiry::AtTime(
             Milliseconds::from_seconds(env.block.time.seconds() + 1),
         ))),
         recipient: Some(Recipient::from_string(recipient.to_string())),
@@ -121,8 +124,8 @@ fn test_execute_hold_funds_escrow_updated() {
         // Coins get merged.
         coins: vec![coin(200, "uusd"), coin(100, "uluna")],
         // Original expiration remains.
-        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
-            Milliseconds::from_seconds(env.block.time.seconds()),
+        condition: Some(EscrowCondition::Expiration(Milliseconds::from_seconds(
+            env.block.time.seconds(),
         ))),
         recipient: Recipient::from_string(recipient.to_string()),
         recipient_addr: recipient.to_string(),
@@ -217,7 +220,7 @@ fn test_execute_release_funds_time_condition() {
     let mut env = mock_env();
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+        condition: Some(EscrowConditionInput::Expiration(Expiry::AtTime(
             Milliseconds::from_seconds(100),
         ))),
         recipient: None,
@@ -253,7 +256,7 @@ fn test_execute_release_funds_locked() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Expiry::FromNow(
+        condition: Some(EscrowConditionInput::Expiration(Expiry::FromNow(
             Milliseconds::from_seconds(100),
         ))),
         recipient: None,
@@ -279,7 +282,7 @@ fn test_execute_release_funds_min_funds_condition() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::MinimumFunds(vec![
+        condition: Some(EscrowConditionInput::MinimumFunds(vec![
             coin(200, "uusd"),
             coin(100, "uluna"),
         ])),
@@ -383,7 +386,7 @@ fn test_execute_release_specific_funds_time_condition() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
+        condition: Some(EscrowConditionInput::Expiration(Expiry::AtTime(
             Milliseconds::from_seconds(100),
         ))),
         recipient: None,
@@ -419,7 +422,7 @@ fn test_execute_release_specific_funds_min_funds_condition() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowCondition::MinimumFunds(vec![
+        condition: Some(EscrowConditionInput::MinimumFunds(vec![
             coin(200, "uusd"),
             coin(100, "uluna"),
         ])),

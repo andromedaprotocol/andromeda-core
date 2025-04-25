@@ -15,12 +15,19 @@ mod kernel;
 mod cw20_staking;
 
 #[cfg(test)]
+mod cw20_redeem;
+
+#[cfg(test)]
 mod lockdrop;
 
 #[cfg(test)]
 mod cw721;
+
 #[cfg(test)]
 mod validator_staking;
+
+#[cfg(test)]
+mod timelock;
 
 #[cfg(test)]
 mod cw20_app;
