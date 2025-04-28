@@ -38,8 +38,6 @@ use crate::{
     },
 };
 
-use cosmwasm_std::Empty;
-
 fn start_sale(deps: DepsMut, coin_denom: Asset) {
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom,

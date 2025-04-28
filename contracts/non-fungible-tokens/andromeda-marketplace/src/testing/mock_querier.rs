@@ -7,8 +7,8 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coin, from_json,
     testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
-    to_json_binary, BankQuery, Binary, Coin, ContractResult, Empty, OwnedDeps, Querier,
-    QuerierResult, QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
+    to_json_binary, BankQuery, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
+    QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
 use cw721::msg::{Cw721QueryMsg, OwnerOfResponse};
 

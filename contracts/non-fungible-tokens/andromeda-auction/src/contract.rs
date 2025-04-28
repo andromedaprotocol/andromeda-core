@@ -29,8 +29,8 @@ use andromeda_std::{ado_contract::ADOContract, common::context::ExecuteContext};
 
 use cosmwasm_std::{
     attr, coins, ensure, entry_point, from_json, wasm_execute, Addr, BankMsg, Binary, Coin,
-    CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, QueryRequest, Reply,
-    Response, StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Reply, Response,
+    StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::{

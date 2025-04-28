@@ -6,7 +6,7 @@ use cosmwasm_schema::cw_serde;
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
 use cosmwasm_std::testing::message_info;
-use cosmwasm_std::{coin, BankQuery, Empty, QuerierWrapper};
+use cosmwasm_std::{coin, BankQuery, QuerierWrapper};
 use cosmwasm_std::{
     from_json,
     testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
