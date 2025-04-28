@@ -144,7 +144,7 @@ impl WasmMockQuerier {
     }
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
-        match from_json::<Cw721QueryMsg<Empty, Empty, Empty>>(msg).unwrap() {
+        match from_json::<Cw721QueryMsg>(msg).unwrap() {
             Cw721QueryMsg::OwnerOf { token_id, .. } => {
                 let res = if token_id == MOCK_UNCLAIMED_TOKEN {
                     OwnerOfResponse {

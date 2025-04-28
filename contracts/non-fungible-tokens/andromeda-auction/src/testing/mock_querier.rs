@@ -137,7 +137,7 @@ impl WasmMockQuerier {
 
     fn handle_token_query(&self, msg: &Binary) -> QuerierResult {
         match from_json(msg).unwrap() {
-            Cw721QueryMsg::<Empty, Empty, Empty>::Tokens { owner, .. } => {
+            Cw721QueryMsg::Tokens { owner, .. } => {
                 let res = if owner == MOCK_CONDITIONS_MET_CONTRACT
                     || owner == MOCK_CONDITIONS_NOT_MET_CONTRACT
                 {

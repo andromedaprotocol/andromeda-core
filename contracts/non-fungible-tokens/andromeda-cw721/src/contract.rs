@@ -3,12 +3,12 @@ use andromeda_std::andr_execute_fn;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, from_json, has_coins, to_json_binary, Addr, Api, BankMsg, Binary, Coin,
-    CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Reply, Response, StdError,
     SubMsg, Uint128,
 };
 use cw721::error::Cw721ContractError;
 use cw721::msg::OwnerOfResponse;
-use cw721::{Approval, DefaultOptionalCollectionExtensionMsg, EmptyOptionalNftExtensionMsg};
+use cw721::Approval;
 
 use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
@@ -28,9 +28,10 @@ use andromeda_std::{
     common::Funds,
     error::ContractError,
 };
+
 use cw721::msg::Cw721ExecuteMsg;
 pub type Cw721ExecuteMsgType =
-    Cw721ExecuteMsg<EmptyOptionalNftExtensionMsg, DefaultOptionalCollectionExtensionMsg, Empty>;
+    Cw721ExecuteMsg;
 use cw721::state::{Cw721Config, NftInfo};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw721";
@@ -173,10 +174,9 @@ fn mint(
         owner: owner_addr.clone(),
         approvals: vec![],
         token_uri: token_uri.clone(),
-        extension: Empty::default(),
     };
 
-    let cw721_config = Cw721Config::<Empty>::default();
+    let cw721_config = Cw721Config::default();
     cw721_config
         .nft_info
         .update(deps.storage, &token_id, |old| match old {

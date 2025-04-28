@@ -57,8 +57,8 @@ cw20 = "2.0.0"
 cw20-base = "2.0.0"
 cw3 = "2.0.0"
 cw4 = "2.0.0"
-cw721 = { git = "https://github.com/joemonem/cw-nfts", branch = "main" }
-cw721-base = { git = "https://github.com/joemonem/cw-nfts", branch = "main" }
+cw721 = { git = "https://github.com/andromedaprotocol/cw721-2.2", branch = "removeExtension" }
+cw721-base = { git = "https://github.com/andromedaprotocol/cw721-2.2", branch = "removeExtension" }
 cw-asset = "4.0.0"
 cosmwasm-schema = "^2.2"
 semver = "1.0.25"

@@ -349,6 +349,7 @@ dependencies = [
  "cw-orch-daemon",
  "cw-storage-plus",
  "cw721",
+ "cw721-base",
  "rstest",
 ]
 
@@ -476,7 +477,6 @@ dependencies = [
  "cw-utils",
  "cw20",
  "cw721",
- "cw721-base",
  "rstest",
  "schemars",
  "serde",
@@ -706,7 +706,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-utils",
  "cw721",
- "cw721-base",
  "serde",
 ]
 
@@ -2334,7 +2333,7 @@ dependencies = [
 [[package]]
 name = "cw721"
 version = "0.20.0"
-source = "git+https://github.com/joemonem/cw-nfts?branch=main#ac9dbac7e1ddde63c44cd85d0832fbef37927b96"
+source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#3fc29aaa6c730fcf2b92241c17f293af2dfb4791"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2351,7 +2350,7 @@ dependencies = [
 [[package]]
 name = "cw721-base"
 version = "0.20.0"
-source = "git+https://github.com/joemonem/cw-nfts?branch=main#ac9dbac7e1ddde63c44cd85d0832fbef37927b96"
+source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#3fc29aaa6c730fcf2b92241c17f293af2dfb4791"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

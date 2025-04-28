@@ -35,7 +35,7 @@ use cw721::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    attr, coin, ensure, from_json, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128,
     WasmMsg, WasmQuery,
 };
@@ -408,7 +408,7 @@ fn execute_buy(
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: info.sender.to_string(),
                 token_id: token_id.clone(),
             })?,
@@ -546,7 +546,7 @@ fn execute_buy_cw20(
         // Send NFT to buyer.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_sale_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: sender.to_string(),
                 token_id: token_id.clone(),
             })?,
@@ -600,7 +600,7 @@ fn execute_cancel(
 
     let messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: token_sale_state.token_address.clone(),
-        msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
             recipient: info.sender.to_string(),
             token_id: token_id.clone(),
         })?,
@@ -844,7 +844,7 @@ fn query_owner_of(
 ) -> Result<OwnerOfResponse, ContractError> {
     let res: OwnerOfResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token_addr,
-        msg: encode_binary(&Cw721QueryMsg::<Empty, Empty, Empty>::OwnerOf {
+        msg: encode_binary(&Cw721QueryMsg::OwnerOf {
             token_id,
             include_expired: None,
         })?,

@@ -477,7 +477,7 @@ fn test_batch_mint() {
             include_expired: None,
         };
         let query_resp = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let info: AllNftInfoResponse<TokenExtension> = from_json(&query_resp).unwrap();
+        let info: AllNftInfoResponse = from_json(&query_resp).unwrap();
         assert_eq!(info.access.owner, owner.to_string());
         i += 1;
     }

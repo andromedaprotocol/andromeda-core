@@ -12,6 +12,7 @@ use cw721_base::{
     msg::QueryMsg as Cw721QueryMsg, traits::Cw721Query, Cw721BaseContract,
 };
 
+
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -209,7 +210,6 @@ fn convert_instantiate_msg(
         name: msg.name,
         symbol: msg.symbol,
         minter: Some(minter_raw_address.into_string()),
-        collection_info_extension: None,
         creator: None,
         withdraw_address: None,
     })
@@ -361,7 +361,6 @@ impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
                 token_id,
                 owner: owner.into_string(),
                 token_uri,
-                extension: None,
             }),
             _ => Err(ContractError::UnsupportedExecuteMsg {}),
         }
@@ -397,10 +396,10 @@ pub enum QueryMsg {
     #[returns(cw721::msg::NumTokensResponse)]
     NumTokens {},
     /// The data of a token
-    #[returns(cw721::msg::NftInfoResponse<TokenExtension>)]
+    #[returns(cw721::msg::NftInfoResponse)]
     NftInfo { token_id: String },
     /// The data of a token and any approvals assigned to it
-    #[returns(cw721::msg::AllNftInfoResponse<TokenExtension>)]
+    #[returns(cw721::msg::AllNftInfoResponse)]
     AllNftInfo {
         token_id: String,
         include_expired: Option<bool>,
@@ -425,7 +424,7 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(cw721::msg::CollectionInfoAndExtensionResponse<cw721::DefaultOptionalCollectionExtension>)]
+    #[returns(cw721::msg::CollectionInfoAndExtensionResponse)]
     ContractInfo {},
     #[returns(cw721::msg::MinterResponse)]
     Minter {},

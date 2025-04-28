@@ -634,7 +634,7 @@ fn execute_buy_now(
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_auction_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: token_auction_state.high_bidder_addr.to_string(),
                 token_id: token_id.clone(),
             })?,
@@ -874,7 +874,7 @@ fn execute_buy_now_cw20(
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_auction_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: token_auction_state.high_bidder_addr.to_string(),
                 token_id: token_id.clone(),
             })?,
@@ -934,7 +934,7 @@ fn execute_cancel(
     );
     let mut messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: token_auction_state.token_address.clone(),
-        msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
             recipient: info.sender.to_string(),
             token_id,
         })?,
@@ -1009,7 +1009,7 @@ fn execute_claim(
             // Send NFT back to the original owner.
             .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: token_auction_state.token_address.clone(),
-                msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                     recipient: token_auction_state.owner.clone(),
                     token_id: token_id.clone(),
                 })?,
@@ -1036,7 +1036,7 @@ fn execute_claim(
         // Send NFT to auction winner.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token_auction_state.token_address.clone(),
-            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: token_auction_state.high_bidder_addr.to_string(),
                 token_id: token_id.clone(),
             })?,
@@ -1345,7 +1345,7 @@ fn query_owner_of(
 ) -> Result<OwnerOfResponse, ContractError> {
     let res: OwnerOfResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token_addr,
-        msg: encode_binary(&Cw721QueryMsg::<Empty, Empty, Empty>::OwnerOf {
+        msg: encode_binary(&Cw721QueryMsg::OwnerOf {
             token_id,
             include_expired: None,
         })?,

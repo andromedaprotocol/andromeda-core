@@ -971,7 +971,7 @@ fn test_execute_buy_with_tax_and_royalty_works() {
         })),
         SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: MOCK_TOKEN_ADDR.to_string(),
-            msg: encode_binary(&Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
                 recipient: info.sender.to_string(),
                 token_id: MOCK_UNCLAIMED_TOKEN.to_string(),
             })
