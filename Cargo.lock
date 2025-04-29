@@ -349,7 +349,6 @@ dependencies = [
  "cw-orch-daemon",
  "cw-storage-plus",
  "cw721",
- "cw721-base",
  "rstest",
 ]
 
@@ -2333,7 +2332,7 @@ dependencies = [
 [[package]]
 name = "cw721"
 version = "0.20.0"
-source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#3fc29aaa6c730fcf2b92241c17f293af2dfb4791"
+source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#0cd6de437714ebc5d5e474246142bbe2906523cf"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -2350,7 +2349,7 @@ dependencies = [
 [[package]]
 name = "cw721-base"
 version = "0.20.0"
-source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#3fc29aaa6c730fcf2b92241c17f293af2dfb4791"
+source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#0cd6de437714ebc5d5e474246142bbe2906523cf"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

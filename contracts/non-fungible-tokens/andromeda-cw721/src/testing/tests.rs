@@ -1,7 +1,7 @@
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    AndrCW721Contract, BatchSendMsg, ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg,
-    QueryMsg, TokenExtension, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg,
+    TokenExtension, TransferAgreement,
 };
 use andromeda_std::{
     amp::addresses::AndrAddr,
@@ -13,7 +13,10 @@ use cosmwasm_std::{
     testing::{message_info, mock_env},
     Addr, Binary, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
-use cw721::{msg::AllNftInfoResponse, msg::OwnerOfResponse};
+use cw721::{
+    msg::{AllNftInfoResponse, OwnerOfResponse},
+    query::query_all_tokens,
+};
 use rstest::rstest;
 
 const MINTER: &str = "cosmwasm1h6t805h2vjfzpa3m9n8kyadyng9xf604nhvev8tf5qdg65jh3ruqwwm3zz";
@@ -312,16 +315,13 @@ fn test_burn() {
     assert_eq!(
         Response::default().add_attributes(vec![
             attr("action", "burn"),
-            attr("token_id", &token_id),
             attr("sender", info.sender.to_string()),
+            attr("token_id", &token_id),
         ]),
         res
     );
 
-    let contract = AndrCW721Contract::new();
-    let tokens = contract
-        .query_all_tokens(deps.as_ref(), &env, None, None)
-        .unwrap();
+    let tokens = query_all_tokens(deps.as_ref(), &env, None, None).unwrap();
     assert_eq!(tokens.tokens.len(), 0);
 }
 

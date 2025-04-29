@@ -1,17 +1,9 @@
-use andromeda_std::error::ContractError;
 use andromeda_std::{amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cosmwasm_std::{Binary, Coin, CustomMsg, Deps, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{Binary, Coin};
 
-use cw721::msg::{ApprovalsResponse, OperatorsResponse, OwnerOfResponse, TokensResponse};
 use cw721::Expiration;
-
-use cw721_base::{
-    msg::ExecuteMsg as Cw721ExecuteMsg, msg::InstantiateMsg as BaseInstantiateMsg,
-    msg::QueryMsg as Cw721QueryMsg, traits::Cw721Query, Cw721BaseContract,
-};
-
 
 #[andr_instantiate]
 #[cw_serde]
@@ -26,195 +18,6 @@ pub struct InstantiateMsg {
     pub minter: AndrAddr,
 }
 
-use cw721::traits::Cw721Execute;
-
-#[derive(Default)]
-pub struct AndrCW721Contract {
-    standard_implementation: Cw721BaseContract<'static>,
-}
-
-// Add a custom query method to handle the conversion
-impl AndrCW721Contract {
-    pub fn new() -> Self {
-        Self {
-            standard_implementation: Cw721BaseContract::default(),
-        }
-    }
-
-    // Entry points
-    pub fn instantiate(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        msg: InstantiateMsg,
-    ) -> Result<Response, ContractError> {
-        let standard_msg = convert_instantiate_msg(deps.as_ref(), msg)?;
-        self.standard_implementation
-            .instantiate(deps, env, info, standard_msg)
-            .map_err(|e| e.into())
-    }
-
-    pub fn execute(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        msg: Cw721ExecuteMsg,
-    ) -> Result<Response, ContractError> {
-        self.standard_implementation
-            .execute(deps, env, info, msg)
-            .map_err(|e| e.into())
-    }
-
-    pub fn transfer_nft(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        recipient: String,
-        token_id: String,
-    ) -> Result<Response, ContractError> {
-        self.standard_implementation
-            .transfer_nft(deps, env, info, recipient, token_id)
-            .map_err(|e| e.into())
-    }
-
-    pub fn revoke_all(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        token_id: String,
-    ) -> Result<Response, ContractError> {
-        self.standard_implementation
-            .revoke_all(deps, env, info, token_id)
-            .map_err(|e| e.into())
-    }
-
-    pub fn send_nft(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        contract_addr: String,
-        token_id: String,
-        msg: Binary,
-    ) -> Result<Response, ContractError> {
-        self.standard_implementation
-            .send_nft(deps, env, info, contract_addr, token_id, msg)
-            .map_err(|e| e.into())
-    }
-
-    pub fn burn_nft(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        token_id: String,
-    ) -> Result<Response, ContractError> {
-        self.standard_implementation
-            .burn_nft(deps, env, info, token_id)
-            .map_err(|e| ContractError::new(&e.to_string()))
-    }
-
-    pub fn approve(
-        &self,
-        deps: DepsMut,
-        env: &Env,
-        info: &MessageInfo,
-        spender: String,
-        token_id: String,
-        expires: Option<Expiration>,
-    ) -> Result<Response, ContractError> {
-        self.standard_implementation
-            .approve(deps, env, info, spender, token_id, expires)
-            .map_err(|e| ContractError::new(&e.to_string()))
-    }
-
-    pub fn query(
-        &self,
-        deps: Deps,
-        env: &Env,
-        msg: Cw721QueryMsg,
-    ) -> Result<Binary, ContractError> {
-        self.standard_implementation
-            .query(deps, env, msg)
-            .map_err(|e| e.into())
-    }
-
-    pub fn query_owner_of(
-        &self,
-        deps: Deps,
-        env: &Env,
-        token_id: String,
-        include_expired_approval: bool,
-    ) -> Result<OwnerOfResponse, ContractError> {
-        self.standard_implementation
-            .query_owner_of(deps, env, token_id, include_expired_approval)
-            .map_err(|e| e.into())
-    }
-
-    pub fn query_approvals(
-        &self,
-        deps: Deps,
-        env: &Env,
-        token_id: String,
-        include_expired_approval: bool,
-    ) -> Result<ApprovalsResponse, ContractError> {
-        self.standard_implementation
-            .query_approvals(deps, env, token_id, include_expired_approval)
-            .map_err(|e| e.into())
-    }
-
-    pub fn query_operators(
-        &self,
-        deps: Deps,
-        env: &Env,
-        owner: String,
-        include_expired_approval: bool,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    ) -> Result<OperatorsResponse, ContractError> {
-        self.standard_implementation
-            .query_operators(
-                deps,
-                env,
-                owner,
-                include_expired_approval,
-                start_after,
-                limit,
-            )
-            .map_err(|e| e.into())
-    }
-
-    pub fn query_all_tokens(
-        &self,
-        deps: Deps,
-        env: &Env,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    ) -> Result<TokensResponse, ContractError> {
-        self.standard_implementation
-            .query_all_tokens(deps, env, start_after, limit)
-            .map_err(|e| e.into())
-    }
-}
-
-fn convert_instantiate_msg(
-    deps: Deps,
-    msg: InstantiateMsg,
-) -> Result<BaseInstantiateMsg, ContractError> {
-    let minter_raw_address = msg.minter.get_raw_address(&deps)?;
-    Ok(BaseInstantiateMsg {
-        name: msg.name,
-        symbol: msg.symbol,
-        minter: Some(minter_raw_address.into_string()),
-        creator: None,
-        withdraw_address: None,
-    })
-}
-
 #[cw_serde]
 /// A struct used to represent an agreed transfer of a token. The `purchaser` may use the `Transfer` message for this token as long as funds are provided equalling the `amount` defined in the agreement.
 pub struct TransferAgreement {
@@ -224,24 +27,11 @@ pub struct TransferAgreement {
     pub purchaser: String,
 }
 
-#[cw_serde]
-pub struct MetadataAttribute {
-    /// The key for the attribute
-    pub trait_type: String,
-    /// The value for the attribute
-    pub value: String,
-    /// The string used to display the attribute, if none is provided the `key` field can be used
-    pub display_type: Option<String>,
-}
-
 /// https://docs.opensea.io/docs/metadata-standards
 /// Replicates OpenSea Metadata Standards
 #[cw_serde]
 #[derive(Default)]
 pub struct TokenExtension {}
-
-impl CustomMsg for ExecuteMsg {}
-impl CustomMsg for QueryMsg {}
 
 #[cw_serde]
 pub struct MintMsg {
@@ -311,60 +101,6 @@ pub enum ExecuteMsg {
     BatchMint { tokens: Vec<MintMsg> },
     /// Batch sends multiple NFTs to different contracts
     BatchSend { batch: Vec<BatchSendMsg> },
-}
-
-use std::convert::TryFrom;
-
-impl TryFrom<ExecuteMsg> for Cw721ExecuteMsg {
-    type Error = ContractError;
-
-    fn try_from(msg: ExecuteMsg) -> Result<Self, Self::Error> {
-        match msg {
-            ExecuteMsg::TransferNft {
-                recipient,
-                token_id,
-            } => Ok(Self::TransferNft {
-                recipient: recipient.into_string(), // Assuming AndrAddr implements `Into<String>`
-                token_id,
-            }),
-            ExecuteMsg::SendNft {
-                contract,
-                token_id,
-                msg,
-            } => Ok(Self::SendNft {
-                contract: contract.into_string(),
-                token_id,
-                msg,
-            }),
-            ExecuteMsg::Approve {
-                spender,
-                token_id,
-                expires,
-            } => Ok(Self::Approve {
-                spender,
-                token_id,
-                expires,
-            }),
-            ExecuteMsg::Revoke { spender, token_id } => Ok(Self::Revoke { spender, token_id }),
-            ExecuteMsg::ApproveAll { operator, expires } => {
-                Ok(Self::ApproveAll { operator, expires })
-            }
-            ExecuteMsg::RevokeAll { operator } => Ok(Self::RevokeAll { operator }),
-            ExecuteMsg::Burn { token_id } => Ok(Self::Burn { token_id }),
-
-            // These are not part of the cw721_base standard
-            ExecuteMsg::Mint {
-                token_id,
-                owner,
-                token_uri,
-            } => Ok(Self::Mint {
-                token_id,
-                owner: owner.into_string(),
-                token_uri,
-            }),
-            _ => Err(ContractError::UnsupportedExecuteMsg {}),
-        }
-    }
 }
 
 #[cw_serde]
@@ -445,71 +181,4 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct IsArchivedResponse {
     pub is_archived: bool,
-}
-
-impl TryFrom<QueryMsg> for Cw721QueryMsg {
-    type Error = ContractError;
-
-    fn try_from(msg: QueryMsg) -> Result<Self, Self::Error> {
-        match msg {
-            QueryMsg::OwnerOf {
-                token_id,
-                include_expired,
-            } => Ok(Cw721QueryMsg::OwnerOf {
-                token_id,
-                include_expired,
-            }),
-            QueryMsg::AllOperators {
-                owner,
-                include_expired,
-                start_after,
-                limit,
-            } => Ok(Cw721QueryMsg::AllOperators {
-                owner,
-                include_expired,
-                start_after,
-                limit,
-            }),
-            QueryMsg::NumTokens {} => Ok(Cw721QueryMsg::NumTokens {}),
-            QueryMsg::ContractInfo {} => Ok(Cw721QueryMsg::GetCollectionInfoAndExtension {}),
-            QueryMsg::NftInfo { token_id } => Ok(Cw721QueryMsg::NftInfo { token_id }),
-            QueryMsg::AllNftInfo {
-                token_id,
-                include_expired,
-            } => Ok(Cw721QueryMsg::AllNftInfo {
-                token_id,
-                include_expired,
-            }),
-            QueryMsg::Tokens {
-                owner,
-                start_after,
-                limit,
-            } => Ok(Cw721QueryMsg::Tokens {
-                owner,
-                start_after,
-                limit,
-            }),
-            QueryMsg::AllTokens { start_after, limit } => {
-                Ok(Cw721QueryMsg::AllTokens { start_after, limit })
-            }
-            QueryMsg::Minter {} => Ok(Cw721QueryMsg::GetMinterOwnership {}),
-            QueryMsg::Approval {
-                token_id,
-                spender,
-                include_expired,
-            } => Ok(Cw721QueryMsg::Approval {
-                token_id,
-                spender,
-                include_expired,
-            }),
-            QueryMsg::Approvals {
-                token_id,
-                include_expired,
-            } => Ok(Cw721QueryMsg::Approvals {
-                token_id,
-                include_expired,
-            }),
-            _ => Err(ContractError::UnsupportedQuery {}),
-        }
-    }
 }
