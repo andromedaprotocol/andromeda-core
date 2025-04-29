@@ -27,11 +27,13 @@ pub(crate) fn execute_swap_osmosis_msg(
     from_denom: String,
     from_amount: Uint128,
     to_denom: String,
-    recipient: Recipient,  // receiver where the swapped token goes to
+    recipient: Recipient, // receiver where the swapped token goes to
     slippage: Slippage,
     route: Option<Vec<SwapAmountInRoute>>,
 ) -> Result<SubMsg, ContractError> {
-    let ExecuteContext { deps, env, info, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
 
     // Prepare offer and ask asset
     ensure!(from_denom != to_denom, ContractError::DuplicateTokens {});
