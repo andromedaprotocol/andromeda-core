@@ -1,8 +1,7 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_cw721::mock::{
-    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_quick_mint_msg, mock_transfer_nft,
-    MockCW721,
+    mock_andromeda_cw721, mock_cw721_instantiate_msg, mock_transfer_nft, MockCW721,
 };
 use andromeda_non_fungible_tokens::cw721::ExecuteMsg;
 use andromeda_std::{
@@ -102,10 +101,16 @@ fn test_mint_permission(
     #[case] sender: &str,           // The address attempting to mint
     #[case] expected_success: bool, // Whether the mint operation should succeed
 ) {
+    use andromeda_cw721::mock::mock_mint_msg;
+
     let (mut router, andr, cw721) = setup_cw721;
 
     // Attempt to mint token #1 to the sender's address
-    let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string());
+    let mint_msg = mock_mint_msg(
+        "1".to_string(),
+        None,
+        AndrAddr::from_string(andr.get_wallet(sender).to_string()),
+    );
     let cw721_path = format!(
         "/home/{}/{}/{}",
         andr.get_wallet(CW721_OWNER),
@@ -144,6 +149,8 @@ fn test_transfer_permission(
     #[case] sender: &str,           // The address attempting to transfer
     #[case] expected_success: bool, // Whether the transfer operation should succeed
 ) {
+    use andromeda_cw721::mock::mock_mint_msg;
+
     let (mut router, andr, cw721) = setup_cw721;
 
     let recipient = andr.get_wallet(RANDOM_USER);
@@ -151,7 +158,11 @@ fn test_transfer_permission(
     let expected_token_id = "1";
 
     // First mint a token to the sender
-    let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string());
+    let mint_msg = mock_mint_msg(
+        "1".to_string(),
+        None,
+        AndrAddr::from_string(andr.get_wallet(sender).to_string()),
+    );
     let cw721_path = format!(
         "/home/{}/{}/{}",
         andr.get_wallet(CW721_OWNER),

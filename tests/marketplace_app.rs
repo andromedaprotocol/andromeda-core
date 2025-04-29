@@ -156,10 +156,15 @@ fn test_marketplace_app() {
     );
 
     // Mint Tokens
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
-        .unwrap();
     let token_id = "1";
+    cw721
+        .execute_mint(
+            &mut router,
+            owner.clone(),
+            token_id.to_string(),
+            AndrAddr::from_string(owner.to_string()),
+        )
+        .unwrap();
 
     // Send Token to Marketplace
     cw721
@@ -368,10 +373,15 @@ fn test_marketplace_app_recipient() {
         app.query_ado_by_component_name(&router, marketplace_component.name);
 
     // Mint Tokens
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
-        .unwrap();
     let token_id = "1";
+    cw721
+        .execute_mint(
+            &mut router,
+            owner.clone(),
+            token_id.to_string(),
+            AndrAddr::from_string(owner.to_string()),
+        )
+        .unwrap();
 
     // Send Token to Marketplace
     cw721
@@ -599,10 +609,15 @@ fn test_marketplace_app_cw20_restricted() {
         .unwrap();
 
     // Mint Tokens
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
-        .unwrap();
     let token_id = "1";
+    cw721
+        .execute_mint(
+            &mut router,
+            owner.clone(),
+            token_id.to_string(),
+            AndrAddr::from_string(owner.to_string()),
+        )
+        .unwrap();
 
     // Whitelist
     address_list
@@ -875,11 +890,15 @@ fn test_marketplace_app_cw20_unrestricted() {
         .unwrap();
 
     // Mint Tokens
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
-        .unwrap();
-
     let token_id = "1";
+    cw721
+        .execute_mint(
+            &mut router,
+            owner.clone(),
+            token_id.to_string(),
+            AndrAddr::from_string(owner.to_string()),
+        )
+        .unwrap();
 
     // Whitelist
 
