@@ -1,5 +1,5 @@
 use andromeda_std::amp::{messages::AMPCtx, AndrAddr, Recipient};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ pub struct ForwardReplyState {
     /// Recipient
     pub recipient: Recipient,
     /// Refund Address
-    pub refund_addr: AndrAddr,
+    pub refund_addr: Addr,
     /// Amp ctx to be used for ibc communication
     pub amp_ctx: Option<AMPCtx>,
     /// Offered denom to the osmosis

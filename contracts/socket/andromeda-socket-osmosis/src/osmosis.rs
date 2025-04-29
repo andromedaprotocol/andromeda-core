@@ -2,7 +2,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{
         messages::{AMPMsg, AMPPkt},
-        AndrAddr, Recipient,
+        Recipient,
     },
     common::context::ExecuteContext,
     error::ContractError,
@@ -28,11 +28,10 @@ pub(crate) fn execute_swap_osmosis_msg(
     from_amount: Uint128,
     to_denom: String,
     recipient: Recipient,  // receiver where the swapped token goes to
-    refund_addr: AndrAddr, // refund address
     slippage: Slippage,
     route: Option<Vec<SwapAmountInRoute>>,
 ) -> Result<SubMsg, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext { deps, env, info, .. } = ctx;
 
     // Prepare offer and ask asset
     ensure!(from_denom != to_denom, ContractError::DuplicateTokens {});
@@ -45,11 +44,7 @@ pub(crate) fn execute_swap_osmosis_msg(
         ContractError::Unauthorized {}
     );
 
-    let amp_ctx = if let Some(pkt) = ctx.amp_ctx.clone() {
-        Some(pkt.ctx)
-    } else {
-        None
-    };
+    let amp_ctx = ctx.amp_ctx.map(|pkt| pkt.ctx);
 
     let prev_balance = deps
         .querier
@@ -60,7 +55,7 @@ pub(crate) fn execute_swap_osmosis_msg(
         deps.storage,
         &ForwardReplyState {
             recipient,
-            refund_addr,
+            refund_addr: info.sender,
             amp_ctx,
             from_denom: from_denom.clone(),
             to_denom: to_denom.clone(),

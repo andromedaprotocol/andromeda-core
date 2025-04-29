@@ -11,7 +11,7 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    attr, from_json, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, Uint128,
 };
 use cw2::set_contract_version;
@@ -114,6 +114,8 @@ fn handle_receive_cw20(
                 None => Recipient::new(sender.clone(), None),
                 Some(recipient) => recipient,
             };
+            recipient.validate(&ctx.deps.as_ref())?;
+
             swap_and_forward_cw20(
                 ctx,
                 from_asset,
@@ -148,6 +150,7 @@ fn execute_swap_and_forward(
         None => Recipient::new(sender.clone(), None),
         Some(recipient) => recipient,
     };
+    recipient.validate(&ctx.deps.as_ref())?;
 
     let swap_msg = execute_swap_astroport_msg(
         ctx,
@@ -209,11 +212,6 @@ fn execute_update_swap_router(
     ctx: ExecuteContext,
     swap_router: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     let ExecuteContext { deps, .. } = ctx;
 
     swap_router.get_raw_address(&deps.as_ref())?;

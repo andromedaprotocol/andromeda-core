@@ -29,6 +29,7 @@ pub enum ExecuteMsg {
     },
 
     /// Update swap router
+    #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
 }
 

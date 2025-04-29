@@ -34,6 +34,7 @@ pub enum ExecuteMsg {
         operations: Option<Vec<SwapOperation>>,
     },
     /// Update swap router
+    #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
 }
 

@@ -10,7 +10,7 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    attr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
@@ -92,11 +92,11 @@ fn execute_swap_and_forward(
     })?;
 
     let from_denom = fund.denom;
-    let sender = AndrAddr::from_string(&ctx.info.sender);
     let recipient = match recipient {
-        None => Recipient::new(sender.clone(), None),
+        None => Recipient::new(AndrAddr::from_string(&ctx.info.sender), None),
         Some(recipient) => recipient,
     };
+    recipient.validate(&ctx.deps.as_ref())?;
 
     let swap_msg = execute_swap_osmosis_msg(
         ctx,
@@ -104,7 +104,6 @@ fn execute_swap_and_forward(
         fund.amount,
         to_denom.clone(),
         recipient.clone(),
-        sender,
         slippage,
         route,
     )?;
@@ -123,11 +122,6 @@ fn execute_update_swap_router(
     ctx: ExecuteContext,
     swap_router: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let sender = ctx.info.sender;
-    ensure!(
-        ADOContract::default().is_owner_or_operator(ctx.deps.storage, sender.as_ref())?,
-        ContractError::Unauthorized {}
-    );
     let ExecuteContext { deps, .. } = ctx;
 
     swap_router.get_raw_address(&deps.as_ref())?;
