@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement
 };
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_testing::{
@@ -50,16 +50,16 @@ impl MockCW721 {
         MockCW721(addr)
     }
 
-    // pub fn execute_quick_mint(
-    //     &self,
-    //     app: &mut MockApp,
-    //     sender: Addr,
-    //     amount: u32,
-    //     owner: impl Into<String>,
-    // ) -> ExecuteResult {
-    //     let msg = mock_quick_mint_msg(amount, owner.into());
-    //     self.execute(app, &msg, sender, &[])
-    // }
+    pub fn execute_quick_mint(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        amount: u32,
+        owner: impl Into<String>,
+    ) -> ExecuteResult {
+        let msg = mock_quick_mint_msg(amount, owner.into());
+        self.execute(app, &msg, sender, &[])
+    }
 
     pub fn execute_mint(
         &self,
@@ -96,15 +96,15 @@ impl MockCW721 {
         self.execute(app, &msg, sender, &[])
     }
 
-    // pub fn execute_batch_send_nft(
-    //     &self,
-    //     app: &mut MockApp,
-    //     sender: Addr,
-    //     batch: Vec<BatchSendMsg>,
-    // ) -> ExecuteResult {
-    //     let msg = mock_batch_send_nft(batch);
-    //     self.execute(app, &msg, sender, &[])
-    // }
+    pub fn execute_batch_send_nft(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        batch: Vec<BatchSendMsg>,
+    ) -> ExecuteResult {
+        let msg = mock_batch_send_nft(batch);
+        self.execute(app, &msg, sender, &[])
+    }
 
     pub fn query_minter(&self, app: &MockApp) -> Addr {
         self.query::<Addr>(app, mock_cw721_minter_query())
@@ -152,29 +152,31 @@ pub fn mock_cw721_owner_of(token_id: String, include_expired: Option<bool>) -> Q
 
 pub fn mock_mint_msg(
     token_id: String,
+    extension: TokenExtension,
     token_uri: Option<String>,
-    owner: impl Into<AndrAddr>,
-) -> ExecuteMsg {
-    ExecuteMsg::Mint {
+    owner: String,
+) -> MintMsg {
+    MintMsg {
         token_id,
-        owner: owner.into(),
+        owner,
         token_uri,
+        extension,
     }
 }
 
-// /// Creates a batch mint message that mints the specified amount of tokens.
-// /// Uses 1-based indexing for token IDs (i.e., tokens will be numbered 1, 2, 3, etc.)
-// pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
-//     let mut mint_msgs: Vec<MintMsg> = Vec::new();
-//     for i in 1..=amount {
-//         let extension = TokenExtension {};
+/// Creates a batch mint message that mints the specified amount of tokens.
+/// Uses 1-based indexing for token IDs (i.e., tokens will be numbered 1, 2, 3, etc.)
+pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
+    let mut mint_msgs: Vec<MintMsg> = Vec::new();
+    for i in 1..=amount {
+        let extension = TokenExtension {};
 
-//         let msg = mock_mint_msg(i.to_string(), extension, None, owner.clone());
-//         mint_msgs.push(msg);
-//     }
+        let msg = mock_mint_msg(i.to_string(), extension, None, owner.clone());
+        mint_msgs.push(msg);
+    }
 
-//     ExecuteMsg::Mint { tokens: mint_msgs }
-// }
+    ExecuteMsg::BatchMint { tokens: mint_msgs }
+}
 
 pub fn mock_send_nft(contract: AndrAddr, token_id: String, msg: Binary) -> ExecuteMsg {
     ExecuteMsg::SendNft {
@@ -184,9 +186,9 @@ pub fn mock_send_nft(contract: AndrAddr, token_id: String, msg: Binary) -> Execu
     }
 }
 
-// pub fn mock_batch_send_nft(batch: Vec<BatchSendMsg>) -> ExecuteMsg {
-//     ExecuteMsg::BatchSend { batch }
-// }
+pub fn mock_batch_send_nft(batch: Vec<BatchSendMsg>) -> ExecuteMsg {
+    ExecuteMsg::BatchSend { batch }
+}
 
 pub fn mock_transfer_nft(recipient: AndrAddr, token_id: String) -> ExecuteMsg {
     ExecuteMsg::TransferNft {
@@ -199,12 +201,12 @@ pub fn mock_transfer_agreement(amount: Coin, purchaser: String) -> TransferAgree
     TransferAgreement { amount, purchaser }
 }
 
-// pub fn mock_create_transfer_agreement_msg(
-//     token_id: String,
-//     agreement: Option<TransferAgreement>,
-// ) -> ExecuteMsg {
-//     ExecuteMsg::TransferAgreement {
-//         token_id,
-//         agreement,
-//     }
-// }
+pub fn mock_create_transfer_agreement_msg(
+    token_id: String,
+    agreement: Option<TransferAgreement>,
+) -> ExecuteMsg {
+    ExecuteMsg::TransferAgreement {
+        token_id,
+        agreement,
+    }
+}
