@@ -1,21 +1,22 @@
-use andromeda_non_fungible_tokens::cw721::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use andromeda_std::andr_execute_fn;
-use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr, common::context::ExecuteContext};
 #[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-};
+use andromeda_non_fungible_tokens::cw721::{ExecuteMsg, InstantiateMsg, QueryMsg};
+
+use cosmwasm_std::{entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, ensure};
+
+use crate::state::ANDR_MINTER;
+
 use cw721::{
-    execute::{burn_nft, instantiate as cw721_instantiate, mint, send_nft, transfer_nft},
+    state::{Cw721Config, NftInfo},
+    execute::{burn_nft, instantiate as cw721_instantiate, send_nft, transfer_nft},
     msg::Cw721InstantiateMsg,
-    query::{
-        query_collection_info, query_minter_ownership, query_nft_info, query_num_tokens,
-        query_owner_of,
-    },
+    query::{query_collection_info, query_minter_ownership, query_nft_info, query_num_tokens, query_owner_of},
 };
 
 use andromeda_std::{
+    andr_execute_fn,
+    ado_contract::{ADOContract, permissioning::is_context_permissioned},
+    amp::AndrAddr,
+    common::context::ExecuteContext,
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     error::ContractError,
 };
@@ -39,7 +40,7 @@ pub fn instantiate(
         symbol: msg.symbol.clone(),
         minter: Some(minter),
     };
-    // ANDR_MINTER.save(deps.storage, &msg.minter)?;
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
     let contract = ADOContract::default();
 
@@ -123,37 +124,59 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     Ok(res)
 }
 
-// macro_rules! ensure_can_mint {
-//     ($ctx:expr) => {
-//         let minter = ANDR_MINTER
-//             .load($ctx.deps.storage)?
-//             .get_raw_address(&$ctx.deps.as_ref())?;
+macro_rules! ensure_can_mint {
+    ($ctx:expr) => {
+        let minter = ANDR_MINTER
+            .load($ctx.deps.storage)?
+            .get_raw_address(&$ctx.deps.as_ref())?;
 
-//         let is_minter = $ctx.info.sender == minter;
-//         // We check if the sender is the minter before checking if they have the mint permission
-//         // to prevent consuming unnecessary limited permission usage.
-//         let has_mint_permission = is_minter
-//             || is_context_permissioned(
-//                 &mut $ctx.deps,
-//                 &$ctx.info,
-//                 &$ctx.env,
-//                 &$ctx.amp_ctx,
-//                 MINT_ACTION,
-//             )?;
+        let is_minter = $ctx.info.sender == minter;
+        // We check if the sender is the minter before checking if they have the mint permission
+        // to prevent consuming unnecessary limited permission usage.
+        let has_mint_permission = is_minter
+            || is_context_permissioned(
+                &mut $ctx.deps,
+                &$ctx.info,
+                &$ctx.env,
+                &$ctx.amp_ctx,
+                MINT_ACTION,
+            )?;
 
-//         ensure!(has_mint_permission, ContractError::Unauthorized {});
-//     };
-// }
+        ensure!(has_mint_permission, ContractError::Unauthorized {});
+    };
+}
 
 fn execute_mint(
-    ctx: ExecuteContext,
+    mut ctx: ExecuteContext,
     token_id: String,
     token_uri: Option<String>,
     owner: AndrAddr,
 ) -> Result<Response, ContractError> {
-    // ensure_can_mint!(ctx);
-    let owner = owner.get_raw_address(&ctx.deps.as_ref())?.into_string();
-    let res = mint(ctx.deps, &ctx.env, &ctx.info, token_id, owner, token_uri)?;
+    ensure_can_mint!(ctx);
+
+    let owner: Addr = owner.get_raw_address(&ctx.deps.as_ref())?;
+    let token_msg: NftInfo = NftInfo {
+        owner: owner.clone(),
+        approvals: vec![],
+        token_uri: token_uri.clone(),
+    };
+
+    let config = Cw721Config::default();
+
+    config
+        .nft_info
+        .update(ctx.deps.storage, &token_id, |old| match old {
+            Some(_) => Err(ContractError::Claimed {}),
+            None => Ok(token_msg),
+        })?;
+
+    config.increment_tokens(ctx.deps.storage)?;
+
+    let res = Response::new()
+        .add_attribute("action", "mint")
+        .add_attribute("minter", ctx.info.sender.to_string())
+        .add_attribute("owner", owner)
+        .add_attribute("token_id", token_id);
     Ok(res)
 }
 

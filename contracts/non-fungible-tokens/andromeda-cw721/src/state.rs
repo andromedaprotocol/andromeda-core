@@ -1,4 +1,7 @@
-// pub const ANDR_MINTER: Item<AndrAddr> = Item::new("minter");
+use andromeda_std::amp::AndrAddr;
+use cw_storage_plus::Item;
+
+pub const ANDR_MINTER: Item<AndrAddr> = Item::new("minter");
 // pub const TRANSFER_AGREEMENTS: Map<&str, TransferAgreement> = Map::new("transfer_agreements");
 // pub const ARCHIVED: Map<&str, bool> = Map::new("archived_tokens");
 
