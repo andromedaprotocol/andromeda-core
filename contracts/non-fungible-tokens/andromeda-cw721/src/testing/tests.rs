@@ -1,14 +1,22 @@
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
-use andromeda_non_fungible_tokens::cw721::{ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg, TokenExtension, TransferAgreement};
+use andromeda_non_fungible_tokens::cw721::{
+    ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg, TokenExtension,
+    TransferAgreement,
+};
 use andromeda_std::{
     amp::addresses::AndrAddr,
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, FAKE_VFS_PATH, MOCK_KERNEL_CONTRACT},
 };
 use cosmwasm_std::{
-    attr, coin, from_json, testing::{message_info, mock_env}, Addr, Coin, DepsMut, Env, Response, StdError, Uint128
+    attr, coin, from_json,
+    testing::{message_info, mock_env},
+    Addr, Coin, DepsMut, Env, Response, StdError, Uint128,
 };
-use cw721::{msg::{AllNftInfoResponse, OwnerOfResponse}, query::query_num_tokens};
+use cw721::{
+    msg::{AllNftInfoResponse, OwnerOfResponse},
+    query::query_num_tokens,
+};
 use rstest::rstest;
 
 const MINTER: &str = "cosmwasm1h6t805h2vjfzpa3m9n8kyadyng9xf604nhvev8tf5qdg65jh3ruqwwm3zz";

@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
-    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
 };
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_testing::{
@@ -71,7 +71,7 @@ impl MockCW721 {
         self.execute(
             app,
             &ExecuteMsg::Mint {
-                token_id: token_id.into(),
+                token_id,
                 owner,
                 token_uri: None,
             },
