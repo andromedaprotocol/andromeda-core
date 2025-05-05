@@ -20,7 +20,7 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw20 = { workspace = true }
 cw-asset = { workspace = true }
-sha2 = "0.10.6"
+sha2 = { workspace = true }
 hex = "0.4.3"
 serde = { workspace = true }
 
