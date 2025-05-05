@@ -810,6 +810,64 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-socket"
+version = "0.1.0"
+dependencies = [
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-orch-daemon",
+ "cw-utils 1.0.3",
+ "cw20",
+ "cw3",
+]
+
+[[package]]
+name = "andromeda-socket-astroport"
+version = "0.1.0"
+dependencies = [
+ "andromeda-socket",
+ "andromeda-std",
+ "andromeda-testing",
+ "astroport",
+ "cosmrs",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-orch-daemon",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20",
+ "schemars",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "andromeda-socket-osmosis"
+version = "0.1.0"
+dependencies = [
+ "andromeda-socket",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-orch-daemon",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw2 1.1.2",
+ "cw20",
+ "schemars",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "andromeda-splitter"
 version = "2.3.1-b.2"
 dependencies = [
@@ -1076,6 +1134,35 @@ name = "anyhow"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
+
+[[package]]
+name = "astroport"
+version = "5.8.0"
+source = "git+https://github.com/astroport-fi/astroport-core#14ade18f81486d9ce8926fc7c579c128c8a503d5"
+dependencies = [
+ "astroport-circular-buffer",
+ "cosmos-sdk-proto 0.19.0",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus 1.2.0",
+ "cw-utils 1.0.3",
+ "cw20",
+ "itertools 0.12.1",
+ "prost 0.11.9",
+ "uint",
+]
+
+[[package]]
+name = "astroport-circular-buffer"
+version = "0.2.0"
+source = "git+https://github.com/astroport-fi/astroport-core#14ade18f81486d9ce8926fc7c579c128c8a503d5"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 1.2.0",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "async-recursion"
@@ -1427,6 +1514,17 @@ name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
+
+[[package]]
+name = "cosmos-sdk-proto"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73c9d2043a9e617b0d602fbc0a0ecd621568edbf3a9774890a6d562389bd8e1c"
+dependencies = [
+ "prost 0.11.9",
+ "prost-types 0.11.9",
+ "tendermint-proto 0.32.2",
+]
 
 [[package]]
 name = "cosmos-sdk-proto"
@@ -2289,6 +2387,9 @@ dependencies = [
  "andromeda-finance",
  "andromeda-fungible-tokens",
  "andromeda-non-fungible-tokens",
+ "andromeda-socket",
+ "andromeda-socket-astroport",
+ "andromeda-socket-osmosis",
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing-e2e",
@@ -5120,6 +5221,7 @@ dependencies = [
  "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
  "andromeda-shunting",
+ "andromeda-socket-osmosis",
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing",
