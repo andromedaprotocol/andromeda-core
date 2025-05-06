@@ -29,6 +29,7 @@ jobs:
         run: |
           cargo fmt -- --check
           cargo clippy --quiet --workspace --all-targets --no-deps -- -D warnings
+          
 
   contract-tests:
     name: Contract Tests
@@ -37,7 +38,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+    
     steps:
+      - name: Clean up disk space before running tests
+        run: |
+          sudo apt-get clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
