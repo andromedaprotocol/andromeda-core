@@ -102,7 +102,7 @@ fn test_increment_decrement() {
             },
             Attribute {
                 key: "sender".to_string(),
-                value: "creator".to_string()
+                value: info.sender.to_string()
             },
             Attribute {
                 key: "current_amount".to_string(),

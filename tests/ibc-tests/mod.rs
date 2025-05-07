@@ -8,7 +8,4 @@ mod interchain;
 mod splitter_ibc;
 
 #[cfg(test)]
-mod rate_limiting_ibc;
-
-#[cfg(test)]
 mod test_ibc;

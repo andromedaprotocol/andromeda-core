@@ -149,7 +149,8 @@ pub fn validate_recipient_list(
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{coin, coins, testing::mock_dependencies};
-
+    const RECIPIENT: &str = "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
+    const RECIPIENT2: &str = "cosmwasm1apn5stna323kg5fgzpg9hepc2c6crh8qumwe72z0nqgcdq7wltqszqkzm2";
     use super::*;
 
     #[test]
@@ -161,11 +162,11 @@ mod tests {
 
         let recipients_zero_amount = vec![
             AddressAmount {
-                recipient: Recipient::from_string(String::from("xyz")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 coins: coins(1_u128, "uandr"),
             },
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 coins: coins(0_u128, "usdc"),
             },
         ];
@@ -174,11 +175,11 @@ mod tests {
 
         let recipients_zero_amount = vec![
             AddressAmount {
-                recipient: Recipient::from_string(String::from("xyz")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 coins: coins(1_u128, "uandr"),
             },
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 coins: vec![
                     coin(1_u128, "uandr"),
                     coin(12_u128, "usdc"),
@@ -195,11 +196,11 @@ mod tests {
         );
         let recipients_zero_amount = vec![
             AddressAmount {
-                recipient: Recipient::from_string(String::from("xyz")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 coins: vec![],
             },
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 coins: vec![
                     coin(1_u128, "uandr"),
                     coin(12_u128, "usdc"),
@@ -217,11 +218,11 @@ mod tests {
 
         let recipients_zero_amount = vec![
             AddressAmount {
-                recipient: Recipient::from_string(String::from("xyz")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 coins: coins(1_u128, "uandr"),
             },
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 coins: vec![coin(1_u128, "uandr"), coin(12_u128, "uandr")],
             },
         ];
@@ -230,11 +231,11 @@ mod tests {
 
         let duplicate_recipients = vec![
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 coins: coins(1_u128, "denom"),
             },
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 coins: coins(1_u128, "uandr"),
             },
         ];
@@ -244,11 +245,11 @@ mod tests {
 
         let valid_recipients = vec![
             AddressAmount {
-                recipient: Recipient::from_string(String::from("abc")),
+                recipient: Recipient::from_string(String::from(RECIPIENT2)),
                 coins: coins(1_u128, "uandr"),
             },
             AddressAmount {
-                recipient: Recipient::from_string(String::from("xyz")),
+                recipient: Recipient::from_string(String::from(RECIPIENT)),
                 coins: coins(1_u128, "denom"),
             },
         ];
@@ -257,7 +258,7 @@ mod tests {
         assert!(res.is_ok());
 
         let one_valid_recipient = vec![AddressAmount {
-            recipient: Recipient::from_string(String::from("abc")),
+            recipient: Recipient::from_string(String::from(RECIPIENT2)),
             coins: coins(1_u128, "denom"),
         }];
 

@@ -1,46 +1,43 @@
-use andromeda_std::ado_base::InstantiateMsg;
-use andromeda_std::ado_contract::ADOContract;
-use andromeda_std::testing::mock_querier::{MockAndromedaQuerier, MOCK_KERNEL_CONTRACT};
-use cosmwasm_std::testing::{
-    mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR,
-};
+use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
+use cosmwasm_std::testing::MockQuerier;
 use cosmwasm_std::{
-    from_json, to_json_binary, Coin, ContractResult, Empty, OwnedDeps, Querier, QuerierResult,
-    QuerierWrapper, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    from_json, to_json_binary, ContractResult, Empty, Querier, QuerierResult, QueryRequest,
+    SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
 
-pub fn mock_dependencies_custom(
-    contract_balance: &[Coin],
-) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
-    let custom_querier: WasmMockQuerier =
-        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
-    let storage = MockStorage::default();
-    let mut deps = OwnedDeps {
-        storage,
-        api: MockApi::default(),
-        querier: custom_querier,
-        custom_query_type: std::marker::PhantomData,
-    };
-    ADOContract::default()
-        .instantiate(
-            &mut deps.storage,
-            mock_env(),
-            &deps.api,
-            &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
-            InstantiateMsg {
-                ado_type: "cw20-staking".to_string(),
-                ado_version: "test".to_string(),
-
-                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-                owner: None,
-            },
-        )
-        .unwrap();
-    deps
-}
+// pub fn _mock_dependencies_custom(
+//     contract_balance: &[Coin],
+// ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
+//     let custom_querier: WasmMockQuerier =
+//         WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
+//     let storage = MockStorage::default();
+//     let mut deps = OwnedDeps {
+//         storage,
+//         api: MockApi::default(),
+//         querier: custom_querier,
+//         custom_query_type: std::marker::PhantomData,
+//     };
+//     let sender = deps.api.addr_make("sender");
+//     let mock_kernel_address = deps.api.addr_make("mock_kernel_address");
+//     ADOContract::default()
+//         .instantiate(
+//             &mut deps.storage,
+//             mock_env(),
+//             &deps.api,
+//             &QuerierWrapper::new(&deps.querier),
+//             message_info(&sender, &[]),
+//             InstantiateMsg {
+//                 ado_type: "cw20-staking".to_string(),
+//                 ado_version: "test".to_string(),
+//                 kernel_address: mock_kernel_address.to_string(),
+//                 owner: None,
+//             },
+//         )
+//         .unwrap();
+//     deps
+// }
 
 pub struct WasmMockQuerier {
     pub base: MockQuerier<Empty>,
@@ -112,11 +109,11 @@ impl WasmMockQuerier {
     }
 }
 
-impl WasmMockQuerier {
-    pub fn new(base: MockQuerier<Empty>) -> Self {
-        WasmMockQuerier {
-            base,
-            token_querier: TokenQuerier::default(),
-        }
-    }
-}
+// impl WasmMockQuerier {
+//     pub fn new(base: MockQuerier<Empty>) -> Self {
+//         WasmMockQuerier {
+//             base,
+//             token_querier: TokenQuerier::default(),
+//         }
+//     }
+// }

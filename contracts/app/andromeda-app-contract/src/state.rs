@@ -11,8 +11,8 @@ use andromeda_std::{
     os::kernel::ExecuteMsg as KernelExecuteMsg,
 };
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage, SubMsg,
-    WasmMsg,
+    ensure, to_json_binary, Addr, Binary, Coin, CosmosMsg, DepsMut, Order, ReplyOn, Storage,
+    SubMsg, WasmMsg,
 };
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -94,6 +94,7 @@ pub fn generate_ownership_message(addr: Addr, owner: &str) -> Result<SubMsg, Con
             contract_addr: addr.to_string(),
         }),
         gas_limit: None,
+        payload: Binary::default(),
     })
 }
 
@@ -110,6 +111,7 @@ pub fn generate_assign_app_message(addr: &Addr, app_addr: &str) -> Result<SubMsg
             contract_addr: addr.to_string(),
         }),
         gas_limit: None,
+        payload: Binary::default(),
     })
 }
 
@@ -219,6 +221,7 @@ pub fn create_cross_chain_message(
         reply_on: ReplyOn::Error,
         msg: cosmos_msg,
         gas_limit: None,
+        payload: Binary::default(),
     };
 
     Ok(sub_msg)

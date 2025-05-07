@@ -163,7 +163,7 @@ fn execute_send(
     for recipient_addr in splitter_recipients {
         let recipient_percent = recipient_addr.percent;
         for (i, coin) in info.funds.clone().iter().enumerate() {
-            let amount_owed = coin.amount.mul_floor(recipient_percent);
+            let amount_owed = coin.amount.checked_mul_floor(recipient_percent)?;
             if !amount_owed.is_zero() {
                 let mut recip_coin: Coin = coin.clone();
                 recip_coin.amount = amount_owed;
@@ -238,7 +238,7 @@ fn execute_send_cw20(
         let recipient_percent = recipient_addr.percent;
         let mut vec_coin: Vec<Coin> = Vec::new();
         let coin = coin(amount.u128(), asset.clone());
-        let amount_owed = coin.amount.mul_floor(recipient_percent);
+        let amount_owed = coin.amount.checked_mul_floor(recipient_percent)?;
 
         if !amount_owed.is_zero() {
             let mut recip_coin: Coin = coin.clone();

@@ -1,7 +1,7 @@
 use andromeda_std::ado_base::InstantiateMsg;
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
-use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::testing::message_info;
 use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
@@ -10,6 +10,12 @@ use cosmwasm_std::{
 };
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
+
+pub type TestDeps = cosmwasm_std::OwnedDeps<
+    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockApi,
+    WasmMockQuerier,
+>;
 
 // pub const MOCK_TAX_RECIPIENT: &str = "tax_recipient";
 // pub const MOCK_ROYALTY_RECIPIENT: &str = "royalty_recipient";
@@ -29,13 +35,14 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let sender = deps.api.addr_make("sender");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info(&sender, &[]),
             InstantiateMsg {
                 ado_type: "splitter".to_string(),
                 ado_version: "test".to_string(),

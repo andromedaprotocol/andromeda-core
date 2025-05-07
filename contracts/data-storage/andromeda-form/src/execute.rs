@@ -54,7 +54,7 @@ pub fn execute_submit_form(
                 true => {
                     submissions().save(
                         ctx.deps.storage,
-                        &(new_id.u64(), sender.clone()),
+                        (new_id.u64(), sender.clone()),
                         &SubmissionInfo {
                             submission_id: new_id.u64(),
                             wallet_address: sender.clone(),
@@ -76,7 +76,7 @@ pub fn execute_submit_form(
                     if submissions_by_address.is_empty() {
                         submissions().save(
                             ctx.deps.storage,
-                            &(new_id.u64(), sender.clone()),
+                            (new_id.u64(), sender.clone()),
                             &SubmissionInfo {
                                 submission_id: new_id.u64(),
                                 wallet_address: sender.clone(),
@@ -111,14 +111,14 @@ pub fn execute_delete_submission(
     let sender = ctx.info.sender;
     let address = wallet_address.get_raw_address(&ctx.deps.as_ref())?;
     submissions()
-        .load(ctx.deps.storage, &(submission_id, address.clone()))
+        .load(ctx.deps.storage, (submission_id, address.clone()))
         .map_err(|_| ContractError::CustomError {
             msg: format!(
                 "Submission does not exist - Submission_id {:?}, Wallet_address {:?}",
                 submission_id, wallet_address
             ),
         })?;
-    submissions().remove(ctx.deps.storage, &(submission_id, address.clone()))?;
+    submissions().remove(ctx.deps.storage, (submission_id, address.clone()))?;
 
     let response = Response::new()
         .add_attribute("method", "delete_submission")
@@ -164,7 +164,7 @@ pub fn execute_edit_submission(
     let wallet_address = wallet_address.get_raw_address(&ctx.deps.as_ref())?;
 
     if submissions()
-        .may_load(ctx.deps.storage, &(submission_id, wallet_address.clone()))?
+        .may_load(ctx.deps.storage, (submission_id, wallet_address.clone()))?
         .is_some()
     {
         ensure!(
@@ -176,7 +176,7 @@ pub fn execute_edit_submission(
             ValidateDataResponse::Valid => {
                 submissions().save(
                     ctx.deps.storage,
-                    &(submission_id, wallet_address),
+                    (submission_id, wallet_address),
                     &SubmissionInfo {
                         submission_id,
                         wallet_address: sender.clone(),

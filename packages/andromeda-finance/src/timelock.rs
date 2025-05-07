@@ -192,19 +192,19 @@ mod tests {
     use super::*;
     use cosmwasm_std::testing::mock_dependencies;
     use cosmwasm_std::{coin, Timestamp};
-
+    const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
     #[test]
     fn test_validate() {
         let deps = mock_dependencies();
         let condition = EscrowCondition::Expiration(MillisecondsExpiration::from_seconds(101));
         let coins = vec![coin(100u128, "uluna")];
-        let recipient = Recipient::from_string("owner");
+        let recipient = Recipient::from_string(OWNER);
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: Some(condition.clone()),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -217,7 +217,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -242,7 +242,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![],
             condition: Some(condition),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
 
         let resp = invalid_coins_escrow
@@ -261,7 +261,7 @@ mod tests {
             condition: Some(EscrowCondition::Expiration(
                 MillisecondsExpiration::from_seconds(0),
             )),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn test_validate_funds_condition() {
         let deps = mock_dependencies();
-        let recipient = Recipient::from_string("owner");
+        let recipient = Recipient::from_string(OWNER);
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
@@ -288,7 +288,7 @@ mod tests {
                 coin(100, "uusd"),
                 coin(100, "uluna"),
             ])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -302,7 +302,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(200, "uluna")],
             condition: Some(EscrowCondition::MinimumFunds(vec![coin(100, "uluna")])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         valid_escrow.validate(deps.as_ref().api, &block).unwrap();
 
@@ -311,7 +311,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: Some(EscrowCondition::MinimumFunds(vec![])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert_eq!(
             ContractError::InvalidFunds {
@@ -331,7 +331,7 @@ mod tests {
                 coin(100, "uluna"),
                 coin(200, "uusd"),
             ])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert_eq!(
             ContractError::DuplicateCoinDenoms {},
@@ -343,12 +343,12 @@ mod tests {
 
     #[test]
     fn test_min_funds_deposited() {
-        let recipient = Recipient::from_string("owner");
+        let recipient = Recipient::from_string(OWNER);
         let escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd")]));
 
@@ -356,7 +356,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd"), coin(100, "uluna")]));
 
@@ -364,7 +364,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
 
@@ -372,7 +372,7 @@ mod tests {
             recipient,
             coins: vec![coin(200, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
     }

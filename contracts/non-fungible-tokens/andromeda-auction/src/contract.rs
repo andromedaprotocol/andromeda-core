@@ -33,7 +33,10 @@ use cosmwasm_std::{
     StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
+use cw721::{
+    msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse},
+    receiver::Cw721ReceiveMsg,
+};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -367,7 +370,7 @@ fn execute_update_auction(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
-        info.sender == token_auction_state.owner,
+        info.sender.as_str() == token_auction_state.owner,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -918,7 +921,7 @@ fn execute_cancel(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
-        info.sender == token_auction_state.owner,
+        info.sender.as_str() == token_auction_state.owner,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -995,7 +998,7 @@ fn execute_claim(
     ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
-        token_owner == env.contract.address,
+        token_owner == env.contract.address.as_str(),
         ContractError::AuctionAlreadyClaimed {}
     );
     // This is the case where no-one bid on the token.
@@ -1129,7 +1132,7 @@ fn get_existing_token_auction_state(
     token_address: &str,
 ) -> Result<TokenAuctionState, ContractError> {
     let key = token_id.to_owned() + token_address;
-    let latest_auction_id: Uint128 = match auction_infos().may_load(storage, &key)? {
+    let latest_auction_id: Uint128 = match auction_infos().may_load(storage, key)? {
         None => return Err(ContractError::AuctionDoesNotExist {}),
         Some(auction_info) => *auction_info.last().unwrap(),
     };
@@ -1149,13 +1152,15 @@ fn get_and_increment_next_auction_id(
 
     let key = token_id.to_owned() + token_address;
 
-    let mut auction_info = auction_infos().load(storage, &key).unwrap_or_default();
+    let mut auction_info = auction_infos()
+        .load(storage, key.clone())
+        .unwrap_or_default();
     auction_info.push(next_auction_id);
     if auction_info.token_address.is_empty() {
         token_address.clone_into(&mut auction_info.token_address);
         token_id.clone_into(&mut auction_info.token_id);
     }
-    auction_infos().save(storage, &key, &auction_info)?;
+    auction_infos().save(storage, key, &auction_info)?;
     Ok(next_auction_id)
 }
 
@@ -1246,7 +1251,7 @@ fn query_is_claimed(
 
     // if token owner isn't the contract, it means that it has been claimed. If they're equal it means that it hasn't been claimed and will return false
     Ok(IsClaimedResponse {
-        is_claimed: token_owner != env.contract.address,
+        is_claimed: token_owner != env.contract.address.as_str(),
     })
 }
 
@@ -1275,7 +1280,7 @@ fn query_auction_ids(
     token_address: String,
 ) -> Result<AuctionIdsResponse, ContractError> {
     let key = token_id + &token_address;
-    let auction_info = auction_infos().may_load(deps.storage, &key)?;
+    let auction_info = auction_infos().may_load(deps.storage, key)?;
     if let Some(auction_info) = auction_info {
         return Ok(AuctionIdsResponse {
             auction_ids: auction_info.auction_ids,

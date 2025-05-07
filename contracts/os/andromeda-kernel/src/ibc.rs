@@ -1,6 +1,5 @@
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
-use crate::proto::MsgTransfer;
 use crate::state::{CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES, REFUND_DATA};
 use andromeda_std::amp::messages::{AMPCtx, AMPPkt};
 use andromeda_std::amp::{IBC_REGISTRY_KEY, VFS_KEY};
@@ -10,7 +9,7 @@ use andromeda_std::error::{ContractError, Never};
 use andromeda_std::os::aos_querier::AOSQuerier;
 use andromeda_std::os::ibc_registry::DenomInfo;
 use andromeda_std::os::kernel::RefundData;
-use andromeda_std::os::{IBC_VERSION, TRANSFER_PORT};
+use andromeda_std::os::IBC_VERSION;
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr},
     os::{kernel::IbcExecuteMsg, vfs::ExecuteMsg as VFSExecuteMsg},
@@ -19,10 +18,10 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, Binary, Coin, Deps, DepsMut, Empty, Env,
+    ensure, from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env,
     Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, Timestamp, WasmMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, WasmMsg,
 };
 
 pub const PACKET_LIFETIME: u64 = 604_800u64;
@@ -107,10 +106,9 @@ pub fn ibc_packet_receive(
     // in a seprate function and on error write out an error ack.
     match do_ibc_packet_receive(deps, env, msg) {
         Ok(response) => Ok(response),
-        Err(error) => Ok(IbcReceiveResponse::new()
+        Err(error) => Ok(IbcReceiveResponse::new(make_ack_fail(error.to_string()))
             .add_attribute("method", "ibc_packet_receive")
-            .add_attribute("error", error.to_string())
-            .set_ack(make_ack_fail(error.to_string()))),
+            .add_attribute("error", error.to_string())),
     }
 }
 
@@ -140,7 +138,9 @@ pub fn do_ibc_packet_receive(
         deps.branch(),
         MessageInfo {
             funds: vec![],
-            sender: Addr::unchecked("foreign_kernel"),
+            sender: Addr::unchecked(
+                "cosmwasm122xa328nvn93rsemr980psc9m9qwh8xj8rdje4qtp68m5tyt7yusajjrpz",
+            ),
         },
         env.clone(),
     );
@@ -169,8 +169,7 @@ pub fn do_ibc_packet_receive(
 
             let res = execute::send(execute_env, amp_packet.messages.first().unwrap().clone())?;
 
-            Ok(IbcReceiveResponse::new()
-                .set_ack(make_ack_success())
+            Ok(IbcReceiveResponse::new(make_ack_success())
                 .add_attributes(res.attributes)
                 .add_submessages(res.messages)
                 .add_events(res.events))
@@ -234,8 +233,7 @@ pub fn do_ibc_packet_receive(
                     channel: ics20_channel_id,
                 },
             )?;
-            Ok(IbcReceiveResponse::new()
-                .set_ack(make_ack_success())
+            Ok(IbcReceiveResponse::new(make_ack_success())
                 .add_attribute("recipient", recipient.as_str())
                 .add_attributes(res.attributes)
                 .add_submessage(SubMsg::reply_always(
@@ -288,9 +286,7 @@ pub fn ibc_register_username(
         },
         ReplyId::RegisterUsername.repr(),
     );
-    Ok(IbcReceiveResponse::new()
-        .add_submessage(sub_msg)
-        .set_ack(make_ack_success()))
+    Ok(IbcReceiveResponse::new(make_ack_success()).add_submessage(sub_msg))
 }
 
 pub fn validate_order_and_version(
@@ -353,41 +349,3 @@ pub fn get_counterparty_denom(
         AOSQuerier::get_counterparty_denom(&deps.querier, &denom_trace, src_channel)?;
     Ok((counterparty_denom, counterparty_denom_trace))
 }
-
-#[allow(clippy::too_many_arguments)]
-pub fn generate_ibc_hook_transfer_message(
-    deps: &Deps,
-    recipient: &AndrAddr,
-    message: &Binary,
-    fund: &Coin,
-    channel: &str,
-    from_addr: &str,
-    to_addr: &str,
-    time: Timestamp,
-) -> Result<MsgTransfer, ContractError> {
-    let (counterparty_denom, _) = get_counterparty_denom(deps, &fund.denom, channel)?;
-    let new_coin = Coin::new(fund.amount.u128(), counterparty_denom);
-
-    let msg = AMPMsg::new(
-        recipient.get_raw_path(),
-        message.clone(),
-        Some(vec![new_coin]),
-    );
-    let serialized = msg.to_ibc_hooks_memo(to_addr.to_string(), from_addr.to_string());
-
-    let ts = time.plus_seconds(PACKET_LIFETIME);
-
-    Ok(MsgTransfer {
-        source_port: TRANSFER_PORT.into(),
-        source_channel: channel.to_string(),
-        token: Some(fund.clone().into()),
-        sender: from_addr.to_string(),
-        receiver: to_addr.to_string(),
-        timeout_height: None,
-        timeout_timestamp: Some(ts.nanos()),
-        memo: serialized,
-    })
-}
-
-#[cfg(test)]
-mod tests {}

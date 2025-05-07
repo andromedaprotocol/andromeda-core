@@ -5,7 +5,7 @@ use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 use cosmwasm_schema::cw_serde;
 
 pub use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-use cosmwasm_std::testing::mock_info;
+use cosmwasm_std::testing::message_info;
 use cosmwasm_std::{coin, BankQuery, QuerierWrapper};
 use cosmwasm_std::{
     from_json,
@@ -14,18 +14,28 @@ use cosmwasm_std::{
     SystemError, SystemResult, WasmQuery,
 };
 
-use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
+use cw721::msg::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 
-pub const MOCK_TOKEN_CONTRACT: &str = "token_contract";
-pub const MOCK_UNCLAIMED_TOKEN: &str = "unclaimed_token";
-pub const MOCK_TOKEN_ADDR: &str = "token_addr";
-pub const MOCK_TOKEN_OWNER: &str = "owner";
+pub const MOCK_TOKEN_CONTRACT: &str =
+    "cosmwasm1k2mr5h0a6296pe7s7hwttxzvls049wml8zxnpul3apufzu4qwvwsu8c5mn";
+pub const MOCK_UNCLAIMED_TOKEN: &str =
+    "cosmwasm1h07t2zcl7ce2l9hgkamgsemj00rktgs0ytpnttk7gsfd88awmufqsuwajh";
+pub const MOCK_TOKEN_ADDR: &str =
+    "cosmwasm1qatal5f83m2ecv6ndxrx6jyj7n2gj6yalvc667eyj705c7pzsatswspwvw";
+pub const MOCK_TOKEN_OWNER: &str =
+    "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg";
 pub const MOCK_TOKENS_FOR_SALE: &[&str] = &[
     "token1", "token2", "token3", "token4", "token5", "token6", "token7",
 ];
 
 pub const MOCK_CONDITIONS_MET_CONTRACT: &str = "conditions_met";
 pub const MOCK_CONDITIONS_NOT_MET_CONTRACT: &str = "conditions_not_met";
+
+pub type TestDeps = cosmwasm_std::OwnedDeps<
+    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockApi,
+    WasmMockQuerier,
+>;
 
 /// Alternative to `cosmwasm_std::testing::mock_dependencies` that allows us to respond to custom queries.
 ///
@@ -42,17 +52,17 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let owner = deps.api.addr_make("owner");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info(&owner, &[]),
             InstantiateMsg {
                 ado_type: "crowdfund".to_string(),
                 ado_version: "test".to_string(),
-
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },
@@ -86,16 +96,7 @@ impl Querier for WasmMockQuerier {
 
 // NOTE: It's impossible to construct a non_exhaustive struct from another another crate, so I copied the struct
 // https://rust-lang.github.io/rfcs/2008-non-exhaustive.html#functional-record-updates
-#[cw_serde(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    JsonSchema
-)]
+#[cw_serde]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub struct SupplyResponse {
@@ -126,9 +127,6 @@ impl WasmMockQuerier {
                     address: _,
                     denom: _,
                 } => {
-                    panic!("Unsupported Query")
-                }
-                BankQuery::AllBalances { address: _ } => {
                     panic!("Unsupported Query")
                 }
                 _ => panic!("Unsupported Query"),

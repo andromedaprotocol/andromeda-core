@@ -44,7 +44,7 @@ pub fn set_value(
         let addr = sender.as_str();
         let is_operator = ctx.contract.is_owner_or_operator(ctx.deps.storage, addr)?;
         let allowed = match DATA_OWNER.load(ctx.deps.storage).ok() {
-            Some(owner) => addr == owner,
+            Some(owner) => sender == owner,
             None => true,
         };
         ensure!(is_operator || allowed, ContractError::Unauthorized {});
@@ -91,7 +91,7 @@ pub fn delete_value(mut ctx: ExecuteContext) -> Result<Response, ContractError> 
         let addr = sender.as_str();
         let is_operator = ctx.contract.is_owner_or_operator(ctx.deps.storage, addr)?;
         let allowed = match DATA_OWNER.load(ctx.deps.storage).ok() {
-            Some(owner) => addr == owner,
+            Some(owner) => sender == owner,
             None => true,
         };
         ensure!(is_operator || allowed, ContractError::Unauthorized {});

@@ -13,8 +13,8 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
-    testing::{mock_env, mock_info},
-    to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Empty, Response, SubMsg,
+    testing::{message_info, mock_env},
+    to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Empty, Response, SubMsg,
     Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -28,37 +28,42 @@ use crate::{
     testing::mock_querier::mock_dependencies_custom,
 };
 
-fn init(deps: DepsMut) -> Result<Response, ContractError> {
-    let info = mock_info("owner", &[]);
+use super::mock_querier::TestDeps;
+
+fn init(deps: &mut TestDeps) -> Result<Response, ContractError> {
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
+    let mock_token_address = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
 
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
 
-        token_address: AndrAddr::from_string("cw20"),
+        token_address: AndrAddr::from_string(mock_token_address.to_string()),
     };
 
-    instantiate(deps, mock_env(), info, msg)
+    instantiate(deps.as_mut(), mock_env(), info, msg)
 }
 #[test]
 pub fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let saved_mock_token_address = TOKEN_ADDRESS.load(deps.as_ref().storage).unwrap();
 
-    assert_eq!(saved_mock_token_address, MOCK_TOKEN_ADDRESS.to_string())
+    let mock_token_address = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    assert_eq!(saved_mock_token_address, mock_token_address.to_string())
 }
 
 #[test]
 pub fn test_start_sale_invalid_token() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
-    let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let hook = Cw20HookMsg::StartSale {
         asset: exchange_asset,
@@ -90,11 +95,11 @@ pub fn test_start_sale_invalid_token() {
 pub fn test_start_sale_unauthorised() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
-    let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let hook = Cw20HookMsg::StartSale {
         asset: exchange_asset,
@@ -119,11 +124,11 @@ pub fn test_start_sale_zero_amount() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let hook = Cw20HookMsg::StartSale {
         asset: exchange_asset,
@@ -153,12 +158,14 @@ pub fn test_start_sale() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    let owner = deps.api.addr_make("owner");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    //     let info = message_info(owner.as_str(), &[]);
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    let token_info = message_info(&mock_cw20_addr, &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -200,12 +207,14 @@ pub fn test_start_sale_no_start_no_duration() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    let owner = deps.api.addr_make("owner");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    //     let info = message_info(owner.as_str(), &[]);
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    let token_info = message_info(&mock_cw20_addr, &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::StartSale {
@@ -246,11 +255,12 @@ pub fn test_start_sale_invalid_start_time() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
+    let owner = deps.api.addr_make("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    let token_info = message_info(&mock_cw20_addr, &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -283,12 +293,14 @@ pub fn test_start_sale_ongoing() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    let owner = deps.api.addr_make("owner");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    //     let info = message_info(owner.as_str(), &[]);
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    let token_info = message_info(&mock_cw20_addr, &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -318,11 +330,11 @@ pub fn test_start_sale_zero_exchange_rate() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
+    let owner = deps.api.addr_make("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
-    let token_info = mock_info(MOCK_TOKEN_ADDRESS, &[]);
+    let token_info = message_info(&Addr::unchecked(MOCK_TOKEN_ADDRESS), &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::zero();
     let sale_amount = Uint128::from(100u128);
@@ -349,11 +361,11 @@ pub fn test_start_sale_zero_exchange_rate() {
 pub fn test_purchase_no_sale() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
-    let purchaser = Addr::unchecked("purchaser");
-    //     let info = mock_info(owner.as_str(), &[]);
-    let token_info = mock_info("invalid_token", &[]);
+    let purchaser = deps.api.addr_make("purchaser");
+    //     let info = message_info(owner.as_str(), &[]);
+    let token_info = message_info(&Addr::unchecked("invalid_token"), &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     // Purchase Tokens
     let purchase_amount = Uint128::from(100u128);
@@ -375,11 +387,12 @@ pub fn test_purchase_not_enough_sent() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let owner = deps.api.addr_make("owner");
+    let purchaser = deps.api.addr_make("purchaser");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -396,7 +409,8 @@ pub fn test_purchase_not_enough_sent() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_info = message_info(&exchanged_asset_addr, &[]);
     let purchase_amount = Uint128::from(1u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -421,11 +435,12 @@ pub fn test_purchase_no_tokens_left() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let owner = deps.api.addr_make("owner");
+    let purchaser = deps.api.addr_make("purchaser");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -442,7 +457,7 @@ pub fn test_purchase_no_tokens_left() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info(&exchanged_asset_addr, &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -462,11 +477,12 @@ pub fn test_purchase_not_enough_tokens() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let owner = deps.api.addr_make("owner");
+    let purchaser = deps.api.addr_make("purchaser");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -483,7 +499,7 @@ pub fn test_purchase_not_enough_tokens() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info(&exchanged_asset_addr, &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -503,11 +519,12 @@ pub fn test_purchase() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let owner = deps.api.addr_make("owner");
+    let purchaser = deps.api.addr_make("purchaser");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -525,7 +542,7 @@ pub fn test_purchase() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchange_info = message_info(&exchanged_asset_addr, &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -538,10 +555,11 @@ pub fn test_purchase() {
     let res = execute(deps.as_mut(), env, exchange_info, msg).unwrap();
 
     // Check transfer
+    let cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let msg = res.messages.first().unwrap();
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
         wasm_execute(
-            MOCK_TOKEN_ADDRESS.to_string(),
+            cw20_addr.to_string(),
             &Cw20ExecuteMsg::Transfer {
                 recipient: purchaser.to_string(),
                 amount: Uint128::from(10u128),
@@ -567,7 +585,7 @@ pub fn test_purchase() {
     let msg = &res.messages[1];
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
         wasm_execute(
-            "exchanged_asset".to_string(),
+            exchanged_asset_addr.to_string(),
             &Cw20ExecuteMsg::Transfer {
                 recipient: owner.to_string(),
                 amount: purchase_amount,
@@ -586,11 +604,12 @@ pub fn test_purchase_with_start_and_duration() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let owner = deps.api.addr_make("owner");
+    let purchaser = deps.api.addr_make("purchaser");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -610,7 +629,8 @@ pub fn test_purchase_with_start_and_duration() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchanged_asset = deps.api.addr_make("exchanged_asset");
+    let exchange_info = message_info(&exchanged_asset, &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -624,9 +644,10 @@ pub fn test_purchase_with_start_and_duration() {
 
     // Check transfer
     let msg = res.messages.first().unwrap();
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
         wasm_execute(
-            MOCK_TOKEN_ADDRESS.to_string(),
+            mock_cw20_addr.to_string(),
             &Cw20ExecuteMsg::Transfer {
                 recipient: purchaser.to_string(),
                 amount: Uint128::from(10u128),
@@ -652,7 +673,7 @@ pub fn test_purchase_with_start_and_duration() {
     let msg = &res.messages[1];
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
         wasm_execute(
-            "exchanged_asset".to_string(),
+            exchanged_asset_addr.to_string(),
             &Cw20ExecuteMsg::Transfer {
                 recipient: owner.to_string(),
                 amount: purchase_amount,
@@ -671,11 +692,12 @@ pub fn test_purchase_sale_not_started() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let owner = deps.api.addr_make("owner");
+    let purchaser = deps.api.addr_make("purchaser");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -693,7 +715,8 @@ pub fn test_purchase_sale_not_started() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchanged_asset = deps.api.addr_make("exchanged_asset");
+    let exchange_info = message_info(&exchanged_asset, &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -712,11 +735,12 @@ pub fn test_purchase_sale_duration_ended() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let owner = deps.api.addr_make("owner");
+    let purchaser = deps.api.addr_make("purchaser");
+    let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -735,7 +759,8 @@ pub fn test_purchase_sale_duration_ended() {
     .unwrap();
 
     // Purchase Tokens
-    let exchange_info = mock_info("exchanged_asset", &[]);
+    let exchanged_asset = deps.api.addr_make("exchanged_asset");
+    let exchange_info = message_info(&exchanged_asset, &[]);
     let purchase_amount = Uint128::from(100u128);
     let hook = Cw20HookMsg::Purchase { recipient: None };
     let receive_msg = Cw20ReceiveMsg {
@@ -754,12 +779,13 @@ pub fn test_purchase_no_sale_native() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     // Purchase Tokens
+    let purchaser = deps.api.addr_make("purchaser");
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let info = message_info(&purchaser, &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -771,9 +797,9 @@ pub fn test_purchase_not_enough_sent_native() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
+    let owner = deps.api.addr_make("owner");
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -792,7 +818,8 @@ pub fn test_purchase_not_enough_sent_native() {
     // Purchase Tokens
     let purchase_amount = coins(1, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let purchaser = deps.api.addr_make("purchaser");
+    let info = message_info(&purchaser, &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -809,9 +836,9 @@ pub fn test_purchase_no_tokens_left_native() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
+    let owner = deps.api.addr_make("owner");
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -830,7 +857,8 @@ pub fn test_purchase_no_tokens_left_native() {
     // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let purchaser = deps.api.addr_make("purchaser");
+    let info = message_info(&purchaser, &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -842,10 +870,10 @@ pub fn test_purchase_not_enough_tokens_native() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    //     let info = mock_info(owner.as_str(), &[]);
+    let owner = deps.api.addr_make("owner");
+    //     let info = message_info(owner.as_str(), &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -864,7 +892,8 @@ pub fn test_purchase_not_enough_tokens_native() {
     // Purchase Tokens
     let purchase_amount = coins(100, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let purchaser = deps.api.addr_make("purchaser");
+    let info = message_info(&purchaser, &purchase_amount);
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
@@ -876,11 +905,11 @@ pub fn test_purchase_native() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let purchaser = Addr::unchecked("purchaser");
-    let exchange_asset = AssetInfo::Native("test".to_string());
+    let owner = deps.api.addr_make("owner");
+    let test_addr = deps.api.addr_make("test");
+    let exchange_asset = AssetInfo::Native(test_addr.to_string());
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(9u128);
     let sale_amount = Uint128::from(100u128);
@@ -898,9 +927,10 @@ pub fn test_purchase_native() {
     .unwrap();
 
     // Purchase Tokens
-    let purchase_amount = coins(100, "test");
+    let purchase_amount = coins(100, test_addr.to_string());
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let purchaser = deps.api.addr_make("purchaser");
+    let info = message_info(&purchaser, &purchase_amount);
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
@@ -908,16 +938,17 @@ pub fn test_purchase_native() {
     let msg = res.messages[0].clone();
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Bank(BankMsg::Send {
         to_address: purchaser.to_string(),
-        amount: vec![Coin::new(1, "test")],
+        amount: vec![Coin::new(1_u128, test_addr.to_string())],
     });
     let expected = SubMsg::reply_on_error(expected_wasm, 1);
     assert_eq!(msg, expected);
 
     // Check transfer
+    let mock_token_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let msg = res.messages[1].clone();
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Wasm(
         wasm_execute(
-            MOCK_TOKEN_ADDRESS.to_string(),
+            mock_token_addr.to_string(),
             &Cw20ExecuteMsg::Transfer {
                 recipient: purchaser.to_string(),
                 amount: Uint128::from(11u128),
@@ -943,7 +974,7 @@ pub fn test_purchase_native() {
     let msg = &res.messages[2];
     let expected_wasm: CosmosMsg<Empty> = CosmosMsg::Bank(BankMsg::Send {
         to_address: owner.to_string(),
-        amount: vec![Coin::new(99, "test")],
+        amount: vec![Coin::new(99_u128, test_addr.to_string())],
     });
     let expected = SubMsg::reply_on_error(expected_wasm, 3);
 
@@ -955,9 +986,9 @@ pub fn test_purchase_refund() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
+    let owner = deps.api.addr_make("owner");
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -976,7 +1007,8 @@ pub fn test_purchase_refund() {
     // Purchase Tokens
     let purchase_amount = coins(105, "test");
     let msg = ExecuteMsg::Purchase { recipient: None };
-    let info = mock_info("purchaser", &purchase_amount);
+    let purchaser = deps.api.addr_make("purchaser");
+    let info = message_info(&purchaser, &purchase_amount);
 
     let res = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
     let refund_attribute = res.attributes.first().unwrap();
@@ -1000,11 +1032,10 @@ pub fn test_cancel_sale_unauthorised() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    //     let info = mock_info(owner.as_str(), &[]);
+    let owner = deps.api.addr_make("owner");
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -1024,7 +1055,8 @@ pub fn test_cancel_sale_unauthorised() {
     let msg = ExecuteMsg::CancelSale {
         asset: exchange_asset,
     };
-    let unauthorised_info = mock_info("anyone", &[]);
+    let anyone = deps.api.addr_make("anyone");
+    let unauthorised_info = message_info(&anyone, &[]);
 
     let err = execute(deps.as_mut(), env, unauthorised_info, msg).unwrap_err();
 
@@ -1036,11 +1068,11 @@ pub fn test_cancel_sale_no_sale() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = ExecuteMsg::CancelSale {
         asset: exchange_asset,
@@ -1056,11 +1088,11 @@ pub fn test_cancel_sale() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
-    let info = mock_info(owner.as_str(), &[]);
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -1091,10 +1123,11 @@ pub fn test_cancel_sale() {
 
     // Ensure any remaining funds are returned
     let message = res.messages.first().unwrap();
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let expected_message = SubMsg::reply_on_error(
         CosmosMsg::Wasm(
             wasm_execute(
-                "cw20",
+                mock_cw20_addr.to_string(),
                 &Cw20ExecuteMsg::Transfer {
                     recipient: owner.to_string(),
                     amount: sale_amount,
@@ -1146,12 +1179,13 @@ fn test_query_token_address() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let msg = QueryMsg::TokenAddress {};
     let resp: TokenAddressResponse = from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
 
-    assert_eq!(resp.address, MOCK_TOKEN_ADDRESS.to_string())
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    assert_eq!(resp.address, mock_cw20_addr.to_string())
 }
 
 #[test]
@@ -1196,9 +1230,9 @@ fn test_purchase_native_invalid_coins() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let owner = Addr::unchecked("owner");
+    let owner = deps.api.addr_make("owner");
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -1214,10 +1248,10 @@ fn test_purchase_native_invalid_coins() {
     )
     .unwrap();
 
-    let purchaser = Addr::unchecked("purchaser");
+    let purchaser = deps.api.addr_make("purchaser");
     let msg = ExecuteMsg::Purchase { recipient: None };
 
-    let empty_coin_info = mock_info(purchaser.as_str(), &coins(0u128, "test"));
+    let empty_coin_info = message_info(&purchaser, &coins(0u128, "test"));
     let err = execute(deps.as_mut(), env.clone(), empty_coin_info, msg.clone()).unwrap_err();
 
     assert_eq!(
@@ -1225,8 +1259,8 @@ fn test_purchase_native_invalid_coins() {
         ContractError::Payment(cw_utils::PaymentError::NoFunds {})
     );
 
-    let two_coin_info = mock_info(
-        purchaser.as_str(),
+    let two_coin_info = message_info(
+        &purchaser,
         &[coin(100u128, "test"), coin(10u128, "testtwo")],
     );
     let err = execute(deps.as_mut(), env.clone(), two_coin_info, msg.clone()).unwrap_err();
@@ -1236,7 +1270,7 @@ fn test_purchase_native_invalid_coins() {
         ContractError::Payment(cw_utils::PaymentError::MultipleDenoms {})
     );
 
-    let no_coin_info = mock_info(purchaser.as_str(), &[]);
+    let no_coin_info = message_info(&purchaser, &[]);
     let err = execute(deps.as_mut(), env, no_coin_info, msg).unwrap_err();
 
     assert_eq!(
@@ -1249,8 +1283,8 @@ fn test_purchase_native_invalid_coins() {
 fn test_query_sale_assets() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
-    let owner = Addr::unchecked("owner");
-    init(deps.as_mut()).unwrap();
+    let owner = deps.api.addr_make("owner");
+    init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
@@ -1293,14 +1327,15 @@ fn test_query_sale_assets() {
 #[test]
 fn test_start_sale_same_asset() {
     let mut deps = mock_dependencies_custom(&[]);
-    let token_info = mock_info("cw20", &[]);
+    let cw20_addr = deps.api.addr_make("cw20");
+    let token_info = message_info(&cw20_addr, &[]);
 
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let cw20_msg = Cw20ReceiveMsg {
         sender: "owner".to_string(),
         msg: to_json_binary(&Cw20HookMsg::StartSale {
-            asset: AssetInfo::Cw20(Addr::unchecked("cw20")),
+            asset: AssetInfo::Cw20(cw20_addr.clone()),
             exchange_rate: Uint128::from(10u128),
             recipient: None,
             start_time: None,
@@ -1315,7 +1350,7 @@ fn test_start_sale_same_asset() {
     assert_eq!(
         err,
         ContractError::InvalidAsset {
-            asset: AssetInfo::Cw20(Addr::unchecked("cw20")).to_string()
+            asset: AssetInfo::Cw20(cw20_addr.clone()).to_string()
         }
     );
 }

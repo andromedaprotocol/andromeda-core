@@ -43,6 +43,7 @@ pub fn create_cw20_send_msg(
             msg: to_json_binary(&send_msg)?,
             funds: vec![],
         }),
+        payload: Binary::default(),
     };
 
     let attrs = vec![
@@ -141,12 +142,12 @@ mod tests {
     #[rstest]
     #[case(
         Addr::unchecked("recipient"),
-        vec![Coin::new(100, "uusd")],
+        vec![Coin::new(100u128, "uusd")],
         1
     )]
     #[case(
         Addr::unchecked("recipient2"),
-        vec![Coin::new(100, "uusd"), Coin::new(200, "uluna")],
+        vec![Coin::new(100u128, "uusd"), Coin::new(200u128, "uluna")],
         2
     )]
     #[case(

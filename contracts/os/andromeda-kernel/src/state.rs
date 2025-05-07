@@ -33,8 +33,6 @@ pub const CHANNEL_TO_CHAIN: Map<&str, String> = Map::new("kernel_channel_name");
 /// Used to store the most recent outgoing IBC hooks packet
 ///
 /// Removed when a reply is received for the packet
-pub const OUTGOING_IBC_HOOKS_PACKETS: Item<Vec<IBCHooksPacketSendState>> =
-    Item::new("OUTGOING_IBC_HOOKS_PACKETS");
 pub const OUTGOING_IBC_PACKETS: Map<(&String, u64), OutgoingPacket> =
     Map::new("outgoing_ibc_packets");
 pub const IBC_FUND_RECOVERY: Map<&Addr, Vec<Coin>> = Map::new("ibc_fund_recovery");

@@ -3,8 +3,8 @@ use andromeda_std::{
     amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    testing::{mock_env, mock_info},
-    DepsMut, Response, StdError, StdResult, Uint128,
+    testing::{message_info, mock_env},
+    Response, StdError, StdResult, Uint128,
 };
 use rstest::rstest;
 
@@ -14,8 +14,11 @@ use crate::{
     contract::instantiate, state::TOKEN_ADDRESS, testing::mock_querier::mock_dependencies_custom,
 };
 
-fn init(deps: DepsMut) -> Result<Response, ContractError> {
-    let info = mock_info("owner", &[]);
+use super::mock_querier::TestDeps;
+
+fn init(deps: &mut TestDeps) -> Result<Response, ContractError> {
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
 
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -24,12 +27,12 @@ fn init(deps: DepsMut) -> Result<Response, ContractError> {
         token_address: AndrAddr::from_string("cw20"),
     };
 
-    instantiate(deps, mock_env(), info, msg)
+    instantiate(deps.as_mut(), mock_env(), info, msg)
 }
 #[test]
 pub fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    init(deps.as_mut()).unwrap();
+    init(&mut deps).unwrap();
 
     let saved_mock_token_address = TOKEN_ADDRESS.load(deps.as_ref().storage).unwrap();
 
