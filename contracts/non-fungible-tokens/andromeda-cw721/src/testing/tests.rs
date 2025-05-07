@@ -63,54 +63,6 @@ fn mint_token(
 }
 
 #[test]
-fn test_transfer_agreement_invalid_address() {
-    let token_id = String::from("testtoken");
-    let mut deps = mock_dependencies_custom(&[]);
-    let env = mock_env();
-    let creator = deps.api.addr_make("creator");
-
-    // Create an invalid address (too short)
-    let invalid_address = "a"; // This will cause the addr_validate error
-
-    let agreement = TransferAgreement {
-        purchaser: invalid_address.to_string(),
-        amount: Coin {
-            amount: Uint128::from(100u64),
-            denom: "uluna".to_string(),
-        },
-    };
-
-    init_setup(&mut deps, env.clone());
-    mint_token(
-        deps.as_mut(),
-        env.clone(),
-        token_id.clone(),
-        creator.to_string(),
-        TokenExtension {},
-    );
-    let msg = ExecuteMsg::TransferAgreement {
-        token_id: token_id.clone(),
-        agreement: Some(agreement),
-    };
-
-    let info = message_info(&creator, &[]);
-    let result = execute(deps.as_mut(), env.clone(), info, msg);
-
-    // This should fail with the addr_validate error
-    assert!(result.is_err());
-
-    let msg = ExecuteMsg::TransferAgreement {
-        token_id: token_id.clone(),
-        agreement: None,
-    };
-
-    let info = message_info(&creator, &[]);
-    let result = execute(deps.as_mut(), env.clone(), info, msg);
-
-    assert!(result.is_ok());
-}
-
-#[test]
 fn test_transfer_nft() {
     let token_id = String::from("testtoken");
     let creator = String::from("creator");
@@ -646,10 +598,10 @@ fn test_transfer_agreement_invalid_address() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
     let creator = deps.api.addr_make("creator");
-    
+
     // Create an invalid address (too short)
-    let invalid_address = "a";  // This will cause the addr_validate error
-    
+    let invalid_address = "a"; // This will cause the addr_validate error
+
     let agreement = TransferAgreement {
         purchaser: invalid_address.to_string(),
         amount: Coin {
@@ -674,7 +626,17 @@ fn test_transfer_agreement_invalid_address() {
 
     let info = message_info(&creator, &[]);
     let result = execute(deps.as_mut(), env.clone(), info, msg);
-    
+
     // This should fail with the addr_validate error
     assert!(result.is_err());
+
+    let msg = ExecuteMsg::TransferAgreement {
+        token_id: token_id.clone(),
+        agreement: None,
+    };
+
+    let info = message_info(&creator, &[]);
+    let result = execute(deps.as_mut(), env.clone(), info, msg);
+
+    assert!(result.is_ok());
 }
