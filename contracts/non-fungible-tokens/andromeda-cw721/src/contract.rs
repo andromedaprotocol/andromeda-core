@@ -419,7 +419,13 @@ fn execute_update_transfer_agreement(
         }
     } else {
         TRANSFER_AGREEMENTS.remove(deps.storage, &token_id);
-        revoke_all(deps, &ctx.env, &ctx.info, token_id.clone())?;
+        revoke(
+            deps,
+            &ctx.env,
+            &ctx.info,
+            info.sender.to_string(),
+            token_id.clone(),
+        )?;
     }
 
     let mut attributes = vec![
