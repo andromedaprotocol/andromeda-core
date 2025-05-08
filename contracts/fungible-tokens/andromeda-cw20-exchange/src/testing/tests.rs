@@ -19,7 +19,6 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
-use cw_utils::Expiration;
 pub const MOCK_TOKEN_ADDRESS: &str = "cw20";
 
 use crate::{
@@ -175,7 +174,7 @@ pub fn test_start_sale() {
         recipient: None,
         // A start time ahead of the current time
         start_time: Some(Expiry::AtTime(Milliseconds(current_time + 10))),
-        duration: Some(Milliseconds(1)),
+        duration: Some(Milliseconds(60_000)),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -195,11 +194,17 @@ pub fn test_start_sale() {
 
     let expected_start_time =
         Timestamp::from_nanos((current_time + 10) * MILLISECONDS_TO_NANOSECONDS_RATIO);
-    assert_eq!(sale.start_time, Expiration::AtTime(expected_start_time));
+    assert_eq!(
+        sale.start_time,
+        Milliseconds::from_nanos(expected_start_time.nanos())
+    );
 
     let expected_expiration_time =
-        Timestamp::from_nanos((current_time + 11) * MILLISECONDS_TO_NANOSECONDS_RATIO);
-    assert_eq!(sale.end_time, Expiration::AtTime(expected_expiration_time));
+        Timestamp::from_nanos((current_time + 60_000) * MILLISECONDS_TO_NANOSECONDS_RATIO);
+    assert_eq!(
+        sale.end_time,
+        Some(Milliseconds::from_nanos(expected_expiration_time.nanos()))
+    );
 }
 
 #[test]
@@ -243,11 +248,11 @@ pub fn test_start_sale_no_start_no_duration() {
 
     assert_eq!(
         sale.start_time,
-        // Current time + 1
-        Expiration::AtTime(Timestamp::from_nanos(1571797419880000000))
+        // Current time
+        Milliseconds::from_nanos(Timestamp::from_nanos(1571797419879000000).nanos())
     );
 
-    assert_eq!(sale.end_time, Expiration::Never {});
+    assert_eq!(sale.end_time, None);
 }
 
 #[test]
@@ -402,8 +407,8 @@ pub fn test_purchase_not_enough_sent() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -450,8 +455,8 @@ pub fn test_purchase_no_tokens_left() {
             amount: Uint128::zero(),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -492,8 +497,8 @@ pub fn test_purchase_not_enough_tokens() {
             amount: Uint128::one(),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -535,8 +540,8 @@ pub fn test_purchase() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -621,9 +626,11 @@ pub fn test_purchase_with_start_and_duration() {
             exchange_rate,
             recipient: owner.to_string(),
             // start time in the past
-            start_time: Expiration::AtTime(env.block.time.minus_nanos(1)),
+            start_time: Milliseconds::from_nanos(env.block.time.minus_nanos(1).nanos()),
             // end time in the future
-            end_time: Expiration::AtTime(env.block.time.plus_nanos(1)),
+            end_time: Some(Milliseconds::from_nanos(
+                env.block.time.plus_days(1).nanos(),
+            )),
         },
     )
     .unwrap();
@@ -708,8 +715,8 @@ pub fn test_purchase_sale_not_started() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time.plus_nanos(1)),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.plus_days(1).nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -751,9 +758,10 @@ pub fn test_purchase_sale_duration_ended() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-
-            end_time: Expiration::AtTime(env.block.time.minus_nanos(1)),
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: Some(Milliseconds::from_nanos(
+                env.block.time.minus_nanos(1).nanos(),
+            )),
         },
     )
     .unwrap();
@@ -809,8 +817,8 @@ pub fn test_purchase_not_enough_sent_native() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -848,8 +856,8 @@ pub fn test_purchase_no_tokens_left_native() {
             amount: Uint128::zero(),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -883,8 +891,8 @@ pub fn test_purchase_not_enough_tokens_native() {
             amount: Uint128::from(1u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -920,8 +928,8 @@ pub fn test_purchase_native() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -998,8 +1006,8 @@ pub fn test_purchase_refund() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -1046,8 +1054,8 @@ pub fn test_cancel_sale_unauthorised() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -1103,8 +1111,8 @@ pub fn test_cancel_sale() {
             amount: sale_amount,
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -1162,9 +1170,8 @@ fn test_query_sale() {
         amount: sale_amount,
         exchange_rate,
         recipient: "owner".to_string(),
-        start_time: Expiration::AtTime(env.block.time),
-
-        end_time: Expiration::Never {},
+        start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+        end_time: None,
     };
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
@@ -1201,9 +1208,8 @@ fn test_andr_query() {
         amount: sale_amount,
         exchange_rate,
         recipient: "owner".to_string(),
-        start_time: Expiration::AtTime(env.block.time),
-
-        end_time: Expiration::Never {},
+        start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+        end_time: None,
     };
     SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
         .unwrap();
@@ -1242,8 +1248,8 @@ fn test_purchase_native_invalid_coins() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -1294,8 +1300,8 @@ fn test_query_sale_assets() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();
@@ -1306,8 +1312,8 @@ fn test_query_sale_assets() {
             amount: Uint128::from(100u128),
             exchange_rate,
             recipient: owner.to_string(),
-            start_time: Expiration::AtTime(env.block.time),
-            end_time: Expiration::Never {},
+            start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+            end_time: None,
         },
     )
     .unwrap();

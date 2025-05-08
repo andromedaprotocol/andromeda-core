@@ -35,6 +35,21 @@ impl Expiry {
             Expiry::AtTime(milliseconds) => *milliseconds,
         }
     }
+
+    pub fn validate(&self, block: &BlockInfo) -> Result<Self, ContractError> {
+        let current_time = Milliseconds::from_nanos(block.time.nanos()).milliseconds();
+        let expiry_time = self.get_time(block).milliseconds();
+
+        ensure!(
+            expiry_time > current_time,
+            ContractError::StartTimeInThePast {
+                current_time,
+                current_block: block.height,
+            }
+        );
+
+        Ok(self.clone())
+    }
 }
 
 /// Expiry defaults to an absolute time of 0

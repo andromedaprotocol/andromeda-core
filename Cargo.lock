@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-exchange"
-version = "2.1.1-b.1"
+version = "2.1.1-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",

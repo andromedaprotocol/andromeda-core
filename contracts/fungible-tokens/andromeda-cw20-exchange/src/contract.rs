@@ -7,9 +7,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     andr_execute_fn,
     common::{
-        context::ExecuteContext,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
-        msg_generation::generate_transfer_message,
+        context::ExecuteContext, expiration::Expiry, msg_generation::generate_transfer_message,
         Milliseconds, MillisecondsDuration,
     },
     error::ContractError,
@@ -21,7 +19,7 @@ use cosmwasm_std::{
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
-use cw_utils::{one_coin, Expiration};
+use cw_utils::one_coin;
 
 use crate::state::{SALE, TOKEN_ADDRESS};
 
@@ -170,20 +168,24 @@ pub fn execute_start_sale(
         }
     );
 
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;
+    let start_time = match start_time {
+        Some(s) => {
+            s.validate(&env.block)?;
+            s
+        }
+        None => Expiry::FromNow(Milliseconds::zero()),
+    }
+    .get_time(&env.block);
 
-    let end_expiration = if let Some(duration) = duration {
-        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
-        expiration_from_milliseconds(
-            start_time
-                // If start time isn't provided, it is set one second in advance from the current time
-                .unwrap_or(Expiry::FromNow(Milliseconds::from_seconds(1)))
-                .get_time(&env.block)
-                .plus_milliseconds(duration),
-        )?
-    } else {
-        Expiration::Never {}
+    let end_time = match duration {
+        Some(e) => {
+            if e.is_zero() {
+                None
+            } else {
+                Some(Expiry::FromNow(e).get_time(&env.block))
+            }
+        }
+        None => None,
     };
 
     // Do not allow duplicate sales
@@ -194,8 +196,8 @@ pub fn execute_start_sale(
         amount,
         exchange_rate,
         recipient: recipient.unwrap_or(sender),
-        start_time: start_expiration,
-        end_time: end_expiration,
+        start_time,
+        end_time,
     };
     SALE.save(deps.storage, &asset.to_string(), &sale)?;
 
@@ -204,8 +206,8 @@ pub fn execute_start_sale(
         attr("asset", asset.to_string()),
         attr("rate", exchange_rate),
         attr("amount", amount),
-        attr("start_time", start_expiration.to_string()),
-        attr("end_time", end_expiration.to_string()),
+        attr("start_time", start_time.to_string()),
+        attr("end_time", end_time.unwrap_or_default().to_string()),
     ]))
 }
 
@@ -231,10 +233,12 @@ pub fn execute_purchase(
         ContractError::SaleNotStarted {}
     );
     // Check if sale has ended
-    ensure!(
-        !sale.end_time.is_expired(&ctx.env.block),
-        ContractError::SaleEnded {}
-    );
+    if let Some(end_time) = sale.end_time {
+        ensure!(
+            !end_time.is_expired(&ctx.env.block),
+            ContractError::SaleEnded {}
+        );
+    }
 
     let purchased = amount_sent.checked_div(sale.exchange_rate).unwrap();
     let remainder = amount_sent.checked_sub(purchased.checked_mul(sale.exchange_rate)?)?;
