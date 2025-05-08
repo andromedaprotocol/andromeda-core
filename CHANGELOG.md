@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: deploy script validate & build steps [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
 - ref: Simplify the kernel's handling of its Send ExecuteMsg [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
 - fix: kernel's tx id generation [(#851)](https://github.com/andromedaprotocol/andromeda-core/pull/851)
+- ref: change cw20 exchange's sale start time and end time to Milliseconds [(#869)](https://github.com/andromedaprotocol/andromeda-core/pull/869)
 
 ### Fixed
 

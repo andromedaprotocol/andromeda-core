@@ -36,6 +36,7 @@ impl Expiry {
         }
     }
 
+    /// Validates that the expiry time is in the future
     pub fn validate(&self, block: &BlockInfo) -> Result<Self, ContractError> {
         let current_time = Milliseconds::from_nanos(block.time.nanos()).milliseconds();
         let expiry_time = self.get_time(block).milliseconds();

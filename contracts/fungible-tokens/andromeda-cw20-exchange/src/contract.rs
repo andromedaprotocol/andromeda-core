@@ -170,9 +170,10 @@ pub fn execute_start_sale(
 
     let start_time = match start_time {
         Some(s) => {
-            s.validate(&env.block)?;
-            s
+            // Check that the start time is in the future
+            s.validate(&env.block)?
         }
+        // Set start time to current time if not provided
         None => Expiry::FromNow(Milliseconds::zero()),
     }
     .get_time(&env.block);
@@ -180,8 +181,10 @@ pub fn execute_start_sale(
     let end_time = match duration {
         Some(e) => {
             if e.is_zero() {
+                // If duration is 0, set end time to none
                 None
             } else {
+                // Set end time to current time + duration
                 Some(Expiry::FromNow(e).get_time(&env.block))
             }
         }
