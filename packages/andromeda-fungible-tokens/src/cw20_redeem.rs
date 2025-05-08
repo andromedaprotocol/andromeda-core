@@ -1,5 +1,5 @@
 use andromeda_std::{
-    amp::{AndrAddr, Recipient},
+    amp::Recipient,
     andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, MillisecondsDuration},
 };
@@ -11,10 +11,7 @@ use cw_utils::Expiration;
 
 #[andr_instantiate]
 #[cw_serde]
-pub struct InstantiateMsg {
-    /// Address of the CW20 token to be redeemed
-    pub token_address: AndrAddr,
-}
+pub struct InstantiateMsg {}
 
 #[andr_exec]
 #[cw_serde]
@@ -28,9 +25,15 @@ pub enum ExecuteMsg {
     /// Starts a redemption with the native funds sent
     #[attrs(restricted)]
     SetRedemptionCondition {
+        /// The asset that is being redeemed
+        redeemed_asset: AssetInfo,
+        /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
         exchange_rate: Uint128,
+        /// The recipient of the redeemed tokens
         recipient: Option<Recipient>,
+        /// The time when the redemption starts
         start_time: Option<Expiry>,
+        /// The time when the redemption ends
         duration: Option<MillisecondsDuration>,
     },
     Redeem {},
@@ -43,6 +46,8 @@ pub struct RedemptionCondition {
     pub recipient: Recipient,
     /// The asset that may be used to redeem the tokens with
     pub asset: AssetInfo,
+    /// The asset that is being redeemed
+    pub redeemed_asset: AssetInfo,
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
     pub exchange_rate: Uint128,
     /// The amount for redemption at the given rate
@@ -59,6 +64,8 @@ pub struct RedemptionCondition {
 pub enum Cw20HookMsg {
     /// Starts a sale
     StartRedemptionCondition {
+        /// The asset that is being redeemed
+        redeemed_asset: AssetInfo,
         /// The amount of the above asset required to purchase a single token
         exchange_rate: Uint128,
         recipient: Option<Recipient>,
@@ -76,9 +83,6 @@ pub enum QueryMsg {
     /// Redemption info for a given asset
     #[returns(RedemptionResponse)]
     RedemptionCondition {},
-    /// The address of the token being redeemed
-    #[returns(TokenAddressResponse)]
-    TokenAddress {},
     #[returns(RedemptionAssetResponse)]
     RedemptionAsset {},
     #[returns(RedemptionAssetBalanceResponse)]
@@ -99,10 +103,4 @@ pub struct RedemptionAssetBalanceResponse {
 pub struct RedemptionResponse {
     /// The redemption data if it exists
     pub redemption: Option<RedemptionCondition>,
-}
-
-#[cw_serde]
-pub struct TokenAddressResponse {
-    /// The address of the token being redeemed
-    pub address: String,
 }
