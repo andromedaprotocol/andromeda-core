@@ -122,6 +122,7 @@ pub fn get_and_validate_start_time(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cosmwasm_std::testing::mock_env;
 
     #[test]
     fn test_expiration_from_milliseconds() {
@@ -147,5 +148,48 @@ mod tests {
 
         let expiry = Expiry::FromNow(Milliseconds(100));
         assert_eq!(expiry.get_time(&block), Milliseconds(200));
+    }
+
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::from_now_future(Expiry::FromNow(Milliseconds(1000)), true)]
+    #[case::from_now_past(Expiry::FromNow(Milliseconds(0)), false)]
+    #[case::at_time_future(
+        Expiry::AtTime(Milliseconds::from_nanos(mock_env().block.time.nanos()).plus_milliseconds(Milliseconds(1000))),
+        true
+    )]
+    #[case::at_time_past(
+        Expiry::AtTime(Milliseconds::from_nanos(mock_env().block.time.nanos()).minus_milliseconds(Milliseconds(1000))),
+        false
+    )]
+    #[case::at_time_now(
+        Expiry::AtTime(Milliseconds::from_nanos(mock_env().block.time.nanos())),
+        false
+    )]
+    fn test_validate_expiry(#[case] expiry: Expiry, #[case] should_pass: bool) {
+        let env = mock_env();
+        let result = expiry.validate(&env.block);
+        assert_eq!(result.is_ok(), should_pass);
+    }
+    #[rstest]
+    fn test_validate_expiry_error_message() {
+        let env = mock_env();
+        let current_time = Milliseconds::from_nanos(env.block.time.nanos());
+        let past_time = current_time.minus_milliseconds(Milliseconds(1000));
+
+        let expiry = Expiry::AtTime(past_time);
+        let err = expiry.validate(&env.block).unwrap_err();
+
+        match err {
+            ContractError::StartTimeInThePast {
+                current_time: ct,
+                current_block: cb,
+            } => {
+                assert_eq!(ct, current_time.milliseconds());
+                assert_eq!(cb, env.block.height);
+            }
+            _ => panic!("Expected StartTimeInThePast error"),
+        }
     }
 }
