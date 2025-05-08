@@ -12,5 +12,5 @@ fn main() {
         query: QueryMsg,
         execute: ExecuteMsg,
     };
-    export_schema_with_title(&schema_for!(Cw20HookMsg), &out_dir, "cw20redeem");
+    export_schema_with_title(&schema_for!(Cw20HookMsg), &out_dir, "cw20receive");
 }
