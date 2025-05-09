@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::cw20_redeem::{RedemptionAssetResponse, RedemptionResponse};
+use andromeda_fungible_tokens::redeem::{RedemptionAssetResponse, RedemptionResponse};
 use andromeda_std::error::ContractError;
 use cosmwasm_std::{to_json_binary, Deps, Env, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg};

@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::cw20_redeem::RedemptionCondition;
+use andromeda_fungible_tokens::redeem::RedemptionCondition;
 use andromeda_std::{
     amp::Recipient,
     common::{

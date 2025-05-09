@@ -1,6 +1,6 @@
 use super::mock_querier::TestDeps;
 use crate::{contract::instantiate, testing::mock_querier::mock_dependencies_custom};
-use andromeda_fungible_tokens::cw20_redeem::InstantiateMsg;
+use andromeda_fungible_tokens::redeem::InstantiateMsg;
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{
     testing::{message_info, mock_env},

@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::cw20_redeem::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_fungible_tokens::redeem::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
@@ -22,7 +22,7 @@ use crate::{
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-redeem";
+const CONTRACT_NAME: &str = "crates.io:andromeda-redeem";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

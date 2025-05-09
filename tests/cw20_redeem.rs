@@ -4,13 +4,13 @@ use andromeda_cw20::mock::{
     mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_get_cw20_balance,
     mock_minter,
 };
-use andromeda_cw20_redeem::mock::{
-    mock_andromeda_cw20_redeem, mock_cw20_redeem_cancel_redemption_condition_msg,
-    mock_cw20_redeem_hook_redeem_msg, mock_cw20_redeem_instantiate_msg,
-    mock_cw20_redeem_start_redemption_condition_hook_msg,
-    mock_cw20_set_redemption_condition_native_msg, mock_get_redemption_condition, mock_redeem_msg,
+use andromeda_fungible_tokens::redeem::RedemptionResponse;
+use andromeda_redeem::mock::{
+    mock_andromeda_redeem, mock_cw20_set_redemption_condition_native_msg,
+    mock_get_redemption_condition, mock_redeem_cancel_redemption_condition_msg,
+    mock_redeem_hook_redeem_msg, mock_redeem_instantiate_msg, mock_redeem_msg,
+    mock_redeem_start_redemption_condition_hook_msg,
 };
-use andromeda_fungible_tokens::cw20_redeem::RedemptionResponse;
 use andromeda_std::{amp::Recipient, error::ContractError};
 use andromeda_testing::{
     mock::{mock_app, MockAndromeda, MockApp},
@@ -33,7 +33,7 @@ fn setup_andr(router: &mut MockApp) -> MockAndromeda {
         ])
         .with_contracts(vec![
             ("cw20", mock_andromeda_cw20()),
-            ("cw20-redeem", mock_andromeda_cw20_redeem()),
+            ("redeem", mock_andromeda_redeem()),
             ("app-contract", mock_andromeda_app()),
         ])
         .build(router)
@@ -101,16 +101,16 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
         to_json_binary(&cw20_init_msg).unwrap(),
     );
 
-    let cw20_redeem_init_msg =
-        mock_cw20_redeem_instantiate_msg(andr.kernel.addr().to_string(), Some(owner.to_string()));
-    let cw20_redeem_component = AppComponent::new(
+    let redeem_init_msg =
+        mock_redeem_instantiate_msg(andr.kernel.addr().to_string(), Some(owner.to_string()));
+    let redeem_component = AppComponent::new(
         "cw20redeem".to_string(),
-        "cw20-redeem".to_string(),
-        to_json_binary(&cw20_redeem_init_msg).unwrap(),
+        "redeem".to_string(),
+        to_json_binary(&redeem_init_msg).unwrap(),
     );
 
     // Create App
-    let app_components = vec![cw20_component_1, cw20_component_2, cw20_redeem_component];
+    let app_components = vec![cw20_component_1, cw20_component_2, redeem_component];
     let app_init_msg = mock_app_instantiate_msg(
         "Redeem App".to_string(),
         app_components,
@@ -159,7 +159,7 @@ fn advance_time(router: &mut MockApp, seconds: u64) {
 struct TestAddresses {
     cw20: Addr,
     cw20_2: Addr,
-    cw20_redeem: Addr,
+    redeem: Addr,
 }
 
 fn get_addresses(
@@ -174,14 +174,14 @@ fn get_addresses(
         cw20_2: andr
             .vfs
             .query_resolve_path(router, format!("/home/{}/cw20-2", app.addr())),
-        cw20_redeem: andr
+        redeem: andr
             .vfs
             .query_resolve_path(router, format!("/home/{}/cw20redeem", app.addr())),
     }
 }
 
 #[test]
-fn test_cw20_redeem_app_native() {
+fn test_redeem_app_native() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -192,7 +192,7 @@ fn test_cw20_redeem_app_native() {
     let addresses = get_addresses(&mut router, &andr, &app);
 
     let cw20_addr_2 = addresses.cw20_2;
-    let cw20_redeem_addr = addresses.cw20_redeem;
+    let redeem_addr = addresses.redeem;
 
     let redeem_asset = AssetInfo::Cw20(cw20_addr_2.clone());
 
@@ -208,15 +208,14 @@ fn test_cw20_redeem_app_native() {
     router
         .execute_contract(
             owner.clone(),
-            cw20_redeem_addr.clone(),
+            redeem_addr.clone(),
             &start_redemption_condition_msg,
             &[coin(1000u128, "uandr")],
         )
         .unwrap();
 
     // Query redemption condition
-    let redemption_condition =
-        query_redemption_condition(&mut router, cw20_redeem_addr.to_string());
+    let redemption_condition = query_redemption_condition(&mut router, redeem_addr.to_string());
 
     assert_eq!(
         redemption_condition.redemption.clone().unwrap().asset,
@@ -240,9 +239,9 @@ fn test_cw20_redeem_app_native() {
     );
 
     // Let user 1 redeem
-    let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
+    let redeem_msg = mock_redeem_hook_redeem_msg();
     let send_msg = mock_cw20_send(
-        cw20_redeem_addr.clone(),
+        redeem_addr.clone(),
         Uint128::new(10u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -263,8 +262,7 @@ fn test_cw20_redeem_app_native() {
     assert_eq!(balance.amount, Uint128::from(20u128));
 
     // Query redemption condition
-    let redemption_condition =
-        query_redemption_condition(&mut router, cw20_redeem_addr.to_string());
+    let redemption_condition = query_redemption_condition(&mut router, redeem_addr.to_string());
     assert_eq!(
         redemption_condition
             .redemption
@@ -279,11 +277,11 @@ fn test_cw20_redeem_app_native() {
     let balance = router.wrap().query_balance(owner.clone(), "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::zero());
 
-    let cancel_redemption_condition_msg = mock_cw20_redeem_cancel_redemption_condition_msg();
+    let cancel_redemption_condition_msg = mock_redeem_cancel_redemption_condition_msg();
     router
         .execute_contract(
             owner.clone(),
-            cw20_redeem_addr.clone(),
+            redeem_addr.clone(),
             &cancel_redemption_condition_msg,
             &[],
         )
@@ -295,7 +293,7 @@ fn test_cw20_redeem_app_native() {
 }
 
 #[test]
-fn test_cw20_redeem_app_native_refund() {
+fn test_redeem_app_native_refund() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -305,7 +303,7 @@ fn test_cw20_redeem_app_native_refund() {
 
     let addresses = get_addresses(&mut router, &andr, &app);
     let cw20_addr_2 = addresses.cw20_2;
-    let cw20_redeem_addr = addresses.cw20_redeem;
+    let redeem_addr = addresses.redeem;
     let redeem_asset = AssetInfo::Cw20(cw20_addr_2.clone());
 
     // Start native redemption condition
@@ -320,16 +318,16 @@ fn test_cw20_redeem_app_native_refund() {
     router
         .execute_contract(
             owner.clone(),
-            cw20_redeem_addr.clone(),
+            redeem_addr.clone(),
             &start_redemption_condition_msg,
             &[coin(100u128, "uandr")],
         )
         .unwrap();
 
     // Let user 1 redeem
-    let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
+    let redeem_msg = mock_redeem_hook_redeem_msg();
     let send_msg = mock_cw20_send(
-        cw20_redeem_addr.clone(),
+        redeem_addr.clone(),
         Uint128::new(10u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -354,9 +352,9 @@ fn test_cw20_redeem_app_native_refund() {
     assert_eq!(balance_one, Uint128::from(1000 - 10u128));
 
     // Test redemption with refund
-    let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
+    let redeem_msg = mock_redeem_hook_redeem_msg();
     let send_msg = mock_cw20_send(
-        cw20_redeem_addr.clone(),
+        redeem_addr.clone(),
         // 40 gets the max amount, so the user must be refunded 60
         Uint128::new(100u128),
         to_json_binary(&redeem_msg).unwrap(),
@@ -377,7 +375,7 @@ fn test_cw20_redeem_app_native_refund() {
 }
 
 #[test]
-fn test_cw20_redeem_app_cw20() {
+fn test_redeem_app_cw20() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -387,13 +385,13 @@ fn test_cw20_redeem_app_cw20() {
 
     // Component Addresses
     let addresses = get_addresses(&mut router, &andr, &app);
-    let (cw20_addr, cw20_addr_2, cw20_redeem_addr) =
-        (addresses.cw20, addresses.cw20_2, addresses.cw20_redeem);
+    let (cw20_addr, cw20_addr_2, redeem_addr) =
+        (addresses.cw20, addresses.cw20_2, addresses.redeem);
 
     let redeem_asset = AssetInfo::Cw20(cw20_addr_2.clone());
 
     // Start cw20 redemption condition
-    let start_redemption_condition_msg = mock_cw20_redeem_start_redemption_condition_hook_msg(
+    let start_redemption_condition_msg = mock_redeem_start_redemption_condition_hook_msg(
         redeem_asset,
         Uint128::new(2),
         None,
@@ -402,7 +400,7 @@ fn test_cw20_redeem_app_cw20() {
     );
 
     let send_msg = mock_cw20_send(
-        cw20_redeem_addr.clone(),
+        redeem_addr.clone(),
         OWNER_INITIAL_BALANCE,
         to_json_binary(&start_redemption_condition_msg).unwrap(),
     );
@@ -412,9 +410,9 @@ fn test_cw20_redeem_app_cw20() {
         .unwrap();
 
     // Let user 1 redeem
-    let redeem_msg = mock_cw20_redeem_hook_redeem_msg();
+    let redeem_msg = mock_redeem_hook_redeem_msg();
     let send_msg = mock_cw20_send(
-        cw20_redeem_addr.clone(),
+        redeem_addr.clone(),
         Uint128::new(10u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -441,19 +439,15 @@ fn test_cw20_redeem_app_cw20() {
     assert_eq!(owner_balance, Uint128::zero());
 
     // Get cw20 balance of redeem contract
-    let redeem_contract_balance: Uint128 = query_cw20_balance(
-        &mut router,
-        cw20_addr.to_string(),
-        cw20_redeem_addr.to_string(),
-    );
+    let redeem_contract_balance: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), redeem_addr.to_string());
     assert_eq!(
         redeem_contract_balance,
         OWNER_INITIAL_BALANCE.checked_sub(Uint128::new(20)).unwrap()
     );
 
     // Query redemption condition
-    let redemption_condition =
-        query_redemption_condition(&mut router, cw20_redeem_addr.to_string());
+    let redemption_condition = query_redemption_condition(&mut router, redeem_addr.to_string());
     assert_eq!(
         redemption_condition
             .redemption
@@ -468,22 +462,19 @@ fn test_cw20_redeem_app_cw20() {
     let owner_balance: Uint128 =
         query_cw20_balance(&mut router, cw20_addr.to_string(), owner.to_string());
     assert_eq!(owner_balance, Uint128::zero());
-    let cancel_redemption_condition_msg = mock_cw20_redeem_cancel_redemption_condition_msg();
+    let cancel_redemption_condition_msg = mock_redeem_cancel_redemption_condition_msg();
     router
         .execute_contract(
             owner.clone(),
-            cw20_redeem_addr.clone(),
+            redeem_addr.clone(),
             &cancel_redemption_condition_msg,
             &[],
         )
         .unwrap();
 
     // Get cw20 balance of redeem contract
-    let redeem_contract_balance: Uint128 = query_cw20_balance(
-        &mut router,
-        cw20_addr.to_string(),
-        cw20_redeem_addr.to_string(),
-    );
+    let redeem_contract_balance: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), redeem_addr.to_string());
     assert_eq!(redeem_contract_balance, Uint128::zero());
 
     // Get cw20 balance of owner
@@ -496,7 +487,7 @@ fn test_cw20_redeem_app_cw20() {
 }
 
 #[test]
-fn test_cw20_redeem_app_cw20_and_native_redeem() {
+fn test_redeem_app_cw20_and_native_redeem() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -506,12 +497,12 @@ fn test_cw20_redeem_app_cw20_and_native_redeem() {
 
     // Component Addresses
     let addresses = get_addresses(&mut router, &andr, &app);
-    let (cw20_addr, cw20_redeem_addr) = (addresses.cw20, addresses.cw20_redeem);
+    let (cw20_addr, redeem_addr) = (addresses.cw20, addresses.redeem);
 
     let redeem_asset = AssetInfo::Native("uandr".to_string());
 
     // Start cw20 redemption condition
-    let start_redemption_condition_msg = mock_cw20_redeem_start_redemption_condition_hook_msg(
+    let start_redemption_condition_msg = mock_redeem_start_redemption_condition_hook_msg(
         redeem_asset,
         Uint128::new(2),
         None,
@@ -520,7 +511,7 @@ fn test_cw20_redeem_app_cw20_and_native_redeem() {
     );
 
     let send_msg = mock_cw20_send(
-        cw20_redeem_addr.clone(),
+        redeem_addr.clone(),
         OWNER_INITIAL_BALANCE,
         to_json_binary(&start_redemption_condition_msg).unwrap(),
     );
@@ -537,7 +528,7 @@ fn test_cw20_redeem_app_cw20_and_native_redeem() {
     let err: ContractError = router
         .execute_contract(
             user1.clone(),
-            cw20_redeem_addr.clone(),
+            redeem_addr.clone(),
             &redeem_msg,
             // In the redeem condition, uandr is the accepted asset
             &[coin(1u128, "uusd")],
@@ -555,7 +546,7 @@ fn test_cw20_redeem_app_cw20_and_native_redeem() {
     router
         .execute_contract(
             user1.clone(),
-            cw20_redeem_addr.clone(),
+            redeem_addr.clone(),
             &redeem_msg,
             &[coin(1u128, "uandr")],
         )
@@ -576,19 +567,15 @@ fn test_cw20_redeem_app_cw20_and_native_redeem() {
     assert_eq!(owner_balance, Uint128::zero());
 
     // Get cw20 balance of redeem contract
-    let redeem_contract_balance: Uint128 = query_cw20_balance(
-        &mut router,
-        cw20_addr.to_string(),
-        cw20_redeem_addr.to_string(),
-    );
+    let redeem_contract_balance: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), redeem_addr.to_string());
     assert_eq!(
         redeem_contract_balance,
         OWNER_INITIAL_BALANCE.checked_sub(Uint128::new(2)).unwrap()
     );
 
     // Query redemption condition
-    let redemption_condition =
-        query_redemption_condition(&mut router, cw20_redeem_addr.to_string());
+    let redemption_condition = query_redemption_condition(&mut router, redeem_addr.to_string());
     assert_eq!(
         redemption_condition
             .redemption
@@ -603,22 +590,19 @@ fn test_cw20_redeem_app_cw20_and_native_redeem() {
     let owner_balance: Uint128 =
         query_cw20_balance(&mut router, cw20_addr.to_string(), owner.to_string());
     assert_eq!(owner_balance, Uint128::zero());
-    let cancel_redemption_condition_msg = mock_cw20_redeem_cancel_redemption_condition_msg();
+    let cancel_redemption_condition_msg = mock_redeem_cancel_redemption_condition_msg();
     router
         .execute_contract(
             owner.clone(),
-            cw20_redeem_addr.clone(),
+            redeem_addr.clone(),
             &cancel_redemption_condition_msg,
             &[],
         )
         .unwrap();
 
     // Get cw20 balance of redeem contract
-    let redeem_contract_balance: Uint128 = query_cw20_balance(
-        &mut router,
-        cw20_addr.to_string(),
-        cw20_redeem_addr.to_string(),
-    );
+    let redeem_contract_balance: Uint128 =
+        query_cw20_balance(&mut router, cw20_addr.to_string(), redeem_addr.to_string());
     assert_eq!(redeem_contract_balance, Uint128::zero());
 
     // Get cw20 balance of owner
