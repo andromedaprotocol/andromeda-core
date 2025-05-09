@@ -38,7 +38,6 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::receiver::Cw721ReceiveMsg;
-use cw_utils::Expiration;
 
 use super::mock_querier::TestDeps;
 
@@ -159,10 +158,8 @@ fn assert_auction_created(
     let duration = 20_000_000;
     assert_eq!(
         TokenAuctionState {
-            start_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 1) * 1_000_000)),
-            end_time: Expiration::AtTime(Timestamp::from_nanos(
-                (current_time + duration) * 1_000_000
-            )),
+            start_time: Milliseconds(current_time),
+            end_time: Milliseconds(current_time + duration),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             buy_now_price,
@@ -210,10 +207,8 @@ fn assert_auction_created_cw20(
     let duration = 20_000_000;
     assert_eq!(
         TokenAuctionState {
-            start_time: Expiration::AtTime(Timestamp::from_nanos((current_time + 1) * 1_000_000)),
-            end_time: Expiration::AtTime(Timestamp::from_nanos(
-                (current_time + duration) * 1_000_000
-            )),
+            start_time: Milliseconds(current_time),
+            end_time: Milliseconds(current_time + duration),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: MOCK_CW20_CONTRACT.to_string(),
@@ -600,8 +595,8 @@ fn execute_place_bid_multiple_bids() {
         res
     );
     let mut expected_response = AuctionStateResponse {
-        start_time: Expiration::AtTime(Timestamp::from_nanos(1571797419880000000)),
-        end_time: Expiration::AtTime(Timestamp::from_nanos(1571817419879000000)),
+        start_time: Milliseconds(1571797419880 - 1),
+        end_time: Milliseconds(1571817419879),
         high_bidder_addr: sender.to_string(),
         high_bidder_amount: Uint128::from(100u128),
         auction_id: Uint128::from(1u128),
@@ -1082,8 +1077,8 @@ fn execute_update_auction() {
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
     assert_eq!(
         TokenAuctionState {
-            start_time: Expiration::AtTime(Timestamp::from_nanos(1571711019880000000)),
-            end_time: Expiration::AtTime(Timestamp::from_nanos(1571711019881000000)),
+            start_time: Milliseconds(1571711019880),
+            end_time: Milliseconds(1571711019881),
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             coin_denom: "uusd".to_string(),
@@ -1141,8 +1136,8 @@ fn execute_start_auction_after_previous_finished() {
     assert_eq!(
         Response::new().add_attributes(vec![
             attr("action", "start_auction"),
-            attr("start_time", "expiration time: 1571801019.880000000"),
-            attr("end_time", "expiration time: 1571817419.879000000"),
+            attr("start_time", "1571801019879"),
+            attr("end_time", "1571817419879"),
             attr("coin_denom", "uusd"),
             attr("auction_id", "2"),
             attr("whitelist", "None"),
