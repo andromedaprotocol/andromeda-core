@@ -1,14 +1,14 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::{MillisecondsExpiration, OrderBy};
+use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, BlockInfo, MessageInfo, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw721::{receiver::Cw721ReceiveMsg, Expiration};
+use cw721::receiver::Cw721ReceiveMsg;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -205,8 +205,8 @@ impl From<TokenAuctionState> for AuctionStateResponse {
 
 #[cw_serde]
 pub struct TokenAuctionState {
-    pub start_time: Expiration,
-    pub end_time: Expiration,
+    pub start_time: Milliseconds,
+    pub end_time: Milliseconds,
     pub high_bidder_addr: Addr,
     pub high_bidder_amount: Uint128,
     pub buy_now_price: Option<Uint128>,
@@ -276,8 +276,8 @@ pub fn validate_auction(
 
 #[cw_serde]
 pub struct AuctionStateResponse {
-    pub start_time: Expiration,
-    pub end_time: Expiration,
+    pub start_time: Milliseconds,
+    pub end_time: Milliseconds,
     pub high_bidder_addr: String,
     pub high_bidder_amount: Uint128,
     pub auction_id: Uint128,

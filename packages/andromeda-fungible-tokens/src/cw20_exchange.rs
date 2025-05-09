@@ -1,13 +1,12 @@
 use andromeda_std::{
     amp::AndrAddr,
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, MillisecondsDuration},
+    common::{expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
-use cw_utils::Expiration;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -39,9 +38,9 @@ pub struct Sale {
     /// The recipient of the sale proceeds
     pub recipient: String,
     /// The time when the sale starts
-    pub start_time: Expiration,
+    pub start_time: Milliseconds,
     /// The time when the sale ends
-    pub end_time: Expiration,
+    pub end_time: Option<Milliseconds>,
 }
 
 #[cw_serde]
