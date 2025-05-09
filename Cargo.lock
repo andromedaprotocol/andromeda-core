@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.6-b.2"
+version = "2.2.6-b.3"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -167,7 +167,6 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus",
- "cw-utils",
  "cw20",
  "cw721",
 ]

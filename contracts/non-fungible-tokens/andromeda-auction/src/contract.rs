@@ -20,7 +20,7 @@ use andromeda_std::{
             SEND_CW20_ACTION,
         },
         encode_binary,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        expiration::Expiry,
         Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
@@ -265,12 +265,20 @@ fn execute_start_auction(
         }
     }
 
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
+    let start_time = match start_time {
+        Some(s) => {
+            // Check that the start time is in the future
+            s.validate(&env.block)?
+        }
+        // Set start time to current time if not provided
+        None => Expiry::FromNow(Milliseconds::zero()),
+    }
+    .get_time(&env.block);
+
+    let end_time = end_time.validate(&env.block)?.get_time(&env.block);
 
     ensure!(
-        end_expiration > start_expiration,
+        end_time > start_time,
         ContractError::StartTimeAfterEndTime {}
     );
 
@@ -298,8 +306,8 @@ fn execute_start_auction(
         deps.storage,
         auction_id.u128(),
         &TokenAuctionState {
-            start_time: start_expiration,
-            end_time: end_expiration,
+            start_time,
+            end_time,
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             buy_now_price,
@@ -319,8 +327,8 @@ fn execute_start_auction(
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "start_auction"),
-        attr("start_time", start_expiration.to_string()),
-        attr("end_time", end_expiration.to_string()),
+        attr("start_time", start_time.to_string()),
+        attr("end_time", end_time.to_string()),
         attr("coin_denom", coin_denom),
         attr("auction_id", auction_id.to_string()),
         attr("whitelist", whitelist_str),
@@ -383,12 +391,20 @@ fn execute_update_auction(
         ContractError::InvalidExpiration {}
     );
 
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
+    let start_time = match start_time {
+        Some(s) => {
+            // Check that the start time is in the future
+            s.validate(&env.block)?
+        }
+        // Set start time to current time if not provided
+        None => Expiry::FromNow(Milliseconds::zero()),
+    }
+    .get_time(&env.block);
+
+    let end_time = end_time.validate(&env.block)?.get_time(&env.block);
 
     ensure!(
-        end_expiration > start_expiration,
+        end_time > start_time,
         ContractError::StartTimeAfterEndTime {}
     );
 
@@ -416,8 +432,8 @@ fn execute_update_auction(
 
     let whitelist_str = format!("{:?}", &whitelist);
 
-    token_auction_state.start_time = start_expiration;
-    token_auction_state.end_time = end_expiration;
+    token_auction_state.start_time = start_time;
+    token_auction_state.end_time = end_time;
     token_auction_state.coin_denom.clone_from(&coin_denom);
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
@@ -432,8 +448,8 @@ fn execute_update_auction(
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_auction"),
-        attr("start_time", start_expiration.to_string()),
-        attr("end_time", end_expiration.to_string()),
+        attr("start_time", start_time.to_string()),
+        attr("end_time", end_time.to_string()),
         attr("coin_denom", coin_denom),
         attr("uses_cw20", uses_cw20.to_string()),
         attr("auction_id", token_auction_state.auction_id.to_string()),
