@@ -113,7 +113,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-adodb"
-version = "1.1.5"
+version = "1.1.4-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -453,7 +453,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-economics"
-version = "1.2.2"
+version = "1.2.1-b.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema",
@@ -845,7 +845,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.7"
+version = "1.5.1-b.8"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema",
