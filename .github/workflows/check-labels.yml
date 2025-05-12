@@ -3,9 +3,6 @@ name: Check Labels
 on:
   pull_request:
 
-permissions:
-  pull-requests: write
-
 jobs:
   check-labels:
     runs-on: ubuntu-latest
@@ -25,8 +22,6 @@ jobs:
           else
             echo "std_changed=false" >> $GITHUB_ENV
           fi
-          echo "PR Author: ${{ github.event.pull_request.user.login }}"
-          echo "std_changed: ${{ env.std_changed }}"
 
       - name: Add Std Label
         if: env.std_changed == 'true' && github.event.pull_request.user.login != 'dependabot[bot]'
