@@ -48,30 +48,33 @@ andromeda-math = { path = "./packages/andromeda-math", version = "1.0.0" }
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
 andromeda-socket = { path = "./packages/andromeda-socket", version = "0.1.0" }
+andromeda-cw-json = { path = "./packages/andromeda-cw-json", version = "0.1.1" }
 
 strum_macros = "0.24.3"
-cosmwasm-std = "1.5.11"
-cw-utils = "1.0.3"
-cw-storage-plus = "1.2.0"
-cw2 = "1.1.2"
-cw20 = "1.1.2"
-cw20-base = "1.1.2"
-cw3 = "1.1.2"
-cw4 = "1.1.2"
-cw721 = "0.18.0"
-cw721-base = { version = "0.18.0", features = ["library"] }
-cw-asset = "=3.0.0"
-cosmwasm-schema = "1.5.11"
-semver = "1.0.26"
+cosmwasm-std = "^2.2"
+cw-utils = "2.0.0"
+cw-storage-plus = "2.0.0"
+cw2 = "2.0.0"
+cw20 = "2.0.0"
+cw20-base = "2.0.0"
+cw3 = "2.0.0"
+cw4 = "2.0.0"
+cw721 = { git = "https://github.com/andromedaprotocol/cw721-2.2", branch = "removeExtension" }
+cw721-base = { git = "https://github.com/andromedaprotocol/cw721-2.2", branch = "removeExtension" }
+cw-asset = "4.0.0"
+cosmwasm-schema = "^2.2"
+semver = "1.0.25"
 enum-repr = "0.2.6"
-cw-multi-test = { version = "1.0.0", features = ["cosmwasm_1_2"] }
-serde = { version = "1.0.219" }
+cw-multi-test = "2.4.0"
+serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
-cw-orch = "=0.24.1"
+cw-orch = "0.27.0"
+cw-orch-daemon = "0.29.1"
 jsonschema-valid = { version = "0.5.2" }
 serde_json = { version = "1.0.140" }
 rstest = "0.25.0"
 thiserror = { version = "1.0.58" }
 
 astroport = { git = "https://github.com/astroport-fi/astroport-core" } 
-cosmrs = { version = "0.15.0", features = ["cosmwasm"]}
+cosmrs = { version = "0.19.0", features = ["cosmwasm"]}
+sha2 = "0.10.9"

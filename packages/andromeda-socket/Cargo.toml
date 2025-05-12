@@ -6,8 +6,7 @@ rust-version = "1.75.0"
 description = "Utility methods and message definitions for the Andromeda Socket"
 license = "MIT"
 
-[features]
-backtraces = ["cosmwasm-std/backtraces"]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -24,4 +23,4 @@ andromeda-std = { workspace = true, features = [] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-orch = { workspace = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = { workspace = true }

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::testing::mock_querier::MOCK_POINT_CONTRACT;
+use crate::testing::mock_querier::{MOCK_POINT_CONTRACT, SENDER};
 use andromeda_math::graph::{Coordinate, MapInfo, MapSize, StoredDate};
 use andromeda_math::graph::{CoordinateInfo, GetMapInfoResponse};
 use andromeda_std::amp::AndrAddr;
@@ -489,7 +489,7 @@ fn test_store_user_coordinate() {
     .unwrap();
 
     let query_res: CoordinateInfo =
-        query_user_coordinate(deps.as_ref(), AndrAddr::from_string("sender".to_string())).unwrap();
+        query_user_coordinate(deps.as_ref(), AndrAddr::from_string(SENDER.to_string())).unwrap();
     assert_eq!(
         query_res,
         CoordinateInfo {
@@ -501,10 +501,10 @@ fn test_store_user_coordinate() {
 
     delete_user_coordinate(
         deps.as_mut(),
-        AndrAddr::from_string("sender".to_string()),
-        "sender",
+        AndrAddr::from_string(SENDER.to_string()),
+        SENDER,
     )
     .unwrap();
 
-    query_user_coordinate(deps.as_ref(), AndrAddr::from_string("sender".to_string())).unwrap_err();
+    query_user_coordinate(deps.as_ref(), AndrAddr::from_string(SENDER.to_string())).unwrap_err();
 }

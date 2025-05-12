@@ -15,7 +15,6 @@ exclude = [
 crate-type = ["cdylib", "rlib"]
 
 [features]
-backtraces = ["cosmwasm-std/backtraces"]
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]
 

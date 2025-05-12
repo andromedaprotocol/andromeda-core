@@ -25,15 +25,16 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     coin, from_json,
-    testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps,
+    testing::{message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage},
+    to_json_binary, Addr, Binary, CosmosMsg, Env, IbcMsg, OwnedDeps, Uint128,
 };
 use rstest::*;
 
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies();
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         owner: None,
         chain_name: "test".to_string(),
@@ -47,7 +48,8 @@ fn proper_initialization() {
 #[test]
 fn test_update_chain_name() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -65,7 +67,7 @@ fn test_update_chain_name() {
         chain_name: chain_name.clone(),
     };
 
-    let fake_info = mock_info("fake", &[]);
+    let fake_info = message_info(&Addr::unchecked("fake"), &[]);
 
     let err = execute(
         deps.as_mut(),
@@ -83,7 +85,8 @@ fn test_update_chain_name() {
 #[test]
 fn test_create_ado() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -121,7 +124,8 @@ fn test_create_ado() {
 #[test]
 fn test_register_user_cross_chain() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     let chain = "chain";
     instantiate(
@@ -162,7 +166,7 @@ fn test_register_user_cross_chain() {
     let res = execute(deps.as_mut(), env.clone(), info, msg.clone()).unwrap_err();
     assert_eq!(res, ContractError::Unauthorized {});
 
-    let info = mock_info(MOCK_VFS_CONTRACT, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_VFS_CONTRACT), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(res.messages.len(), 1);
 
@@ -182,7 +186,8 @@ fn test_register_user_cross_chain() {
 #[test]
 fn test_assign_channels() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     let chain = "chain";
     instantiate(
@@ -276,7 +281,8 @@ fn test_assign_channels() {
 #[test]
 fn test_assign_channels_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     let chain = "chain";
     instantiate(
@@ -290,7 +296,8 @@ fn test_assign_channels_unauthorized() {
     )
     .unwrap();
 
-    let unauth_info = mock_info("attacker", &[]);
+    let attacker = deps.api.addr_make("attacker");
+    let unauth_info = message_info(&attacker, &[]);
     let msg = ExecuteMsg::AssignChannels {
         ics20_channel_id: None,
         direct_channel_id: Some("3".to_string()),
@@ -304,7 +311,7 @@ fn test_assign_channels_unauthorized() {
 #[test]
 fn test_send_cross_chain_no_channel() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info(MOCK_VFS_CONTRACT, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_VFS_CONTRACT), &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -349,7 +356,8 @@ fn test_send_cross_chain_no_channel() {
 #[test]
 fn test_handle_ibc_direct() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("user", &[]);
+    let user = deps.api.addr_make("user");
+    let info = message_info(&user, &[]);
     let env = mock_env();
     let chain = "andromeda";
     instantiate(
@@ -463,7 +471,8 @@ fn test_set_unset_env(
     #[case] expected_unset_error: Option<ContractError>,
 ) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info(CREATOR, &[]);
+    let creator = deps.api.addr_make(CREATOR);
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate(
         deps.as_mut(),
@@ -475,7 +484,8 @@ fn test_set_unset_env(
         },
     )
     .unwrap();
-    let send_info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make(sender);
+    let send_info = message_info(&sender, &[]);
 
     if let Some(value) = value {
         // Set environment variable
@@ -521,7 +531,8 @@ fn test_set_unset_env(
 fn setup_pending_packets() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env) {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("sender", &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
 
     // Instantiate contract
     instantiate(
@@ -611,14 +622,16 @@ fn test_query_pending_packets(
     "cosmos-1.1234.5",    // id
     "cosmos-1",           // current_chain_id
     1234,                 // current_block_height
-    5,                    // current_index
-    Ok("cosmos-1.1234.5".to_string())
+    Uint128::new(5),
+    Err(ContractError::InvalidPacket {
+        error: Some("Block height or transaction index does not match the current values".to_string())
+    })
 )]
 #[case::different_chain(
     "osmosis-1.5678.3",   // id from different chain
     "cosmos-1",           // current_chain_id
     1234,                 // current_block_height
-    5,                    // current_index
+    Uint128::new(5),
     Ok("osmosis-1.5678.3".to_string())
 )]
 // Error cases
@@ -626,7 +639,7 @@ fn test_query_pending_packets(
     "cosmos-1.1234",      // missing index
     "cosmos-1",
     1234,
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Invalid packet ID format. Expected: chain_id.block_height.index".to_string()) 
     })
@@ -635,7 +648,7 @@ fn test_query_pending_packets(
     ".1234.5",
     "cosmos-1",
     1234,
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Chain ID cannot be empty".to_string()) 
     })
@@ -644,7 +657,7 @@ fn test_query_pending_packets(
     "cosmos-1.invalid.5",
     "cosmos-1",
     1234,
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Invalid block height format".to_string()) 
     })
@@ -653,7 +666,7 @@ fn test_query_pending_packets(
     "cosmos-1.1234.5",
     "cosmos-1",
     1235,                 // different block height
-    5,
+    Uint128::new(5),
     Err(ContractError::InvalidPacket {
         error: Some("Block height or transaction index does not match the current values".to_string()) 
     })
@@ -662,16 +675,14 @@ fn test_query_pending_packets(
     "cosmos-1.1234.5",
     "cosmos-1",
     1234,
-    6,                    // different index
-    Err(ContractError::InvalidPacket {
-        error: Some("Block height or transaction index does not match the current values".to_string()) 
-    })
+    Uint128::new(6),
+    Ok("cosmos-1.1234.5".to_string())
 )]
 fn test_validate_id(
     #[case] id: &str,
     #[case] current_chain_id: &str,
     #[case] current_block_height: u64,
-    #[case] current_index: u32,
+    #[case] current_index: Uint128,
     #[case] expected: Result<String, ContractError>,
 ) {
     let result = validate_id(id, current_chain_id, current_block_height, current_index);

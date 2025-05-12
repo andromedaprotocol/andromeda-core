@@ -1,3 +1,4 @@
+use crate::execute::generate_or_validate_packet_id;
 #[cfg(test)]
 use crate::{execute::handle_local, state::KERNEL_ADDRESSES};
 use andromeda_std::{
@@ -9,14 +10,15 @@ use andromeda_std::{
     error::ContractError,
     testing::mock_querier::{
         mock_dependencies_custom, FAKE_VFS_PATH, INVALID_CONTRACT, MOCK_ADODB_CONTRACT,
-        MOCK_APP_CONTRACT, MOCK_WALLET,
+        MOCK_APP_CONTRACT, MOCK_WALLET, RECEIVER,
     },
 };
 use cosmwasm_std::{
     coin,
-    testing::{mock_env, mock_info},
+    testing::{message_info, mock_env},
     to_json_binary, Addr, BankMsg, Binary, ReplyOn, SubMsg,
 };
+pub const SENDER: &str = "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg";
 
 struct TestHandleLocalCase {
     name: &'static str,
@@ -50,15 +52,19 @@ fn test_handle_local() {
             msg: AMPMsg::new(MOCK_APP_CONTRACT, to_json_binary(&true).unwrap(), None),
             ctx: None,
             expected_submessage: AMPPkt::new(
-                "sender",
-                "sender",
+                SENDER,
+                SENDER,
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),
                     None,
                 )],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
@@ -69,14 +75,18 @@ fn test_handle_local() {
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
-                "sender",
+                SENDER,
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),
                     None,
                 )],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
@@ -91,7 +101,7 @@ fn test_handle_local() {
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
-                "sender",
+                SENDER,
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),
@@ -99,7 +109,7 @@ fn test_handle_local() {
                 )],
             )
             .to_sub_msg(
-                MOCK_APP_CONTRACT,
+                Addr::unchecked(MOCK_APP_CONTRACT),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
                 ReplyId::AMPMsg.repr(),
             )
@@ -181,14 +191,14 @@ fn test_handle_local() {
             name: "Valid bank send message",
             sender: "sender",
             msg: AMPMsg::new(
-                "receiver",
+                RECEIVER,
                 Binary::default(),
                 Some(vec![coin(100, "denom"), coin(200, "denom_two")]),
             ),
             ctx: None,
             expected_submessage: SubMsg::reply_on_error(
                 BankMsg::Send {
-                    to_address: "receiver".to_string(),
+                    to_address: RECEIVER.to_string(),
                     amount: vec![coin(100, "denom"), coin(200, "denom_two")],
                 },
                 ReplyId::AMPMsg.repr(),
@@ -198,11 +208,11 @@ fn test_handle_local() {
         TestHandleLocalCase {
             name: "Bank send no funds",
             sender: "sender",
-            msg: AMPMsg::new("receiver", Binary::default(), None),
+            msg: AMPMsg::new(RECEIVER, Binary::default(), None),
             ctx: None,
             expected_submessage: SubMsg::reply_on_error(
                 BankMsg::Send {
-                    to_address: "receiver".to_string(),
+                    to_address: RECEIVER.to_string(),
                     amount: vec![],
                 },
                 ReplyId::AMPMsg.repr(),
@@ -217,11 +227,15 @@ fn test_handle_local() {
             msg: create_test_msg_with_config(config.clone()),
             ctx: None,
             expected_submessage: AMPPkt::new(
-                "sender",
-                "sender",
+                SENDER,
+                SENDER,
                 vec![create_test_msg_with_config(config)],
             )
-            .to_sub_msg(MOCK_APP_CONTRACT, None, ReplyId::AMPMsg.repr())
+            .to_sub_msg(
+                Addr::unchecked(MOCK_APP_CONTRACT),
+                None,
+                ReplyId::AMPMsg.repr(),
+            )
             .unwrap(),
             expected_error: None,
         },
@@ -229,7 +243,8 @@ fn test_handle_local() {
 
     for test in test_cases {
         let mut deps = mock_dependencies_custom(&[]);
-        let info = mock_info(test.sender, &[]);
+        let sender = deps.api.addr_make(test.sender);
+        let info = message_info(&sender, &[]);
 
         KERNEL_ADDRESSES
             .save(
@@ -246,7 +261,6 @@ fn test_handle_local() {
             assert_eq!(res.unwrap_err(), err, "{}", test.name);
             continue;
         }
-
         let response = res.unwrap();
 
         assert_eq!(
@@ -255,4 +269,44 @@ fn test_handle_local() {
             test.name
         );
     }
+}
+
+use crate::state::TX_INDEX;
+use cosmwasm_std::Uint128;
+use rstest::*;
+
+// Helper to reset TX_INDEX before each case
+fn setup_tx_index(storage: &mut dyn cosmwasm_std::Storage, value: Uint128) {
+    TX_INDEX.save(storage, &value).unwrap();
+}
+
+#[rstest]
+#[case::generate_first(None, Uint128::zero(), "0", Uint128::one())]
+#[case::generate_second(None, Uint128::one(), "1", Uint128::new(2))]
+#[case::validate_same_chain(Some("test-chain.12345.1"), Uint128::zero(), "1", Uint128::zero())]
+#[case::validate_different_chain(
+    Some("different-chain.12345.10"),
+    Uint128::zero(),
+    "10",
+    Uint128::zero()
+)]
+fn test_generate_or_validate_packet_id_cases(
+    #[case] input: Option<&str>,
+    #[case] initial_index: Uint128,
+    #[case] expected_index_str: &str,
+    #[case] expected_final_index: Uint128,
+) {
+    let mut deps = mock_dependencies_custom(&[]);
+    let env = mock_env();
+
+    setup_tx_index(deps.as_mut().storage, initial_index);
+
+    let input_string = input.map(|s| s.to_string());
+    let result = generate_or_validate_packet_id(&mut deps.as_mut(), &env, input_string).unwrap();
+
+    let parts: Vec<&str> = result.split('.').collect();
+    assert_eq!(parts[2], expected_index_str);
+
+    let final_tx_index = TX_INDEX.load(deps.as_ref().storage).unwrap();
+    assert_eq!(final_tx_index, expected_final_index);
 }

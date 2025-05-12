@@ -267,7 +267,7 @@ fn setup(
                 owner: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -287,9 +287,7 @@ fn setup(
 
     let meta_data = TierMetaData {
         token_uri: None,
-        extension: TokenExtension {
-            ..Default::default()
-        },
+        extension: TokenExtension::default(),
     };
     crowdfund_contract
         .add_tier(Tier {
@@ -343,7 +341,7 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
         .unwrap();
     let recipient_1_balance = daemon
         .balance(
-            recipient_1_daemon.sender_addr(),
+            &recipient_1_daemon.sender_addr(),
             Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]
@@ -356,7 +354,7 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
         .unwrap();
     let recipient_2_balance = daemon
         .balance(
-            recipient_2_daemon.sender_addr(),
+            &recipient_2_daemon.sender_addr(),
             Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]
@@ -403,7 +401,7 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
 
     let recipient_1_change = daemon
         .balance(
-            recipient_1_daemon.sender_addr(),
+            &recipient_1_daemon.sender_addr(),
             Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]
@@ -412,7 +410,7 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
 
     let recipient_2_change = daemon
         .balance(
-            recipient_2_daemon.sender_addr(),
+            &recipient_2_daemon.sender_addr(),
             Some(LOCAL_WASM.gas_denom.to_string()),
         )
         .unwrap()[0]

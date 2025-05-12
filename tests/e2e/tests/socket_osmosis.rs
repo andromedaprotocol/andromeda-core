@@ -100,7 +100,7 @@ fn setup(
                 owner: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
     TestCase {

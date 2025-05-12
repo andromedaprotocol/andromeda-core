@@ -6,8 +6,10 @@ use andromeda_std::{amp::AndrAddr, error::ContractError};
 
 use super::mock::{delete_matrix, proper_initialization, query_matrix, store_matrix};
 
-pub const AUTHORIZED_OPERATOR: &str = "authorized_operator";
-pub const UNAUTHORIZED_OPERATOR: &str = "unauthorized_operator";
+pub const AUTHORIZED_OPERATOR: &str =
+    "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
+pub const UNAUTHORIZED_OPERATOR: &str =
+    "cosmwasm1apn5stna323kg5fgzpg9hepc2c6crh8qumwe72z0nqgcdq7wltqszqkzm2";
 
 #[test]
 fn test_instantiation() {
@@ -164,24 +166,24 @@ fn test_query_owner_keys() {
 
     let keys: Vec<String> = vec!["1".into(), "2".into()];
     let data = Matrix(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]]);
-    let sender = "sender1".to_string();
+    let sender1 = deps.api.addr_make("sender1");
     for key in keys.clone() {
         store_matrix(
             deps.as_mut(),
-            &Some(format!("{sender}-{key}")),
+            &Some(format!("{sender1}-{key}")),
             &data,
-            &sender,
+            sender1.as_ref(),
         )
         .unwrap();
     }
 
-    let sender = "sender2".to_string();
+    let sender2 = deps.api.addr_make("sender2");
     for key in keys {
         store_matrix(
             deps.as_mut(),
-            &Some(format!("{sender}-{key}")),
+            &Some(format!("{sender2}-{key}")),
             &data,
-            &sender,
+            sender2.as_ref(),
         )
         .unwrap();
     }
@@ -195,7 +197,7 @@ fn test_query_owner_keys() {
             deps.as_ref(),
             mock_env(),
             QueryMsg::OwnerKeys {
-                owner: AndrAddr::from_string("sender1"),
+                owner: AndrAddr::from_string(sender1.to_string()),
             },
         )
         .unwrap(),
@@ -208,7 +210,7 @@ fn test_query_owner_keys() {
             deps.as_ref(),
             mock_env(),
             QueryMsg::OwnerKeys {
-                owner: AndrAddr::from_string("sender2"),
+                owner: AndrAddr::from_string(sender2.to_string()),
             },
         )
         .unwrap(),

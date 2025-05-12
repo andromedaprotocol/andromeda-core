@@ -7,13 +7,6 @@ use andromeda_std::{
     common::{context::ExecuteContext, denom::Asset},
     error::ContractError,
 };
-use astroport::{
-    asset::AssetInfo,
-    router::{
-        Cw20HookMsg as AstroCw20HookMsg, ExecuteMsg as AstroExecuteMsg, QueryMsg as AstroQueryMsg,
-        SwapOperation as AstroSwapOperation,
-    },
-};
 use cosmwasm_std::{
     attr, coin, ensure, to_json_binary, wasm_execute, Coin, Decimal, Deps, DepsMut, Env, Reply,
     Response, StdError, SubMsg, Uint128, WasmMsg,
@@ -22,7 +15,10 @@ use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use crate::state::{ForwardReplyState, FORWARD_REPLY_STATE, PREV_BALANCE, SWAP_ROUTER};
 
-use andromeda_socket::astroport::{SimulateSwapOperationResponse, SwapOperation};
+use andromeda_socket::astroport::{
+    AssetInfo, Cw20HookMsgAstroport, ExecuteMsgAstroport, QueryMsgAstroport,
+    SimulateSwapOperationResponse, SwapOperation, SwapOperationAstroport,
+};
 
 pub const ASTROPORT_MSG_SWAP_ID: u64 = 1;
 pub const ASTROPORT_MSG_FORWARD_ID: u64 = 2;
@@ -49,14 +45,14 @@ pub(crate) fn execute_swap_astroport_msg(
     };
 
     // Prepare swap operations
-    let operations: Vec<AstroSwapOperation> = operations
+    let operations: Vec<SwapOperationAstroport> = operations
         .unwrap_or(vec![SwapOperation {
             offer_asset_info: from_asset.clone(),
             ask_asset_info: to_asset.clone(),
         }])
         .iter()
         .map(|oper| {
-            let astro_operation = AstroSwapOperation::AstroSwap {
+            let astro_operation = SwapOperationAstroport::AstroSwap {
                 offer_asset_info: generate_asset_info_from_asset(
                     &deps.as_ref(),
                     oper.offer_asset_info.clone(),
@@ -68,7 +64,7 @@ pub(crate) fn execute_swap_astroport_msg(
             };
             Ok(astro_operation)
         })
-        .collect::<Result<Vec<AstroSwapOperation>, ContractError>>()?;
+        .collect::<Result<Vec<SwapOperationAstroport>, ContractError>>()?;
     ensure!(
         FORWARD_REPLY_STATE
             .may_load(deps.as_ref().storage)?
@@ -101,7 +97,7 @@ pub(crate) fn execute_swap_astroport_msg(
     // Build swap msg
     let msg = match from_asset {
         Asset::NativeToken(_) => {
-            let astro_swap_msg = AstroExecuteMsg::ExecuteSwapOperations {
+            let astro_swap_msg = ExecuteMsgAstroport::ExecuteSwapOperations {
                 operations,
                 to: None,
                 max_spread,
@@ -114,7 +110,7 @@ pub(crate) fn execute_swap_astroport_msg(
             }
         }
         Asset::Cw20Token(cw20_contract) => {
-            let astro_swap_hook_msg = AstroCw20HookMsg::ExecuteSwapOperations {
+            let astro_swap_hook_msg = Cw20HookMsgAstroport::ExecuteSwapOperations {
                 operations,
                 to: None,
                 max_spread,
@@ -261,10 +257,10 @@ pub fn query_simulate_astro_swap_operation(
     offer_amount: Uint128,
     operations: Vec<SwapOperation>,
 ) -> Result<SimulateSwapOperationResponse, ContractError> {
-    let operations: Vec<AstroSwapOperation> = operations
+    let operations: Vec<SwapOperationAstroport> = operations
         .iter()
         .map(|oper| {
-            let astro_operation = AstroSwapOperation::AstroSwap {
+            let astro_operation = SwapOperationAstroport::AstroSwap {
                 offer_asset_info: generate_asset_info_from_asset(
                     &deps,
                     oper.offer_asset_info.clone(),
@@ -273,8 +269,8 @@ pub fn query_simulate_astro_swap_operation(
             };
             Ok(astro_operation)
         })
-        .collect::<Result<Vec<AstroSwapOperation>, ContractError>>()?;
-    let query_msg = AstroQueryMsg::SimulateSwapOperations {
+        .collect::<Result<Vec<SwapOperationAstroport>, ContractError>>()?;
+    let query_msg = QueryMsgAstroport::SimulateSwapOperations {
         offer_amount,
         operations,
     };

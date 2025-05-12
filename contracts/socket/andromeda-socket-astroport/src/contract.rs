@@ -277,8 +277,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(Response::default()
                 .add_attributes(vec![attr("action", "message_forwarded_success")]))
         }
-        _ => Err(ContractError::Std(StdError::GenericErr {
-            msg: "Invalid Reply ID".to_string(),
-        })),
+        _ => Err(ContractError::Std(StdError::generic_err(
+            "Invalid Reply ID".to_string(),
+        ))),
     }
 }

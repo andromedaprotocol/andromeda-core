@@ -6,7 +6,6 @@ pub enum ReplyId {
     AMPMsg = 100,
     CreateADO = 101,
     UpdateOwnership = 102,
-    IBCHooksPacketSend = 103,
     Recovery = 104,
     RegisterUsername = 105,
     IBCTransfer = 106,

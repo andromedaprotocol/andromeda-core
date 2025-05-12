@@ -521,8 +521,7 @@ fn withdraw_to_recipient(
 ) -> Result<SubMsg, ContractError> {
     match denom {
         Asset::NativeToken(denom) => {
-            let kernel_address =
-                ADOContract::default().get_kernel_address(ctx.deps.as_ref().storage)?;
+            let kernel_address = ctx.contract.get_kernel_address(ctx.deps.as_ref().storage)?;
 
             let owner = ADOContract::default().owner(ctx.deps.as_ref().storage)?;
             let mut pkt = AMPPkt::from_ctx(ctx.amp_ctx, ctx.env.contract.address.to_string())
@@ -592,7 +591,7 @@ fn handle_successful_claim(deps: DepsMut, sender: &Addr) -> Result<Response, Con
                 deps.storage,
                 token_address.to_string(),
                 metadata.clone(),
-                sender.to_string(),
+                sender.clone().into(),
             )?;
             resp = resp
                 .add_attributes(mint_resp.attributes)
@@ -634,7 +633,7 @@ fn mint(
     storage: &mut dyn Storage,
     tier_contract: String,
     tier_metadata: TierMetaData,
-    owner: String,
+    owner: AndrAddr,
 ) -> Result<Response, ContractError> {
     let token_id = get_and_increase_tier_token_id(storage)?.to_string();
 
@@ -644,7 +643,6 @@ fn mint(
             token_id,
             owner,
             token_uri: tier_metadata.token_uri,
-            extension: tier_metadata.extension,
         })?,
         funds: vec![],
     }))

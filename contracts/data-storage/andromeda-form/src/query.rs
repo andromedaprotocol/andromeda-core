@@ -53,7 +53,7 @@ pub fn get_submission(
 ) -> Result<GetSubmissionResponse, ContractError> {
     let wallet_address = wallet_address.get_raw_address(&deps)?;
     let submission =
-        submissions().may_load(deps.storage, &(submission_id, wallet_address.clone()))?;
+        submissions().may_load(deps.storage, (submission_id, wallet_address.clone()))?;
     Ok(GetSubmissionResponse { submission })
 }
 
