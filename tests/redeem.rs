@@ -23,12 +23,19 @@ use cw_asset::AssetInfo;
 use cw_multi_test::Executor;
 
 pub const OWNER_INITIAL_BALANCE: Uint128 = Uint128::new(10_000);
+pub const USER1_INITIAL_BALANCE: Uint128 = Uint128::new(10);
 
 fn setup_andr(router: &mut MockApp) -> MockAndromeda {
     MockAndromedaBuilder::new(router, "admin")
         .with_wallets(vec![
             ("owner", vec![coin(1000, "uandr"), coin(1000, "uusd")]),
-            ("user1", vec![coin(10, "uandr"), coin(10, "uusd")]),
+            (
+                "user1",
+                vec![
+                    coin(USER1_INITIAL_BALANCE.u128(), "uandr"),
+                    coin(USER1_INITIAL_BALANCE.u128(), "uusd"),
+                ],
+            ),
             ("user2", vec![]),
         ])
         .with_contracts(vec![
@@ -259,7 +266,10 @@ fn test_redeem_app_native() {
 
     // Get native balance of user1
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
-    assert_eq!(balance.amount, Uint128::from(20u128));
+    assert_eq!(
+        balance.amount,
+        USER1_INITIAL_BALANCE + Uint128::from(20u128)
+    );
 
     // Query redemption condition
     let redemption_condition = query_redemption_condition(&mut router, redeem_addr.to_string());
@@ -345,7 +355,10 @@ fn test_redeem_app_native_refund() {
 
     // Get native balance of user1
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
-    assert_eq!(balance.amount, Uint128::from(20u128));
+    assert_eq!(
+        balance.amount,
+        USER1_INITIAL_BALANCE + Uint128::from(20u128)
+    );
 
     let balance_one: Uint128 =
         query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
@@ -366,7 +379,10 @@ fn test_redeem_app_native_refund() {
 
     // Get native balance of user1
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
-    assert_eq!(balance.amount, Uint128::from(100u128));
+    assert_eq!(
+        balance.amount,
+        USER1_INITIAL_BALANCE + Uint128::from(100u128)
+    );
 
     let balance_one: Uint128 =
         query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
