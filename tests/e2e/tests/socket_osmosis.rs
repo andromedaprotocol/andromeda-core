@@ -16,10 +16,12 @@ use e2e::constants::{OSMO_5, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2};
 use andromeda_socket_osmosis::SocketOsmosisContract;
 
 use rstest::{fixture, rstest};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 struct TestCase {
     daemon: DaemonBase<Wallet>,
     app_contract: AppContract<DaemonBase<Wallet>>,
+    app_name: String,
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
@@ -32,7 +34,13 @@ fn setup(
 ) -> TestCase {
     let socket_osmosis_type = "soekct-osmosis";
     let socket_osmosis_component_name = "socket-osmosis";
-    let app_name = "socket osmosis with recipient";
+    let app_name = format!(
+        "socket osmosis with recipient {}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Check system time")
+            .as_millis()
+    );
 
     let daemon = Daemon::builder(OSMO_5)
         .mnemonic(TEST_MNEMONIC)
@@ -94,7 +102,7 @@ fn setup(
         .instantiate(
             &andromeda_app::app::InstantiateMsg {
                 app_components,
-                name: app_name.to_string(),
+                name: app_name.clone(),
                 chain_info: None,
                 kernel_address: kernel_address.to_string(),
                 owner: None,
@@ -106,17 +114,18 @@ fn setup(
     TestCase {
         daemon,
         app_contract,
+        app_name,
     }
 }
 
 #[rstest]
 fn test_onchain_native(setup: TestCase) {
-    let app_name = "socket osmosis with recipient";
-    let app_name_parsed = app_name.replace(' ', "_");
     let TestCase {
         daemon,
         app_contract,
+        app_name,
     } = setup;
+    let app_name_parsed = app_name.replace(' ', "_");
 
     let socket_osmosis_addr: String = app_contract.get_address("socket-osmosis");
 

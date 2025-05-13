@@ -23,6 +23,7 @@ use rstest::{fixture, rstest};
 struct TestCase {
     daemon: DaemonBase<Wallet>,
     app_contract: AppContract<DaemonBase<Wallet>>,
+    app_name: String,
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
@@ -35,7 +36,13 @@ fn setup(
 ) -> TestCase {
     let socket_astroport_type = "socket-astroport@0.1.0";
     let socket_astroport_component_name = "socket-astroport";
-    let app_name = format!("socket astroport with recipient {}", SystemTime::now().duration_since(UNIX_EPOCH).expect("Check system time").as_millis());
+    let app_name = format!(
+        "socket astroport with recipient {}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Check system time")
+            .as_millis()
+    );
 
     let daemon = Daemon::builder(PION_1)
         .mnemonic(TEST_MNEMONIC)
@@ -101,7 +108,7 @@ fn setup(
         .instantiate(
             &andromeda_app::app::InstantiateMsg {
                 app_components,
-                name: app_name.to_string(),
+                name: app_name.clone(),
                 chain_info: None,
                 kernel_address: kernel_address.to_string(),
                 owner: None,
@@ -113,6 +120,7 @@ fn setup(
     TestCase {
         daemon,
         app_contract,
+        app_name,
     }
 }
 
@@ -121,6 +129,7 @@ fn test_onchain_native_astroport(setup: TestCase) {
     let TestCase {
         daemon,
         app_contract,
+        ..
     } = setup;
 
     let socket_astroport_addr: String = app_contract.get_address("socket-astroport");
@@ -148,9 +157,9 @@ fn test_onchain_cw20(setup: TestCase) {
     let TestCase {
         daemon,
         app_contract,
+        app_name,
     } = setup;
 
-    let app_name = "socket astroport with recipient";
     let app_name_parsed = app_name.replace(' ', "_");
 
     let socket_astroport_addr: String = app_contract.get_address("socket-astroport");
@@ -190,9 +199,9 @@ fn test_onchain_native_to_native(setup: TestCase) {
     let TestCase {
         daemon,
         app_contract,
+        app_name,
     } = setup;
 
-    let app_name = "socket astroport with recipient";
     let app_name_parsed = app_name.replace(' ', "_");
 
     let socket_astroport_addr: String = app_contract.get_address("socket-astroport");
