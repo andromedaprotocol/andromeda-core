@@ -56,12 +56,14 @@ pub fn mock_redeem_cw20_msg(recipient: Option<String>) -> Cw20HookMsg {
 }
 
 pub fn mock_cw20_set_redeem_condition_native_msg(
+    redeem_asset: AssetInfo,
     exchange_rate: Uint128,
     recipient: Option<String>,
     start_time: Option<Expiry>,
     end_time: Option<Milliseconds>,
 ) -> ExecuteMsg {
     ExecuteMsg::StartRedeem {
+        redeem_asset,
         exchange_rate,
         recipient,
         start_time,
@@ -69,6 +71,6 @@ pub fn mock_cw20_set_redeem_condition_native_msg(
     }
 }
 
-pub fn mock_redeem_query_msg() -> QueryMsg {
-    QueryMsg::Redeem {}
+pub fn mock_redeem_query_msg(asset: String) -> QueryMsg {
+    QueryMsg::Redeem { asset }
 }

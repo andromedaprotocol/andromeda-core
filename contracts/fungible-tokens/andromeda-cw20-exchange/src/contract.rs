@@ -76,13 +76,23 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::CancelSale { asset } => execute_cancel_sale(ctx, asset),
+        ExecuteMsg::CancelRedeem { asset } => execute_cancel_redeem(ctx, asset),
         ExecuteMsg::Purchase { recipient } => execute_purchase_native(ctx, recipient),
         ExecuteMsg::StartRedeem {
+            redeem_asset,
             exchange_rate,
             recipient,
             start_time,
             end_time,
-        } => execute_start_redeem_native(ctx, exchange_rate, recipient, start_time, end_time),
+        } => execute_start_redeem_native(
+            ctx,
+            redeem_asset,
+            exchange_rate,
+            recipient,
+            start_time,
+            end_time,
+        ),
+        ExecuteMsg::Redeem { recipient } => execute_redeem_native(ctx, recipient),
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -129,6 +139,7 @@ pub fn execute_receive(
             &sender,
         ),
         Cw20HookMsg::StartRedeem {
+            redeem_asset,
             exchange_rate,
             recipient,
             start_time,
@@ -137,6 +148,7 @@ pub fn execute_receive(
             ctx,
             amount_sent,
             asset_sent,
+            redeem_asset,
             exchange_rate,
             sender,
             recipient,
@@ -247,6 +259,7 @@ pub fn execute_start_redeem(
     ctx: ExecuteContext,
     amount: Uint128,
     asset: AssetInfo,
+    redeem_asset: AssetInfo,
     exchange_rate: Uint128,
     // The original sender of the CW20::Send message
     sender: String,
@@ -256,14 +269,9 @@ pub fn execute_start_redeem(
     duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
-
-    let token_addr = TOKEN_ADDRESS
-        .load(deps.storage)?
-        .get_raw_address(&deps.as_ref())?;
-
     // Ensure the redeem asset is not the token address, since we will be redeeming it
     ensure!(
-        asset != AssetInfo::Cw20(token_addr.clone()),
+        asset != redeem_asset,
         ContractError::InvalidAsset {
             asset: asset.to_string()
         }
@@ -301,8 +309,14 @@ pub fn execute_start_redeem(
     };
 
     // Do not allow duplicate sales
-    let current_redeem = REDEEM.may_load(deps.storage, &token_addr.as_str())?;
-    ensure!(current_redeem.is_none(), ContractError::RedeemNotEnded {});
+    let current_redeem = REDEEM.may_load(deps.storage, &redeem_asset.inner())?;
+    if let Some(redeem) = current_redeem {
+        // The old redeem should either be expired or have no amount left
+        ensure!(
+            redeem.start_time.is_expired(&env.block) || redeem.amount.is_zero(),
+            ContractError::RedeemNotEnded {}
+        );
+    }
 
     let redeem = Redeem {
         asset: asset.clone(),
@@ -312,11 +326,12 @@ pub fn execute_start_redeem(
         start_time,
         end_time,
     };
-    REDEEM.save(deps.storage, &token_addr.as_str(), &redeem)?;
+    REDEEM.save(deps.storage, &redeem_asset.inner(), &redeem)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "start_redeem"),
-        attr("redeem_asset", asset.to_string()),
+        attr("redeem_asset", redeem_asset.to_string()),
+        attr("asset", asset.to_string()),
         attr("rate", exchange_rate),
         attr("amount", amount),
         attr("start_time", start_time.to_string()),
@@ -392,7 +407,7 @@ pub fn execute_purchase(
 
     // Update sale amount remaining
     sale.amount = sale.amount.checked_sub(purchased)?;
-    SALE.save(deps.storage, &asset_sent.to_string(), &sale)?;
+    SALE.save(deps.storage, &asset_sent.inner(), &sale)?;
 
     // Transfer exchanged asset to recipient
     resp = resp.add_submessage(generate_transfer_message(
@@ -421,25 +436,13 @@ pub fn execute_redeem(
     // For refund purposes
     sender: &str,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext { deps, .. } = ctx;
     deps.api.addr_validate(recipient)?;
     let mut resp = Response::default();
 
-    let token_addr = TOKEN_ADDRESS
-        .load(deps.storage)?
-        .get_raw_address(&deps.as_ref())?;
-
-    let Some(mut redeem) = REDEEM.may_load(deps.storage, &token_addr.to_string())? else {
+    let Some(mut redeem) = REDEEM.may_load(deps.storage, &asset_sent.inner())? else {
         return Err(ContractError::NoOngoingRedeem {});
     };
-
-    // Message sender in this case should be the token address
-    ensure!(
-        info.sender == token_addr,
-        ContractError::InvalidFunds {
-            msg: "Incorrect CW20 provided for redeem".to_string()
-        }
-    );
 
     // Check if redeem has started
     ensure!(
@@ -506,7 +509,9 @@ pub fn execute_redeem(
 
     // Update redeem amount remaining
     redeem.amount = redeem.amount.checked_sub(redeemed_amount)?;
-    REDEEM.save(deps.storage, &token_addr.to_string(), &redeem)?;
+    REDEEM.save(deps.storage, &asset_sent.inner(), &redeem)?;
+    println!("redeem: {:?}", redeem);
+    println!("redeem_asset: {:?}", redeem_asset.inner());
 
     // Transfer exchanged asset to recipient
     resp = resp.add_submessage(generate_transfer_message(
@@ -550,6 +555,7 @@ pub fn execute_purchase_native(
 
 pub fn execute_start_redeem_native(
     ctx: ExecuteContext,
+    redeem_asset: AssetInfo,
     exchange_rate: Uint128,
     recipient: Option<String>,
     start_time: Option<Expiry>,
@@ -566,11 +572,32 @@ pub fn execute_start_redeem_native(
         ctx,
         amount_sent,
         asset_sent,
+        redeem_asset,
         exchange_rate,
         sender,
         recipient,
         start_time,
         end_time,
+    )
+}
+
+pub fn execute_redeem_native(
+    ctx: ExecuteContext,
+    recipient: Option<String>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+
+    let sender = info.sender.to_string();
+    let asset_sent = one_coin(&info)?;
+    let amount_sent = asset_sent.amount;
+    let asset_sent = AssetInfo::Native(asset_sent.denom.to_string());
+
+    execute_redeem(
+        ctx,
+        amount_sent,
+        asset_sent,
+        recipient.unwrap_or(sender.clone()).as_str(),
+        &sender,
     )
 }
 
@@ -612,6 +639,40 @@ pub fn execute_cancel_sale(
     ]))
 }
 
+pub fn execute_cancel_redeem(
+    ctx: ExecuteContext,
+    asset: AssetInfo,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    let Some(redeem) = REDEEM.may_load(deps.storage, &asset.inner())? else {
+        return Err(ContractError::NoOngoingRedeem {});
+    };
+
+    let mut resp = Response::default();
+
+    // Refund any remaining amount
+    if !redeem.amount.is_zero() {
+        let token = redeem.asset;
+        resp = resp
+            .add_submessage(generate_transfer_message(
+                token,
+                redeem.amount,
+                info.sender.to_string(),
+                Some(REFUND_REPLY_ID),
+            )?)
+            .add_attribute("refunded_amount", redeem.amount);
+    }
+
+    // Sale can now be removed
+    SALE.remove(deps.storage, &asset.to_string());
+
+    Ok(resp.add_attributes(vec![
+        attr("action", "cancel_redeem"),
+        attr("asset", asset.to_string()),
+    ]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)
@@ -621,7 +682,7 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, Co
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Sale { asset } => query_sale(deps, asset),
-        QueryMsg::Redeem {} => query_redeem(deps),
+        QueryMsg::Redeem { asset } => query_redeem(deps, asset),
         QueryMsg::TokenAddress {} => query_token_address(deps),
         QueryMsg::SaleAssets { start_after, limit } => {
             query_sale_assets(deps, start_after.as_deref(), limit)
@@ -636,9 +697,9 @@ fn query_sale(deps: Deps, asset: impl ToString) -> Result<Binary, ContractError>
     Ok(to_json_binary(&SaleResponse { sale })?)
 }
 
-fn query_redeem(deps: Deps) -> Result<Binary, ContractError> {
-    let token_address = TOKEN_ADDRESS.load(deps.storage)?.get_raw_address(&deps)?;
-    let redeem = REDEEM.may_load(deps.storage, &token_address.as_str())?;
+fn query_redeem(deps: Deps, asset: String) -> Result<Binary, ContractError> {
+    println!("asset: {}", asset);
+    let redeem = REDEEM.may_load(deps.storage, &asset)?;
 
     Ok(to_json_binary(&RedeemResponse { redeem })?)
 }

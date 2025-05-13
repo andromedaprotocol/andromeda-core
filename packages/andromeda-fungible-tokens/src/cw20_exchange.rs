@@ -21,10 +21,15 @@ pub enum ExecuteMsg {
     /// Cancels an ongoing sale
     #[attrs(restricted)]
     CancelSale { asset: AssetInfo },
+    /// Cancels an ongoing redeem
+    #[attrs(restricted)]
+    CancelRedeem { asset: AssetInfo },
     /// Purchases tokens with native funds
     Purchase { recipient: Option<String> },
     /// Starts a redeem
     StartRedeem {
+        /// The accepted asset for redemption
+        redeem_asset: AssetInfo,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
         exchange_rate: Uint128,
         /// The recipient of the sale proceeds
@@ -33,6 +38,11 @@ pub enum ExecuteMsg {
         start_time: Option<Expiry>,
         /// The time when the sale ends
         end_time: Option<Milliseconds>,
+    },
+
+    Redeem {
+        /// Optional recipient to redeem on behalf of another address
+        recipient: Option<String>,
     },
     /// Receive for CW20 tokens, used for purchasing and starting sales
     #[attrs(nonpayable)]
@@ -92,6 +102,8 @@ pub enum Cw20HookMsg {
     },
     /// Starts a redeem
     StartRedeem {
+        /// The accepted asset for redemption
+        redeem_asset: AssetInfo,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
         exchange_rate: Uint128,
         /// The recipient of the sale proceeds
@@ -115,9 +127,9 @@ pub enum QueryMsg {
     /// Sale info for a given asset
     #[returns(SaleResponse)]
     Sale { asset: AssetInfo },
-    /// Redeem info 
+    /// Redeem info
     #[returns(RedeemResponse)]
-    Redeem { },
+    Redeem { asset: String },
     /// The address of the token being purchased
     #[returns(TokenAddressResponse)]
     TokenAddress {},
