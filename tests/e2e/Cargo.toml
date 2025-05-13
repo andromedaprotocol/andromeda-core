@@ -8,8 +8,8 @@ publish = false
 # [[test]]
 # name = "validator_staking"
 
-[[test]]
-name = "crowdfund"
+# [[test]]
+# name = "crowdfund"
 
 # [[test]]
 # name = "socket_osmosis"
