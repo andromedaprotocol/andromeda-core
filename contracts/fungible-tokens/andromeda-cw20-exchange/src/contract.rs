@@ -1,6 +1,6 @@
 use andromeda_fungible_tokens::cw20_exchange::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Sale, SaleAssetsResponse, SaleResponse,
-    TokenAddressResponse,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Redeem, RedeemResponse, Sale,
+    SaleAssetsResponse, SaleResponse, TokenAddressResponse,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -21,7 +21,7 @@ use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
 use cw_utils::one_coin;
 
-use crate::state::{SALE, TOKEN_ADDRESS};
+use crate::state::{REDEEM, SALE, TOKEN_ADDRESS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-exchange";
@@ -77,6 +77,12 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     match msg {
         ExecuteMsg::CancelSale { asset } => execute_cancel_sale(ctx, asset),
         ExecuteMsg::Purchase { recipient } => execute_purchase_native(ctx, recipient),
+        ExecuteMsg::StartRedeem {
+            exchange_rate,
+            recipient,
+            start_time,
+            end_time,
+        } => execute_start_redeem_native(ctx, exchange_rate, recipient, start_time, end_time),
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -116,6 +122,28 @@ pub fn execute_receive(
             duration,
         ),
         Cw20HookMsg::Purchase { recipient } => execute_purchase(
+            ctx,
+            amount_sent,
+            asset_sent,
+            recipient.unwrap_or_else(|| sender.to_string()).as_str(),
+            &sender,
+        ),
+        Cw20HookMsg::StartRedeem {
+            exchange_rate,
+            recipient,
+            start_time,
+            end_time,
+        } => execute_start_redeem(
+            ctx,
+            amount_sent,
+            asset_sent,
+            exchange_rate,
+            sender,
+            recipient,
+            start_time,
+            end_time,
+        ),
+        Cw20HookMsg::Redeem { recipient } => execute_redeem(
             ctx,
             amount_sent,
             asset_sent,
@@ -214,6 +242,88 @@ pub fn execute_start_sale(
     ]))
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn execute_start_redeem(
+    ctx: ExecuteContext,
+    amount: Uint128,
+    asset: AssetInfo,
+    exchange_rate: Uint128,
+    // The original sender of the CW20::Send message
+    sender: String,
+    // The recipient of the sale proceeds
+    recipient: Option<String>,
+    start_time: Option<Expiry>,
+    duration: Option<MillisecondsDuration>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, env, .. } = ctx;
+
+    let token_addr = TOKEN_ADDRESS
+        .load(deps.storage)?
+        .get_raw_address(&deps.as_ref())?;
+
+    // Ensure the redeem asset is not the token address, since we will be redeeming it
+    ensure!(
+        asset != AssetInfo::Cw20(token_addr.clone()),
+        ContractError::InvalidAsset {
+            asset: asset.to_string()
+        }
+    );
+    ensure!(
+        !exchange_rate.is_zero(),
+        ContractError::InvalidZeroAmount {}
+    );
+    ensure!(
+        ctx.contract.is_contract_owner(deps.storage, &sender)?,
+        ContractError::Unauthorized {}
+    );
+
+    let start_time = match start_time {
+        Some(s) => {
+            // Check that the start time is in the future
+            s.validate(&env.block)?
+        }
+        // Set start time to current time if not provided
+        None => Expiry::FromNow(Milliseconds::zero()),
+    }
+    .get_time(&env.block);
+
+    let end_time = match duration {
+        Some(e) => {
+            if e.is_zero() {
+                // If duration is 0, set end time to none
+                None
+            } else {
+                // Set end time to current time + duration
+                Some(Expiry::FromNow(e).get_time(&env.block))
+            }
+        }
+        None => None,
+    };
+
+    // Do not allow duplicate sales
+    let current_redeem = REDEEM.may_load(deps.storage, &token_addr.as_str())?;
+    ensure!(current_redeem.is_none(), ContractError::RedeemNotEnded {});
+
+    let redeem = Redeem {
+        asset: asset.clone(),
+        amount,
+        exchange_rate,
+        recipient: recipient.unwrap_or(sender),
+        start_time,
+        end_time,
+    };
+    REDEEM.save(deps.storage, &token_addr.as_str(), &redeem)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "start_redeem"),
+        attr("redeem_asset", asset.to_string()),
+        attr("rate", exchange_rate),
+        attr("amount", amount),
+        attr("start_time", start_time.to_string()),
+        attr("end_time", end_time.unwrap_or_default().to_string()),
+    ]))
+}
+
 pub fn execute_purchase(
     ctx: ExecuteContext,
     amount_sent: Uint128,
@@ -303,6 +413,120 @@ pub fn execute_purchase(
     ]))
 }
 
+pub fn execute_redeem(
+    ctx: ExecuteContext,
+    amount_sent: Uint128,
+    asset_sent: AssetInfo,
+    recipient: &str,
+    // For refund purposes
+    sender: &str,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    deps.api.addr_validate(recipient)?;
+    let mut resp = Response::default();
+
+    let token_addr = TOKEN_ADDRESS
+        .load(deps.storage)?
+        .get_raw_address(&deps.as_ref())?;
+
+    let Some(mut redeem) = REDEEM.may_load(deps.storage, &token_addr.to_string())? else {
+        return Err(ContractError::NoOngoingRedeem {});
+    };
+
+    // Message sender in this case should be the token address
+    ensure!(
+        info.sender == token_addr,
+        ContractError::InvalidFunds {
+            msg: "Incorrect CW20 provided for redeem".to_string()
+        }
+    );
+
+    // Check if redeem has started
+    ensure!(
+        redeem.start_time.is_expired(&ctx.env.block),
+        ContractError::RedeemNotStarted {}
+    );
+    // Check if sale has ended
+    if let Some(end_time) = redeem.end_time {
+        ensure!(
+            !end_time.is_expired(&ctx.env.block),
+            ContractError::RedeemEnded {}
+        );
+    }
+
+    let potential_redeemed = amount_sent.checked_mul(redeem.exchange_rate)?;
+    // Calculate actual redemption amounts
+    let (redeemed_amount, amount_received, refund_amount) = if potential_redeemed <= redeem.amount {
+        (potential_redeemed, amount_sent, Uint128::zero())
+    } else {
+        // If we don't have enough tokens, calculate the partial redemption
+        let actual_redeemed = redeem.amount;
+        let actual_amount_needed = redeem
+            .amount
+            .checked_div(redeem.exchange_rate)
+            .map_err(|_| ContractError::Overflow {})?;
+        let refund = amount_sent.checked_sub(actual_amount_needed)?;
+        (actual_redeemed, actual_amount_needed, refund)
+    };
+
+    ensure!(
+        !redeemed_amount.is_zero(),
+        ContractError::InvalidFunds {
+            msg: "Not enough funds sent to purchase a token".to_string()
+        }
+    );
+    ensure!(
+        redeem.amount >= redeemed_amount,
+        ContractError::NotEnoughTokens {}
+    );
+
+    // If purchase was rounded down return funds to purchaser
+    if !refund_amount.is_zero() {
+        resp = resp
+            .add_submessage(generate_transfer_message(
+                asset_sent.clone(),
+                refund_amount,
+                sender.to_string(),
+                Some(REFUND_REPLY_ID),
+            )?)
+            .add_attribute("refunded_amount", refund_amount);
+    }
+
+    // Transfer tokens to the user that's redeeming
+    let redeem_asset = redeem.asset.clone();
+    let redeem_recipient = redeem.clone().recipient;
+
+    let transfer_msg = generate_transfer_message(
+        redeem_asset.clone(),
+        redeemed_amount,
+        recipient.to_string(),
+        None,
+    )?;
+    resp = resp.add_submessage(transfer_msg);
+
+    // Update redeem amount remaining
+    redeem.amount = redeem.amount.checked_sub(redeemed_amount)?;
+    REDEEM.save(deps.storage, &token_addr.to_string(), &redeem)?;
+
+    // Transfer exchanged asset to recipient
+    resp = resp.add_submessage(generate_transfer_message(
+        asset_sent.clone(),
+        amount_sent - refund_amount,
+        redeem_recipient.clone(),
+        Some(RECIPIENT_REPLY_ID),
+    )?);
+
+    Ok(resp.add_attributes(vec![
+        attr("action", "redeem"),
+        attr("redeemer", sender),
+        attr("recipient", recipient),
+        attr("amount", amount_received),
+        attr("redeem_asset", redeem_asset.to_string()),
+        attr("redeem_asset_amount_send", amount_sent - refund_amount),
+        attr("recipient", redeem_recipient),
+    ]))
+}
+
 pub fn execute_purchase_native(
     ctx: ExecuteContext,
     recipient: Option<String>,
@@ -322,6 +546,32 @@ pub fn execute_purchase_native(
     let amount = payment.amount;
 
     execute_purchase(ctx, amount, asset, &recipient, &sender)
+}
+
+pub fn execute_start_redeem_native(
+    ctx: ExecuteContext,
+    exchange_rate: Uint128,
+    recipient: Option<String>,
+    start_time: Option<Expiry>,
+    end_time: Option<Milliseconds>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+
+    let native_funds_sent = one_coin(&info)?;
+    let amount_sent = native_funds_sent.amount;
+    let asset_sent = AssetInfo::Native(native_funds_sent.denom.to_string());
+    let sender = info.sender.to_string();
+
+    execute_start_redeem(
+        ctx,
+        amount_sent,
+        asset_sent,
+        exchange_rate,
+        sender,
+        recipient,
+        start_time,
+        end_time,
+    )
 }
 
 pub fn execute_cancel_sale(
@@ -371,6 +621,7 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, Co
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Sale { asset } => query_sale(deps, asset),
+        QueryMsg::Redeem {} => query_redeem(deps),
         QueryMsg::TokenAddress {} => query_token_address(deps),
         QueryMsg::SaleAssets { start_after, limit } => {
             query_sale_assets(deps, start_after.as_deref(), limit)
@@ -383,6 +634,13 @@ fn query_sale(deps: Deps, asset: impl ToString) -> Result<Binary, ContractError>
     let sale = SALE.may_load(deps.storage, &asset.to_string())?;
 
     Ok(to_json_binary(&SaleResponse { sale })?)
+}
+
+fn query_redeem(deps: Deps) -> Result<Binary, ContractError> {
+    let token_address = TOKEN_ADDRESS.load(deps.storage)?.get_raw_address(&deps)?;
+    let redeem = REDEEM.may_load(deps.storage, &token_address.as_str())?;
+
+    Ok(to_json_binary(&RedeemResponse { redeem })?)
 }
 
 fn query_token_address(deps: Deps) -> Result<Binary, ContractError> {

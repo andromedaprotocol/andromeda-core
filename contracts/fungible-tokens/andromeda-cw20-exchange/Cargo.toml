@@ -3,12 +3,10 @@ name = "andromeda-cw20-exchange"
 version = "2.1.1-b.2"
 edition = "2021"
 rust-version = "1.75.0"
-
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [features]
-
 # use library feature to disable all instantiate/execute/query exports
 library = []
 testing = ["cw-multi-test"]
@@ -31,3 +29,4 @@ cw-orch = { workspace = true }
 
 [dev-dependencies]
 andromeda-app = { workspace = true }
+rstest = { workspace = true }

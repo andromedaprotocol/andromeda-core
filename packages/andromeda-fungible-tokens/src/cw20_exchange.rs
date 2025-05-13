@@ -23,6 +23,17 @@ pub enum ExecuteMsg {
     CancelSale { asset: AssetInfo },
     /// Purchases tokens with native funds
     Purchase { recipient: Option<String> },
+    /// Starts a redeem
+    StartRedeem {
+        /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
+        exchange_rate: Uint128,
+        /// The recipient of the sale proceeds
+        recipient: Option<String>,
+        /// The time when the sale starts
+        start_time: Option<Expiry>,
+        /// The time when the sale ends
+        end_time: Option<Milliseconds>,
+    },
     /// Receive for CW20 tokens, used for purchasing and starting sales
     #[attrs(nonpayable)]
     Receive(Cw20ReceiveMsg),
@@ -31,6 +42,23 @@ pub enum ExecuteMsg {
 /// Struct used to define a token sale. The asset used for the sale is defined as the key for the storage map.
 #[cw_serde]
 pub struct Sale {
+    /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
+    pub exchange_rate: Uint128,
+    /// The amount for sale at the given rate
+    pub amount: Uint128,
+    /// The recipient of the sale proceeds
+    pub recipient: String,
+    /// The time when the sale starts
+    pub start_time: Milliseconds,
+    /// The time when the sale ends
+    pub end_time: Option<Milliseconds>,
+}
+
+/// Struct used to define a token sale. The asset used for the sale is defined as the key for the storage map.
+#[cw_serde]
+pub struct Redeem {
+    /// The asset that will be given in return for the redeemed asset
+    pub asset: AssetInfo,
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
     pub exchange_rate: Uint128,
     /// The amount for sale at the given rate
@@ -62,6 +90,22 @@ pub enum Cw20HookMsg {
         /// Optional recipient to purchase on behalf of another address
         recipient: Option<String>,
     },
+    /// Starts a redeem
+    StartRedeem {
+        /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
+        exchange_rate: Uint128,
+        /// The recipient of the sale proceeds
+        recipient: Option<String>,
+        /// The time when the sale starts
+        start_time: Option<Expiry>,
+        /// The time when the sale ends
+        end_time: Option<Milliseconds>,
+    },
+    /// Redeems tokens
+    Redeem {
+        /// Optional recipient to redeem on behalf of another address
+        recipient: Option<String>,
+    },
 }
 
 #[andr_query]
@@ -71,6 +115,9 @@ pub enum QueryMsg {
     /// Sale info for a given asset
     #[returns(SaleResponse)]
     Sale { asset: AssetInfo },
+    /// Redeem info 
+    #[returns(RedeemResponse)]
+    Redeem { },
     /// The address of the token being purchased
     #[returns(TokenAddressResponse)]
     TokenAddress {},
@@ -90,6 +137,12 @@ pub struct SaleAssetsResponse {
 pub struct SaleResponse {
     /// The sale data if it exists
     pub sale: Option<Sale>,
+}
+
+#[cw_serde]
+pub struct RedeemResponse {
+    /// The redeem data if it exists
+    pub redeem: Option<Redeem>,
 }
 
 #[cw_serde]

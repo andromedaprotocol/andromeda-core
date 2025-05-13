@@ -46,6 +46,10 @@ andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-s
     "testing",
 ] }
 
+andromeda-cw20-exchange = { path = "../contracts/fungible-tokens/andromeda-cw20-exchange", features = [
+    "testing",
+] }
+
 andromeda-redeem = { path = "../contracts/fungible-tokens/andromeda-redeem", features = [
     "testing",
 ] }
@@ -215,6 +219,10 @@ path = "conditional_splitter.rs"
 [[test]]
 name = "cw20_app"
 path = "cw20_app.rs"
+
+[[test]]
+name = "cw20_exchange"
+path = "cw20_exchange.rs"
 
 [[test]]
 name = "timelock"

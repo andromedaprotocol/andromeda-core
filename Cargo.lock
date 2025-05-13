@@ -296,6 +296,7 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "cw20",
+ "rstest",
 ]
 
 [[package]]
@@ -5358,6 +5359,7 @@ dependencies = [
  "andromeda-crowdfund",
  "andromeda-curve",
  "andromeda-cw20",
+ "andromeda-cw20-exchange",
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-data-storage",
