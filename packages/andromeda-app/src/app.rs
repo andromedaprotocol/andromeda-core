@@ -338,7 +338,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(String)]
     GetAddress { name: String },
-    #[returns(AppComponent)]
+    #[returns(Vec<AppComponent>)]
     GetComponents {},
     #[returns(ComponentExistsResponse)]
     ComponentExists { name: String },
