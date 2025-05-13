@@ -14,6 +14,8 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, TxSender, Wallet};
 use e2e::constants::{PION_1, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2};
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use andromeda_socket_astroport::SocketAstroportContract;
 
 use rstest::{fixture, rstest};
@@ -27,18 +29,19 @@ const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move br
 
 #[fixture]
 fn setup(
-    #[default(11766)] app_code_id: u64,
-    #[default("neutron1zlwfu3wurn98zv3qe4cln0p4crwvfvjkn703vhhcajh6h3v00zzsdadsd8")]
+    #[default(11806)] app_code_id: u64,
+    #[default("neutron1p3gh4zanng04zdnvs8cdh2kdsjrcp43qkp9zk32enu9waxv4wrmqpqnl9g")]
     kernel_address: String,
 ) -> TestCase {
-    let socket_astroport_type = "soekct-astroport";
+    let socket_astroport_type = "socket-astroport@0.1.0";
     let socket_astroport_component_name = "socket-astroport";
-    let app_name = "socket astroport with recipient";
+    let app_name = format!("socket astroport with recipient {}", SystemTime::now().duration_since(UNIX_EPOCH).expect("Check system time").as_millis());
 
     let daemon = Daemon::builder(PION_1)
         .mnemonic(TEST_MNEMONIC)
         .build()
         .unwrap();
+    println!("daemon: {:?}", daemon.sender().address());
     let app_contract = AppContract::new(daemon.clone());
     app_contract.set_code_id(app_code_id);
 
@@ -85,7 +88,7 @@ fn setup(
     };
     let splitter_component = AppComponent::new(
         "splitter".to_string(),
-        "splitter".to_string(),
+        "splitter@2.3.1-b.3".to_string(),
         to_json_binary(&splitter_init_msg).unwrap(),
     );
 
@@ -114,7 +117,7 @@ fn setup(
 }
 
 #[rstest]
-fn test_onchain_native(setup: TestCase) {
+fn test_onchain_native_astroport(setup: TestCase) {
     let TestCase {
         daemon,
         app_contract,
