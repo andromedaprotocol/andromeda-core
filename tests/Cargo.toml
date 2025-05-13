@@ -46,7 +46,7 @@ andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-s
     "testing",
 ] }
 
-andromeda-cw20-redeem = { path = "../contracts/fungible-tokens/andromeda-cw20-redeem", features = [
+andromeda-redeem = { path = "../contracts/fungible-tokens/andromeda-redeem", features = [
     "testing",
 ] }
 
@@ -197,8 +197,8 @@ name = "cw20_staking"
 path = "cw20_staking.rs"
 
 [[test]]
-name = "cw20_redeem"
-path = "cw20_redeem.rs"
+name = "redeem"
+path = "redeem.rs"
 
 [[test]]
 name = "ibc_registry"
