@@ -4,7 +4,7 @@ use andromeda_std::{
     common::{expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 
@@ -31,7 +31,7 @@ pub enum ExecuteMsg {
         /// The accepted asset for redemption
         redeem_asset: AssetInfo,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
-        exchange_rate: Uint128,
+        exchange_rate: Decimal,
         /// The recipient of the sale proceeds
         recipient: Option<String>,
         /// The time when the sale starts
@@ -70,9 +70,11 @@ pub struct Redeem {
     /// The asset that will be given in return for the redeemed asset
     pub asset: AssetInfo,
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
-    pub exchange_rate: Uint128,
+    pub exchange_rate: Decimal,
     /// The amount for sale at the given rate
     pub amount: Uint128,
+    /// The amount paid out
+    pub amount_paid_out: Uint128,
     /// The recipient of the sale proceeds
     pub recipient: String,
     /// The time when the sale starts
@@ -105,7 +107,7 @@ pub enum Cw20HookMsg {
         /// The accepted asset for redemption
         redeem_asset: AssetInfo,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
-        exchange_rate: Uint128,
+        exchange_rate: Decimal,
         /// The recipient of the sale proceeds
         recipient: Option<String>,
         /// The time when the sale starts

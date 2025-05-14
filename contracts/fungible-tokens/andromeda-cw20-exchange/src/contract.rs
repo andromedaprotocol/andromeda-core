@@ -13,8 +13,8 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, from_json, to_json_binary, wasm_execute, Binary, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, from_json, to_json_binary, wasm_execute, Binary, CosmosMsg, Decimal,
+    Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
@@ -260,7 +260,7 @@ pub fn execute_start_redeem(
     amount: Uint128,
     asset: AssetInfo,
     redeem_asset: AssetInfo,
-    exchange_rate: Uint128,
+    exchange_rate: Decimal,
     // The original sender of the CW20::Send message
     sender: String,
     // The recipient of the sale proceeds
@@ -321,6 +321,7 @@ pub fn execute_start_redeem(
     let redeem = Redeem {
         asset: asset.clone(),
         amount,
+        amount_paid_out: Uint128::zero(),
         exchange_rate,
         recipient: recipient.unwrap_or(sender),
         start_time,
@@ -332,7 +333,7 @@ pub fn execute_start_redeem(
         attr("action", "start_redeem"),
         attr("redeem_asset", redeem_asset.to_string()),
         attr("asset", asset.to_string()),
-        attr("rate", exchange_rate),
+        attr("rate", exchange_rate.to_string()),
         attr("amount", amount),
         attr("start_time", start_time.to_string()),
         attr("end_time", end_time.unwrap_or_default().to_string()),
@@ -457,17 +458,24 @@ pub fn execute_redeem(
         );
     }
 
-    let potential_redeemed = amount_sent.checked_mul(redeem.exchange_rate)?;
+    let payment_decimal = Decimal::from_ratio(amount_sent, 1u128);
+    let tokens_to_receive_decimal = payment_decimal.checked_mul(redeem.exchange_rate)?;
+    let potential_redeemed = tokens_to_receive_decimal.to_uint_floor();
+
     // Calculate actual redemption amounts
     let (redeemed_amount, amount_received, refund_amount) = if potential_redeemed <= redeem.amount {
         (potential_redeemed, amount_sent, Uint128::zero())
     } else {
         // If we don't have enough tokens, calculate the partial redemption
         let actual_redeemed = redeem.amount;
-        let actual_amount_needed = redeem
-            .amount
+
+        // Convert to Decimal for calculation
+        let redeem_amount_decimal = Decimal::from_ratio(redeem.amount, 1u128);
+        let actual_amount_needed_decimal = redeem_amount_decimal
             .checked_div(redeem.exchange_rate)
             .map_err(|_| ContractError::Overflow {})?;
+        let actual_amount_needed = actual_amount_needed_decimal.to_uint_ceil();
+
         let refund = amount_sent.checked_sub(actual_amount_needed)?;
         (actual_redeemed, actual_amount_needed, refund)
     };
@@ -509,6 +517,7 @@ pub fn execute_redeem(
 
     // Update redeem amount remaining
     redeem.amount = redeem.amount.checked_sub(redeemed_amount)?;
+    redeem.amount_paid_out = redeem.amount_paid_out.checked_add(redeemed_amount)?;
     REDEEM.save(deps.storage, &asset_sent.inner(), &redeem)?;
 
     // Transfer exchanged asset to recipient
@@ -554,7 +563,7 @@ pub fn execute_purchase_native(
 pub fn execute_start_redeem_native(
     ctx: ExecuteContext,
     redeem_asset: AssetInfo,
-    exchange_rate: Uint128,
+    exchange_rate: Decimal,
     recipient: Option<String>,
     start_time: Option<Expiry>,
     end_time: Option<Milliseconds>,

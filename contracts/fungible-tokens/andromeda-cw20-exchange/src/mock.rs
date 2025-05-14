@@ -6,7 +6,7 @@ use andromeda_std::{
     amp::AndrAddr,
     common::{expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
-use cosmwasm_std::{Empty, Uint128};
+use cosmwasm_std::{Decimal, Empty, Uint128};
 use cw_asset::AssetInfo;
 use cw_multi_test::{Contract, ContractWrapper};
 
@@ -62,7 +62,7 @@ pub fn mock_redeem_native_msg(recipient: Option<String>) -> ExecuteMsg {
 pub fn mock_start_redeem_cw20_msg(
     recipient: Option<String>,
     redeem_asset: AssetInfo,
-    exchange_rate: Uint128,
+    exchange_rate: Decimal,
     start_time: Option<Expiry>,
     end_time: Option<Milliseconds>,
 ) -> Cw20HookMsg {
@@ -77,7 +77,7 @@ pub fn mock_start_redeem_cw20_msg(
 
 pub fn mock_set_redeem_condition_native_msg(
     redeem_asset: AssetInfo,
-    exchange_rate: Uint128,
+    exchange_rate: Decimal,
     recipient: Option<String>,
     start_time: Option<Expiry>,
     end_time: Option<Milliseconds>,
