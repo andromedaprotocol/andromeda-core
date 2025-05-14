@@ -8,6 +8,7 @@ use andromeda_cw20_exchange::mock::{
     mock_andromeda_cw20_exchange, mock_cw20_exchange_hook_purchase_msg,
     mock_cw20_exchange_instantiate_msg, mock_cw20_exchange_start_sale_msg,
     mock_cw20_set_redeem_condition_native_msg, mock_redeem_cw20_msg, mock_redeem_query_msg,
+    mock_start_redeem_cw20_msg,
 };
 use andromeda_fungible_tokens::cw20_exchange::RedeemResponse;
 use andromeda_std::{amp::AndrAddr, error::ContractError};
@@ -323,6 +324,163 @@ fn test_cw20_exchange_app_native() {
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
     // Initial balance is 10, total redeemable is 100, 50 was redeemed, 10 was refunded
     assert_eq!(balance.amount, Uint128::new(10 + 100));
+
+    // Query user1's cw20addr2 balance
+    let balance = query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
+    // 1000 is the original balance, 5 for the amount purchased,
+    // 5 is the amount sent in the first redeem,
+    // 60 is the amount for the second redeem,
+    // the last 10 is for the refund
+    assert_eq!(balance, Uint128::new(1000 + 5u128 - 60u128 + 10u128));
+
+    let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.inner().clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::zero());
+
+    // User 1 will try to redeem but there is no redeemable amount left
+    let redeem_msg = mock_redeem_cw20_msg(Some(user1.to_string()));
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        Uint128::new(1u128),
+        to_json_binary(&redeem_msg).unwrap(),
+    );
+
+    let err: ContractError = router
+        .execute_contract(user1.clone(), cw20_addr_2.clone(), &cw20_send_msg, &[])
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::InvalidFunds {
+            msg: "Not enough funds sent to purchase a token".to_string()
+        }
+    );
+}
+
+#[test]
+fn test_cw20_exchange_app_cw20() {
+    let mut router = mock_app(None);
+
+    let andr = setup_andr(&mut router);
+    let app = setup_app(&andr, &mut router);
+    let owner = andr.get_wallet("owner");
+    let user1 = andr.get_wallet("user1");
+
+    let addresses = get_addresses(&mut router, &andr, &app);
+
+    let cw20_addr = addresses.cw20;
+    let cw20_addr_2 = addresses.cw20_2;
+    let cw20_exchange_addr = addresses.cw20_exchange;
+
+    let cw20_addr_2_asset = AssetInfo::Cw20(cw20_addr_2.clone());
+    let cw20_redeem_asset = AssetInfo::Cw20(cw20_addr.clone());
+
+    // Sell a cw20
+    let start_sale_msg =
+        mock_cw20_exchange_start_sale_msg(cw20_redeem_asset, Uint128::new(2), None, None, None);
+
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        ORIGINAL_SALE_AMOUNT,
+        to_json_binary(&start_sale_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(owner.clone(), cw20_addr_2.clone(), &cw20_send_msg, &[])
+        .unwrap();
+
+    // Now there's a sale for cw20addr2 for 2 cw20addr per token
+    // user1 will purchase 10 cw20addr2
+
+    let purchase_msg = mock_cw20_exchange_hook_purchase_msg(Some(user1.to_string()));
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        Uint128::new(10u128),
+        to_json_binary(&purchase_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(user1.clone(), cw20_addr.clone(), &cw20_send_msg, &[])
+        .unwrap();
+
+    // Check that user1 has received 5 cw20addr_2
+    let balance = query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
+    assert_eq!(balance, Uint128::new(1000 + 5u128));
+
+    // Now the owner will setup a redeem condition for 2 cw20 per cw20addr
+    let start_redeem_msg =
+        mock_start_redeem_cw20_msg(None, cw20_addr_2_asset.clone(), Uint128::new(2), None, None);
+
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        Uint128::new(100u128),
+        to_json_binary(&start_redeem_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(owner.clone(), cw20_addr.clone(), &cw20_send_msg, &[])
+        .unwrap();
+
+    let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.inner().clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().asset,
+        AssetInfo::Cw20(cw20_addr.clone())
+    );
+    assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::new(100));
+
+    // Now user1 will try to redeem 5 cw20addr_2
+    let redeem_msg = mock_redeem_cw20_msg(Some(user1.to_string()));
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        Uint128::new(5u128),
+        to_json_binary(&redeem_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(user1.clone(), cw20_addr_2.clone(), &cw20_send_msg, &[])
+        .unwrap();
+
+    // 1000 is the original balance, 10 is the amount purchased with previously in the test, 10 is the amount received in the redeem
+    let balance = query_cw20_balance(&mut router, cw20_addr.to_string(), user1.to_string());
+    assert_eq!(balance, Uint128::new(1000 - 10 + 10u128));
+
+    let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.inner().clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().asset,
+        AssetInfo::Cw20(cw20_addr.clone())
+    );
+    assert_eq!(
+        redeem_query_resp.redeem.unwrap().amount,
+        Uint128::new(100 - 10u128)
+    );
+
+    // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
+    let redeem_msg = mock_redeem_cw20_msg(Some(user1.to_string()));
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        Uint128::new(60u128),
+        to_json_binary(&redeem_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(user1.clone(), cw20_addr_2.clone(), &cw20_send_msg, &[])
+        .unwrap();
+
+    let balance = query_cw20_balance(&mut router, cw20_addr.to_string(), user1.to_string());
+    // Redeemed the remaining 90
+    assert_eq!(balance, Uint128::new(1000 + 90));
 
     // Query user1's cw20addr2 balance
     let balance = query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());

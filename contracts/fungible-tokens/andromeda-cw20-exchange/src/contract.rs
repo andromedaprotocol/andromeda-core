@@ -510,8 +510,6 @@ pub fn execute_redeem(
     // Update redeem amount remaining
     redeem.amount = redeem.amount.checked_sub(redeemed_amount)?;
     REDEEM.save(deps.storage, &asset_sent.inner(), &redeem)?;
-    println!("redeem: {:?}", redeem);
-    println!("redeem_asset: {:?}", redeem_asset.inner());
 
     // Transfer exchanged asset to recipient
     resp = resp.add_submessage(generate_transfer_message(
@@ -698,15 +696,12 @@ fn query_sale(deps: Deps, asset: impl ToString) -> Result<Binary, ContractError>
 }
 
 fn query_redeem(deps: Deps, asset: String) -> Result<Binary, ContractError> {
-    println!("asset: {}", asset);
     let redeem = REDEEM.may_load(deps.storage, &asset)?;
-
     Ok(to_json_binary(&RedeemResponse { redeem })?)
 }
 
 fn query_token_address(deps: Deps) -> Result<Binary, ContractError> {
     let address = TOKEN_ADDRESS.load(deps.storage)?.get_raw_address(&deps)?;
-
     Ok(to_json_binary(&TokenAddressResponse {
         address: address.to_string(),
     })?)
