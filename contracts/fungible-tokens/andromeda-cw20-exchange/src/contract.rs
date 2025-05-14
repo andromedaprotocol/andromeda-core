@@ -5,18 +5,21 @@ use andromeda_fungible_tokens::cw20_exchange::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    amp::Recipient,
     andr_execute_fn,
     common::{
-        context::ExecuteContext, expiration::Expiry, msg_generation::generate_transfer_message,
+        context::ExecuteContext,
+        expiration::Expiry,
+        msg_generation::{generate_transfer_message, generate_transfer_message_recipient},
         Milliseconds, MillisecondsDuration,
     },
     error::ContractError,
 };
 use cosmwasm_std::{
-    attr, ensure, entry_point, from_json, to_json_binary, wasm_execute, Binary, CosmosMsg, Decimal,
-    Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg, Uint128,
+    attr, ensure, entry_point, from_json, to_json_binary, Binary, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, Uint128,
 };
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 use cw_storage_plus::Bound;
 use cw_utils::one_coin;
@@ -131,13 +134,10 @@ pub fn execute_receive(
             start_time,
             duration,
         ),
-        Cw20HookMsg::Purchase { recipient } => execute_purchase(
-            ctx,
-            amount_sent,
-            asset_sent,
-            recipient.unwrap_or_else(|| sender.to_string()).as_str(),
-            &sender,
-        ),
+        Cw20HookMsg::Purchase { recipient } => {
+            let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
+            execute_purchase(ctx, amount_sent, asset_sent, recipient, &sender)
+        }
         Cw20HookMsg::StartRedeem {
             redeem_asset,
             exchange_rate,
@@ -155,13 +155,10 @@ pub fn execute_receive(
             start_time,
             end_time,
         ),
-        Cw20HookMsg::Redeem { recipient } => execute_redeem(
-            ctx,
-            amount_sent,
-            asset_sent,
-            recipient.unwrap_or_else(|| sender.to_string()).as_str(),
-            &sender,
-        ),
+        Cw20HookMsg::Redeem { recipient } => {
+            let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
+            execute_redeem(ctx, amount_sent, asset_sent, recipient, &sender)
+        }
     }
 }
 
@@ -174,10 +171,12 @@ pub fn execute_start_sale(
     // The original sender of the CW20::Send message
     sender: String,
     // The recipient of the sale proceeds
-    recipient: Option<String>,
+    recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
+    let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
+
     let ExecuteContext {
         deps, env, info, ..
     } = ctx;
@@ -238,7 +237,7 @@ pub fn execute_start_sale(
     let sale = Sale {
         amount,
         exchange_rate,
-        recipient: recipient.unwrap_or(sender),
+        recipient,
         start_time,
         end_time,
     };
@@ -264,10 +263,12 @@ pub fn execute_start_redeem(
     // The original sender of the CW20::Send message
     sender: String,
     // The recipient of the sale proceeds
-    recipient: Option<String>,
+    recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
 ) -> Result<Response, ContractError> {
+    let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
+
     let ExecuteContext { deps, env, .. } = ctx;
     // Ensure the redeem asset is not the token address, since we will be redeeming it
     ensure!(
@@ -323,7 +324,7 @@ pub fn execute_start_redeem(
         amount,
         amount_paid_out: Uint128::zero(),
         exchange_rate,
-        recipient: recipient.unwrap_or(sender),
+        recipient,
         start_time,
         end_time,
     };
@@ -344,12 +345,12 @@ pub fn execute_purchase(
     ctx: ExecuteContext,
     amount_sent: Uint128,
     asset_sent: AssetInfo,
-    recipient: &str,
+    recipient: Recipient,
     // For refund purposes
     sender: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
-    deps.api.addr_validate(recipient)?;
+    // deps.api.addr_validate(recipient)?;
     let mut resp = Response::default();
 
     let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent.to_string())? else {
@@ -396,22 +397,25 @@ pub fn execute_purchase(
     let token_addr = TOKEN_ADDRESS
         .load(deps.storage)?
         .get_raw_address(&deps.as_ref())?;
-    let transfer_msg = Cw20ExecuteMsg::Transfer {
-        recipient: recipient.to_string(),
-        amount: purchased,
-    };
-    let wasm_msg = wasm_execute(token_addr, &transfer_msg, vec![])?;
-    resp = resp.add_submessage(SubMsg::reply_on_error(
-        CosmosMsg::Wasm(wasm_msg),
-        PURCHASE_REPLY_ID,
-    ));
+
+    let token_asset = AssetInfo::Cw20(token_addr);
+    let sub_msg = generate_transfer_message_recipient(
+        &deps.as_ref(),
+        token_asset,
+        purchased,
+        recipient.clone(),
+        Some(PURCHASE_REPLY_ID),
+    )?;
+
+    resp = resp.add_submessage(sub_msg);
 
     // Update sale amount remaining
     sale.amount = sale.amount.checked_sub(purchased)?;
     SALE.save(deps.storage, &asset_sent.inner(), &sale)?;
 
     // Transfer exchanged asset to recipient
-    resp = resp.add_submessage(generate_transfer_message(
+    resp = resp.add_submessage(generate_transfer_message_recipient(
+        &deps.as_ref(),
         asset_sent.clone(),
         amount_sent - remainder,
         sale.recipient.clone(),
@@ -421,11 +425,11 @@ pub fn execute_purchase(
     Ok(resp.add_attributes(vec![
         attr("action", "purchase"),
         attr("purchaser", sender),
-        attr("recipient", recipient),
+        attr("recipient", recipient.address.to_string()),
         attr("amount", purchased),
         attr("purchase_asset", asset_sent.to_string()),
         attr("purchase_asset_amount_send", amount_sent - remainder),
-        attr("recipient", sale.recipient),
+        attr("recipient", sale.recipient.address.to_string()),
     ]))
 }
 
@@ -433,12 +437,12 @@ pub fn execute_redeem(
     ctx: ExecuteContext,
     amount_sent: Uint128,
     asset_sent: AssetInfo,
-    recipient: &str,
+    recipient: Recipient,
     // For refund purposes
     sender: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
-    deps.api.addr_validate(recipient)?;
+
     let mut resp = Response::default();
 
     let Some(mut redeem) = REDEEM.may_load(deps.storage, &asset_sent.inner())? else {
@@ -507,10 +511,11 @@ pub fn execute_redeem(
     let redeem_asset = redeem.asset.clone();
     let redeem_recipient = redeem.clone().recipient;
 
-    let transfer_msg = generate_transfer_message(
+    let transfer_msg = generate_transfer_message_recipient(
+        &deps.as_ref(),
         redeem_asset.clone(),
         redeemed_amount,
-        recipient.to_string(),
+        recipient.clone(),
         None,
     )?;
     resp = resp.add_submessage(transfer_msg);
@@ -521,7 +526,8 @@ pub fn execute_redeem(
     REDEEM.save(deps.storage, &asset_sent.inner(), &redeem)?;
 
     // Transfer exchanged asset to recipient
-    resp = resp.add_submessage(generate_transfer_message(
+    resp = resp.add_submessage(generate_transfer_message_recipient(
+        &deps.as_ref(),
         asset_sent.clone(),
         amount_sent - refund_amount,
         redeem_recipient.clone(),
@@ -531,46 +537,41 @@ pub fn execute_redeem(
     Ok(resp.add_attributes(vec![
         attr("action", "redeem"),
         attr("redeemer", sender),
-        attr("recipient", recipient),
+        attr("recipient", recipient.address.to_string()),
         attr("amount", amount_received),
         attr("redeem_asset", redeem_asset.to_string()),
         attr("redeem_asset_amount_send", amount_sent - refund_amount),
-        attr("recipient", redeem_recipient),
+        attr("recipient", redeem_recipient.address.to_string()),
     ]))
 }
 
 pub fn execute_purchase_native(
     ctx: ExecuteContext,
-    recipient: Option<String>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        ref deps, ref info, ..
-    } = ctx;
-
-    // Default to sender as recipient
-    let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
-    deps.api.addr_validate(&recipient)?;
+    let ExecuteContext { ref info, .. } = ctx;
     let sender = info.sender.to_string();
+    let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
 
     // Only allow one coin for purchasing
     let payment = one_coin(info)?;
     let asset = AssetInfo::Native(payment.denom.to_string());
     let amount = payment.amount;
 
-    execute_purchase(ctx, amount, asset, &recipient, &sender)
+    execute_purchase(ctx, amount, asset, recipient, &sender)
 }
 
 pub fn execute_start_redeem_native(
     ctx: ExecuteContext,
     redeem_asset: AssetInfo,
     exchange_rate: Decimal,
-    recipient: Option<String>,
+    recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     end_time: Option<Milliseconds>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
 
-    let native_funds_sent = one_coin(&info)?;
+    let native_funds_sent = one_coin(info)?;
     let amount_sent = native_funds_sent.amount;
     let asset_sent = AssetInfo::Native(native_funds_sent.denom.to_string());
     let sender = info.sender.to_string();
@@ -590,22 +591,18 @@ pub fn execute_start_redeem_native(
 
 pub fn execute_redeem_native(
     ctx: ExecuteContext,
-    recipient: Option<String>,
+    recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
 
     let sender = info.sender.to_string();
-    let asset_sent = one_coin(&info)?;
+    let asset_sent = one_coin(info)?;
     let amount_sent = asset_sent.amount;
     let asset_sent = AssetInfo::Native(asset_sent.denom.to_string());
 
-    execute_redeem(
-        ctx,
-        amount_sent,
-        asset_sent,
-        recipient.unwrap_or(sender.clone()).as_str(),
-        &sender,
-    )
+    let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
+
+    execute_redeem(ctx, amount_sent, asset_sent, recipient, &sender)
 }
 
 pub fn execute_cancel_sale(

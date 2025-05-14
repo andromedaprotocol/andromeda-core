@@ -3,7 +3,7 @@ use andromeda_fungible_tokens::cw20_exchange::{
     TokenAddressResponse,
 };
 use andromeda_std::{
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
     common::{
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         Milliseconds,
@@ -406,7 +406,7 @@ pub fn test_purchase_not_enough_sent() {
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -454,7 +454,7 @@ pub fn test_purchase_no_tokens_left() {
         &Sale {
             amount: Uint128::zero(),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -496,7 +496,7 @@ pub fn test_purchase_not_enough_tokens() {
         &Sale {
             amount: Uint128::one(),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -539,7 +539,7 @@ pub fn test_purchase() {
         &Sale {
             amount: sale_amount,
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -578,7 +578,7 @@ pub fn test_purchase() {
 
     // Check sale amount updated
     let sale = SALE
-        .load(deps.as_mut().storage, &exchange_asset.to_string())
+        .load(deps.as_mut().storage, &exchange_asset.inner())
         .unwrap();
 
     assert_eq!(
@@ -624,7 +624,7 @@ pub fn test_purchase_with_start_and_duration() {
         &Sale {
             amount: sale_amount,
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             // start time in the past
             start_time: Milliseconds::from_nanos(env.block.time.minus_nanos(1).nanos()),
             // end time in the future
@@ -668,7 +668,7 @@ pub fn test_purchase_with_start_and_duration() {
 
     // Check sale amount updated
     let sale = SALE
-        .load(deps.as_mut().storage, &exchange_asset.to_string())
+        .load(deps.as_mut().storage, &exchange_asset.inner())
         .unwrap();
 
     assert_eq!(
@@ -714,7 +714,7 @@ pub fn test_purchase_sale_not_started() {
         &Sale {
             amount: sale_amount,
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.plus_days(1).nanos()),
             end_time: None,
         },
@@ -757,7 +757,7 @@ pub fn test_purchase_sale_duration_ended() {
         &Sale {
             amount: sale_amount,
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: Some(Milliseconds::from_nanos(
                 env.block.time.minus_nanos(1).nanos(),
@@ -816,7 +816,7 @@ pub fn test_purchase_not_enough_sent_native() {
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -855,7 +855,7 @@ pub fn test_purchase_no_tokens_left_native() {
         &Sale {
             amount: Uint128::zero(),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -890,7 +890,7 @@ pub fn test_purchase_not_enough_tokens_native() {
         &Sale {
             amount: Uint128::from(1u128),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -927,7 +927,7 @@ pub fn test_purchase_native() {
         &Sale {
             amount: sale_amount,
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -970,7 +970,7 @@ pub fn test_purchase_native() {
 
     // Check sale amount updated
     let sale = SALE
-        .load(deps.as_mut().storage, &exchange_asset.to_string())
+        .load(deps.as_mut().storage, &exchange_asset.inner())
         .unwrap();
 
     assert_eq!(
@@ -1005,7 +1005,7 @@ pub fn test_purchase_refund() {
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -1053,7 +1053,7 @@ pub fn test_cancel_sale_unauthorised() {
         &Sale {
             amount: sale_amount,
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -1110,7 +1110,7 @@ pub fn test_cancel_sale() {
         &Sale {
             amount: sale_amount,
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -1169,7 +1169,7 @@ fn test_query_sale() {
     let sale = Sale {
         amount: sale_amount,
         exchange_rate,
-        recipient: "owner".to_string(),
+        recipient: Recipient::from_string("owner".to_string()),
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
         end_time: None,
     };
@@ -1207,7 +1207,7 @@ fn test_andr_query() {
     let sale = Sale {
         amount: sale_amount,
         exchange_rate,
-        recipient: "owner".to_string(),
+        recipient: Recipient::from_string("owner".to_string()),
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
         end_time: None,
     };
@@ -1247,7 +1247,7 @@ fn test_purchase_native_invalid_coins() {
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -1299,7 +1299,7 @@ fn test_query_sale_assets() {
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },
@@ -1311,7 +1311,7 @@ fn test_query_sale_assets() {
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
-            recipient: owner.to_string(),
+            recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
             end_time: None,
         },

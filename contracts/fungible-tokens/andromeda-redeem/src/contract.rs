@@ -20,7 +20,7 @@ use crate::{
     },
     query::{query_redemption_asset, query_redemption_asset_balance, query_redemption_condition},
 };
- 
+
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-redeem";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

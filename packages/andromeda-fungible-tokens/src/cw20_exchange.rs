@@ -1,5 +1,5 @@
 use andromeda_std::{
-    amp::AndrAddr,
+    amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
     common::{expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
@@ -25,7 +25,7 @@ pub enum ExecuteMsg {
     #[attrs(restricted)]
     CancelRedeem { asset: AssetInfo },
     /// Purchases tokens with native funds
-    Purchase { recipient: Option<String> },
+    Purchase { recipient: Option<Recipient> },
     /// Starts a redeem
     StartRedeem {
         /// The accepted asset for redemption
@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
         exchange_rate: Decimal,
         /// The recipient of the sale proceeds
-        recipient: Option<String>,
+        recipient: Option<Recipient>,
         /// The time when the sale starts
         start_time: Option<Expiry>,
         /// The time when the sale ends
@@ -42,7 +42,7 @@ pub enum ExecuteMsg {
 
     Redeem {
         /// Optional recipient to redeem on behalf of another address
-        recipient: Option<String>,
+        recipient: Option<Recipient>,
     },
     /// Receive for CW20 tokens, used for purchasing and starting sales
     #[attrs(nonpayable)]
@@ -57,7 +57,7 @@ pub struct Sale {
     /// The amount for sale at the given rate
     pub amount: Uint128,
     /// The recipient of the sale proceeds
-    pub recipient: String,
+    pub recipient: Recipient,
     /// The time when the sale starts
     pub start_time: Milliseconds,
     /// The time when the sale ends
@@ -76,7 +76,7 @@ pub struct Redeem {
     /// The amount paid out
     pub amount_paid_out: Uint128,
     /// The recipient of the sale proceeds
-    pub recipient: String,
+    pub recipient: Recipient,
     /// The time when the sale starts
     pub start_time: Milliseconds,
     /// The time when the sale ends
@@ -93,14 +93,14 @@ pub enum Cw20HookMsg {
         exchange_rate: Uint128,
         /// The recipient of the sale proceeds
         /// Sender is used if `None` provided
-        recipient: Option<String>,
+        recipient: Option<Recipient>,
         start_time: Option<Expiry>,
         duration: Option<MillisecondsDuration>,
     },
     /// Purchases tokens
     Purchase {
         /// Optional recipient to purchase on behalf of another address
-        recipient: Option<String>,
+        recipient: Option<Recipient>,
     },
     /// Starts a redeem
     StartRedeem {
@@ -109,7 +109,7 @@ pub enum Cw20HookMsg {
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
         exchange_rate: Decimal,
         /// The recipient of the sale proceeds
-        recipient: Option<String>,
+        recipient: Option<Recipient>,
         /// The time when the sale starts
         start_time: Option<Expiry>,
         /// The time when the sale ends
@@ -118,7 +118,7 @@ pub enum Cw20HookMsg {
     /// Redeems tokens
     Redeem {
         /// Optional recipient to redeem on behalf of another address
-        recipient: Option<String>,
+        recipient: Option<Recipient>,
     },
 }
 
