@@ -292,7 +292,7 @@ fn test_cw20_exchange_app_native() {
 
     // Check that user1 has received 10 uandr
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
-    assert_eq!(balance.amount, Uint128::new(10 + 10u128));
+    assert_eq!(balance.amount, Uint128::new(1000 + 10u128));
 
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.inner().clone());
     let redeem_query_resp: RedeemResponse = router
@@ -323,7 +323,7 @@ fn test_cw20_exchange_app_native() {
     // Check that user1 has received 5 uandr
     let balance = router.wrap().query_balance(user1.clone(), "uandr").unwrap();
     // Initial balance is 10, total redeemable is 100, 50 was redeemed, 10 was refunded
-    assert_eq!(balance.amount, Uint128::new(10 + 100));
+    assert_eq!(balance.amount, Uint128::new(1000 + 100));
 
     // Query user1's cw20addr2 balance
     let balance = query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
