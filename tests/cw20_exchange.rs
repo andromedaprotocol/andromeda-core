@@ -283,7 +283,7 @@ fn test_cw20_exchange_app_native() {
     assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::new(100));
 
     // Now user1 will try to redeem 5 cw20addr_2
-    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
         cw20_exchange_addr.clone(),
         Uint128::new(5u128),
@@ -313,7 +313,7 @@ fn test_cw20_exchange_app_native() {
     );
 
     // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
-    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
         cw20_exchange_addr.clone(),
         Uint128::new(60u128),
@@ -345,7 +345,7 @@ fn test_cw20_exchange_app_native() {
     assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::zero());
 
     // User 1 will try to redeem but there is no redeemable amount left
-    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
         cw20_exchange_addr.clone(),
         Uint128::new(1u128),
@@ -447,7 +447,7 @@ fn test_cw20_exchange_app_cw20() {
     assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::new(100));
 
     // Now user1 will try to redeem 5 cw20addr_2
-    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
         cw20_exchange_addr.clone(),
         Uint128::new(5u128),
@@ -477,7 +477,7 @@ fn test_cw20_exchange_app_cw20() {
     );
 
     // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
-    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
         cw20_exchange_addr.clone(),
         Uint128::new(60u128),
@@ -508,7 +508,7 @@ fn test_cw20_exchange_app_cw20() {
     assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::zero());
 
     // User 1 will try to redeem but there is no redeemable amount left
-    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
         cw20_exchange_addr.clone(),
         Uint128::new(1u128),
@@ -578,7 +578,7 @@ fn test_cw20_exchange_app_redeem_native() {
     );
 
     // Now user1 will try to redeem 5 uandr
-    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     router
         .execute_contract(
@@ -613,7 +613,7 @@ fn test_cw20_exchange_app_redeem_native() {
     );
 
     // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
-    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     router
         .execute_contract(
@@ -651,7 +651,7 @@ fn test_cw20_exchange_app_redeem_native() {
         Uint128::new(100)
     );
     // User 1 will try to redeem but there is no redeemable amount left
-    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     let err: ContractError = router
         .execute_contract(user1.clone(), cw20_exchange_addr.clone(), &redeem_msg, &[])
@@ -713,7 +713,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     );
 
     // Now user1 will try to redeem 10 uandr
-    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     router
         .execute_contract(
@@ -748,7 +748,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     );
 
     // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
-    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     router
         .execute_contract(
@@ -786,7 +786,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
         Uint128::new(100)
     );
     // User 1 will try to redeem but there is no redeemable amount left
-    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(&user1.to_string())));
+    let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     let err: ContractError = router
         .execute_contract(user1.clone(), cw20_exchange_addr.clone(), &redeem_msg, &[])
