@@ -1,4 +1,7 @@
 use std::str::FromStr;
+use std::sync::Mutex;
+use std::sync::Once;
+use lazy_static::lazy_static;
 
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
@@ -28,12 +31,24 @@ struct TestCase {
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
 
+//Added to prevent concurency issues (Accessing the same state file at the same time)
+lazy_static! {
+    static ref DAEMON_MUTEX: Mutex<()> = Mutex::new(());
+    static ref INIT_LOGGER: Once = Once::new();
+}
+
 #[fixture]
 fn setup(
     #[default(11806)] app_code_id: u64,
     #[default("neutron1p3gh4zanng04zdnvs8cdh2kdsjrcp43qkp9zk32enu9waxv4wrmqpqnl9g")]
     kernel_address: String,
 ) -> TestCase {
+    INIT_LOGGER.call_once(|| {
+        env_logger::init();
+    });
+
+    let _lock = DAEMON_MUTEX.lock().unwrap();
+
     let socket_astroport_type = "socket-astroport@0.1.0";
     let socket_astroport_component_name = "socket-astroport";
     let app_name = format!(
