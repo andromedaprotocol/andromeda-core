@@ -1,5 +1,9 @@
 use super::{addresses::AndrAddr, messages::AMPMsg};
-use crate::{ado_contract::ADOContract, common::encode_binary, error::ContractError};
+use crate::{
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, encode_binary},
+    error::ContractError,
+};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -39,6 +43,25 @@ impl Recipient {
         }
 
         Ok(())
+    }
+
+    /// Resolves a recipient with fallback logic
+    /// 1. If recipient is provided, validate and return it
+    /// 2. If no recipient, use AMP context origin if available
+    /// 3. Otherwise fallback to sender
+    pub fn validate_or_default(
+        recipient: Option<Recipient>,
+        execute_ctx: &ExecuteContext,
+        sender: &str,
+    ) -> Result<Recipient, ContractError> {
+        if let Some(recipient) = recipient {
+            recipient.validate(&execute_ctx.deps.as_ref())?;
+            Ok(recipient)
+        } else if let Some(ref amp_ctx) = execute_ctx.amp_ctx {
+            Ok(Recipient::from_string(amp_ctx.ctx.get_origin()))
+        } else {
+            Ok(Recipient::from_string(sender))
+        }
     }
 
     /// Creates a Recipient from the given string with no attached message
