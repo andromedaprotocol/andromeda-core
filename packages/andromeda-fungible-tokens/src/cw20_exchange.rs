@@ -128,7 +128,7 @@ pub enum Cw20HookMsg {
 pub enum QueryMsg {
     /// Sale info for a given asset
     #[returns(SaleResponse)]
-    Sale { asset: AssetInfo },
+    Sale { asset: String },
     /// Redeem info
     #[returns(RedeemResponse)]
     Redeem { asset: String },

@@ -24,7 +24,7 @@ pub fn execute_start_redeem(
     exchange_rate: Decimal,
     // The original sender of the CW20::Send message
     sender: String,
-    // The recipient of the sale proceeds
+    // The recipient of the redeem proceeds
     recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     duration: Option<MillisecondsDuration>,
@@ -71,7 +71,7 @@ pub fn execute_start_redeem(
         None => None,
     };
 
-    // Do not allow duplicate sales
+    // Do not allow duplicate redeems
     let current_redeem = REDEEM.may_load(deps.storage, &redeem_asset.inner())?;
     if let Some(redeem) = current_redeem {
         // The old redeem should either be expired or have no amount left
@@ -124,7 +124,7 @@ pub fn execute_redeem(
         redeem.start_time.is_expired(&ctx.env.block),
         ContractError::RedeemNotStarted {}
     );
-    // Check if sale has ended
+    // Check if redeem has ended
     if let Some(end_time) = redeem.end_time {
         ensure!(
             !end_time.is_expired(&ctx.env.block),
@@ -284,7 +284,7 @@ pub fn execute_cancel_redeem(
             .add_attribute("refunded_amount", redeem.amount);
     }
 
-    // Sale can now be removed
+    // Redeem can now be removed
     REDEEM.remove(deps.storage, &asset.inner());
 
     Ok(resp.add_attributes(vec![

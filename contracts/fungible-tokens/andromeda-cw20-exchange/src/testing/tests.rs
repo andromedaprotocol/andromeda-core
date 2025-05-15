@@ -186,7 +186,7 @@ pub fn test_start_sale() {
     execute(deps.as_mut(), env, token_info, msg).unwrap();
 
     let sale = SALE
-        .load(deps.as_ref().storage, &exchange_asset.to_string())
+        .load(deps.as_ref().storage, &exchange_asset.inner())
         .unwrap();
 
     assert_eq!(sale.exchange_rate, exchange_rate);
@@ -240,7 +240,7 @@ pub fn test_start_sale_no_start_no_duration() {
     execute(deps.as_mut(), env, token_info, msg).unwrap();
 
     let sale = SALE
-        .load(deps.as_ref().storage, &exchange_asset.to_string())
+        .load(deps.as_ref().storage, &exchange_asset.inner())
         .unwrap();
 
     assert_eq!(sale.exchange_rate, exchange_rate);
@@ -1151,7 +1151,7 @@ fn test_query_sale() {
     let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
 
     let msg = QueryMsg::Sale {
-        asset: exchange_asset.clone(),
+        asset: exchange_asset.inner(),
     };
     let not_found_response: SaleResponse =
         from_json(query(deps.as_ref(), env.clone(), msg.clone()).unwrap()).unwrap();
@@ -1167,7 +1167,7 @@ fn test_query_sale() {
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
         end_time: None,
     };
-    SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
+    SALE.save(deps.as_mut().storage, &exchange_asset.inner(), &sale)
         .unwrap();
 
     let found_response: SaleResponse = from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
@@ -1205,11 +1205,11 @@ fn test_andr_query() {
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
         end_time: None,
     };
-    SALE.save(deps.as_mut().storage, &exchange_asset.to_string(), &sale)
+    SALE.save(deps.as_mut().storage, &exchange_asset.inner(), &sale)
         .unwrap();
 
     let msg = QueryMsg::Sale {
-        asset: exchange_asset,
+        asset: exchange_asset.inner(),
     };
     let query_msg_response: SaleResponse =
         from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();

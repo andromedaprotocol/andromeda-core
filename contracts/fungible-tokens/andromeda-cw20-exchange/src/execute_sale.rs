@@ -84,7 +84,7 @@ pub fn execute_start_sale(
     };
 
     // Do not allow duplicate sales
-    let current_sale = SALE.may_load(deps.storage, &asset.to_string())?;
+    let current_sale = SALE.may_load(deps.storage, &asset.inner())?;
     ensure!(current_sale.is_none(), ContractError::SaleNotEnded {});
 
     let sale = Sale {
@@ -94,7 +94,7 @@ pub fn execute_start_sale(
         start_time,
         end_time,
     };
-    SALE.save(deps.storage, &asset.to_string(), &sale)?;
+    SALE.save(deps.storage, &asset.inner(), &sale)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "start_sale"),
@@ -118,7 +118,7 @@ pub fn execute_purchase(
     // deps.api.addr_validate(recipient)?;
     let mut resp = Response::default();
 
-    let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent.to_string())? else {
+    let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent.inner())? else {
         return Err(ContractError::NoOngoingSale {});
     };
 
@@ -220,7 +220,7 @@ pub fn execute_cancel_sale(
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    let Some(sale) = SALE.may_load(deps.storage, &asset.to_string())? else {
+    let Some(sale) = SALE.may_load(deps.storage, &asset.inner())? else {
         return Err(ContractError::NoOngoingSale {});
     };
 

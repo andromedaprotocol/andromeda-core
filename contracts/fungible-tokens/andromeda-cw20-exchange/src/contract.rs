@@ -176,9 +176,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     }
 }
 
-fn query_sale(deps: Deps, asset: impl ToString) -> Result<Binary, ContractError> {
-    let sale = SALE.may_load(deps.storage, &asset.to_string())?;
-
+fn query_sale(deps: Deps, asset: String) -> Result<Binary, ContractError> {
+    let sale = SALE.may_load(deps.storage, &asset)?;
     Ok(to_json_binary(&SaleResponse { sale })?)
 }
 
