@@ -13,10 +13,7 @@ use cosmwasm_std::{attr, ensure, Response, Uint128};
 use cw_asset::AssetInfo;
 use cw_utils::one_coin;
 
-use crate::{
-    contract::{PURCHASE_REPLY_ID, RECIPIENT_REPLY_ID, REFUND_REPLY_ID},
-    state::{SALE, TOKEN_ADDRESS},
-};
+use crate::state::{SALE, TOKEN_ADDRESS};
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_start_sale(
@@ -156,7 +153,7 @@ pub fn execute_purchase(
                 asset_sent.clone(),
                 remainder,
                 sender.to_string(),
-                Some(REFUND_REPLY_ID),
+                None,
             )?)
             .add_attribute("refunded_amount", remainder);
     }
@@ -172,7 +169,7 @@ pub fn execute_purchase(
         token_asset,
         purchased,
         recipient.clone(),
-        Some(PURCHASE_REPLY_ID),
+        None,
     )?;
 
     resp = resp.add_submessage(sub_msg);
@@ -187,7 +184,7 @@ pub fn execute_purchase(
         asset_sent.clone(),
         amount_sent - remainder,
         sale.recipient.clone(),
-        Some(RECIPIENT_REPLY_ID),
+        None,
     )?);
 
     Ok(resp.add_attributes(vec![
@@ -241,7 +238,7 @@ pub fn execute_cancel_sale(
                 token,
                 sale.amount,
                 info.sender.to_string(),
-                Some(REFUND_REPLY_ID),
+                None,
             )?)
             .add_attribute("refunded_amount", sale.amount);
     }

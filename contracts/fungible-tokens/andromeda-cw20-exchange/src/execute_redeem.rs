@@ -13,10 +13,7 @@ use cosmwasm_std::{attr, ensure, Decimal, Response, Uint128};
 use cw_asset::AssetInfo;
 use cw_utils::one_coin;
 
-use crate::{
-    contract::{RECIPIENT_REPLY_ID, REFUND_REPLY_ID},
-    state::{REDEEM, SALE},
-};
+use crate::state::REDEEM;
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_start_redeem(
@@ -175,7 +172,7 @@ pub fn execute_redeem(
                 asset_sent.clone(),
                 refund_amount,
                 sender.to_string(),
-                Some(REFUND_REPLY_ID),
+                None,
             )?)
             .add_attribute("refunded_amount", refund_amount);
     }
@@ -204,7 +201,7 @@ pub fn execute_redeem(
         asset_sent.clone(),
         amount_sent - refund_amount,
         redeem_recipient.clone(),
-        Some(RECIPIENT_REPLY_ID),
+        None,
     )?);
 
     Ok(resp.add_attributes(vec![
@@ -282,13 +279,13 @@ pub fn execute_cancel_redeem(
                 token,
                 redeem.amount,
                 info.sender.to_string(),
-                Some(REFUND_REPLY_ID),
+                None,
             )?)
             .add_attribute("refunded_amount", redeem.amount);
     }
 
     // Sale can now be removed
-    SALE.remove(deps.storage, &asset.to_string());
+    REDEEM.remove(deps.storage, &asset.inner());
 
     Ok(resp.add_attributes(vec![
         attr("action", "cancel_redeem"),

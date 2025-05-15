@@ -1,6 +1,6 @@
 use andromeda_fungible_tokens::cw20_exchange::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Sale, SaleAssetsResponse, SaleResponse,
-    TokenAddressResponse,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Redeem, RedeemResponse, Sale,
+    SaleAssetsResponse, SaleResponse, TokenAddressResponse,
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -14,7 +14,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{message_info, mock_env},
-    to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Empty, Response, SubMsg,
+    to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, Empty, Response, SubMsg,
     Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -23,7 +23,7 @@ pub const MOCK_TOKEN_ADDRESS: &str = "cw20";
 
 use crate::{
     contract::{execute, instantiate, query},
-    state::{SALE, TOKEN_ADDRESS},
+    state::{REDEEM, SALE, TOKEN_ADDRESS},
     testing::mock_querier::mock_dependencies_custom,
 };
 
@@ -573,7 +573,7 @@ pub fn test_purchase() {
         )
         .unwrap(),
     );
-    let expected = SubMsg::reply_on_error(expected_wasm, 2);
+    let expected = SubMsg::new(expected_wasm);
     assert_eq!(msg, &expected);
 
     // Check sale amount updated
@@ -599,7 +599,7 @@ pub fn test_purchase() {
         )
         .unwrap(),
     );
-    let expected = SubMsg::reply_on_error(expected_wasm, 3);
+    let expected = SubMsg::new(expected_wasm);
 
     assert_eq!(msg, &expected);
 }
@@ -663,7 +663,7 @@ pub fn test_purchase_with_start_and_duration() {
         )
         .unwrap(),
     );
-    let expected = SubMsg::reply_on_error(expected_wasm, 2);
+    let expected = SubMsg::new(expected_wasm);
     assert_eq!(msg, &expected);
 
     // Check sale amount updated
@@ -689,7 +689,7 @@ pub fn test_purchase_with_start_and_duration() {
         )
         .unwrap(),
     );
-    let expected = SubMsg::reply_on_error(expected_wasm, 3);
+    let expected = SubMsg::new(expected_wasm);
 
     assert_eq!(msg, &expected);
 }
@@ -948,7 +948,7 @@ pub fn test_purchase_native() {
         to_address: purchaser.to_string(),
         amount: vec![Coin::new(1_u128, test_addr.to_string())],
     });
-    let expected = SubMsg::reply_on_error(expected_wasm, 1);
+    let expected = SubMsg::new(expected_wasm);
     assert_eq!(msg, expected);
 
     // Check transfer
@@ -965,7 +965,7 @@ pub fn test_purchase_native() {
         )
         .unwrap(),
     );
-    let expected = SubMsg::reply_on_error(expected_wasm, 2);
+    let expected = SubMsg::new(expected_wasm);
     assert_eq!(msg, expected);
 
     // Check sale amount updated
@@ -984,7 +984,7 @@ pub fn test_purchase_native() {
         to_address: owner.to_string(),
         amount: vec![Coin::new(99_u128, test_addr.to_string())],
     });
-    let expected = SubMsg::reply_on_error(expected_wasm, 3);
+    let expected = SubMsg::new(expected_wasm);
 
     assert_eq!(msg, &expected);
 }
@@ -1025,13 +1025,10 @@ pub fn test_purchase_refund() {
     assert_eq!(refund_attribute, attr("refunded_amount", "5"));
     assert_eq!(
         refund_message,
-        &SubMsg::reply_on_error(
-            CosmosMsg::Bank(BankMsg::Send {
-                to_address: info.sender.to_string(),
-                amount: coins(5u128, "test")
-            }),
-            1
-        )
+        &SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: coins(5u128, "test")
+        }),)
     )
 }
 
@@ -1132,20 +1129,17 @@ pub fn test_cancel_sale() {
     // Ensure any remaining funds are returned
     let message = res.messages.first().unwrap();
     let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
-    let expected_message = SubMsg::reply_on_error(
-        CosmosMsg::Wasm(
-            wasm_execute(
-                mock_cw20_addr.to_string(),
-                &Cw20ExecuteMsg::Transfer {
-                    recipient: owner.to_string(),
-                    amount: sale_amount,
-                },
-                vec![],
-            )
-            .unwrap(),
-        ),
-        1,
-    );
+    let expected_message = SubMsg::new(CosmosMsg::Wasm(
+        wasm_execute(
+            mock_cw20_addr.to_string(),
+            &Cw20ExecuteMsg::Transfer {
+                recipient: owner.to_string(),
+                amount: sale_amount,
+            },
+            vec![],
+        )
+        .unwrap(),
+    ));
     assert_eq!(message, &expected_message)
 }
 
@@ -1359,4 +1353,141 @@ fn test_start_sale_same_asset() {
             asset: AssetInfo::Cw20(cw20_addr.clone()).to_string()
         }
     );
+}
+
+#[test]
+fn test_cancel_redeem() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
+    let redeem_asset = AssetInfo::Cw20(Addr::unchecked("redeem_asset"));
+    let mock_token_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    let payout_asset = AssetInfo::Cw20(Addr::unchecked(mock_token_addr.clone()));
+
+    init(&mut deps).unwrap();
+
+    // Setup a redeem condition
+    let redeem_amount = Uint128::from(100u128);
+    let exchange_rate = Decimal::percent(200); // 2:1 ratio
+    REDEEM
+        .save(
+            deps.as_mut().storage,
+            &redeem_asset.inner(),
+            &Redeem {
+                asset: payout_asset.clone(),
+                amount: redeem_amount,
+                amount_paid_out: Uint128::zero(),
+                exchange_rate,
+                recipient: Recipient::from_string(owner.to_string()),
+                start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+                end_time: None,
+            },
+        )
+        .unwrap();
+
+    // Verify redeem condition exists
+    let query_msg = QueryMsg::Redeem {
+        asset: redeem_asset.inner().clone(),
+    };
+    let query_resp: RedeemResponse =
+        from_json(query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap()).unwrap();
+    assert!(query_resp.redeem.is_some());
+    assert_eq!(query_resp.redeem.clone().unwrap().asset, payout_asset);
+    assert_eq!(query_resp.redeem.unwrap().amount, redeem_amount);
+
+    // Cancel the redeem
+    let cancel_msg = ExecuteMsg::CancelRedeem {
+        asset: redeem_asset.clone(),
+    };
+    let res = execute(deps.as_mut(), env.clone(), info, cancel_msg).unwrap();
+
+    // Verify redeem has been removed
+    let query_resp: RedeemResponse =
+        from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+    assert!(query_resp.redeem.is_none());
+
+    // Verify remaining funds were returned
+    let message = res.messages.first().unwrap();
+
+    let expected_message = SubMsg::new(CosmosMsg::Wasm(
+        wasm_execute(
+            mock_token_addr.to_string(),
+            &Cw20ExecuteMsg::Transfer {
+                recipient: owner.to_string(),
+                amount: redeem_amount,
+            },
+            vec![],
+        )
+        .unwrap(),
+    ));
+    assert_eq!(message, &expected_message);
+
+    // Check that appropriate attributes were emitted
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("refunded_amount", redeem_amount),
+            attr("action", "cancel_redeem"),
+            attr("asset", redeem_asset.to_string()),
+        ]
+    );
+}
+
+#[test]
+fn test_cancel_redeem_no_redeem() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = deps.api.addr_make("owner");
+    let info = message_info(&owner, &[]);
+    let redeem_asset = AssetInfo::Cw20(Addr::unchecked("redeem_asset"));
+
+    init(&mut deps).unwrap();
+
+    let msg = ExecuteMsg::CancelRedeem {
+        asset: redeem_asset,
+    };
+
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(err, ContractError::NoOngoingRedeem {});
+}
+
+#[test]
+fn test_cancel_redeem_unauthorized() {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let owner = deps.api.addr_make("owner");
+    let not_owner = deps.api.addr_make("not_owner");
+    let info = message_info(&not_owner, &[]);
+    let redeem_asset = AssetInfo::Cw20(Addr::unchecked("redeem_asset"));
+    let payout_asset = AssetInfo::Cw20(Addr::unchecked(MOCK_TOKEN_ADDRESS));
+
+    init(&mut deps).unwrap();
+
+    // Setup a redeem condition
+    REDEEM
+        .save(
+            deps.as_mut().storage,
+            &redeem_asset.inner(),
+            &Redeem {
+                asset: payout_asset,
+                amount: Uint128::from(100u128),
+                amount_paid_out: Uint128::zero(),
+                exchange_rate: Decimal::percent(200),
+                recipient: Recipient::from_string(owner.to_string()),
+                start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+                end_time: None,
+            },
+        )
+        .unwrap();
+
+    let msg = ExecuteMsg::CancelRedeem {
+        asset: redeem_asset,
+    };
+
+    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    assert_eq!(err, ContractError::Unauthorized {});
 }

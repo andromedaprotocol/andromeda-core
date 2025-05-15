@@ -33,13 +33,6 @@ use crate::{
 const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-exchange";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// ID used for any refund sub messgaes
-pub const REFUND_REPLY_ID: u64 = 1;
-/// ID used for any purchased token transfer sub messages
-pub const PURCHASE_REPLY_ID: u64 = 2;
-/// ID used for transfer to sale recipient
-pub const RECIPIENT_REPLY_ID: u64 = 3;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
