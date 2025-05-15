@@ -115,7 +115,6 @@ pub fn execute_purchase(
     sender: &str,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
-    // deps.api.addr_validate(recipient)?;
     let mut resp = Response::default();
 
     let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent.inner())? else {

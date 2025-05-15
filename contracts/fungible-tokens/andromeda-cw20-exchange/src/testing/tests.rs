@@ -402,7 +402,7 @@ pub fn test_purchase_not_enough_sent() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
@@ -450,7 +450,7 @@ pub fn test_purchase_no_tokens_left() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: Uint128::zero(),
             exchange_rate,
@@ -492,7 +492,7 @@ pub fn test_purchase_not_enough_tokens() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: Uint128::one(),
             exchange_rate,
@@ -535,7 +535,7 @@ pub fn test_purchase() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -620,7 +620,7 @@ pub fn test_purchase_with_start_and_duration() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -710,7 +710,7 @@ pub fn test_purchase_sale_not_started() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -753,7 +753,7 @@ pub fn test_purchase_sale_duration_ended() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -812,7 +812,7 @@ pub fn test_purchase_not_enough_sent_native() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        "native:test",
+        "test",
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
@@ -851,7 +851,7 @@ pub fn test_purchase_no_tokens_left_native() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        "native:test",
+        "test",
         &Sale {
             amount: Uint128::zero(),
             exchange_rate,
@@ -886,7 +886,7 @@ pub fn test_purchase_not_enough_tokens_native() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        "native:test",
+        "test",
         &Sale {
             amount: Uint128::from(1u128),
             exchange_rate,
@@ -923,7 +923,7 @@ pub fn test_purchase_native() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -1001,7 +1001,7 @@ pub fn test_purchase_refund() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        "native:test",
+        "test",
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
@@ -1103,7 +1103,7 @@ pub fn test_cancel_sale() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset.inner(),
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -1237,7 +1237,7 @@ fn test_purchase_native_invalid_coins() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        "native:test",
+        "test",
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
@@ -1289,7 +1289,7 @@ fn test_query_sale_assets() {
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        "native:test",
+        "test",
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
@@ -1321,7 +1321,7 @@ fn test_query_sale_assets() {
 
     assert_eq!(resp.assets.len(), 2);
     assert_eq!(resp.assets[0], "cw20:testaddress");
-    assert_eq!(resp.assets[1], "native:test");
+    assert_eq!(resp.assets[1], "test");
 }
 
 #[test]
