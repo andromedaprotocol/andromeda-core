@@ -35,6 +35,12 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum OsmosisExecuteMsg {
+    TransferOwnership { new_owner: String },
+    SetRoute {
+        input_denom: String,
+        output_denom: String,
+        pool_route: Vec<SwapAmountInRoute>,
+    },
     Swap {
         input_coin: Coin,
         output_denom: String,
@@ -75,7 +81,7 @@ pub enum Slippage {
 
 #[cw_serde]
 pub struct SwapAmountInRoute {
-    pub pool_id: u64,
+    pub pool_id: String,
     pub token_out_denom: String,
 }
 

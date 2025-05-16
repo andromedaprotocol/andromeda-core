@@ -18,6 +18,7 @@ cosmwasm-schema = { workspace = true }
 cw20 = { workspace = true }
 cw3 = { workspace = true }
 cw-utils = { workspace = true }
+osmosis-std = "0.27.0"
 
 andromeda-std = { workspace = true, features = [] }
 

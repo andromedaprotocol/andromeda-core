@@ -25,6 +25,7 @@ cw-orch-daemon = "0.29.1"
 rstest = { workspace = true }
 lazy_static = "1.4.0"
 env_logger = "0.10.0"
+osmosis-std = "0.27.0"
 
 andromeda-testing-e2e = { workspace = true }
 

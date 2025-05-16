@@ -4,8 +4,9 @@ use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_socket::osmosis::{
-    ExecuteMsgFns, InstantiateMsg, QueryMsgFns, Slippage, SwapAmountInRoute,
+    ExecuteMsgFns, InstantiateMsg, QueryMsgFns, Slippage, SwapAmountInRoute
 };
+
 
 use andromeda_std::amp::Recipient;
 use cosmwasm_std::{coin, to_json_binary, Decimal, Uint128};
@@ -32,7 +33,7 @@ fn setup(
     #[default("osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux")]
     kernel_address: String,
 ) -> TestCase {
-    let socket_osmosis_type = "socket-osmosis";
+    let socket_osmosis_type = "socket-osmosis@0.1.1-b.1";
     let socket_osmosis_component_name = "socket-osmosis";
     let app_name = format!(
         "socket osmosis with recipient {}",
@@ -155,7 +156,7 @@ fn test_onchain_native(setup: TestCase) {
             atom_denom.clone(),
             Some(forward_addr),
             Some(vec![SwapAmountInRoute {
-                pool_id: 94,
+                pool_id: "94".to_string(),
                 token_out_denom: atom_denom.to_string(),
             }]),
             &[coin(1000000, OSMO_5.gas_denom)],

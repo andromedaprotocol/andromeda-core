@@ -872,6 +872,7 @@ dependencies = [
  "cw-utils 2.0.0",
  "cw20 2.0.0",
  "cw3",
+ "osmosis-std",
 ]
 
 [[package]]
@@ -913,6 +914,7 @@ dependencies = [
  "cw-utils 2.0.0",
  "cw2 2.0.0",
  "cw20 1.1.2",
+ "osmosis-std",
  "schemars",
  "serde",
  "thiserror 1.0.69",
@@ -3051,6 +3053,7 @@ dependencies = [
  "cw721",
  "env_logger 0.10.2",
  "lazy_static",
+ "osmosis-std",
  "rstest",
  "serde",
  "tokio",
