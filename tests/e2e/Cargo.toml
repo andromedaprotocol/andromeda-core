@@ -8,8 +8,14 @@ publish = false
 # [[test]]
 # name = "validator_staking"
 
-[[test]]
-name = "crowdfund"
+# [[test]]
+# name = "crowdfund"
+
+# [[test]]
+# name = "socket_osmosis"
+
+# [[test]]
+# name = "socket_astroport"
 
 [dependencies]
 serde.workspace = true
@@ -17,6 +23,9 @@ tokio = "1.44.2"
 cw-orch = { workspace = true }
 cw-orch-daemon = "0.29.1"
 rstest = { workspace = true }
+lazy_static = "1.4.0"
+env_logger = "0.10.0"
+osmosis-std = "0.27.0"
 
 andromeda-testing-e2e = { workspace = true }
 
@@ -44,11 +53,20 @@ andromeda-validator-staking = { path = "../../contracts/finance/andromeda-valida
     "testing",
 ] }
 
+andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osmosis", features = [
+    "testing",
+] }
+
+andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-astroport", features = [
+    "testing",
+] }
+
 andromeda-finance = { workspace = true }
 andromeda-std = { workspace = true }
 andromeda-app = { workspace = true }
 andromeda-fungible-tokens = { workspace = true }
 andromeda-non-fungible-tokens = { workspace = true }
+andromeda-socket = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
 cw20.workspace = true
 cw721.workspace = true

@@ -11,6 +11,7 @@ members = [
     "contracts/os/*",
     "contracts/accounts/*",
     "contracts/math/*",
+    "contracts/socket/*",
 
     #Internal
     "tests",
@@ -46,6 +47,7 @@ andromeda-accounts = { path = "./packages/andromeda-accounts", version = "1.0.0"
 andromeda-math = { path = "./packages/andromeda-math", version = "1.0.0" }
 andromeda-testing = { path = "./packages/andromeda-testing", version = "1.0.0" }
 andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "1.0.0" }
+andromeda-socket = { path = "./packages/andromeda-socket", version = "0.1.0" }
 andromeda-cw-json = { path = "./packages/andromeda-cw-json", version = "0.1.1" }
 
 strum_macros = "0.24.3"
@@ -71,4 +73,8 @@ cw-orch-daemon = "0.29.1"
 jsonschema-valid = { version = "0.5.2" }
 serde_json = { version = "1.0.140" }
 rstest = "0.25.0"
+thiserror = { version = "1.0.58" }
+
+astroport = { git = "https://github.com/astroport-fi/astroport-core" } 
+cosmrs = { version = "0.19.0", features = ["cosmwasm"]}
 sha2 = "0.10.9"
