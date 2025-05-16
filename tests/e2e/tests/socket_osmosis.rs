@@ -28,11 +28,11 @@ const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move br
 
 #[fixture]
 fn setup(
-    #[default(11766)] app_code_id: u64,
-    #[default("osmo1kjzha97wvwhpxc83dwcxad8w4cfau4k9vul2vcezuteh0n4jaf3sg9csr4")]
+    #[default(12441)] app_code_id: u64,
+    #[default("osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux")]
     kernel_address: String,
 ) -> TestCase {
-    let socket_osmosis_type = "soekct-osmosis";
+    let socket_osmosis_type = "socket-osmosis";
     let socket_osmosis_component_name = "socket-osmosis";
     let app_name = format!(
         "socket osmosis with recipient {}",
@@ -92,7 +92,7 @@ fn setup(
     };
     let splitter_component = AppComponent::new(
         "splitter".to_string(),
-        "splitter".to_string(),
+        "splitter@2.3.1-b.3".to_string(),
         to_json_binary(&splitter_init_msg).unwrap(),
     );
 

@@ -31,7 +31,7 @@ struct TestCase {
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
 
-//Added to prevent concurency issues (Accessing the same state file at the same time)
+//Added to prevent concurrency issues (Accessing the same state file at the same time)
 lazy_static! {
     static ref DAEMON_MUTEX: Mutex<()> = Mutex::new(());
     static ref INIT_LOGGER: Once = Once::new();
