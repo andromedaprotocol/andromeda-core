@@ -1,7 +1,7 @@
+use lazy_static::lazy_static;
 use std::str::FromStr;
 use std::sync::Mutex;
 use std::sync::Once;
-use lazy_static::lazy_static;
 
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;

@@ -21,9 +21,8 @@ use crate::{
     state::{ForwardReplyState, FORWARD_REPLY_STATE, SWAP_ROUTER},
 };
 
-
 use andromeda_socket::osmosis::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, Slippage, SwapAmountInRoute
+    ExecuteMsg, InstantiateMsg, QueryMsg, Slippage, SwapAmountInRoute,
 };
 
 const CONTRACT_NAME: &str = "crates.io:swap-and-forward-osmosis";

@@ -15,7 +15,7 @@ use cosmwasm_std::{
 use crate::state::{ForwardReplyState, FORWARD_REPLY_STATE, PREV_BALANCE, SWAP_ROUTER};
 
 use andromeda_socket::osmosis::{
-    GetRouteResponse, OsmosisQueryMsg, Slippage, OsmosisExecuteMsg, SwapAmountInRoute,
+    GetRouteResponse, OsmosisExecuteMsg, OsmosisQueryMsg, Slippage, SwapAmountInRoute,
 };
 
 pub const OSMOSIS_MSG_SWAP_ID: u64 = 1;

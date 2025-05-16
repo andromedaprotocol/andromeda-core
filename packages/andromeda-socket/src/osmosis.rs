@@ -35,7 +35,9 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum OsmosisExecuteMsg {
-    TransferOwnership { new_owner: String },
+    TransferOwnership {
+        new_owner: String,
+    },
     SetRoute {
         input_denom: String,
         output_denom: String,

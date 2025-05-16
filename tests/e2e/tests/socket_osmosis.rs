@@ -4,9 +4,8 @@ use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_socket::osmosis::{
-    ExecuteMsgFns, InstantiateMsg, QueryMsgFns, Slippage, SwapAmountInRoute
+    ExecuteMsgFns, InstantiateMsg, QueryMsgFns, Slippage, SwapAmountInRoute,
 };
-
 
 use andromeda_std::amp::Recipient;
 use cosmwasm_std::{coin, to_json_binary, Decimal, Uint128};
