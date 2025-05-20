@@ -30,7 +30,7 @@ use andromeda_socket::astroport::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
 };
 
-const CONTRACT_NAME: &str = "crates.io:swap-and-forward-astroport";
+const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -119,7 +119,7 @@ fn handle_receive_cw20(
             swap_and_forward_cw20(
                 ctx,
                 from_asset,
-                Uint128::new(amount.u128()),
+                Uint128::from(amount),
                 to_asset,
                 recipient,
                 AndrAddr::from_string(sender),

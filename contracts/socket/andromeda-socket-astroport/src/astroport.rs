@@ -166,7 +166,7 @@ pub fn handle_astroport_swap_reply(
 
     if return_amount.is_zero() {
         return Err(ContractError::Std(StdError::generic_err(format!(
-            "Incomplete data in Osmosis swap response: {:?}",
+            "Incomplete data in Astroport swap response: {:?}",
             msg
         ))));
     }
@@ -202,10 +202,17 @@ pub fn handle_astroport_swap_reply(
             pkt.to_sub_msg(kernel_address, Some(funds), ASTROPORT_MSG_FORWARD_ID)?
         }
         Asset::Cw20Token(andr_addr) => {
-            let Recipient { address, .. } = &state.recipient;
-            let transfer_msg = Cw20ExecuteMsg::Transfer {
-                recipient: address.get_raw_address(&deps.as_ref())?.to_string(),
-                amount: return_amount,
+            let Recipient { address, msg, .. } = &state.recipient;
+            let transfer_msg = match msg {
+                Some(msg) => Cw20ExecuteMsg::Send {
+                    contract: address.get_raw_address(&deps.as_ref())?.to_string(),
+                    amount: return_amount,
+                    msg: msg.clone(),
+                },
+                None => Cw20ExecuteMsg::Transfer {
+                    recipient: address.get_raw_address(&deps.as_ref())?.to_string(),
+                    amount: return_amount,
+                },
             };
             let wasm_msg = wasm_execute(
                 andr_addr.get_raw_address(&deps.as_ref())?,

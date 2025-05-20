@@ -25,7 +25,7 @@ use andromeda_socket::osmosis::{
     ExecuteMsg, InstantiateMsg, QueryMsg, Slippage, SwapAmountInRoute,
 };
 
-const CONTRACT_NAME: &str = "crates.io:swap-and-forward-osmosis";
+const CONTRACT_NAME: &str = "crates.io:andromeda-socket-osmosis";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
