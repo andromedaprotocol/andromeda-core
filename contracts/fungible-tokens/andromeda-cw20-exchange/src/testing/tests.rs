@@ -14,8 +14,8 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{message_info, mock_env},
-    to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, Empty, Response, SubMsg,
-    Timestamp, Uint128,
+    to_json_binary, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal256, Empty, Response,
+    SubMsg, Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_asset::AssetInfo;
@@ -1370,7 +1370,7 @@ fn test_cancel_redeem() {
 
     // Setup a redeem condition
     let redeem_amount = Uint128::from(100u128);
-    let exchange_rate = Decimal::percent(200); // 2:1 ratio
+    let exchange_rate = Decimal256::percent(200); // 2:1 ratio
     REDEEM
         .save(
             deps.as_mut().storage,
@@ -1476,7 +1476,7 @@ fn test_cancel_redeem_unauthorized() {
                 asset: payout_asset,
                 amount: Uint128::from(100u128),
                 amount_paid_out: Uint128::zero(),
-                exchange_rate: Decimal::percent(200),
+                exchange_rate: Decimal256::percent(200),
                 recipient: Recipient::from_string(owner.to_string()),
                 start_time: Milliseconds::from_nanos(env.block.time.nanos()),
                 end_time: None,

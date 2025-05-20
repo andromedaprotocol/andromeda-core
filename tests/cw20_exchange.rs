@@ -20,7 +20,7 @@ use andromeda_testing::{
     mock_builder::MockAndromedaBuilder,
     MockContract,
 };
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal256, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_asset::AssetInfo;
 use cw_multi_test::Executor;
@@ -257,7 +257,7 @@ fn test_cw20_exchange_app_cw20_to_native() {
     // Now the owner will setup a redeem condition for 2 uandr per cw20addr
     let redeem_msg = mock_set_redeem_condition_native_msg(
         cw20_addr_2_asset.clone(),
-        Decimal::from_ratio(Uint128::new(2), Uint128::new(1)),
+        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
         Some(Recipient::from_string(owner.to_string())),
         None,
         None,
@@ -420,7 +420,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     let start_redeem_msg = mock_start_redeem_cw20_msg(
         None,
         cw20_addr_2_asset.clone(),
-        Decimal::from_ratio(Uint128::new(2), Uint128::new(1)),
+        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
         None,
         None,
     );
@@ -545,7 +545,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     // Now the owner will setup a redeem condition for 2 uandr per cw20addr
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
-        Decimal::from_ratio(Uint128::new(2), Uint128::new(1)),
+        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
         Some(Recipient::from_string(owner.to_string())),
         None,
         None,
@@ -682,7 +682,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     let start_redeem_msg = mock_start_redeem_cw20_msg(
         None,
         uandr_asset.clone(),
-        Decimal::from_ratio(Uint128::new(2), Uint128::new(1)),
+        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
         None,
         None,
     );
@@ -818,7 +818,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
 
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
-        Decimal::from_ratio(Uint128::new(1), Uint128::new(2)),
+        Decimal256::from_ratio(Uint128::new(1), Uint128::new(2)),
         Some(Recipient::from_string(owner.to_string())),
         None,
         None,

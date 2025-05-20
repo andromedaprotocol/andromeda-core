@@ -4,7 +4,7 @@ use andromeda_std::{
     common::{expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{ConversionOverflowError, Decimal256, StdError, StdResult, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_asset::AssetInfo;
 
@@ -31,7 +31,7 @@ pub enum ExecuteMsg {
         /// The accepted asset for redemption
         redeem_asset: AssetInfo,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
-        exchange_rate: Decimal,
+        exchange_rate: Decimal256,
         /// The recipient of the sale proceeds
         recipient: Option<Recipient>,
         /// The time when the sale starts
@@ -70,7 +70,7 @@ pub struct Redeem {
     /// The asset that will be given in return for the redeemed asset
     pub asset: AssetInfo,
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
-    pub exchange_rate: Decimal,
+    pub exchange_rate: Decimal256,
     /// The amount for sale at the given rate
     pub amount: Uint128,
     /// The amount paid out
@@ -107,7 +107,7 @@ pub enum Cw20HookMsg {
         /// The accepted asset for redemption
         redeem_asset: AssetInfo,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
-        exchange_rate: Decimal,
+        exchange_rate: Decimal256,
         /// The recipient of the sale proceeds
         recipient: Option<Recipient>,
         /// The time when the sale starts
@@ -163,4 +163,42 @@ pub struct RedeemResponse {
 pub struct TokenAddressResponse {
     /// The address of the token being sold
     pub address: String,
+}
+
+pub fn to_uint128_with_precision(value: &Decimal256) -> StdResult<Uint128> {
+    let uint_value = value.atomics();
+
+    uint_value
+        .checked_div(10u128.pow(value.decimal_places() - 1).into())?
+        .try_into()
+        .map_err(|o: ConversionOverflowError| {
+            StdError::generic_err(format!("Error converting {}", o.to_string()))
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(Decimal256::percent(50), Uint128::new(5))] // 0.5 with 1 decimal place
+    #[case(Decimal256::permille(500), Uint128::new(5))] // 0.5 with 2 decimal places
+    #[case(Decimal256::from_ratio(500u128, 1000u128), Uint128::new(5))] // 0.5 with 3 decimal places
+    #[case(Decimal256::zero(), Uint128::zero())] // zero
+    #[case(Decimal256::from_ratio(1234567u128, 1000u128), Uint128::new(12345))] // large number
+    fn test_to_uint128_with_precision_success(
+        #[case] value: Decimal256,
+        #[case] expected: Uint128,
+    ) {
+        let result = to_uint128_with_precision(&value).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_to_uint128_with_precision_overflow() {
+        let value = Decimal256::MAX;
+        let result = to_uint128_with_precision(&value);
+        assert!(result.is_err());
+    }
 }

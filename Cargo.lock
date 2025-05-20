@@ -533,6 +533,7 @@ dependencies = [
  "cw-utils",
  "cw20",
  "cw20-base",
+ "rstest",
  "serde",
 ]
 

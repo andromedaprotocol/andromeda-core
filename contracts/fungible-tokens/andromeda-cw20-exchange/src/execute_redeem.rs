@@ -9,7 +9,7 @@ use andromeda_std::{
     },
     error::ContractError,
 };
-use cosmwasm_std::{attr, ensure, Decimal, Response, Uint128};
+use cosmwasm_std::{attr, ensure, Decimal256, Response, Uint128, Uint256};
 use cw_asset::AssetInfo;
 use cw_utils::one_coin;
 
@@ -21,7 +21,7 @@ pub fn execute_start_redeem(
     amount: Uint128,
     asset: AssetInfo,
     redeem_asset: AssetInfo,
-    exchange_rate: Decimal,
+    exchange_rate: Decimal256,
     // The original sender of the CW20::Send message
     sender: String,
     // The recipient of the redeem proceeds
@@ -132,27 +132,35 @@ pub fn execute_redeem(
         );
     }
 
-    let payment_decimal = Decimal::from_ratio(amount_sent, 1u128);
+    let payment_decimal = Decimal256::from_ratio(amount_sent, 1u128);
     let tokens_to_receive_decimal = payment_decimal.checked_mul(redeem.exchange_rate)?;
     let potential_redeemed = tokens_to_receive_decimal.to_uint_floor();
 
     // Calculate actual redemption amounts
-    let (redeemed_amount, amount_received, refund_amount) = if potential_redeemed <= redeem.amount {
-        (potential_redeemed, amount_sent, Uint128::zero())
-    } else {
-        // If we don't have enough tokens, calculate the partial redemption
-        let actual_redeemed = redeem.amount;
+    let (redeemed_amount, amount_received, refund_amount) =
+        if potential_redeemed <= redeem.amount.into() {
+            (potential_redeemed, amount_sent.into(), Uint256::zero())
+        } else {
+            // If we don't have enough tokens, calculate the partial redemption
+            let actual_redeemed: Uint256 = redeem.amount.into();
 
-        // Convert to Decimal for calculation
-        let redeem_amount_decimal = Decimal::from_ratio(redeem.amount, 1u128);
-        let actual_amount_needed_decimal = redeem_amount_decimal
-            .checked_div(redeem.exchange_rate)
-            .map_err(|_| ContractError::Overflow {})?;
-        let actual_amount_needed = actual_amount_needed_decimal.to_uint_ceil();
+            // Convert to Decimal256 for calculation
+            let redeem_amount_decimal = Decimal256::from_ratio(redeem.amount, 1u128);
+            let actual_amount_needed_decimal = redeem_amount_decimal
+                .checked_div(redeem.exchange_rate)
+                .map_err(|_| ContractError::Overflow {})?;
+            let actual_amount_needed = actual_amount_needed_decimal.to_uint_ceil();
+            let amount_sent_uint = Uint256::from(amount_sent);
+            let refund = amount_sent_uint.checked_sub(actual_amount_needed)?;
+            (actual_redeemed, actual_amount_needed, refund)
+        };
 
-        let refund = amount_sent.checked_sub(actual_amount_needed)?;
-        (actual_redeemed, actual_amount_needed, refund)
-    };
+    let refund_amount: Uint128 = refund_amount
+        .try_into()
+        .map_err(|_| ContractError::Overflow {})?;
+    let redeemed_amount: Uint128 = redeemed_amount
+        .try_into()
+        .map_err(|_| ContractError::Overflow {})?;
 
     ensure!(
         !redeemed_amount.is_zero(),
@@ -218,7 +226,7 @@ pub fn execute_redeem(
 pub fn execute_start_redeem_native(
     ctx: ExecuteContext,
     redeem_asset: AssetInfo,
-    exchange_rate: Decimal,
+    exchange_rate: Decimal256,
     recipient: Option<Recipient>,
     start_time: Option<Expiry>,
     end_time: Option<Milliseconds>,
