@@ -212,7 +212,10 @@ fn execute_update_swap_router(
     ctx: ExecuteContext,
     swap_router: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, .. } = ctx;
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    // Verify sender has owner permissions
+    ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?;
 
     swap_router.get_raw_address(&deps.as_ref())?;
     let previous_swap_router = SWAP_ROUTER.load(deps.storage)?;
@@ -224,6 +227,7 @@ fn execute_update_swap_router(
         attr("swap_router", swap_router),
     ]))
 }
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
