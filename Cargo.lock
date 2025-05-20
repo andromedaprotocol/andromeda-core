@@ -44,14 +44,14 @@ checksum = "512761e0bb2578dd7380c6baaa0f4ce03e84f95e960231d1dec8bf4d7d6e2627"
 
 [[package]]
 name = "ahash"
-version = "0.8.11"
+version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
+checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
 dependencies = [
  "cfg-if",
  "once_cell",
  "version_check",
- "zerocopy 0.7.35",
+ "zerocopy",
 ]
 
 [[package]]
@@ -299,24 +299,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "andromeda-cw20-redeem"
-version = "0.1.0-b.2"
-dependencies = [
- "andromeda-app",
- "andromeda-fungible-tokens",
- "andromeda-std",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-multi-test",
- "cw-orch",
- "cw-storage-plus",
- "cw-utils",
- "cw20",
- "rstest",
-]
-
-[[package]]
 name = "andromeda-cw20-staking"
 version = "2.1.1-b.3"
 dependencies = [
@@ -394,7 +376,6 @@ dependencies = [
  "andromeda-curve",
  "andromeda-cw20",
  "andromeda-cw20-exchange",
- "andromeda-cw20-redeem",
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-date-time",
@@ -411,6 +392,7 @@ dependencies = [
  "andromeda-primitive",
  "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
+ "andromeda-redeem",
  "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",
@@ -785,6 +767,24 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "cw20",
+]
+
+[[package]]
+name = "andromeda-redeem"
+version = "0.1.0-b.2"
+dependencies = [
+ "andromeda-app",
+ "andromeda-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw20",
+ "rstest",
 ]
 
 [[package]]
@@ -1573,9 +1573,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.21"
+version = "1.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8691782945451c1c383942c4874dbe63814f61cb57ef773cda2972682b7bb3c0"
+checksum = "32db95edf998450acc7881c932f94cd9b05c87b4b2599e8bab064753da4acfd1"
 dependencies = [
  "shlex",
 ]
@@ -2884,9 +2884,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73fea8450eea4bac3940448fb7ae50d91f034f941199fcd9d909a5a07aa455f0"
+checksum = "26145e563e54f2cadc477553f1ec5ee650b00862f0a58bcd12cbdc5f0ea2d2f4"
 dependencies = [
  "cfg-if",
  "libc",
@@ -4113,7 +4113,7 @@ version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
- "zerocopy 0.8.25",
+ "zerocopy",
 ]
 
 [[package]]
@@ -4559,7 +4559,7 @@ dependencies = [
  "once_cell",
  "ring",
  "rustls-pki-types",
- "rustls-webpki 0.103.2",
+ "rustls-webpki 0.103.3",
  "subtle",
  "zeroize",
 ]
@@ -4627,9 +4627,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.2"
+version = "0.103.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7149975849f1abb3832b246010ef62ccc80d3a76169517ada7188252b9cfb437"
+checksum = "e4a72fe2bcf7a6ac6fd7d0b9e5cb68aeb7d4c0a0271730218b3e92d43b4eb435"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -5157,7 +5157,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7437ac7763b9b123ccf33c338a5cc1bac6f69b45a136c19bdd8a65e3916435bf"
 dependencies = [
  "fastrand",
- "getrandom 0.3.2",
+ "getrandom 0.3.3",
  "once_cell",
  "rustix",
  "windows-sys 0.59.0",
@@ -5358,7 +5358,6 @@ dependencies = [
  "andromeda-crowdfund",
  "andromeda-curve",
  "andromeda-cw20",
- "andromeda-cw20-redeem",
  "andromeda-cw20-staking",
  "andromeda-cw721",
  "andromeda-data-storage",
@@ -5377,6 +5376,7 @@ dependencies = [
  "andromeda-primitive",
  "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
+ "andromeda-redeem",
  "andromeda-shunting",
  "andromeda-splitter",
  "andromeda-std",
@@ -6370,31 +6370,11 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9b4fd18abc82b8136838da5d50bae7bdea537c574d8dc1a34ed098d6c166f0"
-dependencies = [
- "zerocopy-derive 0.7.35",
-]
-
-[[package]]
-name = "zerocopy"
 version = "0.8.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1702d9583232ddb9174e01bb7c15a2ab8fb1bc6f227aa1233858c351a3ba0cb"
 dependencies = [
- "zerocopy-derive 0.8.25",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.101",
+ "zerocopy-derive",
 ]
 
 [[package]]
