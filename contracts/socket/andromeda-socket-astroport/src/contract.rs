@@ -119,7 +119,7 @@ fn handle_receive_cw20(
             swap_and_forward_cw20(
                 ctx,
                 from_asset,
-                Uint128::from(amount),
+                amount,
                 to_asset,
                 recipient,
                 AndrAddr::from_string(sender),
