@@ -36,8 +36,6 @@ use andromeda_vesting::VestingContract;
 use andromeda_vfs::VFSContract;
 use andromeda_weighted_distribution_splitter::WeightedDistributionSplitterContract;
 
-
-
 use cw_orch::prelude::*;
 use cw_orch_daemon::{DaemonBase, Wallet};
 
