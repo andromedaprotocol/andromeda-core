@@ -75,8 +75,8 @@ andromeda-graph = { path = "../../contracts/math/andromeda-graph" }
 andromeda-point = { path = "../../contracts/math/andromeda-point" }
 
 # Socket Contracts
-andromeda-astroport-socket = { path = "../../contracts/socket/andromeda-socket-astroport"}
-andromeda-osmosis-socket = { path = "../../contracts/socket/andromeda-socket-osmosis"}
+andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-astroport"}
+andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osmosis"}
 
 
 andromeda-std = { workspace = true }

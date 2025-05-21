@@ -33,8 +33,8 @@ use andromeda_validator_staking::ValidatorStakingContract;
 use andromeda_vesting::VestingContract;
 use andromeda_vfs::VFSContract;
 use andromeda_weighted_distribution_splitter::WeightedDistributionSplitterContract;
-use andromeda_astroport_socket::SocketAstroportContract;
-use andromeda_osmosis_socket::SocketOsmosisContract;
+use andromeda_socket_astroport::SocketAstroportContract;
+use andromeda_socket_osmosis::SocketOsmosisContract;
 
 
 use cw_orch::prelude::*;
