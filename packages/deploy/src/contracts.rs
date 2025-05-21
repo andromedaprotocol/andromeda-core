@@ -25,6 +25,8 @@ use andromeda_primitive::PrimitiveContract;
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
 use andromeda_rates::RatesContract;
 use andromeda_shunting::ShuntingContract;
+use andromeda_socket_astroport::SocketAstroportContract;
+use andromeda_socket_osmosis::SocketOsmosisContract;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::deploy::ADOMetadata;
 use andromeda_string_storage::StringStorageContract;
@@ -33,8 +35,7 @@ use andromeda_validator_staking::ValidatorStakingContract;
 use andromeda_vesting::VestingContract;
 use andromeda_vfs::VFSContract;
 use andromeda_weighted_distribution_splitter::WeightedDistributionSplitterContract;
-use andromeda_socket_astroport::SocketAstroportContract;
-use andromeda_socket_osmosis::SocketOsmosisContract;
+
 
 
 use cw_orch::prelude::*;
