@@ -172,7 +172,7 @@ pub fn to_uint128_with_precision(value: &Decimal256) -> StdResult<Uint128> {
         .checked_div(10u128.pow(value.decimal_places() - 1).into())?
         .try_into()
         .map_err(|o: ConversionOverflowError| {
-            StdError::generic_err(format!("Error converting {}", o.to_string()))
+            StdError::generic_err(format!("Error converting {}", o))
         })
 }
 
