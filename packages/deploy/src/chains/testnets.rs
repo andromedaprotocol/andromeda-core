@@ -72,7 +72,7 @@ pub const ARCHWAY_TESTNET: ChainInfo = ChainInfo {
 };
 
 pub const NEUTRON_TESTNET_NETWORK: NetworkInfo = NetworkInfo {
-    chain_name: "neutron",
+    chain_name: "neutron-testnet",
     pub_address_prefix: "neutron",
     coin_type: 118u32,
 };
