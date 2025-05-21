@@ -25,6 +25,8 @@ use andromeda_primitive::PrimitiveContract;
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
 use andromeda_rates::RatesContract;
 use andromeda_shunting::ShuntingContract;
+use andromeda_socket_astroport::SocketAstroportContract;
+use andromeda_socket_osmosis::SocketOsmosisContract;
 use andromeda_splitter::SplitterContract;
 use andromeda_std::deploy::ADOMetadata;
 use andromeda_string_storage::StringStorageContract;
@@ -88,6 +90,8 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(DistanceContract),
         deployable!(GraphContract),
         deployable!(PointContract),
+        deployable!(SocketAstroportContract),
+        deployable!(SocketOsmosisContract),
     ]
 }
 
