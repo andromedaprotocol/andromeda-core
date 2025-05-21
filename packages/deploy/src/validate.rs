@@ -185,7 +185,7 @@ fn filter_deployed_contracts() {
     let adodb = get_adodb_contract();
     log::debug!(
         "Checking deployed versions on ADODB at: {}",
-        adodb.address().unwrap().to_string()
+        adodb.address().unwrap()
     );
     // Filter out contracts that are already deployed based on their versions
     let deployable_contracts: Vec<String> = contracts_to_validate
