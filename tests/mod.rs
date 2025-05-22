@@ -15,7 +15,7 @@ mod kernel;
 mod cw20_staking;
 
 #[cfg(test)]
-mod cw20_redeem;
+mod redeem;
 
 #[cfg(test)]
 mod lockdrop;
@@ -31,6 +31,9 @@ mod timelock;
 
 #[cfg(test)]
 mod cw20_app;
+
+#[cfg(test)]
+mod cw20_exchange;
 
 #[cfg(test)]
 mod fixed_amount_splitter;
