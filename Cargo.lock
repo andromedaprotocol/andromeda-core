@@ -448,6 +448,8 @@ dependencies = [
  "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
  "andromeda-shunting",
+ "andromeda-socket-astroport",
+ "andromeda-socket-osmosis",
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-string-storage",

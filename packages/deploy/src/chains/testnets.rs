@@ -71,9 +71,28 @@ pub const ARCHWAY_TESTNET: ChainInfo = ChainInfo {
     kind: ChainKind::Testnet,
 };
 
+pub const NEUTRON_TESTNET_NETWORK: NetworkInfo = NetworkInfo {
+    chain_name: "neutron-testnet",
+    pub_address_prefix: "neutron",
+    coin_type: 118u32,
+};
+
+/// <https://github.com/cosmos/chain-registry/blob/master/testnets/neutrontestnet/chain.json>
+pub const NEUTRON_TESTNET: ChainInfo = ChainInfo {
+    kind: ChainKind::Testnet,
+    chain_id: "pion-1",
+    gas_denom: "untrn",
+    gas_price: 0.02,
+    grpc_urls: &["http://grpc-palvus.pion-1.ntrn.tech:80"],
+    network_info: NEUTRON_TESTNET_NETWORK,
+    lcd_url: Some("https://rest-palvus.pion-1.ntrn.tech"),
+    fcd_url: None,
+};
+
 pub const TESTNET_CHAINS: &[ChainInfo] = &[
     ANDROMEDA_TESTNET,
     STARGAZE_TESTNET,
     OSMOSIS_TESTNET,
     ARCHWAY_TESTNET,
+    NEUTRON_TESTNET,
 ];
