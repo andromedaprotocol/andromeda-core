@@ -32,7 +32,7 @@ fn setup(
     #[default("osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux")]
     kernel_address: String,
 ) -> TestCase {
-    let socket_osmosis_type = "socket-osmosis@0.1.1-b.1";
+    let socket_osmosis_type = "socket-osmosis@0.1.2-b.1";
     let socket_osmosis_component_name = "socket-osmosis";
     let app_name = format!(
         "socket osmosis with recipient {}",
