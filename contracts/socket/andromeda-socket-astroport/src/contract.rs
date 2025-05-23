@@ -64,7 +64,7 @@ pub fn instantiate(
     SWAP_ROUTER.save(deps.storage, &swap_router)?;
 
     let factory_addr =
-        AndrAddr::from_string("neutron1hptk0k5kng7hjy35vmh009qd5m6l33609nypgf2yc6nqnewduqasxplt4e");
+        AndrAddr::from_string("neutron1jj0scx400pswhpjes589aujlqagxgcztw04srynmhf0f6zplzn2qqmhwj7");
 
     FACTORY.save(deps.storage, &factory_addr)?;
 
