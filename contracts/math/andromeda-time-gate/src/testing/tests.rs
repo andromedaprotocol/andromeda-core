@@ -177,13 +177,18 @@ fn test_query_current_ado_path_not_started_yet() {
 
 #[test]
 fn test_query_current_ado_path() {
+    const RECIPIENT: &str = "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
+    const RECIPIENT2: &str = "cosmwasm1apn5stna323kg5fgzpg9hepc2c6crh8qumwe72z0nqgcdq7wltqszqkzm2";
+    const RECIPIENT3: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
+    const RECIPIENT4: &str = "cosmwasm1h34lmpywh4upnjdg90cjf4j70aee6z8qqfspugamjp42e4q28kqs8s7vcp";
+    const RECIPIENT5: &str = "cosmwasm1pgm8hyk0pvphmlvfjc8wsvk4daluz5tgrw6pu5mfpemk74uxnx9qlm3aqg";
     let (deps, _) = proper_initialization(
         vec![
-            AndrAddr::from_string("mock_ado_1".to_string()),
-            AndrAddr::from_string("mock_ado_2".to_string()),
-            AndrAddr::from_string("mock_ado_3".to_string()),
-            AndrAddr::from_string("mock_ado_4".to_string()),
-            AndrAddr::from_string("mock_ado_5".to_string()),
+            AndrAddr::from_string(RECIPIENT.to_string()),
+            AndrAddr::from_string(RECIPIENT2.to_string()),
+            AndrAddr::from_string(RECIPIENT3.to_string()),
+            AndrAddr::from_string(RECIPIENT4.to_string()),
+            AndrAddr::from_string(RECIPIENT5.to_string()),
         ],
         Some(Expiry::FromNow(Milliseconds(5000000000))),
         None,
@@ -198,25 +203,25 @@ fn test_query_current_ado_path() {
 
     env.block.time = env.block.time.plus_seconds(5000100);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
-    assert_eq!(res, "mock_ado_1".to_string());
+    assert_eq!(res.as_str(), RECIPIENT);
 
     env.block.time = env.block.time.plus_seconds(3600);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
-    assert_eq!(res, "mock_ado_2".to_string());
+    assert_eq!(res.as_str(), RECIPIENT2);
 
     env.block.time = env.block.time.plus_seconds(3600);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
-    assert_eq!(res, "mock_ado_3".to_string());
+    assert_eq!(res.as_str(), RECIPIENT3);
 
     env.block.time = env.block.time.plus_seconds(3600);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
-    assert_eq!(res, "mock_ado_4".to_string());
+    assert_eq!(res.as_str(), RECIPIENT4);
 
     env.block.time = env.block.time.plus_seconds(3600);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
-    assert_eq!(res, "mock_ado_5".to_string());
+    assert_eq!(res.as_str(), RECIPIENT5);
 
     env.block.time = env.block.time.plus_seconds(3600);
     let res = query_current_ado_path(deps.as_ref(), env.clone()).unwrap();
-    assert_eq!(res, "mock_ado_1".to_string());
+    assert_eq!(res.as_str(), RECIPIENT);
 }

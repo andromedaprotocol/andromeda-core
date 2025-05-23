@@ -138,7 +138,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
 
         for address_percent in threshold.address_percent {
             let recipient_percent = address_percent.percent;
-            let amount_owed = coin.amount.mul_floor(recipient_percent);
+            let amount_owed = coin.amount.checked_mul_floor(recipient_percent)?;
 
             if !amount_owed.is_zero() {
                 let mut vec_coin: Vec<Coin> = Vec::new();
@@ -168,7 +168,7 @@ fn execute_send(ctx: ExecuteContext) -> Result<Response, ContractError> {
         })));
     }
     if !pkt.messages.is_empty() {
-        let kernel_address = ADOContract::default().get_kernel_address(deps.as_ref().storage)?;
+        let kernel_address = ctx.contract.get_kernel_address(deps.as_ref().storage)?;
         let distro_msg = pkt.to_sub_msg(kernel_address, Some(amp_funds), 1)?;
         msgs.push(distro_msg);
     }

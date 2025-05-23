@@ -12,6 +12,7 @@ andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", fea
     "testing",
 ] }
 rstest = "0.25.0"
+hex="0.4"
 
 #Non-Fungible Tokens
 andromeda-non-fungible-tokens = { workspace = true }
@@ -44,10 +45,14 @@ andromeda-cw20 = { path = "../contracts/fungible-tokens/andromeda-cw20", feature
 andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = [
     "testing",
 ] }
+
+andromeda-cw20-redeem = { path = "../contracts/fungible-tokens/andromeda-cw20-redeem", features = [
+    "testing",
+] }
+
 andromeda-lockdrop = { path = "../contracts/fungible-tokens/andromeda-lockdrop", features = [
     "testing",
 ] }
-# andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-staking", features = ["testing"] }
 
 # #Modules
 andromeda-modules = { workspace = true }
@@ -78,7 +83,15 @@ andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator
     "testing",
 ] }
 
+andromeda-socket-osmosis = { path = "../contracts/socket/andromeda-socket-osmosis", features = [
+    "testing",
+] }
+
 andromeda-rate-limiting-withdrawals = { path = "../contracts/finance/andromeda-rate-limiting-withdrawals", features = [
+    "testing"
+] }
+
+andromeda-timelock = { path = "../contracts/finance/andromeda-timelock", features = [
     "testing"
 ] }
 
@@ -137,14 +150,14 @@ cw-asset = { workspace = true }
 cw-utils = { workspace = true }
 toml = "0.8"
 cw-orch = { workspace = true }
-cw-orch-interchain = "=0.3.0"
-ibc-relayer-types = "=0.25.1"
+cw-orch-interchain = "=0.8.1"
+ibc-relayer-types = "0.32.0"
 
 andromeda-std = { workspace = true }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cw-multi-test = { workspace = true }
+cw-multi-test = { workspace = true, features = ["cosmwasm_1_2", "staking"]}
 
 
 [[test]]
@@ -188,6 +201,10 @@ name = "cw20_staking"
 path = "cw20_staking.rs"
 
 [[test]]
+name = "cw20_redeem"
+path = "cw20_redeem.rs"
+
+[[test]]
 name = "ibc_registry"
 path = "ibc_registry.rs"
 
@@ -204,6 +221,10 @@ name = "cw20_app"
 path = "cw20_app.rs"
 
 [[test]]
+name = "timelock"
+path = "timelock.rs"
+
+[[test]]
 name = "kernel"
 path = "kernel.rs"
 
@@ -214,3 +235,7 @@ path = "curve_app.rs"
 [[test]]
 name = "set_amount_splitter"
 path = "set_amount_splitter.rs"
+
+[[test]]
+name = "cw721"
+path = "cw721.rs"

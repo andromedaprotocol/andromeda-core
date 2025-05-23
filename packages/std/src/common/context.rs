@@ -6,7 +6,7 @@ pub struct ExecuteContext<'a> {
     pub info: MessageInfo,
     pub env: Env,
     pub amp_ctx: Option<AMPPkt>,
-    pub contract: ADOContract<'a>,
+    pub contract: ADOContract,
     pub raw_info: MessageInfo,
 }
 
@@ -29,7 +29,7 @@ impl ExecuteContext<'_> {
     }
 
     pub fn contains_sender(&self, addr: &str) -> bool {
-        if self.info.sender == addr {
+        if self.info.sender.as_str() == addr {
             return true;
         }
 

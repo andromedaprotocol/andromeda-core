@@ -65,7 +65,7 @@ fn test_set_value_with_tax() {
     let (mut deps, info) = proper_initialization(PrimitiveRestriction::Private);
     let key = String::from("key");
     let value = Primitive::String("value".to_string());
-    let tax_recipient = "tax_recipient";
+    let tax_recipient = deps.api.addr_make("tax_recipient");
 
     // Set percent rates
     let set_percent_rate_msg = ExecuteMsg::Rates(RatesMessage::SetRate {
@@ -95,14 +95,16 @@ fn test_set_value_with_tax() {
     assert_eq!(err, ContractError::InvalidRate {});
 
     // Make sure sender is set as recipient when the recipients vector is empty
+    let creator = deps.api.addr_make("creator");
+    let mock_cw20_contract = deps.api.addr_make(MOCK_CW20_CONTRACT);
     let rate: Rate = Rate::Local(LocalRate {
         rate_type: LocalRateType::Additive,
         recipient: Recipient {
-            address: AndrAddr::from_string("creator".to_string()),
+            address: AndrAddr::from_string(creator.to_string()),
             msg: None,
             ibc_recovery_address: None,
         },
-        value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
+        value: LocalRateValue::Flat(coin(20_u128, mock_cw20_contract.to_string())),
         description: None,
     });
 
@@ -119,8 +121,8 @@ fn test_set_value_with_tax() {
         queried_rates.unwrap(),
         Rate::Local(LocalRate {
             rate_type: LocalRateType::Additive,
-            recipient: Recipient::new(AndrAddr::from_string("creator"), None),
-            value: LocalRateValue::Flat(coin(20_u128, MOCK_CW20_CONTRACT)),
+            recipient: Recipient::new(AndrAddr::from_string(creator.to_string()), None),
+            value: LocalRateValue::Flat(coin(20_u128, mock_cw20_contract.to_string())),
             description: None,
         })
     );
@@ -157,7 +159,7 @@ fn test_set_value_with_tax() {
         })))
         .add_attributes(vec![
             ("method", "set_value"),
-            ("sender", "creator"),
+            ("sender", creator.as_str()),
             ("key", "key"),
         ])
         .add_attribute("value", format!("{value:?}"));
@@ -190,12 +192,12 @@ fn test_set_value_with_tax() {
         })))
         // 200 was sent, but the tax is only 20, so we send back the difference
         .add_submessage(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: "creator".to_string(),
+            to_address: creator.to_string(),
             amount: vec![coin(180, "uandr")],
         })))
         .add_attributes(vec![
             ("method", "set_value"),
-            ("sender", "creator"),
+            ("sender", creator.as_str()),
             ("key", "key"),
         ])
         .add_attribute("value", format!("{value:?}"));
@@ -414,24 +416,24 @@ fn test_query_owner_keys() {
 
     let keys: Vec<String> = vec!["1".into(), "2".into()];
     let value = Primitive::String("value".to_string());
-    let sender = "sender1".to_string();
+    let sender = deps.api.addr_make("sender1");
     for key in keys.clone() {
         set_value(
             deps.as_mut(),
             &Some(format!("{sender}-{key}")),
             &value,
-            &sender,
+            sender.as_str(),
         )
         .unwrap();
     }
 
-    let sender = "sender2".to_string();
+    let sender2 = deps.api.addr_make("sender2");
     for key in keys {
         set_value(
             deps.as_mut(),
-            &Some(format!("{sender}-{key}")),
+            &Some(format!("{sender2}-{key}")),
             &value,
-            &sender,
+            sender2.as_str(),
         )
         .unwrap();
     }
@@ -445,7 +447,7 @@ fn test_query_owner_keys() {
             deps.as_ref(),
             mock_env(),
             QueryMsg::OwnerKeys {
-                owner: AndrAddr::from_string("sender1"),
+                owner: AndrAddr::from_string(sender.to_string()),
             },
         )
         .unwrap(),
@@ -458,7 +460,7 @@ fn test_query_owner_keys() {
             deps.as_ref(),
             mock_env(),
             QueryMsg::OwnerKeys {
-                owner: AndrAddr::from_string("sender2"),
+                owner: AndrAddr::from_string(sender2.to_string()),
             },
         )
         .unwrap(),

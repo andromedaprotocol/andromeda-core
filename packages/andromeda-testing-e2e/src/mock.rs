@@ -46,7 +46,7 @@ impl MockAndromeda {
                     owner: None,
                 },
                 None,
-                None,
+                &[],
             )
             .unwrap();
 
@@ -60,7 +60,7 @@ impl MockAndromeda {
                     owner: None,
                 },
                 None,
-                None,
+                &[],
             )
             .unwrap();
 
@@ -74,7 +74,7 @@ impl MockAndromeda {
                     owner: None,
                 },
                 None,
-                None,
+                &[],
             )
             .unwrap();
 
@@ -88,7 +88,7 @@ impl MockAndromeda {
                     owner: None,
                 },
                 None,
-                None,
+                &[],
             )
             .unwrap();
 

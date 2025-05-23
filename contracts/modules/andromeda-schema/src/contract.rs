@@ -5,6 +5,7 @@ use cosmwasm_std::{
 
 use andromeda_modules::schema::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
+use andromeda_cw_json::JSON;
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
@@ -12,7 +13,6 @@ use andromeda_std::{
     common::encode_binary,
     error::ContractError,
 };
-use cw_json::JSON;
 use serde_json::{from_str, Value};
 
 use crate::{

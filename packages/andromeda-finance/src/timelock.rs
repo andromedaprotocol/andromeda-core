@@ -1,7 +1,7 @@
 use andromeda_std::{
     amp::recipient::Recipient,
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, merge_coins},
+    common::{expiration::Expiry, merge_coins, MillisecondsExpiration},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -9,9 +9,31 @@ use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 
 #[cw_serde]
 /// Enum used to specify the condition which must be met in order for the Escrow to unlock.
-pub enum EscrowCondition {
+pub enum EscrowConditionInput {
     /// Requires a given time
     Expiration(Expiry),
+    /// Requires a minimum amount of funds to be deposited.
+    MinimumFunds(Vec<Coin>),
+}
+
+impl EscrowConditionInput {
+    /// Converts an EscrowConditionInput to an EscrowCondition
+    /// Leaving as it is would cause From Now to never expire since, the "now" would be every time the release function is called.
+    pub fn to_condition(self, block: &BlockInfo) -> EscrowCondition {
+        match self {
+            EscrowConditionInput::Expiration(expiry) => {
+                EscrowCondition::Expiration(expiry.get_time(block))
+            }
+            EscrowConditionInput::MinimumFunds(funds) => EscrowCondition::MinimumFunds(funds),
+        }
+    }
+}
+
+#[cw_serde]
+/// Enum used to specify the condition which must be met in order for the Escrow to unlock.
+pub enum EscrowCondition {
+    /// Requires a given time
+    Expiration(MillisecondsExpiration),
     /// Requires a minimum amount of funds to be deposited.
     MinimumFunds(Vec<Coin>),
 }
@@ -80,9 +102,7 @@ impl Escrow {
         match &self.condition {
             None => Ok(false),
             Some(condition) => match condition {
-                EscrowCondition::Expiration(expiration) => {
-                    Ok(!expiration.get_time(block).is_expired(block))
-                }
+                EscrowCondition::Expiration(expiration) => Ok(!expiration.is_expired(block)),
                 EscrowCondition::MinimumFunds(funds) => {
                     Ok(!self.min_funds_deposited(funds.clone()))
                 }
@@ -123,7 +143,7 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     /// Hold funds in Escrow
     HoldFunds {
-        condition: Option<EscrowCondition>,
+        condition: Option<EscrowConditionInput>,
         recipient: Option<Recipient>,
     },
     /// Release funds all held in Escrow for the given recipient
@@ -170,23 +190,21 @@ pub struct GetLockedFundsForRecipientResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_std::common::Milliseconds;
     use cosmwasm_std::testing::mock_dependencies;
     use cosmwasm_std::{coin, Timestamp};
-
+    const OWNER: &str = "cosmwasm1fsgzj6t7udv8zhf6zj32mkqhcjcpv52yph5qsdcl0qt94jgdckqs2g053y";
     #[test]
     fn test_validate() {
         let deps = mock_dependencies();
-        let condition =
-            EscrowCondition::Expiration(Expiry::FromNow(Milliseconds::from_seconds(101)));
+        let condition = EscrowCondition::Expiration(MillisecondsExpiration::from_seconds(101));
         let coins = vec![coin(100u128, "uluna")];
-        let recipient = Recipient::from_string("owner");
+        let recipient = Recipient::from_string(OWNER);
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: Some(condition.clone()),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -199,7 +217,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: coins.clone(),
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -224,7 +242,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![],
             condition: Some(condition),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
 
         let resp = invalid_coins_escrow
@@ -240,10 +258,10 @@ mod tests {
         let invalid_time_escrow = Escrow {
             recipient,
             coins,
-            condition: Some(EscrowCondition::Expiration(Expiry::AtTime(
-                Milliseconds::from_seconds(0),
-            ))),
-            recipient_addr: "owner".to_string(),
+            condition: Some(EscrowCondition::Expiration(
+                MillisecondsExpiration::from_seconds(0),
+            )),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -261,7 +279,7 @@ mod tests {
     #[test]
     fn test_validate_funds_condition() {
         let deps = mock_dependencies();
-        let recipient = Recipient::from_string("owner");
+        let recipient = Recipient::from_string(OWNER);
 
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
@@ -270,7 +288,7 @@ mod tests {
                 coin(100, "uusd"),
                 coin(100, "uluna"),
             ])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
             height: 1000,
@@ -284,7 +302,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(200, "uluna")],
             condition: Some(EscrowCondition::MinimumFunds(vec![coin(100, "uluna")])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         valid_escrow.validate(deps.as_ref().api, &block).unwrap();
 
@@ -293,7 +311,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: Some(EscrowCondition::MinimumFunds(vec![])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert_eq!(
             ContractError::InvalidFunds {
@@ -313,7 +331,7 @@ mod tests {
                 coin(100, "uluna"),
                 coin(200, "uusd"),
             ])),
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert_eq!(
             ContractError::DuplicateCoinDenoms {},
@@ -325,12 +343,12 @@ mod tests {
 
     #[test]
     fn test_min_funds_deposited() {
-        let recipient = Recipient::from_string("owner");
+        let recipient = Recipient::from_string(OWNER);
         let escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd")]));
 
@@ -338,7 +356,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(!escrow.min_funds_deposited(vec![coin(100, "uusd"), coin(100, "uluna")]));
 
@@ -346,7 +364,7 @@ mod tests {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
 
@@ -354,7 +372,7 @@ mod tests {
             recipient,
             coins: vec![coin(200, "uluna")],
             condition: None,
-            recipient_addr: "owner".to_string(),
+            recipient_addr: OWNER.to_string(),
         };
         assert!(escrow.min_funds_deposited(vec![coin(100, "uluna")]));
     }

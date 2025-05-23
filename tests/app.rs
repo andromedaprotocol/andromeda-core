@@ -19,7 +19,6 @@ fn test_app() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-
     let app_name = "Simple App";
 
     // Generate App Components
@@ -53,7 +52,6 @@ fn test_app() {
         andr.kernel.addr(),
         None,
     );
-
     let components = app.query_components(&router);
     assert_eq!(components, app_components);
 

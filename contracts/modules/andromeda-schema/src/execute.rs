@@ -1,6 +1,6 @@
+use andromeda_cw_json::JSON;
 use andromeda_std::{common::context::ExecuteContext, error::ContractError};
 use cosmwasm_std::Response;
-use cw_json::JSON;
 use serde_json::{from_str, Value};
 
 use crate::state::SCHEMA;

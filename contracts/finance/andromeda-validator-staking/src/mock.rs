@@ -86,8 +86,13 @@ impl MockValidatorStaking {
         self.execute(app, &msg, sender, &[])
     }
 
-    pub fn execute_withdraw_fund(&self, app: &mut MockApp, sender: Addr) -> ExecuteResult {
-        let msg = mock_execute_withdraw_fund(None, None);
+    pub fn execute_withdraw_fund(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        denom: String,
+    ) -> ExecuteResult {
+        let msg = mock_execute_withdraw_fund(denom, None);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -163,10 +168,7 @@ pub fn mock_execute_claim_reward(validator: Option<Addr>, restake: Option<bool>)
     ExecuteMsg::Claim { validator, restake }
 }
 
-pub fn mock_execute_withdraw_fund(
-    denom: Option<String>,
-    recipient: Option<AndrAddr>,
-) -> ExecuteMsg {
+pub fn mock_execute_withdraw_fund(denom: String, recipient: Option<AndrAddr>) -> ExecuteMsg {
     ExecuteMsg::WithdrawFunds { denom, recipient }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-cw20"
-version = "2.1.1-b.1"
+version = "2.1.1-b.2"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -8,8 +8,7 @@ rust-version = "1.75.0"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+
 # use library feature to disable all instantiate/execute/query exports
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]
@@ -30,7 +29,7 @@ andromeda-fungible-tokens = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 andromeda-testing = { workspace = true, optional = true }
 cw-orch = { workspace = true }
-cw-orch-daemon = "0.24.2"
+cw-orch-daemon = "0.29.1"
 
 [dev-dependencies]
 andromeda-app = { workspace = true }

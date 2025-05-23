@@ -128,9 +128,16 @@ fn test_auction_app_modules() {
 
     // Mint Tokens
     let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
-        .unwrap();
+    for i in 1..=2 {
+        cw721
+            .execute_mint(
+                &mut router,
+                owner.clone(),
+                i.to_string(),
+                AndrAddr::from_string(owner.to_string()),
+            )
+            .unwrap();
+    }
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
@@ -352,9 +359,16 @@ fn test_auction_app_recipient() {
 
     // Mint Tokens
     let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
-        .unwrap();
+    for i in 1..=2 {
+        cw721
+            .execute_mint(
+                &mut router,
+                owner.clone(),
+                i.to_string(),
+                AndrAddr::from_string(owner.to_string()),
+            )
+            .unwrap();
+    }
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
@@ -592,9 +606,16 @@ fn test_auction_app_cw20_restricted() {
 
     // Mint Tokens
     let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 2, owner.to_string())
-        .unwrap();
+    for i in 1..=2 {
+        cw721
+            .execute_mint(
+                &mut router,
+                owner.clone(),
+                i.to_string(),
+                AndrAddr::from_string(owner.to_string()),
+            )
+            .unwrap();
+    }
 
     // Authorize NFT contract
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
@@ -756,7 +777,7 @@ fn test_auction_app_cw20_restricted() {
 
     // Check Final State
     let owner_resp = cw721.query_owner_of(&router, "1".to_string());
-    assert_eq!(owner_resp, buyer_two.to_string());
+    assert_eq!(owner_resp, buyer_two);
 
     // The auction's owner sold the NFT for 100, so the balance should increase by 100
     let cw20_balance = cw20.query_balance(&router, owner);
@@ -916,7 +937,7 @@ fn test_auction_app_cw20_restricted() {
 
     // Check Final State
     let owner_resp = cw721.query_owner_of(&router, "2".to_string());
-    assert_eq!(owner_resp, buyer_two.to_string());
+    assert_eq!(owner_resp, buyer_two);
 
     // The auction's owner sold the NFT for 100, but has buyer_one set as recipient. So the balance shouldn't change since the previous auction
     let cw20_balance = cw20.query_balance(&router, owner);
@@ -1074,9 +1095,16 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Mint Tokens
     let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
-    cw721
-        .execute_quick_mint(&mut router, owner.clone(), 2, owner.to_string())
-        .unwrap();
+    for i in 1..=2 {
+        cw721
+            .execute_mint(
+                &mut router,
+                owner.clone(),
+                i.to_string(),
+                AndrAddr::from_string(owner.to_string()),
+            )
+            .unwrap();
+    }
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
@@ -1172,7 +1200,7 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Check Final State
     let owner_resp = cw721.query_owner_of(&router, "1".to_string());
-    assert_eq!(owner_resp, buyer_two.to_string());
+    assert_eq!(owner_resp, buyer_two);
 
     // The auction's owner sold the NFT for 100, so the balance should increase by 100
     let cw20_balance = cw20.query_balance(&router, owner);
@@ -1300,7 +1328,7 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Check Final State
     let owner_resp = cw721.query_owner_of(&router, "2".to_string());
-    assert_eq!(owner_resp, buyer_two.to_string());
+    assert_eq!(owner_resp, buyer_two);
 
     // The auction's owner sold the NFT for 100, so the balance should increase by 100
     let cw20_balance = second_cw20.query_balance(&router, owner);
