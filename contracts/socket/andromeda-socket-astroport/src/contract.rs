@@ -11,8 +11,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, from_json, wasm_execute, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
-    MsgResponse, Reply, Response, StdError, Uint128,
+    attr, from_json, wasm_execute, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
+     Reply, Response, StdError, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -243,7 +243,7 @@ fn create_factory_pair(
     ctx: ExecuteContext,
     pair_type: PairType,
     asset_infos: Vec<AssetInfo>,
-    init_params: Option<Binary>,
+    init_parameters: Option<Binary>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
 
@@ -253,7 +253,7 @@ fn create_factory_pair(
     let create_factory_pair_msg = ExecuteMsg::CreatePair {
         pair_type: pair_type.clone(),
         asset_infos: asset_infos.clone(),
-        init_params: init_params,
+        init_params: init_parameters,
     };
 
     let wasm_msg = wasm_execute(factory_addr_raw, &create_factory_pair_msg, vec![])?;
