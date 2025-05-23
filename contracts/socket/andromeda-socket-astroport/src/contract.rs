@@ -9,11 +9,11 @@ use andromeda_std::{
 };
 
 #[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, from_json, wasm_execute, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
-     Reply, Response, StdError, Uint128,
+    attr, entry_point, from_json, wasm_execute, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, Uint128,
 };
+
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_utils::one_coin;
