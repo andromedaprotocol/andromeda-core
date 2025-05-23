@@ -6,7 +6,7 @@ use std::sync::Once;
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_socket::astroport::{ExecuteMsgFns, InstantiateMsg};
+use andromeda_socket::astroport::{AssetInfo, ExecuteMsgFns, InstantiateMsg, PairType};
 
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -49,7 +49,7 @@ fn setup(
 
     let _lock = DAEMON_MUTEX.lock().unwrap();
 
-    let socket_astroport_type = "socket-astroport@0.1.0";
+    let socket_astroport_type = "socket-astroport@0.1.0-b.1";
     let socket_astroport_component_name = "socket-astroport";
     let app_name = format!(
         "socket astroport with recipient {}",
@@ -248,4 +248,42 @@ fn test_onchain_native_to_native(setup: TestCase) {
         Some(recipient),
         &[coin(100000000, astro_denom)],
     );
+}
+
+#[rstest]
+fn test_create_pair(setup: TestCase) {
+    let TestCase {
+        daemon,
+        app_contract,
+        ..
+    } = setup;
+
+    let socket_astroport_addr: String = app_contract.get_address("socket-astroport");
+
+    let socket_astroport_contract = SocketAstroportContract::new(daemon.clone());
+    socket_astroport_contract.set_address(&Addr::unchecked(socket_astroport_addr));
+
+    // Get token addresses
+    let usdt_address = "neutron1vpsgrzedwd8fezpsu9fcfewvp6nmv4kzd7a6nutpmgeyjk3arlqsypnlhm";
+    let osmos_denom = "ibc/0471F1C4E7AFD3F07702BEF6DC365268D64570F7C1FDC98EA6098DD6DE59817B";
+
+    // Create asset infos for the pair
+    let asset_infos = vec![
+        AssetInfo::Token {
+            contract_addr: Addr::unchecked(usdt_address),
+        },
+        AssetInfo::NativeToken {
+            denom: osmos_denom.to_string(),
+        },
+    ];
+
+    let pair_type = PairType::Xyk {};
+
+    let result = socket_astroport_contract.create_pair(asset_infos, pair_type, None);
+
+    println!("Create pair result: {:?}", result);
+    assert!(result.is_ok(), "Create pair should succeed");
+
+    // The response should include attributes about the created pair
+    // but since this is an e2e test, we're mainly checking it doesn't error
 }

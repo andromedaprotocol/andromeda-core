@@ -4,13 +4,23 @@ use andromeda_std::{
     common::denom::Asset,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal, Uint128};
+use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
     pub swap_router: Option<AndrAddr>,
+}
+
+#[cw_serde]
+pub enum PairType {
+    /// XYK pair type
+    Xyk {},
+    /// Stable pair type
+    Stable {},
+    /// Custom pair type
+    Custom(String),
 }
 
 #[andr_exec]
@@ -33,6 +43,15 @@ pub enum ExecuteMsg {
         /// The swap operations that is supposed to be taken
         operations: Option<Vec<SwapOperation>>,
     },
+    CreatePair {
+        /// The pair type (exposed in [`PairType`])
+        pair_type: PairType,
+        /// The assets to create the pool for
+        asset_infos: Vec<AssetInfo>,
+        /// Optional binary serialised parameters for custom pool types
+        init_params: Option<Binary>,
+    },
+
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },

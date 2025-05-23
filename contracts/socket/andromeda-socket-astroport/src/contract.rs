@@ -11,23 +11,25 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, from_json, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    Uint128,
+    attr, from_json, wasm_execute, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
+    MsgResponse, Reply, Response, StdError, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_utils::one_coin;
 
+use crate::astroport::ASTROPORT_MSG_CREATE_PAIR_ID;
 use crate::{
     astroport::{
         execute_swap_astroport_msg, handle_astroport_swap_reply,
         query_simulate_astro_swap_operation, ASTROPORT_MSG_FORWARD_ID, ASTROPORT_MSG_SWAP_ID,
     },
-    state::{ForwardReplyState, FORWARD_REPLY_STATE, SWAP_ROUTER},
+    state::{ForwardReplyState, FACTORY, FORWARD_REPLY_STATE, SWAP_ROUTER},
 };
 
 use andromeda_socket::astroport::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
+    AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairType, QueryMsg,
+    SimulateSwapOperationResponse, SwapOperation,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -61,6 +63,11 @@ pub fn instantiate(
     swap_router.get_raw_address(&deps.as_ref())?;
     SWAP_ROUTER.save(deps.storage, &swap_router)?;
 
+    let factory_addr =
+        AndrAddr::from_string("neutron1hptk0k5kng7hjy35vmh009qd5m6l33609nypgf2yc6nqnewduqasxplt4e");
+
+    FACTORY.save(deps.storage, &factory_addr)?;
+
     Ok(inst_resp
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender))
@@ -87,10 +94,14 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::UpdateSwapRouter { swap_router } => {
             execute_update_swap_router(ctx, swap_router)
         }
+        ExecuteMsg::CreatePair {
+            pair_type,
+            asset_infos,
+            init_params,
+        } => create_factory_pair(ctx, pair_type, asset_infos, init_params),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
-
 fn handle_receive_cw20(
     ctx: ExecuteContext,
     cw20_msg: Cw20ReceiveMsg,
@@ -228,6 +239,39 @@ fn execute_update_swap_router(
     ]))
 }
 
+fn create_factory_pair(
+    ctx: ExecuteContext,
+    pair_type: PairType,
+    asset_infos: Vec<AssetInfo>,
+    init_params: Option<Binary>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, .. } = ctx;
+
+    let factory_addr = FACTORY.load(deps.storage)?;
+    let factory_addr_raw = factory_addr.get_raw_address(&deps.as_ref())?;
+
+    let create_factory_pair_msg = ExecuteMsg::CreatePair {
+        pair_type: pair_type.clone(),
+        asset_infos: asset_infos.clone(),
+        init_params: init_params,
+    };
+
+    let wasm_msg = wasm_execute(factory_addr_raw, &create_factory_pair_msg, vec![])?;
+
+    // Return response with the wasm message as a submessage with a reply ID
+    // so we can extract the LP pool address from the response
+    Ok(Response::new()
+        .add_submessage(cosmwasm_std::SubMsg::reply_always(
+            wasm_msg,
+            ASTROPORT_MSG_CREATE_PAIR_ID,
+        ))
+        .add_attributes(vec![
+            attr("action", "create_factory_pair"),
+            attr("pair_type", format!("{:?}", pair_type.clone())),
+            attr("asset_infos", format!("{:?}", asset_infos.clone())),
+        ]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
@@ -280,6 +324,23 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             }
             Ok(Response::default()
                 .add_attributes(vec![attr("action", "message_forwarded_success")]))
+        }
+        ASTROPORT_MSG_CREATE_PAIR_ID => {
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Astroport create pair failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+
+            let pair_address = msg.result.unwrap();
+            println!("pair_address: {:?}", pair_address);
+            // let pair_address_raw = AndrAddr::from_string(pair_address);
+            // PAIR_ADDRESS.save(deps.storage, &pair_address_raw)?;
+            Ok(Response::default().add_attributes(vec![
+                attr("action", "create_pair_success"),
+                attr("pair_address", "test"),
+            ]))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),
