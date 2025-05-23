@@ -49,7 +49,7 @@ fn setup(
 
     let _lock = DAEMON_MUTEX.lock().unwrap();
 
-    let socket_astroport_type = "socket-astroport@0.1.2-b.1";
+    let socket_astroport_type = "socket-astroport@0.1.3-b.1";
     let socket_astroport_component_name = "socket-astroport";
     let app_name = format!(
         "socket astroport with recipient {}",

@@ -51,6 +51,17 @@ pub enum ExecuteMsg {
         /// Optional binary serialised parameters for custom pool types
         init_params: Option<Binary>,
     },
+    /// Provide liquidity to the created pair
+    ProvideLiquidity {
+        /// The assets to deposit
+        assets: Vec<AssetEntry>,
+        /// The slippage tolerance for this transaction
+        slippage_tolerance: Option<Decimal>,
+        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
+        auto_stake: Option<bool>,
+        /// The receiver of LP tokens (if different from sender)
+        receiver: Option<String>,
+    },
 
     /// Update swap router
     #[attrs(restricted)]
@@ -83,6 +94,8 @@ pub enum QueryMsg {
         /// The swap operation to perform
         operations: Vec<SwapOperation>,
     },
+    #[returns(PairAddressResponse)]
+    PairAddress {},
 }
 
 #[cw_serde]
@@ -227,4 +240,34 @@ pub struct ConfigResponse {
 pub struct SimulateSwapOperationsResponse {
     /// The amount of tokens received in a swap simulation
     pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct AssetEntry {
+    /// Asset info
+    pub info: AssetInfo,
+    /// Asset amount
+    pub amount: Uint128,
+}
+
+/// Astroport Pair contract execute messages
+#[cw_serde]
+pub enum PairExecuteMsg {
+    /// Provide liquidity to the pair
+    ProvideLiquidity {
+        /// The assets to provide
+        assets: Vec<AssetEntry>,
+        /// The slippage tolerance
+        slippage_tolerance: Option<Decimal>,
+        /// Whether to auto stake LP tokens
+        auto_stake: Option<bool>,
+        /// The receiver of LP tokens
+        receiver: Option<String>,
+    },
+}
+
+#[cw_serde]
+pub struct PairAddressResponse {
+    /// The pair contract address
+    pub pair_address: Option<String>,
 }

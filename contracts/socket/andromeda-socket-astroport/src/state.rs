@@ -28,3 +28,6 @@ pub const SWAP_ROUTER: Item<AndrAddr> = Item::new("swap_router");
 pub const FACTORY: Item<AndrAddr> = Item::new("factory");
 
 pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
+
+// Store the created pair address
+pub const PAIR_ADDRESS: Item<AndrAddr> = Item::new("pair_address");

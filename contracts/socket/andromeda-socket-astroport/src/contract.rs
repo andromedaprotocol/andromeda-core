@@ -24,11 +24,11 @@ use crate::{
         execute_swap_astroport_msg, handle_astroport_swap_reply,
         query_simulate_astro_swap_operation, ASTROPORT_MSG_FORWARD_ID, ASTROPORT_MSG_SWAP_ID,
     },
-    state::{ForwardReplyState, FACTORY, FORWARD_REPLY_STATE, SWAP_ROUTER},
+    state::{ForwardReplyState, FACTORY, FORWARD_REPLY_STATE, PAIR_ADDRESS, SWAP_ROUTER},
 };
 
 use andromeda_socket::astroport::{
-    AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairType, QueryMsg,
+    AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairAddressResponse, PairExecuteMsg, PairType, QueryMsg,
     SimulateSwapOperationResponse, SwapOperation,
 };
 
@@ -99,6 +99,12 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             asset_infos,
             init_params,
         } => create_factory_pair(ctx, pair_type, asset_infos, init_params),
+        ExecuteMsg::ProvideLiquidity {
+            assets,
+            slippage_tolerance,
+            auto_stake,
+            receiver,
+        } => provide_liquidity(ctx, assets, slippage_tolerance, auto_stake, receiver),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -272,6 +278,49 @@ fn create_factory_pair(
         ]))
 }
 
+fn provide_liquidity(
+    ctx: ExecuteContext,
+    assets: Vec<andromeda_socket::astroport::AssetEntry>,
+    slippage_tolerance: Option<Decimal>,
+    auto_stake: Option<bool>,
+    receiver: Option<String>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    // Load the pair address from state
+    let pair_addr = PAIR_ADDRESS.load(deps.storage)?;
+    let pair_addr_raw = pair_addr.get_raw_address(&deps.as_ref())?;
+
+    // Build the provide liquidity message
+    let provide_liquidity_msg = PairExecuteMsg::ProvideLiquidity {
+        assets: assets.clone(),
+        slippage_tolerance,
+        auto_stake,
+        receiver,
+    };
+
+    // Calculate the native coins to send with the transaction
+    let mut coins = vec![];
+    for asset in &assets {
+        if let AssetInfo::NativeToken { denom } = &asset.info {
+            coins.push(cosmwasm_std::Coin {
+                denom: denom.clone(),
+                amount: asset.amount,
+            });
+        }
+    }
+
+    let wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, coins)?;
+
+    Ok(Response::new()
+        .add_message(wasm_msg)
+        .add_attributes(vec![
+            attr("action", "provide_liquidity"),
+            attr("pair_address", pair_addr.to_string()),
+            attr("assets", format!("{:?}", assets)),
+        ]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
@@ -283,6 +332,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             offer_amount,
             operations,
         )?),
+        QueryMsg::PairAddress {} => encode_binary(&query_pair_address(deps)?),
     }
 }
 
@@ -292,6 +342,13 @@ fn query_simulate_swap_operation(
     swap_operation: Vec<SwapOperation>,
 ) -> Result<SimulateSwapOperationResponse, ContractError> {
     query_simulate_astro_swap_operation(deps, offer_amount, swap_operation)
+}
+
+fn query_pair_address(deps: Deps) -> Result<PairAddressResponse, ContractError> {
+    let pair_address = PAIR_ADDRESS.may_load(deps.storage)?;
+    Ok(PairAddressResponse {
+        pair_address: pair_address.map(|addr| addr.to_string()),
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -333,13 +390,32 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 ))));
             }
 
-            let pair_address = msg.result.unwrap();
-            println!("pair_address: {:?}", pair_address);
-            // let pair_address_raw = AndrAddr::from_string(pair_address);
-            // PAIR_ADDRESS.save(deps.storage, &pair_address_raw)?;
+            // Extract the pair address from the response
+            let response = msg.result.unwrap();
+            
+            // Look for the pair contract address in the events
+            let pair_address = response
+                .events
+                .iter()
+                .find(|event| event.ty == "instantiate")
+                .and_then(|event| {
+                    event.attributes.iter()
+                        .find(|attr| attr.key == "_contract_address")
+                        .map(|attr| attr.value.clone())
+                })
+                .ok_or_else(|| {
+                    ContractError::Std(StdError::generic_err(
+                        "Could not find pair contract address in response".to_string(),
+                    ))
+                })?;
+
+            // Store the pair address
+            let pair_addr = AndrAddr::from_string(pair_address.clone());
+            PAIR_ADDRESS.save(deps.storage, &pair_addr)?;
+
             Ok(Response::default().add_attributes(vec![
                 attr("action", "create_pair_success"),
-                attr("pair_address", "test"),
+                attr("pair_address", pair_address),
             ]))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
