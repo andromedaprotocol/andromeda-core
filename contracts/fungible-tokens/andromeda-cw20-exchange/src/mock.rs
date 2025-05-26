@@ -4,10 +4,10 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20_exchange::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{expiration::Expiry, Milliseconds, MillisecondsDuration},
+    common::{denom::Asset, expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
 use cosmwasm_std::{Decimal256, Empty, Uint128};
-use cw_asset::AssetInfo;
+
 use cw_multi_test::{Contract, ContractWrapper};
 
 pub fn mock_andromeda_cw20_exchange() -> Box<dyn Contract<Empty>> {
@@ -28,7 +28,7 @@ pub fn mock_cw20_exchange_instantiate_msg(
 }
 
 pub fn mock_cw20_exchange_start_sale_msg(
-    asset: AssetInfo,
+    asset: Asset,
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
     start_time: Option<Expiry>,
@@ -55,7 +55,7 @@ pub fn mock_redeem_cw20_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
     Cw20HookMsg::Redeem { recipient }
 }
 
-pub fn mock_replenish_redeem_cw20_msg(redeem_asset: AssetInfo) -> Cw20HookMsg {
+pub fn mock_replenish_redeem_cw20_msg(redeem_asset: Asset) -> Cw20HookMsg {
     Cw20HookMsg::ReplenishRedeem { redeem_asset }
 }
 
@@ -63,13 +63,13 @@ pub fn mock_redeem_native_msg(recipient: Option<Recipient>) -> ExecuteMsg {
     ExecuteMsg::Redeem { recipient }
 }
 
-pub fn mock_replenish_redeem_native_msg(redeem_asset: AssetInfo) -> ExecuteMsg {
+pub fn mock_replenish_redeem_native_msg(redeem_asset: Asset) -> ExecuteMsg {
     ExecuteMsg::ReplenishRedeem { redeem_asset }
 }
 
 pub fn mock_start_redeem_cw20_msg(
     recipient: Option<Recipient>,
-    redeem_asset: AssetInfo,
+    redeem_asset: Asset,
     exchange_rate: Decimal256,
     start_time: Option<Expiry>,
     end_time: Option<Milliseconds>,
@@ -84,7 +84,7 @@ pub fn mock_start_redeem_cw20_msg(
 }
 
 pub fn mock_set_redeem_condition_native_msg(
-    redeem_asset: AssetInfo,
+    redeem_asset: Asset,
     exchange_rate: Decimal256,
     recipient: Option<Recipient>,
     start_time: Option<Expiry>,
@@ -99,6 +99,6 @@ pub fn mock_set_redeem_condition_native_msg(
     }
 }
 
-pub fn mock_redeem_query_msg(asset: String) -> QueryMsg {
+pub fn mock_redeem_query_msg(asset: Asset) -> QueryMsg {
     QueryMsg::Redeem { asset }
 }

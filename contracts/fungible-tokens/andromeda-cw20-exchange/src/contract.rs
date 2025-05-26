@@ -5,9 +5,10 @@ use andromeda_fungible_tokens::cw20_exchange::{
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
-    amp::Recipient,
+    amp::{AndrAddr, Recipient},
     andr_execute_fn,
     common::context::ExecuteContext,
+    common::denom::Asset,
     error::ContractError,
 };
 use cosmwasm_std::{
@@ -15,7 +16,7 @@ use cosmwasm_std::{
     Response, StdError,
 };
 use cw20::Cw20ReceiveMsg;
-use cw_asset::AssetInfo;
+
 use cw_storage_plus::Bound;
 
 use crate::{
@@ -105,7 +106,7 @@ pub fn execute_receive(
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
-    let asset_sent = AssetInfo::Cw20(info.sender.clone());
+    let asset_sent = Asset::Cw20Token(AndrAddr::from_string(info.sender.clone()));
     let amount_sent = receive_msg.amount;
     let sender = receive_msg.sender;
 
@@ -187,8 +188,9 @@ fn query_sale(deps: Deps, asset: String) -> Result<Binary, ContractError> {
     Ok(to_json_binary(&SaleResponse { sale })?)
 }
 
-fn query_redeem(deps: Deps, asset: String) -> Result<Binary, ContractError> {
-    let redeem = REDEEM.may_load(deps.storage, &asset)?;
+fn query_redeem(deps: Deps, asset: Asset) -> Result<Binary, ContractError> {
+    let asset_str = asset.inner(&deps)?;
+    let redeem = REDEEM.may_load(deps.storage, &asset_str)?;
     Ok(to_json_binary(&RedeemResponse { redeem })?)
 }
 

@@ -3,6 +3,7 @@ use andromeda_std::{
     amp::Recipient,
     common::{
         context::ExecuteContext,
+        denom::Asset,
         expiration::Expiry,
         msg_generation::{generate_transfer_message, generate_transfer_message_recipient},
         Milliseconds, MillisecondsDuration,
@@ -10,7 +11,6 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{attr, ensure, Decimal256, Response, Uint128, Uint256};
-use cw_asset::AssetInfo;
 use cw_utils::one_coin;
 
 use crate::state::REDEEM;
@@ -19,8 +19,8 @@ use crate::state::REDEEM;
 pub fn execute_start_redeem(
     ctx: ExecuteContext,
     amount: Uint128,
-    asset: AssetInfo,
-    redeem_asset: AssetInfo,
+    asset: Asset,
+    redeem_asset: Asset,
     exchange_rate: Decimal256,
     // The original sender of the CW20::Send message
     sender: String,
@@ -72,7 +72,8 @@ pub fn execute_start_redeem(
     };
 
     // Do not allow duplicate redeems
-    let current_redeem = REDEEM.may_load(deps.storage, &redeem_asset.inner())?;
+    let redeem_asset_str = redeem_asset.inner(&deps.as_ref())?;
+    let current_redeem = REDEEM.may_load(deps.storage, &redeem_asset_str)?;
     if let Some(redeem) = current_redeem {
         // The old redeem should either be expired or have no amount left
         ensure!(
@@ -90,7 +91,7 @@ pub fn execute_start_redeem(
         start_time,
         end_time,
     };
-    REDEEM.save(deps.storage, &redeem_asset.inner(), &redeem)?;
+    REDEEM.save(deps.storage, &redeem_asset_str, &redeem)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "start_redeem"),
@@ -106,12 +107,13 @@ pub fn execute_start_redeem(
 pub fn execute_replenish_redeem(
     ctx: ExecuteContext,
     amount: Uint128,
-    asset: AssetInfo,
-    redeem_asset: AssetInfo,
+    asset: Asset,
+    redeem_asset: Asset,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
+    let redeem_asset_str = redeem_asset.inner(&deps.as_ref())?;
     // Ensure that the redeem exists
-    let Some(mut redeem) = REDEEM.may_load(deps.storage, &redeem_asset.inner())? else {
+    let Some(mut redeem) = REDEEM.may_load(deps.storage, &redeem_asset_str)? else {
         return Err(ContractError::NoOngoingRedeem {});
     };
     // Ensure that the correct asset is being replenished
@@ -131,7 +133,7 @@ pub fn execute_replenish_redeem(
 
     redeem.amount = redeem.amount.checked_add(amount)?;
 
-    REDEEM.save(deps.storage, &redeem_asset.inner(), &redeem)?;
+    REDEEM.save(deps.storage, &redeem_asset_str, &redeem)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "replenish_redeem"),
@@ -144,7 +146,7 @@ pub fn execute_replenish_redeem(
 pub fn execute_redeem(
     ctx: ExecuteContext,
     amount_sent: Uint128,
-    asset_sent: AssetInfo,
+    asset_sent: Asset,
     recipient: Recipient,
     // For refund purposes
     sender: &str,
@@ -153,7 +155,8 @@ pub fn execute_redeem(
 
     let mut resp = Response::default();
 
-    let Some(mut redeem) = REDEEM.may_load(deps.storage, &asset_sent.inner())? else {
+    let asset_sent_str = asset_sent.inner(&deps.as_ref())?;
+    let Some(mut redeem) = REDEEM.may_load(deps.storage, &asset_sent_str)? else {
         return Err(ContractError::NoOngoingRedeem {});
     };
 
@@ -215,6 +218,7 @@ pub fn execute_redeem(
     if !refund_amount.is_zero() {
         resp = resp
             .add_submessage(generate_transfer_message(
+                &deps.as_ref(),
                 asset_sent.clone(),
                 refund_amount,
                 sender.to_string(),
@@ -239,7 +243,7 @@ pub fn execute_redeem(
     // Update redeem amount remaining
     redeem.amount = redeem.amount.checked_sub(redeemed_amount)?;
     redeem.amount_paid_out = redeem.amount_paid_out.checked_add(redeemed_amount)?;
-    REDEEM.save(deps.storage, &asset_sent.inner(), &redeem)?;
+    REDEEM.save(deps.storage, &asset_sent_str, &redeem)?;
 
     // Transfer exchanged asset to recipient
     resp = resp.add_submessage(generate_transfer_message_recipient(
@@ -263,7 +267,7 @@ pub fn execute_redeem(
 
 pub fn execute_start_redeem_native(
     ctx: ExecuteContext,
-    redeem_asset: AssetInfo,
+    redeem_asset: Asset,
     exchange_rate: Decimal256,
     recipient: Option<Recipient>,
     start_time: Option<Expiry>,
@@ -273,7 +277,7 @@ pub fn execute_start_redeem_native(
 
     let native_funds_sent = one_coin(info)?;
     let amount_sent = native_funds_sent.amount;
-    let asset_sent = AssetInfo::Native(native_funds_sent.denom.to_string());
+    let asset_sent = Asset::NativeToken(native_funds_sent.denom.to_string());
     let sender = info.sender.to_string();
 
     execute_start_redeem(
@@ -291,13 +295,13 @@ pub fn execute_start_redeem_native(
 
 pub fn execute_replenish_redeem_native(
     ctx: ExecuteContext,
-    redeem_asset: AssetInfo,
+    redeem_asset: Asset,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
 
     let native_funds_sent = one_coin(info)?;
     let amount_sent = native_funds_sent.amount;
-    let asset_sent = AssetInfo::Native(native_funds_sent.denom.to_string());
+    let asset_sent = Asset::NativeToken(native_funds_sent.denom.to_string());
 
     execute_replenish_redeem(ctx, amount_sent, asset_sent, redeem_asset)
 }
@@ -311,20 +315,18 @@ pub fn execute_redeem_native(
     let sender = info.sender.to_string();
     let asset_sent = one_coin(info)?;
     let amount_sent = asset_sent.amount;
-    let asset_sent = AssetInfo::Native(asset_sent.denom.to_string());
+    let asset_sent = Asset::NativeToken(asset_sent.denom.to_string());
 
     let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
 
     execute_redeem(ctx, amount_sent, asset_sent, recipient, &sender)
 }
 
-pub fn execute_cancel_redeem(
-    ctx: ExecuteContext,
-    asset: AssetInfo,
-) -> Result<Response, ContractError> {
+pub fn execute_cancel_redeem(ctx: ExecuteContext, asset: Asset) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
+    let asset_str = asset.inner(&deps.as_ref())?;
 
-    let Some(redeem) = REDEEM.may_load(deps.storage, &asset.inner())? else {
+    let Some(redeem) = REDEEM.may_load(deps.storage, &asset_str)? else {
         return Err(ContractError::NoOngoingRedeem {});
     };
 
@@ -335,6 +337,7 @@ pub fn execute_cancel_redeem(
         let token = redeem.asset;
         resp = resp
             .add_submessage(generate_transfer_message(
+                &deps.as_ref(),
                 token,
                 redeem.amount,
                 info.sender.to_string(),
@@ -344,7 +347,7 @@ pub fn execute_cancel_redeem(
     }
 
     // Redeem can now be removed
-    REDEEM.remove(deps.storage, &asset.inner());
+    REDEEM.remove(deps.storage, asset_str.as_str());
 
     Ok(resp.add_attributes(vec![
         attr("action", "cancel_redeem"),

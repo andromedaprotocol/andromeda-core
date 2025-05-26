@@ -1,12 +1,11 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
-    common::{expiration::Expiry, Milliseconds, MillisecondsDuration},
+    common::{denom::Asset, expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ConversionOverflowError, Decimal256, StdError, StdResult, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw_asset::AssetInfo;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -20,16 +19,16 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Cancels an ongoing sale
     #[attrs(restricted)]
-    CancelSale { asset: AssetInfo },
+    CancelSale { asset: Asset },
     /// Cancels an ongoing redeem
     #[attrs(restricted)]
-    CancelRedeem { asset: AssetInfo },
+    CancelRedeem { asset: Asset },
     /// Purchases tokens with native funds
     Purchase { recipient: Option<Recipient> },
     /// Starts a redeem
     StartRedeem {
         /// The accepted asset for redemption
-        redeem_asset: AssetInfo,
+        redeem_asset: Asset,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
         exchange_rate: Decimal256,
         /// The recipient of the sale proceeds
@@ -43,7 +42,7 @@ pub enum ExecuteMsg {
     /// Replenishes a redeem
     ReplenishRedeem {
         /// The accepted asset for redemption
-        redeem_asset: AssetInfo,
+        redeem_asset: Asset,
     },
 
     Redeem {
@@ -74,7 +73,7 @@ pub struct Sale {
 #[cw_serde]
 pub struct Redeem {
     /// The asset that will be given in return for the redeemed asset
-    pub asset: AssetInfo,
+    pub asset: Asset,
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
     pub exchange_rate: Decimal256,
     /// The amount for sale at the given rate
@@ -94,7 +93,7 @@ pub enum Cw20HookMsg {
     /// Starts a sale
     StartSale {
         /// The asset that may be used to purchase tokens
-        asset: AssetInfo,
+        asset: Asset,
         /// The amount of the above asset required to purchase a single token
         exchange_rate: Uint128,
         /// The recipient of the sale proceeds
@@ -111,7 +110,7 @@ pub enum Cw20HookMsg {
     /// Starts a redeem
     StartRedeem {
         /// The accepted asset for redemption
-        redeem_asset: AssetInfo,
+        redeem_asset: Asset,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
         exchange_rate: Decimal256,
         /// The recipient of the sale proceeds
@@ -124,7 +123,7 @@ pub enum Cw20HookMsg {
     /// Replenishes a redeem
     ReplenishRedeem {
         /// The accepted asset for redemption
-        redeem_asset: AssetInfo,
+        redeem_asset: Asset,
     },
     /// Redeems tokens
     Redeem {
@@ -142,7 +141,7 @@ pub enum QueryMsg {
     Sale { asset: String },
     /// Redeem info
     #[returns(RedeemResponse)]
-    Redeem { asset: String },
+    Redeem { asset: Asset },
     /// The address of the token being purchased
     #[returns(TokenAddressResponse)]
     TokenAddress {},

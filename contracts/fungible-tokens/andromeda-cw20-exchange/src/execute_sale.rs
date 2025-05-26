@@ -3,6 +3,7 @@ use andromeda_std::{
     amp::Recipient,
     common::{
         context::ExecuteContext,
+        denom::Asset,
         expiration::Expiry,
         msg_generation::{generate_transfer_message, generate_transfer_message_recipient},
         Milliseconds, MillisecondsDuration,
@@ -10,7 +11,6 @@ use andromeda_std::{
     error::ContractError,
 };
 use cosmwasm_std::{attr, ensure, Response, Uint128};
-use cw_asset::AssetInfo;
 use cw_utils::one_coin;
 
 use crate::state::{SALE, TOKEN_ADDRESS};
@@ -19,7 +19,7 @@ use crate::state::{SALE, TOKEN_ADDRESS};
 pub fn execute_start_sale(
     ctx: ExecuteContext,
     amount: Uint128,
-    asset: AssetInfo,
+    asset: Asset,
     exchange_rate: Uint128,
     // The original sender of the CW20::Send message
     sender: String,
@@ -34,12 +34,10 @@ pub fn execute_start_sale(
         deps, env, info, ..
     } = ctx;
 
-    let token_addr = TOKEN_ADDRESS
-        .load(deps.storage)?
-        .get_raw_address(&deps.as_ref())?;
+    let token_addr = TOKEN_ADDRESS.load(deps.storage)?;
 
     ensure!(
-        asset != AssetInfo::Cw20(token_addr.clone()),
+        asset != Asset::Cw20Token(token_addr.clone()),
         ContractError::InvalidAsset {
             asset: asset.to_string()
         }
@@ -54,7 +52,7 @@ pub fn execute_start_sale(
     );
     // Message sender in this case should be the token address
     ensure!(
-        info.sender == token_addr,
+        info.sender == token_addr.get_raw_address(&deps.as_ref())?,
         ContractError::InvalidFunds {
             msg: "Incorrect CW20 provided for sale".to_string()
         }
@@ -84,7 +82,8 @@ pub fn execute_start_sale(
     };
 
     // Do not allow duplicate sales
-    let current_sale = SALE.may_load(deps.storage, &asset.inner())?;
+    let asset_str = asset.inner(&deps.as_ref())?;
+    let current_sale = SALE.may_load(deps.storage, &asset_str)?;
     ensure!(current_sale.is_none(), ContractError::SaleNotEnded {});
 
     let sale = Sale {
@@ -94,7 +93,7 @@ pub fn execute_start_sale(
         start_time,
         end_time,
     };
-    SALE.save(deps.storage, &asset.inner(), &sale)?;
+    SALE.save(deps.storage, &asset_str, &sale)?;
 
     Ok(Response::default().add_attributes(vec![
         attr("action", "start_sale"),
@@ -109,7 +108,7 @@ pub fn execute_start_sale(
 pub fn execute_purchase(
     ctx: ExecuteContext,
     amount_sent: Uint128,
-    asset_sent: AssetInfo,
+    asset_sent: Asset,
     recipient: Recipient,
     // For refund purposes
     sender: &str,
@@ -117,7 +116,8 @@ pub fn execute_purchase(
     let ExecuteContext { deps, .. } = ctx;
     let mut resp = Response::default();
 
-    let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent.inner())? else {
+    let asset_sent_str = asset_sent.inner(&deps.as_ref())?;
+    let Some(mut sale) = SALE.may_load(deps.storage, &asset_sent_str)? else {
         return Err(ContractError::NoOngoingSale {});
     };
 
@@ -149,6 +149,7 @@ pub fn execute_purchase(
     if !remainder.is_zero() {
         resp = resp
             .add_submessage(generate_transfer_message(
+                &deps.as_ref(),
                 asset_sent.clone(),
                 remainder,
                 sender.to_string(),
@@ -158,11 +159,9 @@ pub fn execute_purchase(
     }
 
     // Transfer tokens to purchaser recipient
-    let token_addr = TOKEN_ADDRESS
-        .load(deps.storage)?
-        .get_raw_address(&deps.as_ref())?;
+    let token_addr = TOKEN_ADDRESS.load(deps.storage)?;
 
-    let token_asset = AssetInfo::Cw20(token_addr);
+    let token_asset = Asset::Cw20Token(token_addr);
     let sub_msg = generate_transfer_message_recipient(
         &deps.as_ref(),
         token_asset,
@@ -175,7 +174,7 @@ pub fn execute_purchase(
 
     // Update sale amount remaining
     sale.amount = sale.amount.checked_sub(purchased)?;
-    SALE.save(deps.storage, &asset_sent.inner(), &sale)?;
+    SALE.save(deps.storage, &asset_sent_str, &sale)?;
 
     // Transfer exchanged asset to recipient
     resp = resp.add_submessage(generate_transfer_message_recipient(
@@ -207,19 +206,16 @@ pub fn execute_purchase_native(
 
     // Only allow one coin for purchasing
     let payment = one_coin(info)?;
-    let asset = AssetInfo::Native(payment.denom.to_string());
+    let asset = Asset::NativeToken(payment.denom.to_string());
     let amount = payment.amount;
 
     execute_purchase(ctx, amount, asset, recipient, &sender)
 }
 
-pub fn execute_cancel_sale(
-    ctx: ExecuteContext,
-    asset: AssetInfo,
-) -> Result<Response, ContractError> {
+pub fn execute_cancel_sale(ctx: ExecuteContext, asset: Asset) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
-    let Some(sale) = SALE.may_load(deps.storage, &asset.inner())? else {
+    let Some(sale) = SALE.may_load(deps.storage, &asset.inner(&deps.as_ref())?)? else {
         return Err(ContractError::NoOngoingSale {});
     };
 
@@ -227,13 +223,12 @@ pub fn execute_cancel_sale(
 
     // Refund any remaining amount
     if !sale.amount.is_zero() {
-        let token_addr = TOKEN_ADDRESS
-            .load(deps.storage)?
-            .get_raw_address(&deps.as_ref())?;
+        let token_addr = TOKEN_ADDRESS.load(deps.storage)?;
 
-        let token = AssetInfo::Cw20(token_addr);
+        let token = Asset::Cw20Token(token_addr);
         resp = resp
             .add_submessage(generate_transfer_message(
+                &deps.as_ref(),
                 token,
                 sale.amount,
                 info.sender.to_string(),

@@ -5,6 +5,7 @@ use andromeda_fungible_tokens::cw20_exchange::{
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{
+        denom::Asset,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         Milliseconds,
     },
@@ -18,7 +19,7 @@ use cosmwasm_std::{
     SubMsg, Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw_asset::AssetInfo;
+
 pub const MOCK_TOKEN_ADDRESS: &str = "cw20";
 
 use crate::{
@@ -60,7 +61,8 @@ pub fn test_start_sale_invalid_token() {
     let mut deps = mock_dependencies_custom(&[]);
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
 
     init(&mut deps).unwrap();
 
@@ -96,7 +98,8 @@ pub fn test_start_sale_unauthorised() {
     let mut deps = mock_dependencies_custom(&[]);
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
 
     init(&mut deps).unwrap();
 
@@ -125,7 +128,8 @@ pub fn test_start_sale_zero_amount() {
 
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
 
     init(&mut deps).unwrap();
 
@@ -159,7 +163,7 @@ pub fn test_start_sale() {
 
     let owner = deps.api.addr_make("owner");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
     //     let info = message_info(owner.as_str(), &[]);
     let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let token_info = message_info(&mock_cw20_addr, &[]);
@@ -185,8 +189,9 @@ pub fn test_start_sale() {
 
     execute(deps.as_mut(), env, token_info, msg).unwrap();
 
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
     let sale = SALE
-        .load(deps.as_ref().storage, &exchange_asset.inner())
+        .load(deps.as_ref().storage, &exchange_asset_str)
         .unwrap();
 
     assert_eq!(sale.exchange_rate, exchange_rate);
@@ -214,7 +219,7 @@ pub fn test_start_sale_no_start_no_duration() {
 
     let owner = deps.api.addr_make("owner");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
     //     let info = message_info(owner.as_str(), &[]);
     let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let token_info = message_info(&mock_cw20_addr, &[]);
@@ -239,8 +244,9 @@ pub fn test_start_sale_no_start_no_duration() {
 
     execute(deps.as_mut(), env, token_info, msg).unwrap();
 
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
     let sale = SALE
-        .load(deps.as_ref().storage, &exchange_asset.inner())
+        .load(deps.as_ref().storage, &exchange_asset_str)
         .unwrap();
 
     assert_eq!(sale.exchange_rate, exchange_rate);
@@ -261,7 +267,8 @@ pub fn test_start_sale_invalid_start_time() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = deps.api.addr_make("owner");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
     let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let token_info = message_info(&mock_cw20_addr, &[]);
 
@@ -300,7 +307,7 @@ pub fn test_start_sale_ongoing() {
 
     let owner = deps.api.addr_make("owner");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
     //     let info = message_info(owner.as_str(), &[]);
     let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
     let token_info = message_info(&mock_cw20_addr, &[]);
@@ -336,7 +343,8 @@ pub fn test_start_sale_zero_exchange_rate() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = deps.api.addr_make("owner");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
     let token_info = message_info(&Addr::unchecked(MOCK_TOKEN_ADDRESS), &[]);
 
     init(&mut deps).unwrap();
@@ -367,8 +375,8 @@ pub fn test_purchase_no_sale() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
     let purchaser = deps.api.addr_make("purchaser");
-    //     let info = message_info(owner.as_str(), &[]);
-    let token_info = message_info(&Addr::unchecked("invalid_token"), &[]);
+    let invalid_token = deps.api.addr_make("invalid_token");
+    let token_info = message_info(&invalid_token, &[]);
 
     init(&mut deps).unwrap();
 
@@ -395,14 +403,15 @@ pub fn test_purchase_not_enough_sent() {
     let owner = deps.api.addr_make("owner");
     let purchaser = deps.api.addr_make("purchaser");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
 
     init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: Uint128::from(100u128),
             exchange_rate,
@@ -443,14 +452,15 @@ pub fn test_purchase_no_tokens_left() {
     let owner = deps.api.addr_make("owner");
     let purchaser = deps.api.addr_make("purchaser");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: Uint128::zero(),
             exchange_rate,
@@ -485,14 +495,15 @@ pub fn test_purchase_not_enough_tokens() {
     let owner = deps.api.addr_make("owner");
     let purchaser = deps.api.addr_make("purchaser");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: Uint128::one(),
             exchange_rate,
@@ -527,7 +538,8 @@ pub fn test_purchase() {
     let owner = deps.api.addr_make("owner");
     let purchaser = deps.api.addr_make("purchaser");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
@@ -535,7 +547,7 @@ pub fn test_purchase() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -578,7 +590,7 @@ pub fn test_purchase() {
 
     // Check sale amount updated
     let sale = SALE
-        .load(deps.as_mut().storage, &exchange_asset.inner())
+        .load(deps.as_mut().storage, &exchange_asset_str)
         .unwrap();
 
     assert_eq!(
@@ -612,7 +624,8 @@ pub fn test_purchase_with_start_and_duration() {
     let owner = deps.api.addr_make("owner");
     let purchaser = deps.api.addr_make("purchaser");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
@@ -620,7 +633,7 @@ pub fn test_purchase_with_start_and_duration() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -668,7 +681,7 @@ pub fn test_purchase_with_start_and_duration() {
 
     // Check sale amount updated
     let sale = SALE
-        .load(deps.as_mut().storage, &exchange_asset.inner())
+        .load(deps.as_mut().storage, &exchange_asset_str)
         .unwrap();
 
     assert_eq!(
@@ -702,7 +715,8 @@ pub fn test_purchase_sale_not_started() {
     let owner = deps.api.addr_make("owner");
     let purchaser = deps.api.addr_make("purchaser");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
@@ -710,7 +724,7 @@ pub fn test_purchase_sale_not_started() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -745,7 +759,8 @@ pub fn test_purchase_sale_duration_ended() {
     let owner = deps.api.addr_make("owner");
     let purchaser = deps.api.addr_make("purchaser");
     let exchanged_asset_addr = deps.api.addr_make("exchanged_asset");
-    let exchange_asset = AssetInfo::Cw20(exchanged_asset_addr.clone());
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchanged_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
@@ -753,7 +768,7 @@ pub fn test_purchase_sale_duration_ended() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -915,7 +930,8 @@ pub fn test_purchase_native() {
 
     let owner = deps.api.addr_make("owner");
     let test_addr = deps.api.addr_make("test");
-    let exchange_asset = AssetInfo::Native(test_addr.to_string());
+    let exchange_asset = Asset::NativeToken(test_addr.to_string());
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
@@ -923,7 +939,7 @@ pub fn test_purchase_native() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -970,7 +986,7 @@ pub fn test_purchase_native() {
 
     // Check sale amount updated
     let sale = SALE
-        .load(deps.as_mut().storage, &exchange_asset.inner())
+        .load(deps.as_mut().storage, &exchange_asset_str)
         .unwrap();
 
     assert_eq!(
@@ -1038,7 +1054,9 @@ pub fn test_cancel_sale_unauthorised() {
     let mut deps = mock_dependencies_custom(&[]);
 
     let owner = deps.api.addr_make("owner");
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
@@ -1046,7 +1064,7 @@ pub fn test_cancel_sale_unauthorised() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.to_string(),
+        &exchange_asset_str,
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -1075,7 +1093,8 @@ pub fn test_cancel_sale_no_sale() {
 
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset.to_string()));
 
     init(&mut deps).unwrap();
 
@@ -1095,7 +1114,9 @@ pub fn test_cancel_sale() {
 
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     init(&mut deps).unwrap();
 
@@ -1103,7 +1124,7 @@ pub fn test_cancel_sale() {
     let sale_amount = Uint128::from(100u128);
     SALE.save(
         deps.as_mut().storage,
-        &exchange_asset.inner(),
+        &exchange_asset_str,
         &Sale {
             amount: sale_amount,
             exchange_rate,
@@ -1148,10 +1169,12 @@ fn test_query_sale() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
 
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     let msg = QueryMsg::Sale {
-        asset: exchange_asset.inner(),
+        asset: exchange_asset_str.clone(),
     };
     let not_found_response: SaleResponse =
         from_json(query(deps.as_ref(), env.clone(), msg.clone()).unwrap()).unwrap();
@@ -1167,7 +1190,7 @@ fn test_query_sale() {
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
         end_time: None,
     };
-    SALE.save(deps.as_mut().storage, &exchange_asset.inner(), &sale)
+    SALE.save(deps.as_mut().storage, &exchange_asset_str, &sale)
         .unwrap();
 
     let found_response: SaleResponse = from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
@@ -1193,8 +1216,9 @@ fn test_query_token_address() {
 fn test_andr_query() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
-
-    let exchange_asset = AssetInfo::Cw20(Addr::unchecked("exchanged_asset"));
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
+    let exchange_asset_str = exchange_asset.inner(&deps.as_ref()).unwrap();
 
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
@@ -1205,11 +1229,11 @@ fn test_andr_query() {
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
         end_time: None,
     };
-    SALE.save(deps.as_mut().storage, &exchange_asset.inner(), &sale)
+    SALE.save(deps.as_mut().storage, &exchange_asset_str, &sale)
         .unwrap();
 
     let msg = QueryMsg::Sale {
-        asset: exchange_asset.inner(),
+        asset: exchange_asset_str,
     };
     let query_msg_response: SaleResponse =
         from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
@@ -1335,7 +1359,7 @@ fn test_start_sale_same_asset() {
     let cw20_msg = Cw20ReceiveMsg {
         sender: "owner".to_string(),
         msg: to_json_binary(&Cw20HookMsg::StartSale {
-            asset: AssetInfo::Cw20(cw20_addr.clone()),
+            asset: Asset::Cw20Token(AndrAddr::from_string(cw20_addr.to_string())),
             exchange_rate: Uint128::from(10u128),
             recipient: None,
             start_time: None,
@@ -1350,7 +1374,7 @@ fn test_start_sale_same_asset() {
     assert_eq!(
         err,
         ContractError::InvalidAsset {
-            asset: AssetInfo::Cw20(cw20_addr.clone()).to_string()
+            asset: Asset::Cw20Token(AndrAddr::from_string(cw20_addr.to_string())).to_string()
         }
     );
 }
@@ -1362,9 +1386,11 @@ fn test_cancel_redeem() {
 
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    let redeem_asset = AssetInfo::Cw20(Addr::unchecked("redeem_asset"));
+    let redeem_asset = deps.api.addr_make("redeem_asset");
+    let redeem_asset = Asset::Cw20Token(AndrAddr::from_string(redeem_asset.to_string()));
+    let redeem_asset_str = redeem_asset.inner(&deps.as_ref()).unwrap();
     let mock_token_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
-    let payout_asset = AssetInfo::Cw20(Addr::unchecked(mock_token_addr.clone()));
+    let payout_asset = Asset::Cw20Token(AndrAddr::from_string(mock_token_addr.to_string()));
 
     init(&mut deps).unwrap();
 
@@ -1374,7 +1400,7 @@ fn test_cancel_redeem() {
     REDEEM
         .save(
             deps.as_mut().storage,
-            &redeem_asset.inner(),
+            &redeem_asset_str,
             &Redeem {
                 asset: payout_asset.clone(),
                 amount: redeem_amount,
@@ -1389,7 +1415,7 @@ fn test_cancel_redeem() {
 
     // Verify redeem condition exists
     let query_msg = QueryMsg::Redeem {
-        asset: redeem_asset.inner().clone(),
+        asset: redeem_asset.clone(),
     };
     let query_resp: RedeemResponse =
         from_json(query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap()).unwrap();
@@ -1442,7 +1468,8 @@ fn test_cancel_redeem_no_redeem() {
 
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    let redeem_asset = AssetInfo::Cw20(Addr::unchecked("redeem_asset"));
+    let redeem_asset_addr = deps.api.addr_make("redeem_asset");
+    let redeem_asset = Asset::Cw20Token(AndrAddr::from_string(redeem_asset_addr.to_string()));
 
     init(&mut deps).unwrap();
 
@@ -1462,8 +1489,11 @@ fn test_cancel_redeem_unauthorized() {
     let owner = deps.api.addr_make("owner");
     let not_owner = deps.api.addr_make("not_owner");
     let info = message_info(&not_owner, &[]);
-    let redeem_asset = AssetInfo::Cw20(Addr::unchecked("redeem_asset"));
-    let payout_asset = AssetInfo::Cw20(Addr::unchecked(MOCK_TOKEN_ADDRESS));
+    let redeem_asset_addr = deps.api.addr_make("redeem_asset");
+    let redeem_asset = Asset::Cw20Token(AndrAddr::from_string(redeem_asset_addr.to_string()));
+    let redeem_asset_str = redeem_asset.inner(&deps.as_ref()).unwrap();
+    let payout_asset_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    let payout_asset = Asset::Cw20Token(AndrAddr::from_string(payout_asset_addr.to_string()));
 
     init(&mut deps).unwrap();
 
@@ -1471,7 +1501,7 @@ fn test_cancel_redeem_unauthorized() {
     REDEEM
         .save(
             deps.as_mut().storage,
-            &redeem_asset.inner(),
+            &redeem_asset_str,
             &Redeem {
                 asset: payout_asset,
                 amount: Uint128::from(100u128),

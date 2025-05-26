@@ -4,7 +4,6 @@ use andromeda_std::{
     common::{
         context::ExecuteContext,
         expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
-        msg_generation::generate_transfer_message,
         Milliseconds, MillisecondsDuration,
     },
     error::ContractError,
@@ -216,7 +215,7 @@ pub fn execute_redeem_cw20(
     );
 
     // Calculate actual redemption amounts
-    let (redeemed_amount, accepted_amount, refund_amount) =
+    let (redeemed_amount, accepted_amount, _refund_amount) =
         if potential_redeemed <= redemption_condition.amount {
             (potential_redeemed, amount_sent, Uint128::zero())
         } else {
@@ -232,13 +231,14 @@ pub fn execute_redeem_cw20(
 
     let mut messages = vec![];
 
-    // Transfer redeemed tokens to the user
-    messages.push(generate_transfer_message(
-        redemption_condition.asset.clone(),
-        redeemed_amount,
-        sender.to_string(),
-        None,
-    )?);
+    // // Transfer redeemed tokens to the user
+    // messages.push(generate_transfer_message(
+    //     &deps.as_ref(),
+    //     redemption_condition.asset.clone(),
+    //     redeemed_amount,
+    //     sender.to_string(),
+    //     None,
+    // )?);
 
     match asset_info {
         cw_asset::AssetInfoBase::Cw20(ref address) => {
@@ -265,7 +265,7 @@ pub fn execute_redeem_cw20(
         .checked_add(redeemed_amount)?;
     REDEMPTION_CONDITION.save(deps.storage, &redemption_condition)?;
 
-    let mut attributes = vec![
+    let attributes = vec![
         attr("action", "redeem"),
         attr("purchaser", sender),
         attr("amount", redeemed_amount),
@@ -273,17 +273,17 @@ pub fn execute_redeem_cw20(
         attr("purchase_asset_amount_accepted", accepted_amount),
     ];
 
-    // If there's a refund, send it back to the sender
-    if !refund_amount.is_zero() {
-        messages.push(generate_transfer_message(
-            asset_info.clone(),
-            refund_amount,
-            sender.to_string(),
-            None,
-        )?);
-        // Add refund attribute if there was a refund
-        attributes.push(attr("refund_amount", refund_amount));
-    }
+    // // If there's a refund, send it back to the sender
+    // if !refund_amount.is_zero() {
+    //     messages.push(generate_transfer_message(
+    //         asset_info.clone(),
+    //         refund_amount,
+    //         sender.to_string(),
+    //         None,
+    //     )?);
+    //     // Add refund attribute if there was a refund
+    //     attributes.push(attr("refund_amount", refund_amount));
+    // }
 
     Ok(Response::default()
         .add_submessages(messages)
@@ -329,7 +329,7 @@ pub fn execute_redeem_native(ctx: ExecuteContext) -> Result<Response, ContractEr
     );
 
     // Calculate actual redemption amounts
-    let (redeemed_amount, accepted_amount, refund_amount) =
+    let (redeemed_amount, accepted_amount, _refund_amount) =
         if potential_redeemed <= redemption_condition.amount {
             (potential_redeemed, amount_sent, Uint128::zero())
         } else {
@@ -345,13 +345,13 @@ pub fn execute_redeem_native(ctx: ExecuteContext) -> Result<Response, ContractEr
 
     let mut messages = vec![];
 
-    // Transfer redeemed tokens to the user
-    messages.push(generate_transfer_message(
-        redemption_condition.asset.clone(),
-        redeemed_amount,
-        sender.to_string(),
-        None,
-    )?);
+    // // Transfer redeemed tokens to the user
+    // messages.push(generate_transfer_message(
+    //     redemption_condition.asset.clone(),
+    //     redeemed_amount,
+    //     sender.to_string(),
+    //     None,
+    // )?);
 
     match asset_info {
         cw_asset::AssetInfoBase::Native(ref denom) => {
@@ -378,7 +378,7 @@ pub fn execute_redeem_native(ctx: ExecuteContext) -> Result<Response, ContractEr
         .checked_add(redeemed_amount)?;
     REDEMPTION_CONDITION.save(deps.storage, &redemption_condition)?;
 
-    let mut attributes = vec![
+    let attributes = vec![
         attr("action", "redeem"),
         attr("purchaser", &sender),
         attr("amount", redeemed_amount),
@@ -387,16 +387,16 @@ pub fn execute_redeem_native(ctx: ExecuteContext) -> Result<Response, ContractEr
     ];
 
     // If there's a refund, send it back to the sender
-    if !refund_amount.is_zero() {
-        messages.push(generate_transfer_message(
-            asset_info.clone(),
-            refund_amount,
-            sender.to_string(),
-            None,
-        )?);
-        // Add refund attribute if there was a refund
-        attributes.push(attr("refund_amount", refund_amount));
-    }
+    // if !refund_amount.is_zero() {
+    //     messages.push(generate_transfer_message(
+    //         asset_info.clone(),
+    //         refund_amount,
+    //         sender.to_string(),
+    //         None,
+    //     )?);
+    // Add refund attribute if there was a refund
+    //     attributes.push(attr("refund_amount", refund_amount));
+    // }
 
     Ok(Response::default()
         .add_submessages(messages)
@@ -404,25 +404,25 @@ pub fn execute_redeem_native(ctx: ExecuteContext) -> Result<Response, ContractEr
 }
 
 pub fn execute_cancel_redemption_condition(ctx: ExecuteContext) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
+    let ExecuteContext { deps, .. } = ctx;
 
-    let Some(redemption_condition) = REDEMPTION_CONDITION.may_load(deps.storage)? else {
+    let Some(_redemption_condition) = REDEMPTION_CONDITION.may_load(deps.storage)? else {
         return Err(ContractError::NoOngoingSale {});
     };
 
-    let mut resp = Response::default();
+    let resp = Response::default();
 
-    // Refund any remaining amount
-    if !redemption_condition.amount.is_zero() {
-        resp = resp
-            .add_submessage(generate_transfer_message(
-                redemption_condition.asset.clone(),
-                redemption_condition.amount,
-                info.sender.to_string(),
-                None,
-            )?)
-            .add_attribute("refunded_amount", redemption_condition.amount);
-    }
+    // // Refund any remaining amount
+    // if !redemption_condition.amount.is_zero() {
+    //     resp = resp
+    //         .add_submessage(generate_transfer_message(
+    //             redemption_condition.asset.clone(),
+    //             redemption_condition.amount,
+    //             info.sender.to_string(),
+    //             None,
+    //         )?)
+    //         .add_attribute("refunded_amount", redemption_condition.amount);
+    // }
 
     // Redemption condition can now be removed
     REDEMPTION_CONDITION.remove(deps.storage);
