@@ -20,8 +20,8 @@ use cw_storage_plus::Bound;
 
 use crate::{
     execute_redeem::{
-        execute_cancel_redeem, execute_redeem, execute_redeem_native, execute_start_redeem,
-        execute_start_redeem_native,
+        execute_cancel_redeem, execute_redeem, execute_redeem_native, execute_replenish_redeem,
+        execute_replenish_redeem_native, execute_start_redeem, execute_start_redeem_native,
     },
     execute_sale::{
         execute_cancel_sale, execute_purchase, execute_purchase_native, execute_start_sale,
@@ -91,6 +91,9 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             start_time,
             end_time,
         ),
+        ExecuteMsg::ReplenishRedeem { redeem_asset } => {
+            execute_replenish_redeem_native(ctx, redeem_asset)
+        }
         ExecuteMsg::Redeem { recipient } => execute_redeem_native(ctx, recipient),
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         _ => ADOContract::default().execute(ctx, msg),
@@ -151,6 +154,9 @@ pub fn execute_receive(
             start_time,
             end_time,
         ),
+        Cw20HookMsg::ReplenishRedeem { redeem_asset } => {
+            execute_replenish_redeem(ctx, amount_sent, asset_sent, redeem_asset)
+        }
         Cw20HookMsg::Redeem { recipient } => {
             let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
             execute_redeem(ctx, amount_sent, asset_sent, recipient, &sender)

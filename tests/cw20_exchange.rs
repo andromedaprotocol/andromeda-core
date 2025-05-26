@@ -7,7 +7,8 @@ use andromeda_cw20::mock::{
 use andromeda_cw20_exchange::mock::{
     mock_andromeda_cw20_exchange, mock_cw20_exchange_hook_purchase_msg,
     mock_cw20_exchange_instantiate_msg, mock_cw20_exchange_start_sale_msg, mock_redeem_cw20_msg,
-    mock_redeem_native_msg, mock_redeem_query_msg, mock_set_redeem_condition_native_msg,
+    mock_redeem_native_msg, mock_redeem_query_msg, mock_replenish_redeem_cw20_msg,
+    mock_replenish_redeem_native_msg, mock_set_redeem_condition_native_msg,
     mock_start_redeem_cw20_msg,
 };
 use andromeda_fungible_tokens::cw20_exchange::RedeemResponse;
@@ -161,13 +162,6 @@ fn query_cw20_balance(router: &mut MockApp, token: String, address: String) -> U
         .unwrap();
     balance.balance
 }
-
-// fn query_redemption_condition(router: &mut MockApp, redeem_addr: String) -> RedeemResponse {
-//     router
-//         .wrap()
-//         .query_wasm_smart(redeem_addr, &mock_get_redemption_condition())
-//         .unwrap()
-// }
 
 fn _advance_time(router: &mut MockApp, seconds: u64) {
     router.set_block(BlockInfo {
@@ -526,6 +520,28 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
             msg: "Not enough funds sent to purchase a token".to_string()
         }
     );
+
+    // Replenish the redeem
+    let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone());
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        Uint128::new(10u128),
+        to_json_binary(&replenish_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(owner.clone(), cw20_addr.clone(), &cw20_send_msg, &[])
+        .unwrap();
+
+    let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.inner().clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    assert_eq!(
+        redeem_query_resp.redeem.unwrap().amount,
+        Uint128::new(10u128)
+    );
 }
 
 #[test]
@@ -612,7 +628,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
         Uint128::new(10)
     );
 
-    // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
+    // User1 will now try to redeem 60 uandr, but he should be refunded 10 since the first 50 will deplete the redeemable amount
     let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     router
@@ -661,6 +677,27 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     assert_eq!(
         err,
         ContractError::Payment(cw_utils::PaymentError::NoFunds {})
+    );
+
+    // Replenish the redeem
+    let replenish_msg = mock_replenish_redeem_native_msg(uandr_asset.clone());
+    router
+        .execute_contract(
+            owner.clone(),
+            cw20_exchange_addr.clone(),
+            &replenish_msg,
+            &[coin(10u128, "uusd")],
+        )
+        .unwrap();
+
+    let redeem_query_msg = mock_redeem_query_msg(uandr_asset.inner().clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    assert_eq!(
+        redeem_query_resp.redeem.unwrap().amount,
+        Uint128::new(10u128)
     );
 }
 

@@ -55,8 +55,16 @@ pub fn mock_redeem_cw20_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
     Cw20HookMsg::Redeem { recipient }
 }
 
+pub fn mock_replenish_redeem_cw20_msg(redeem_asset: AssetInfo) -> Cw20HookMsg {
+    Cw20HookMsg::ReplenishRedeem { redeem_asset }
+}
+
 pub fn mock_redeem_native_msg(recipient: Option<Recipient>) -> ExecuteMsg {
     ExecuteMsg::Redeem { recipient }
+}
+
+pub fn mock_replenish_redeem_native_msg(redeem_asset: AssetInfo) -> ExecuteMsg {
+    ExecuteMsg::ReplenishRedeem { redeem_asset }
 }
 
 pub fn mock_start_redeem_cw20_msg(

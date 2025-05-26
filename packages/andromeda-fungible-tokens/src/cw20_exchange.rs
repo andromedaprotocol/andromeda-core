@@ -40,6 +40,12 @@ pub enum ExecuteMsg {
         end_time: Option<Milliseconds>,
     },
 
+    /// Replenishes a redeem
+    ReplenishRedeem {
+        /// The accepted asset for redemption
+        redeem_asset: AssetInfo,
+    },
+
     Redeem {
         /// Optional recipient to redeem on behalf of another address
         recipient: Option<Recipient>,
@@ -114,6 +120,11 @@ pub enum Cw20HookMsg {
         start_time: Option<Expiry>,
         /// The time when the sale ends
         end_time: Option<Milliseconds>,
+    },
+    /// Replenishes a redeem
+    ReplenishRedeem {
+        /// The accepted asset for redemption
+        redeem_asset: AssetInfo,
     },
     /// Redeems tokens
     Redeem {

@@ -103,6 +103,44 @@ pub fn execute_start_redeem(
     ]))
 }
 
+pub fn execute_replenish_redeem(
+    ctx: ExecuteContext,
+    amount: Uint128,
+    asset: AssetInfo,
+    redeem_asset: AssetInfo,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, env, .. } = ctx;
+    // Ensure that the redeem exists
+    let Some(mut redeem) = REDEEM.may_load(deps.storage, &redeem_asset.inner())? else {
+        return Err(ContractError::NoOngoingRedeem {});
+    };
+    // Ensure that the correct asset is being replenished
+    ensure!(
+        redeem.asset == asset,
+        ContractError::InvalidAsset {
+            asset: asset.to_string()
+        }
+    );
+    // Ensure that the redeem has not ended
+    if let Some(end_time) = redeem.end_time {
+        ensure!(
+            !end_time.is_expired(&env.block),
+            ContractError::RedeemEnded {}
+        );
+    }
+
+    redeem.amount = redeem.amount.checked_add(amount)?;
+
+    REDEEM.save(deps.storage, &redeem_asset.inner(), &redeem)?;
+
+    Ok(Response::default().add_attributes(vec![
+        attr("action", "replenish_redeem"),
+        attr("redeem_asset", redeem_asset.to_string()),
+        attr("asset", asset.to_string()),
+        attr("amount", amount),
+    ]))
+}
+
 pub fn execute_redeem(
     ctx: ExecuteContext,
     amount_sent: Uint128,
@@ -249,6 +287,19 @@ pub fn execute_start_redeem_native(
         start_time,
         end_time,
     )
+}
+
+pub fn execute_replenish_redeem_native(
+    ctx: ExecuteContext,
+    redeem_asset: AssetInfo,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { ref info, .. } = ctx;
+
+    let native_funds_sent = one_coin(info)?;
+    let amount_sent = native_funds_sent.amount;
+    let asset_sent = AssetInfo::Native(native_funds_sent.denom.to_string());
+
+    execute_replenish_redeem(ctx, amount_sent, asset_sent, redeem_asset)
 }
 
 pub fn execute_redeem_native(
