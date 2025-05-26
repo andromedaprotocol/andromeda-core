@@ -897,7 +897,7 @@ dependencies = [
  "cw20 2.0.0",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -919,7 +919,7 @@ dependencies = [
  "osmosis-std",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
