@@ -1,6 +1,8 @@
 use crate::ack::{make_ack_fail, make_ack_success};
 use crate::execute;
-use crate::state::{CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, KERNEL_ADDRESSES, REFUND_DATA};
+use crate::state::{
+    CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, ENV_VARIABLES, KERNEL_ADDRESSES, REFUND_DATA,
+};
 use andromeda_std::amp::messages::{AMPCtx, AMPPkt};
 use andromeda_std::amp::{IBC_REGISTRY_KEY, VFS_KEY};
 use andromeda_std::common::context::ExecuteContext;
@@ -254,18 +256,24 @@ pub fn do_ibc_packet_receive(
 }
 
 pub fn ibc_create_ado(
-    _execute_ctx: ExecuteContext,
-    _owner: AndrAddr,
-    _ado_type: String,
-    _msg: Binary,
+    execute_ctx: ExecuteContext,
+    owner: AndrAddr,
+    ado_type: String,
+    msg: Binary,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    Err(ContractError::CrossChainComponentsCurrentlyDisabled {})
-    // let res = execute::create(execute_env, ado_type, msg, Some(owner), None)?;
-    // Ok(IbcReceiveResponse::new()
-    //     .add_attributes(res.attributes)
-    //     .add_events(res.events)
-    //     .add_submessages(res.messages)
-    //     .set_ack(make_ack_create_ado_success()))
+    let cross_chain_components_enabled = ENV_VARIABLES
+        .may_load(execute_ctx.deps.storage, "cross_chain_components_enabled")?
+        .unwrap_or("false".to_string());
+    ensure!(
+        cross_chain_components_enabled == "true",
+        ContractError::CrossChainComponentsCurrentlyDisabled {}
+    );
+
+    let res = execute::create(execute_ctx, ado_type, msg, Some(owner), None)?;
+    Ok(IbcReceiveResponse::new(make_ack_success())
+        .add_attributes(res.attributes)
+        .add_events(res.events)
+        .add_submessages(res.messages))
 }
 
 pub fn ibc_register_username(
