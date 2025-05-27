@@ -105,6 +105,13 @@ impl Asset {
             }
         })
     }
+
+    pub fn inner(&self, deps: &Deps) -> Result<String, ContractError> {
+        match self {
+            Asset::NativeToken(denom) => Ok(denom.to_string()),
+            Asset::Cw20Token(denom) => Ok(denom.get_raw_address(deps)?.to_string()),
+        }
+    }
 }
 
 pub fn validate_native_denom(deps: Deps, denom: String) -> Result<(), ContractError> {

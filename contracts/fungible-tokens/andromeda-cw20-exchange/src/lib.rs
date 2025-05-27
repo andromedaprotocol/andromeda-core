@@ -1,4 +1,6 @@
 pub mod contract;
+pub mod execute_redeem;
+pub mod execute_sale;
 #[cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 pub mod mock;
 
