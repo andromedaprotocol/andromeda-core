@@ -367,7 +367,9 @@ fn provide_liquidity(
         receiver,
     };
 
-    // Handle both native coins and CW20 token transfers
+    // Handle both native coins and CW20 token allowances
+    // NOTE: For CW20 tokens received via hooks, this socket contract owns the tokens
+    // and needs to give allowance to the pair contract to spend them (as per Astroport docs)
     let mut response = Response::new();
     let mut native_coins = vec![];
 
@@ -380,18 +382,20 @@ fn provide_liquidity(
                 });
             }
             AssetInfo::Token { contract_addr } => {
-                // Transfer CW20 tokens to the pair contract
-                let transfer_msg = cw20::Cw20ExecuteMsg::Transfer {
-                    recipient: pair_addr_raw.to_string(),
+                // Set allowance for the pair contract to spend CW20 tokens owned by this socket
+                // This is required by Astroport: "increase your token allowance for the pool before providing liquidity"
+                let allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: pair_addr_raw.to_string(),
                     amount: asset.amount,
+                    expires: None,
                 };
-                let transfer_wasm_msg = wasm_execute(contract_addr, &transfer_msg, vec![])?;
-                response = response.add_message(transfer_wasm_msg);
+                let allowance_wasm_msg = wasm_execute(contract_addr, &allowance_msg, vec![])?;
+                response = response.add_message(allowance_wasm_msg);
             }
         }
     }
 
-    // Send the provide liquidity message to the pair
+    // Send the provide liquidity message to the pair (native coins attached, CW20s via allowance)
     let provide_wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, native_coins)?;
     response = response.add_message(provide_wasm_msg);
 
@@ -590,7 +594,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 receiver: liquidity_state.receiver,
             };
 
-            // Handle both native coins and CW20 token transfers
+            // Handle both native coins and CW20 token allowances
             let mut response_msgs = vec![];
             let mut native_coins = vec![];
 
@@ -603,13 +607,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         });
                     }
                     AssetInfo::Token { contract_addr } => {
-                        // Transfer CW20 tokens to the pair contract
-                        let transfer_msg = cw20::Cw20ExecuteMsg::Transfer {
-                            recipient: pair_address.clone(),
+                        // Set allowance for the pair contract to spend CW20 tokens
+                        let allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
+                            spender: pair_address.clone(),
                             amount: asset.amount,
+                            expires: None,
                         };
-                        let transfer_wasm_msg = wasm_execute(contract_addr, &transfer_msg, vec![])?;
-                        response_msgs.push(transfer_wasm_msg);
+                        let allowance_wasm_msg =
+                            wasm_execute(contract_addr, &allowance_msg, vec![])?;
+                        response_msgs.push(allowance_wasm_msg);
                     }
                 }
             }
