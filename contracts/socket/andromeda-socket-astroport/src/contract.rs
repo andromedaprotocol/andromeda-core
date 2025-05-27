@@ -179,9 +179,9 @@ fn handle_receive_cw20(
                 },
                 amount,
             };
-            
+
             let assets = vec![cw20_asset, other_asset];
-            
+
             provide_liquidity(ctx, assets, slippage_tolerance, auto_stake, receiver)
         }
         Cw20HookMsg::CreatePairAndProvideLiquidity {
@@ -199,9 +199,9 @@ fn handle_receive_cw20(
                 },
                 amount,
             };
-            
+
             let assets = vec![cw20_asset, other_asset];
-            
+
             create_pair_and_provide_liquidity(
                 ctx,
                 pair_type,
@@ -370,7 +370,7 @@ fn provide_liquidity(
     // Handle both native coins and CW20 token transfers
     let mut response = Response::new();
     let mut native_coins = vec![];
-    
+
     for asset in &assets {
         match &asset.info {
             AssetInfo::NativeToken { denom } => {
@@ -401,8 +401,6 @@ fn provide_liquidity(
         attr("assets", format!("{:?}", assets)),
     ]))
 }
-
-
 
 #[allow(clippy::too_many_arguments)]
 fn create_pair_and_provide_liquidity(
@@ -451,8 +449,6 @@ fn create_pair_and_provide_liquidity(
             attr("assets", format!("{:?}", assets)),
         ]))
 }
-
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
@@ -597,7 +593,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // Handle both native coins and CW20 token transfers
             let mut response_msgs = vec![];
             let mut native_coins = vec![];
-            
+
             for asset in &liquidity_state.assets {
                 match &asset.info {
                     AssetInfo::NativeToken { denom } => {
@@ -619,7 +615,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             }
 
             // Add the provide liquidity message
-            let provide_wasm_msg = wasm_execute(pair_address.clone(), &provide_liquidity_msg, native_coins)?;
+            let provide_wasm_msg =
+                wasm_execute(pair_address.clone(), &provide_liquidity_msg, native_coins)?;
             response_msgs.push(provide_wasm_msg);
 
             let mut response = Response::new();
