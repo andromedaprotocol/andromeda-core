@@ -100,6 +100,34 @@ pub enum Cw20HookMsg {
         /// The swap operations that is supposed to be taken
         operations: Option<Vec<SwapOperation>>,
     },
+    /// Provide liquidity to an existing pair using CW20 tokens
+    ProvideLiquidity {
+        /// The assets to deposit (the other asset info for native token)
+        other_asset: AssetEntry,
+        /// The slippage tolerance for this transaction
+        slippage_tolerance: Option<Decimal>,
+        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
+        auto_stake: Option<bool>,
+        /// The receiver of LP tokens (if different from sender)
+        receiver: Option<String>,
+    },
+    /// Create a pair and provide liquidity using CW20 tokens
+    CreatePairAndProvideLiquidity {
+        /// The pair type (exposed in [`PairType`])
+        pair_type: PairType,
+        /// The assets to create the pool for
+        asset_infos: Vec<AssetInfo>,
+        /// Optional binary serialised parameters for custom pool types
+        init_params: Option<Binary>,
+        /// The other asset to deposit (native token or another CW20)
+        other_asset: AssetEntry,
+        /// The slippage tolerance for the liquidity provision
+        slippage_tolerance: Option<Decimal>,
+        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
+        auto_stake: Option<bool>,
+        /// The receiver of LP tokens (if different from sender)
+        receiver: Option<String>,
+    },
 }
 #[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]

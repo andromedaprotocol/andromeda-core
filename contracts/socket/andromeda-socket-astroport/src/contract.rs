@@ -139,7 +139,7 @@ fn handle_receive_cw20(
     let amount = cw20_msg.amount;
     let sender = cw20_msg.sender;
     let from_addr = AndrAddr::from_string(info.sender.clone());
-    let from_asset = Asset::Cw20Token(from_addr);
+    let from_asset = Asset::Cw20Token(from_addr.clone());
 
     match from_json(&cw20_msg.msg)? {
         Cw20HookMsg::SwapAndForward {
@@ -165,6 +165,52 @@ fn handle_receive_cw20(
                 max_spread,
                 minimum_receive,
                 operations,
+            )
+        }
+        Cw20HookMsg::ProvideLiquidity {
+            other_asset,
+            slippage_tolerance,
+            auto_stake,
+            receiver,
+        } => {
+            let cw20_asset = AssetEntry {
+                info: AssetInfo::Token {
+                    contract_addr: from_addr.get_raw_address(&ctx.deps.as_ref())?,
+                },
+                amount,
+            };
+            
+            let assets = vec![cw20_asset, other_asset];
+            
+            provide_liquidity(ctx, assets, slippage_tolerance, auto_stake, receiver)
+        }
+        Cw20HookMsg::CreatePairAndProvideLiquidity {
+            pair_type,
+            asset_infos,
+            init_params,
+            other_asset,
+            slippage_tolerance,
+            auto_stake,
+            receiver,
+        } => {
+            let cw20_asset = AssetEntry {
+                info: AssetInfo::Token {
+                    contract_addr: from_addr.get_raw_address(&ctx.deps.as_ref())?,
+                },
+                amount,
+            };
+            
+            let assets = vec![cw20_asset, other_asset];
+            
+            create_pair_and_provide_liquidity(
+                ctx,
+                pair_type,
+                asset_infos,
+                init_params,
+                assets,
+                slippage_tolerance,
+                auto_stake,
+                receiver,
             )
         }
     }
@@ -321,25 +367,42 @@ fn provide_liquidity(
         receiver,
     };
 
-    // Calculate the native coins to send with the transaction
-    let mut coins = vec![];
+    // Handle both native coins and CW20 token transfers
+    let mut response = Response::new();
+    let mut native_coins = vec![];
+    
     for asset in &assets {
-        if let AssetInfo::NativeToken { denom } = &asset.info {
-            coins.push(cosmwasm_std::Coin {
-                denom: denom.clone(),
-                amount: asset.amount,
-            });
+        match &asset.info {
+            AssetInfo::NativeToken { denom } => {
+                native_coins.push(cosmwasm_std::Coin {
+                    denom: denom.clone(),
+                    amount: asset.amount,
+                });
+            }
+            AssetInfo::Token { contract_addr } => {
+                // Transfer CW20 tokens to the pair contract
+                let transfer_msg = cw20::Cw20ExecuteMsg::Transfer {
+                    recipient: pair_addr_raw.to_string(),
+                    amount: asset.amount,
+                };
+                let transfer_wasm_msg = wasm_execute(contract_addr, &transfer_msg, vec![])?;
+                response = response.add_message(transfer_wasm_msg);
+            }
         }
     }
 
-    let wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, coins)?;
+    // Send the provide liquidity message to the pair
+    let provide_wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, native_coins)?;
+    response = response.add_message(provide_wasm_msg);
 
-    Ok(Response::new().add_message(wasm_msg).add_attributes(vec![
+    Ok(response.add_attributes(vec![
         attr("action", "provide_liquidity"),
         attr("pair_address", pair_addr.to_string()),
         attr("assets", format!("{:?}", assets)),
     ]))
 }
+
+
 
 #[allow(clippy::too_many_arguments)]
 fn create_pair_and_provide_liquidity(
@@ -388,6 +451,8 @@ fn create_pair_and_provide_liquidity(
             attr("assets", format!("{:?}", assets)),
         ]))
 }
+
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
@@ -529,29 +594,44 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 receiver: liquidity_state.receiver,
             };
 
-            // Calculate the native coins to send with the transaction
-            let mut coins = vec![];
+            // Handle both native coins and CW20 token transfers
+            let mut response_msgs = vec![];
+            let mut native_coins = vec![];
+            
             for asset in &liquidity_state.assets {
-                if let AssetInfo::NativeToken { denom } = &asset.info {
-                    coins.push(cosmwasm_std::Coin {
-                        denom: denom.clone(),
-                        amount: asset.amount,
-                    });
+                match &asset.info {
+                    AssetInfo::NativeToken { denom } => {
+                        native_coins.push(cosmwasm_std::Coin {
+                            denom: denom.clone(),
+                            amount: asset.amount,
+                        });
+                    }
+                    AssetInfo::Token { contract_addr } => {
+                        // Transfer CW20 tokens to the pair contract
+                        let transfer_msg = cw20::Cw20ExecuteMsg::Transfer {
+                            recipient: pair_address.clone(),
+                            amount: asset.amount,
+                        };
+                        let transfer_wasm_msg = wasm_execute(contract_addr, &transfer_msg, vec![])?;
+                        response_msgs.push(transfer_wasm_msg);
+                    }
                 }
             }
 
-            let wasm_msg = wasm_execute(pair_address.clone(), &provide_liquidity_msg, coins)?;
+            // Add the provide liquidity message
+            let provide_wasm_msg = wasm_execute(pair_address.clone(), &provide_liquidity_msg, native_coins)?;
+            response_msgs.push(provide_wasm_msg);
 
-            Ok(Response::new()
-                .add_submessage(cosmwasm_std::SubMsg::reply_always(
-                    wasm_msg,
-                    ASTROPORT_MSG_PROVIDE_LIQUIDITY_ID,
-                ))
-                .add_attributes(vec![
-                    attr("action", "create_pair_success"),
-                    attr("pair_address", pair_address),
-                    attr("liquidity_assets", format!("{:?}", liquidity_state.assets)),
-                ]))
+            let mut response = Response::new();
+            for msg in response_msgs {
+                response = response.add_message(msg);
+            }
+
+            Ok(response.add_attributes(vec![
+                attr("action", "create_pair_and_provide_liquidity_success"),
+                attr("pair_address", pair_address),
+                attr("liquidity_assets", format!("{:?}", liquidity_state.assets)),
+            ]))
         }
         ASTROPORT_MSG_PROVIDE_LIQUIDITY_ID => {
             if msg.result.is_err() {
