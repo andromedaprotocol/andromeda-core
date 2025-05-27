@@ -77,7 +77,7 @@ bech32 = "0.9.1"
 ripemd = "0.1"
 hex = "0.4"
 secp256k1 = "0.30.0"
-thiserror = { version = "1.0.58" }
+thiserror = { version = "2.0.12" }
 
 astroport = { git = "https://github.com/astroport-fi/astroport-core" } 
 cosmrs = { version = "0.19.0", features = ["cosmwasm"]}
