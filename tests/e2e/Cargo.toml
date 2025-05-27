@@ -60,6 +60,7 @@ andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osm
 andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-astroport", features = [
     "testing",
 ] }
+andromeda-kernel = {path = "../../contracts/os/andromeda-kernel"}
 
 andromeda-finance = { workspace = true }
 andromeda-std = { workspace = true }

@@ -7,11 +7,14 @@ use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, ExecuteMsg, ExecuteMsgFns, InstantiateMsg, PairType,
+    AssetEntry, AssetInfo, ExecuteMsg, ExecuteMsgFns, InstantiateMsg, PairType, QueryMsg,
+    QueryMsgFns,
 };
 
+use andromeda_cw20::CW20Contract;
+use andromeda_fungible_tokens::cw20::ExecuteMsg as Cw20ExecuteMsg;
 use andromeda_std::{
-    amp::{AndrAddr, Recipient},
+    amp::{messages::AMPMsg, AndrAddr, Recipient},
     common::denom::Asset,
 };
 use cosmwasm_std::{coin, to_json_binary, Decimal, Uint128};
@@ -29,6 +32,7 @@ struct TestCase {
     daemon: DaemonBase<Wallet>,
     app_contract: AppContract<DaemonBase<Wallet>>,
     app_name: String,
+    kernel: andromeda_kernel::KernelContract<DaemonBase<Wallet>>,
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
@@ -51,7 +55,7 @@ fn setup(
 
     let _lock = DAEMON_MUTEX.lock().unwrap();
 
-    let socket_astroport_type = "socket-astroport@0.1.3-b.1";
+    let socket_astroport_type = "socket-astroport@0.1.6-b.1";
     let socket_astroport_component_name = "socket-astroport";
     let app_name = format!(
         "socket astroport with recipient {}",
@@ -65,16 +69,22 @@ fn setup(
         .mnemonic(TEST_MNEMONIC)
         .build()
         .unwrap();
-    println!("daemon: {:?}", daemon.sender().address());
     let app_contract = AppContract::new(daemon.clone());
     app_contract.set_code_id(app_code_id);
 
+    let kernel_address = kernel_address.to_string();
+
     // Prepare app components
     let socket_astroport_init_msg = InstantiateMsg {
-        kernel_address: kernel_address.to_string(),
+        kernel_address: kernel_address.to_string().clone(),
         owner: None,
         swap_router: None,
     };
+
+    // kernal is already on chain add a varuable to access it
+    //its not a component but a contract
+    let kernel = andromeda_kernel::KernelContract::new(daemon.clone());
+    kernel.set_address(&Addr::unchecked(kernel_address.clone()));
 
     let socket_astroport_component = AppComponent::new(
         socket_astroport_component_name,
@@ -110,15 +120,41 @@ fn setup(
         kernel_address: kernel_address.to_string(),
         owner: None,
     };
+
     let splitter_component = AppComponent::new(
         "splitter".to_string(),
         "splitter@2.3.1-b.3".to_string(),
         to_json_binary(&splitter_init_msg).unwrap(),
     );
 
+    // Add CW20 component for creating native CW20 tokens on Neutron
+    let cw20_init_msg = andromeda_fungible_tokens::cw20::InstantiateMsg {
+        name: "DimiTokenzz".to_string(),
+        symbol: "DIMIZZ".to_string(),
+        decimals: 6,
+        initial_balances: vec![cw20::Cw20Coin {
+            address: daemon.sender().address().to_string(),
+            amount: Uint128::new(1000000000), // 1000 tokens with 6 decimals
+        }],
+        mint: Some(cw20::MinterResponse {
+            minter: daemon.sender().address().to_string(),
+            cap: Some(Uint128::new(10000000000)), // 10k token cap
+        }),
+        marketing: None,
+        kernel_address: kernel_address.to_string(),
+        owner: Some(daemon.sender().address().to_string()),
+    };
+
+    let cw20_component = AppComponent::new(
+        "cw20".to_string(),
+        "cw20@2.1.1-b.2".to_string(),
+        to_json_binary(&cw20_init_msg).unwrap(),
+    );
+
     let app_components = vec![
         splitter_component.clone(),
         socket_astroport_component.clone(),
+        cw20_component.clone(),
     ];
 
     app_contract
@@ -134,10 +170,12 @@ fn setup(
             &[],
         )
         .unwrap();
+
     TestCase {
         daemon,
         app_contract,
         app_name,
+        kernel,
     }
 }
 
@@ -153,7 +191,6 @@ fn test_onchain_native_astroport(setup: TestCase) {
 
     let socket_astroport_contract = SocketAstroportContract::new(daemon.clone());
     socket_astroport_contract.set_address(&Addr::unchecked(socket_astroport_addr));
-
     // execute swap operation
     let usdt_address = "neutron1vpsgrzedwd8fezpsu9fcfewvp6nmv4kzd7a6nutpmgeyjk3arlqsypnlhm";
 
@@ -175,6 +212,7 @@ fn test_onchain_cw20(setup: TestCase) {
         daemon,
         app_contract,
         app_name,
+        kernel,
     } = setup;
 
     let app_name_parsed = app_name.replace(' ', "_");
@@ -217,6 +255,7 @@ fn test_onchain_native_to_native(setup: TestCase) {
         daemon,
         app_contract,
         app_name,
+        kernel,
     } = setup;
 
     let app_name_parsed = app_name.replace(' ', "_");
@@ -252,6 +291,7 @@ fn test_onchain_native_to_native(setup: TestCase) {
     );
 }
 
+// This test is added for debugging purposes
 #[rstest]
 fn test_create_pair(setup: TestCase) {
     let TestCase {
@@ -285,13 +325,10 @@ fn test_create_pair(setup: TestCase) {
 
     println!("Create pair result: {:?}", result);
     assert!(result.is_ok(), "Create pair should succeed");
-
-    // The response should include attributes about the created pair
-    // but since this is an e2e test, we're mainly checking it doesn't error
 }
 
 #[rstest]
-fn test_create_pair_and_provide_liquidity(setup: TestCase) {
+fn test_create_pair_and_provide_liquidity_direct_socket_call(setup: TestCase) {
     let TestCase {
         daemon,
         app_contract,
@@ -299,63 +336,81 @@ fn test_create_pair_and_provide_liquidity(setup: TestCase) {
     } = setup;
 
     let socket_astroport_addr: String = app_contract.get_address("socket-astroport");
-
+    // Get the socket contract address from the app
     let socket_astroport_contract = SocketAstroportContract::new(daemon.clone());
     socket_astroport_contract.set_address(&Addr::unchecked(socket_astroport_addr));
 
-    // Get token addresses
-    let usdt_address = "neutron1vpsgrzedwd8fezpsu9fcfewvp6nmv4kzd7a6nutpmgeyjk3arlqsypnlhm";
-    let osmos_denom = "ibc/0471F1C4E7AFD3F07702BEF6DC365268D64570F7C1FDC98EA6098DD6DE59817B";
+    let cw20_token_address: String = app_contract.get_address("cw20");
+    let cw20_contract = CW20Contract::new(daemon.clone());
+    cw20_contract.set_address(&Addr::unchecked(cw20_token_address.clone()));
 
-    // Create asset infos for the pair
+    // Get the CW20 token address from the app components
+    let neutron_native_denom = "untrn"; // Neutron's native token
+
+    // Create asset infos for the pair (CW20 token + native token)
     let asset_infos = vec![
         AssetInfo::Token {
-            contract_addr: Addr::unchecked(usdt_address),
+            contract_addr: Addr::unchecked(cw20_token_address.clone()),
         },
         AssetInfo::NativeToken {
-            denom: osmos_denom.to_string(),
-        },
-    ];
-
-    // Create assets for liquidity provision
-    let assets = vec![
-        AssetEntry {
-            info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(usdt_address),
-            },
-            amount: Uint128::new(1000000), // 1 USDT
-        },
-        AssetEntry {
-            info: AssetInfo::NativeToken {
-                denom: osmos_denom.to_string(),
-            },
-            amount: Uint128::new(1000000), // 1 OSMOS
+            denom: neutron_native_denom.to_string(),
         },
     ];
 
     let pair_type = PairType::Xyk {};
 
-    let execute_msg = ExecuteMsg::CreatePairAndProvideLiquidity {
+    let native_amount = Uint128::new(100000);
+    let cw20_amount = Uint128::new(1000000);
+
+    // Create the assets for liquidity provision
+    let assets = vec![
+        AssetEntry {
+            info: AssetInfo::Token {
+                contract_addr: Addr::unchecked(cw20_token_address.clone()),
+            },
+            amount: cw20_amount,
+        },
+        AssetEntry {
+            info: AssetInfo::NativeToken {
+                denom: neutron_native_denom.to_string(),
+            },
+            amount: native_amount,
+        },
+    ];
+
+    let cw20_transfer_msg = Cw20ExecuteMsg::Transfer {
+        recipient: AndrAddr::from_string(app_contract.get_address("socket-astroport").clone()),
+        amount: cw20_amount,
+    };
+
+    let result = cw20_contract.execute(&cw20_transfer_msg, &[]);
+
+    assert!(
+        result.is_ok(),
+        "Should successfully transfer CW20 tokens to socket contract. Error: {:?}",
+        result.err()
+    );
+
+    let socket_msg = andromeda_socket::astroport::ExecuteMsg::CreatePairAndProvideLiquidity {
         pair_type,
         asset_infos,
         init_params: None,
         assets,
-        slippage_tolerance: Some(Decimal::percent(1)),
+        slippage_tolerance: Some(Decimal::percent(10)),
         auto_stake: Some(false),
         receiver: None,
     };
 
     let result = socket_astroport_contract.execute(
-        &execute_msg,
-        &[coin(1000000, osmos_denom)], // Send native tokens for liquidity provision
+        &socket_msg,
+        &[coin(native_amount.u128(), neutron_native_denom)], // Send native tokens directly
     );
 
-    println!("Create pair and provide liquidity result: {:?}", result);
     assert!(
         result.is_ok(),
-        "Create pair and provide liquidity should succeed"
+        "Socket contract should successfully create pair and provide liquidity. Error: {:?}",
+        result.err()
     );
 
-    // The response should include attributes about the created pair and liquidity provision
-    // but since this is an e2e test, we're mainly checking it doesn't error
+    println!("✅ Direct socket call succeeded!");
 }
