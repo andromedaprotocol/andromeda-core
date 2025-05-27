@@ -2,8 +2,8 @@ use andromeda_std::{
     amp::{messages::AMPCtx, AndrAddr, Recipient},
     common::denom::Asset,
 };
-use cosmwasm_std::{Decimal, Uint128, Binary};
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Binary, Decimal, Uint128};
 use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -46,7 +46,6 @@ pub enum AstroportFactoryExecuteMsg {
     },
 }
 
-
 pub const FORWARD_REPLY_STATE: Item<ForwardReplyState> = Item::new("forward_reply_state");
 
 pub const SWAP_ROUTER: Item<AndrAddr> = Item::new("swap_router");
@@ -59,4 +58,5 @@ pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
 pub const PAIR_ADDRESS: Item<AndrAddr> = Item::new("pair_address");
 
 // Store liquidity provision parameters during pair creation
-pub const LIQUIDITY_PROVISION_STATE: Item<LiquidityProvisionState> = Item::new("liquidity_provision_state");
+pub const LIQUIDITY_PROVISION_STATE: Item<LiquidityProvisionState> =
+    Item::new("liquidity_provision_state");

@@ -18,18 +18,22 @@ use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_utils::one_coin;
 
-use crate::astroport::{ASTROPORT_MSG_CREATE_PAIR_ID, ASTROPORT_MSG_CREATE_PAIR_AND_PROVIDE_LIQUIDITY_ID, ASTROPORT_MSG_PROVIDE_LIQUIDITY_ID};
 use crate::{
     astroport::{
         execute_swap_astroport_msg, handle_astroport_swap_reply,
-        query_simulate_astro_swap_operation, ASTROPORT_MSG_FORWARD_ID, ASTROPORT_MSG_SWAP_ID,
+        query_simulate_astro_swap_operation, ASTROPORT_MSG_CREATE_PAIR_AND_PROVIDE_LIQUIDITY_ID,
+        ASTROPORT_MSG_CREATE_PAIR_ID, ASTROPORT_MSG_FORWARD_ID, ASTROPORT_MSG_PROVIDE_LIQUIDITY_ID,
+        ASTROPORT_MSG_SWAP_ID,
     },
-    state::{ForwardReplyState, FACTORY, FORWARD_REPLY_STATE, PAIR_ADDRESS, SWAP_ROUTER, LIQUIDITY_PROVISION_STATE, LiquidityProvisionState, AstroportFactoryExecuteMsg},
+    state::{
+        AstroportFactoryExecuteMsg, ForwardReplyState, LiquidityProvisionState, FACTORY,
+        FORWARD_REPLY_STATE, LIQUIDITY_PROVISION_STATE, PAIR_ADDRESS, SWAP_ROUTER,
+    },
 };
 
 use andromeda_socket::astroport::{
-    AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairAddressResponse, PairExecuteMsg, PairType, QueryMsg,
-    SimulateSwapOperationResponse, SwapOperation, AssetEntry,
+    AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairAddressResponse,
+    PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -330,13 +334,11 @@ fn provide_liquidity(
 
     let wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, coins)?;
 
-    Ok(Response::new()
-        .add_message(wasm_msg)
-        .add_attributes(vec![
-            attr("action", "provide_liquidity"),
-            attr("pair_address", pair_addr.to_string()),
-            attr("assets", format!("{:?}", assets)),
-        ]))
+    Ok(Response::new().add_message(wasm_msg).add_attributes(vec![
+        attr("action", "provide_liquidity"),
+        attr("pair_address", pair_addr.to_string()),
+        attr("assets", format!("{:?}", assets)),
+    ]))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -458,14 +460,16 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             // Extract the pair address from the response
             let response = msg.result.unwrap();
-            
+
             // Look for the pair contract address in the events
             let pair_address = response
                 .events
                 .iter()
                 .find(|event| event.ty == "instantiate")
                 .and_then(|event| {
-                    event.attributes.iter()
+                    event
+                        .attributes
+                        .iter()
                         .find(|attr| attr.key == "_contract_address")
                         .map(|attr| attr.value.clone())
                 })
@@ -494,14 +498,16 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             // Extract the pair address from the response
             let response = msg.result.unwrap();
-            
+
             // Look for the pair contract address in the events
             let pair_address = response
                 .events
                 .iter()
                 .find(|event| event.ty == "instantiate")
                 .and_then(|event| {
-                    event.attributes.iter()
+                    event
+                        .attributes
+                        .iter()
                         .find(|attr| attr.key == "_contract_address")
                         .map(|attr| attr.value.clone())
                 })

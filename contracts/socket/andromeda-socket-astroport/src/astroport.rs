@@ -20,7 +20,6 @@ use andromeda_socket::astroport::{
     SimulateSwapOperationResponse, SwapOperation, SwapOperationAstroport,
 };
 
-
 pub const ASTROPORT_MSG_SWAP_ID: u64 = 1;
 pub const ASTROPORT_MSG_FORWARD_ID: u64 = 2;
 pub const ASTROPORT_MSG_CREATE_PAIR_ID: u64 = 3;

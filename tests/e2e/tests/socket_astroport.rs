@@ -6,7 +6,9 @@ use std::sync::Once;
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_socket::astroport::{AssetInfo, ExecuteMsgFns, InstantiateMsg, PairType, AssetEntry, ExecuteMsg};
+use andromeda_socket::astroport::{
+    AssetEntry, AssetInfo, ExecuteMsg, ExecuteMsgFns, InstantiateMsg, PairType,
+};
 
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -349,7 +351,10 @@ fn test_create_pair_and_provide_liquidity(setup: TestCase) {
     );
 
     println!("Create pair and provide liquidity result: {:?}", result);
-    assert!(result.is_ok(), "Create pair and provide liquidity should succeed");
+    assert!(
+        result.is_ok(),
+        "Create pair and provide liquidity should succeed"
+    );
 
     // The response should include attributes about the created pair and liquidity provision
     // but since this is an e2e test, we're mainly checking it doesn't error
