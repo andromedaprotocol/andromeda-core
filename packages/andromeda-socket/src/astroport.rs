@@ -62,6 +62,24 @@ pub enum ExecuteMsg {
         /// The receiver of LP tokens (if different from sender)
         receiver: Option<String>,
     },
+    /// Create a pair and provide liquidity in a single transaction
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    CreatePairAndProvideLiquidity {
+        /// The pair type (exposed in [`PairType`])
+        pair_type: PairType,
+        /// The assets to create the pool for
+        asset_infos: Vec<AssetInfo>,
+        /// Optional binary serialised parameters for custom pool types
+        init_params: Option<Binary>,
+        /// The assets to deposit as liquidity
+        assets: Vec<AssetEntry>,
+        /// The slippage tolerance for the liquidity provision
+        slippage_tolerance: Option<Decimal>,
+        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
+        auto_stake: Option<bool>,
+        /// The receiver of LP tokens (if different from sender)
+        receiver: Option<String>,
+    },
 
     /// Update swap router
     #[attrs(restricted)]

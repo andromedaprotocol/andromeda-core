@@ -6,7 +6,7 @@ use std::sync::Once;
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_socket::astroport::{AssetInfo, ExecuteMsgFns, InstantiateMsg, PairType};
+use andromeda_socket::astroport::{AssetInfo, ExecuteMsgFns, InstantiateMsg, PairType, AssetEntry, ExecuteMsg};
 
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -285,5 +285,72 @@ fn test_create_pair(setup: TestCase) {
     assert!(result.is_ok(), "Create pair should succeed");
 
     // The response should include attributes about the created pair
+    // but since this is an e2e test, we're mainly checking it doesn't error
+}
+
+#[rstest]
+fn test_create_pair_and_provide_liquidity(setup: TestCase) {
+    let TestCase {
+        daemon,
+        app_contract,
+        ..
+    } = setup;
+
+    let socket_astroport_addr: String = app_contract.get_address("socket-astroport");
+
+    let socket_astroport_contract = SocketAstroportContract::new(daemon.clone());
+    socket_astroport_contract.set_address(&Addr::unchecked(socket_astroport_addr));
+
+    // Get token addresses
+    let usdt_address = "neutron1vpsgrzedwd8fezpsu9fcfewvp6nmv4kzd7a6nutpmgeyjk3arlqsypnlhm";
+    let osmos_denom = "ibc/0471F1C4E7AFD3F07702BEF6DC365268D64570F7C1FDC98EA6098DD6DE59817B";
+
+    // Create asset infos for the pair
+    let asset_infos = vec![
+        AssetInfo::Token {
+            contract_addr: Addr::unchecked(usdt_address),
+        },
+        AssetInfo::NativeToken {
+            denom: osmos_denom.to_string(),
+        },
+    ];
+
+    // Create assets for liquidity provision
+    let assets = vec![
+        AssetEntry {
+            info: AssetInfo::Token {
+                contract_addr: Addr::unchecked(usdt_address),
+            },
+            amount: Uint128::new(1000000), // 1 USDT
+        },
+        AssetEntry {
+            info: AssetInfo::NativeToken {
+                denom: osmos_denom.to_string(),
+            },
+            amount: Uint128::new(1000000), // 1 OSMOS
+        },
+    ];
+
+    let pair_type = PairType::Xyk {};
+
+    let execute_msg = ExecuteMsg::CreatePairAndProvideLiquidity {
+        pair_type,
+        asset_infos,
+        init_params: None,
+        assets,
+        slippage_tolerance: Some(Decimal::percent(1)),
+        auto_stake: Some(false),
+        receiver: None,
+    };
+
+    let result = socket_astroport_contract.execute(
+        &execute_msg,
+        &[coin(1000000, osmos_denom)], // Send native tokens for liquidity provision
+    );
+
+    println!("Create pair and provide liquidity result: {:?}", result);
+    assert!(result.is_ok(), "Create pair and provide liquidity should succeed");
+
+    // The response should include attributes about the created pair and liquidity provision
     // but since this is an e2e test, we're mainly checking it doesn't error
 }
