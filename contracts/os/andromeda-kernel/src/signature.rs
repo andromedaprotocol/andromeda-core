@@ -57,7 +57,10 @@ mod tests {
     use super::{derive_address, verify_signature};
     use andromeda_std::common::context::ExecuteContext;
     use base64::{engine::general_purpose, Engine};
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{
+        testing::{message_info, mock_dependencies, mock_env},
+        Addr,
+    };
     use k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng};
     use sha2::{digest::Update, Digest, Sha256};
 
@@ -81,7 +84,7 @@ mod tests {
         // verifying
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("owner", &[]);
+        let info = message_info(&Addr::unchecked("owner"), &[]);
         let address = derive_address("neutron", public_key_bytes).unwrap();
 
         let ctx = ExecuteContext::new(deps.as_mut(), info, env);
@@ -106,7 +109,7 @@ mod tests {
 
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("owner", &[]);
+        let info = message_info(&Addr::unchecked("owner"), &[]);
         let address = derive_address("andr", &public_key_bytes).unwrap();
         let ctx = ExecuteContext::new(deps.as_mut(), info, env);
 
