@@ -5,10 +5,10 @@ use cosmwasm_std::coin;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
-use andromeda_socket::osmosis::InstantiateMsg;
 use e2e::constants::OSMO_5;
 use osmosis_std::types::{
-    cosmos::base::v1beta1::Coin as OsmosisCoin, osmosis::gamm::v1beta1::PoolAsset,
+    cosmos::base::v1beta1::Coin as OsmosisCoin,
+    osmosis::gamm::v1beta1::{PoolAsset, PoolParams},
 };
 use rstest::{fixture, rstest};
 
@@ -27,10 +27,11 @@ fn setup() -> TestCase {
 
     let osmosis_socket_contract = SocketOsmosisContract::new(daemon.clone());
 
+    // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
     // osmosis_socket_contract.upload().unwrap();
     // osmosis_socket_contract
     //     .instantiate(
-    //         &InstantiateMsg {
+    //         &andromeda_socket::osmosis::InstantiateMsg {
     //             kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
     //                 .to_string(),
     //             owner: None,
@@ -41,7 +42,7 @@ fn setup() -> TestCase {
     //     )
     //     .unwrap();
     osmosis_socket_contract.set_address(&Addr::unchecked(
-        "osmo1t3cfpfscs0gclt6z8ay45qx0qyfvx67dfml8ykmssuwk65dss09qcvp4ks".to_string(),
+        "osmo1wrkp789lzu53w8g20avhzjnm7d8xmmuqmx53ytcqgwng0mh00a7sffsjhd".to_string(),
     ));
 
     TestCase {
@@ -70,19 +71,25 @@ fn test_create_pool(setup: TestCase) {
         PoolAsset {
             token: Some(OsmosisCoin {
                 denom: "uion".to_string(),
-                amount: "10000".to_string(),
+                amount: "1000".to_string(),
             }),
-            weight: "500000".to_string(),
+            weight: "50000".to_string(),
         },
     ];
+
+    let pool_params = PoolParams {
+        swap_fee: "1".into(),
+        exit_fee: "0".into(),
+        smooth_weight_change_params: None,
+    };
 
     osmosis_socket_contract
         .create_pool(
             andromeda_socket::osmosis::Pool::Balancer {
-                pool_params: None,
+                pool_params: Some(pool_params),
                 pool_assets,
             },
-            &[coin(10000, "uion"), coin(10000000, "uosmo")],
+            &[coin(1000, "uion"), coin(10000000, "uosmo")],
         )
         .unwrap();
 }
