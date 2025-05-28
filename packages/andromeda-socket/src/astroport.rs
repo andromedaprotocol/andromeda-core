@@ -84,6 +84,13 @@ pub enum ExecuteMsg {
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
+    /// Sent to the LP contract to withdraw liquidity
+    WithdrawLiquidity {
+        /// The pair address to withdraw from
+        pair_address: AndrAddr,
+        /// The sender of the withdrawal
+        sender: String,
+    },
 }
 
 #[cw_serde]
@@ -311,6 +318,16 @@ pub enum PairExecuteMsg {
         receiver: Option<String>,
     },
 }
+
+/// Message structure for withdrawing liquidity from Astroport pairs
+/// This creates the JSON: {"withdraw_liquidity": {}}
+#[cw_serde]
+pub struct WithdrawLiquidityMsg {
+    pub withdraw_liquidity: WithdrawLiquidityInner,
+}
+
+#[cw_serde]
+pub struct WithdrawLiquidityInner {}
 
 #[cw_serde]
 pub struct PairAddressResponse {

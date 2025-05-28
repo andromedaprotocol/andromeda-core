@@ -34,6 +34,7 @@ use crate::{
 use andromeda_socket::astroport::{
     AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairAddressResponse,
     PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
+    WithdrawLiquidityMsg, WithdrawLiquidityInner,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -127,9 +128,17 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             auto_stake,
             receiver,
         ),
+        ExecuteMsg::WithdrawLiquidity {
+            pair_address,
+            sender
+        } => withdraw_liquidity(ctx, pair_address, sender),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
+
+
+
+
 fn handle_receive_cw20(
     ctx: ExecuteContext,
     cw20_msg: Cw20ReceiveMsg,
@@ -451,6 +460,30 @@ fn create_pair_and_provide_liquidity(
             attr("pair_type", format!("{:?}", pair_type.clone())),
             attr("asset_infos", format!("{:?}", asset_infos.clone())),
             attr("assets", format!("{:?}", assets)),
+        ]))
+}
+
+fn withdraw_liquidity(
+    ctx: ExecuteContext,
+    pair_address: AndrAddr,
+    sender: String,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, .. } = ctx;
+
+    let pair_addr_raw = pair_address.get_raw_address(&deps.as_ref())?;
+
+    let withdraw_msg = cosmwasm_std::to_json_binary(&WithdrawLiquidityMsg {
+        withdraw_liquidity: WithdrawLiquidityInner {},
+    })?;
+
+    let wasm_msg = wasm_execute(&pair_addr_raw, &withdraw_msg, vec![])?;
+
+    Ok(Response::new()
+        .add_message(wasm_msg)
+        .add_attributes(vec![
+            attr("action", "withdraw_liquidity"),
+            attr("pair_address", pair_addr_raw.to_string()),
+            attr("sender", sender),
         ]))
 }
 
