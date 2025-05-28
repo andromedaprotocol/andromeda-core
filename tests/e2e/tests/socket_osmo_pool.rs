@@ -83,6 +83,7 @@ fn test_create_pool(setup: TestCase) {
         smooth_weight_change_params: None,
     };
 
+    // The contract itself should have those funds, I funded the contract then called this function
     osmosis_socket_contract
         .create_pool(
             andromeda_socket::osmosis::Pool::Balancer {
