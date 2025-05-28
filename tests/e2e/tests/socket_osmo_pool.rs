@@ -5,6 +5,7 @@ use cosmwasm_std::coin;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
+use andromeda_socket::osmosis::InstantiateMsg;
 use e2e::constants::OSMO_5;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin, osmosis::gamm::v1beta1::PoolAsset,
@@ -25,14 +26,13 @@ fn setup() -> TestCase {
         .unwrap();
 
     let osmosis_socket_contract = SocketOsmosisContract::new(daemon.clone());
-    osmosis_socket_contract.set_address(&Addr::unchecked(
-        "osmo188j4ew2wfz5xrp8am8ytsed45gqscehlprtd6u9y4mnlyvaut9rqn3nhzq".to_string(),
-    ));
+
     // osmosis_socket_contract.upload().unwrap();
     // osmosis_socket_contract
     //     .instantiate(
     //         &InstantiateMsg {
-    //             kernel_address: kernel_address.to_string(),
+    //             kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
+    //                 .to_string(),
     //             owner: None,
     //             swap_router: None,
     //         },
@@ -40,13 +40,9 @@ fn setup() -> TestCase {
     //         &[],
     //     )
     //     .unwrap();
-
-    // // Prepare app components
-    // let socket_osmosis_init_msg = InstantiateMsg {
-    //     kernel_address: kernel_address.to_string(),
-    //     owner: None,
-    //     swap_router: None,
-    // };
+    osmosis_socket_contract.set_address(&Addr::unchecked(
+        "osmo1t3cfpfscs0gclt6z8ay45qx0qyfvx67dfml8ykmssuwk65dss09qcvp4ks".to_string(),
+    ));
 
     TestCase {
         osmosis_socket_contract,
@@ -60,8 +56,8 @@ fn test_create_pool(setup: TestCase) {
         ..
     } = setup;
 
-    // let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
-    // println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+    let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
+    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
 
     let pool_assets = vec![
         PoolAsset {

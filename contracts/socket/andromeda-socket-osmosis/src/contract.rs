@@ -10,8 +10,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, from_json, to_json_binary, AnyMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, Response, StdError, SubMsg,
+    attr, from_json, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    SubMsg,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
@@ -136,7 +136,7 @@ pub fn execute_create_pool(
     ctx: ExecuteContext,
     pool_type: Pool,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { info, .. } = ctx;
+    let ExecuteContext { env, info, .. } = ctx;
     let denom0 = &info.funds[0].denom;
     let amount0 = &info.funds[0].amount;
     let denom1 = &info.funds[1].denom;
@@ -148,18 +148,17 @@ pub fn execute_create_pool(
             pool_params,
             pool_assets,
         } => {
+            let contract_address: String = env.contract.address.into();
             let msg = MsgCreateBalancerPool {
-                sender: sender.clone(),
+                sender: contract_address.clone(),
                 pool_params,
                 pool_assets,
-                future_pool_governor: sender,
+                future_pool_governor: contract_address,
             };
+            let create_balancer_pool_msg: CosmosMsg = msg.into();
+
             SubMsg::reply_always(
-                CosmosMsg::Any(AnyMsg {
-                    type_url: "/osmosis.gamm.poolmodels.balancer.v1beta1.MsgCreateBalancerPool"
-                        .to_string(),
-                    value: to_json_binary(&msg)?,
-                }),
+                create_balancer_pool_msg,
                 OSMOSIS_MSG_CREATE_BALANCER_POOL_ID,
             )
         }
@@ -184,14 +183,7 @@ pub fn execute_create_pool(
                 future_pool_governor: sender.clone(),
                 scaling_factor_controller: sender.clone(),
             };
-            SubMsg::reply_always(
-                CosmosMsg::Any(AnyMsg {
-                    type_url: "/osmosis.gamm.poolmodels.stableswap.v1beta1.MsgCreateStableswapPool"
-                        .to_string(),
-                    value: to_json_binary(&msg)?,
-                }),
-                OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
-            )
+            SubMsg::reply_always(msg, OSMOSIS_MSG_CREATE_STABLE_POOL_ID)
         }
         Pool::Concentrated {
             tick_spacing,
@@ -204,13 +196,7 @@ pub fn execute_create_pool(
                 tick_spacing,
                 spread_factor,
             };
-            SubMsg::reply_always(
-                CosmosMsg::Stargate {
-                    type_url: "/osmosis.concentratedliquidity.poolmodel.concentrated.v1beta1.MsgCreateConcentratedPool".to_string(),
-                    value: to_json_binary(&msg)?,
-                },
-                OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID,
-            )
+            SubMsg::reply_always(msg, OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID)
         }
         Pool::CosmWasm {
             code_id,
@@ -221,13 +207,7 @@ pub fn execute_create_pool(
                 instantiate_msg,
                 sender,
             };
-            SubMsg::reply_always(
-                CosmosMsg::Any(AnyMsg {
-                    type_url: "/osmosis.cosmwasmpool.v1beta1.MsgCreateCosmWasmPool".to_string(),
-                    value: to_json_binary(&msg)?,
-                }),
-                OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID,
-            )
+            SubMsg::reply_always(msg, OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID)
         }
     };
 
