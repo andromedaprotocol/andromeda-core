@@ -34,7 +34,7 @@ use crate::{
 use andromeda_socket::astroport::{
     AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairAddressResponse,
     PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
-    WithdrawLiquidityMsg, WithdrawLiquidityInner,
+    WithdrawLiquidityInner, WithdrawLiquidityMsg,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -130,14 +130,11 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ),
         ExecuteMsg::WithdrawLiquidity {
             pair_address,
-            sender
+            sender,
         } => withdraw_liquidity(ctx, pair_address, sender),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
-
-
-
 
 fn handle_receive_cw20(
     ctx: ExecuteContext,
@@ -478,13 +475,11 @@ fn withdraw_liquidity(
 
     let wasm_msg = wasm_execute(&pair_addr_raw, &withdraw_msg, vec![])?;
 
-    Ok(Response::new()
-        .add_message(wasm_msg)
-        .add_attributes(vec![
-            attr("action", "withdraw_liquidity"),
-            attr("pair_address", pair_addr_raw.to_string()),
-            attr("sender", sender),
-        ]))
+    Ok(Response::new().add_message(wasm_msg).add_attributes(vec![
+        attr("action", "withdraw_liquidity"),
+        attr("pair_address", pair_addr_raw.to_string()),
+        attr("sender", sender),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
