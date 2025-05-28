@@ -23,10 +23,10 @@ use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::{
 };
 use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::MsgCreateStableswapPool;
 
-const OSMOSIS_MSG_CREATE_BALANCER_POOL_ID: u64 = 1;
-const OSMOSIS_MSG_CREATE_STABLE_POOL_ID: u64 = 2;
-const OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID: u64 = 3;
-const OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID: u64 = 4;
+const OSMOSIS_MSG_CREATE_BALANCER_POOL_ID: u64 = 3;
+const OSMOSIS_MSG_CREATE_STABLE_POOL_ID: u64 = 4;
+const OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID: u64 = 5;
+const OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID: u64 = 6;
 
 use crate::{
     osmosis::{
@@ -204,10 +204,13 @@ pub fn execute_create_pool(
                 tick_spacing,
                 spread_factor,
             };
-            SubMsg::reply_always(CosmosMsg::Any(AnyMsg {
-                type_url: "/osmosis.concentratedliquidity.poolmodel.concentrated.v1beta1.MsgCreateConcentratedPool".to_string(),
-                value: to_json_binary(&msg)?,
-            }), OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID)
+            SubMsg::reply_always(
+                CosmosMsg::Stargate {
+                    type_url: "/osmosis.concentratedliquidity.poolmodel.concentrated.v1beta1.MsgCreateConcentratedPool".to_string(),
+                    value: to_json_binary(&msg)?,
+                },
+                OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID,
+            )
         }
         Pool::CosmWasm {
             code_id,
@@ -305,13 +308,32 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             ]))
         }
         OSMOSIS_MSG_CREATE_STABLE_POOL_ID => {
-            todo!()
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Osmosis stable pool creation failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+            Ok(Response::default().add_attributes(vec![attr("action", "stable_pool_created")]))
         }
         OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID => {
-            todo!()
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Osmosis concentrated pool creation failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+            Ok(Response::default()
+                .add_attributes(vec![attr("action", "concentrated_pool_created")]))
         }
         OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID => {
-            todo!()
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Osmosis cosmwasm pool creation failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+            Ok(Response::default().add_attributes(vec![attr("action", "cosmwasm_pool_created")]))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),

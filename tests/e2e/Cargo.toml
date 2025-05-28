@@ -61,6 +61,9 @@ andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-a
     "testing",
 ] }
 andromeda-kernel = {path = "../../contracts/os/andromeda-kernel"}
+andromeda-adodb = {path = "../../contracts/os/andromeda-adodb"}
+andromeda-vfs = {path = "../../contracts/os/andromeda-vfs"}
+andromeda-economics = {path = "../../contracts/os/andromeda-economics"}
 
 andromeda-finance = { workspace = true }
 andromeda-std = { workspace = true }

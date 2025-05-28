@@ -4,11 +4,8 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Decimal, Uint128};
+use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams;
 use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
-use osmosis_std::types::osmosis::{
-    gamm::poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams,
-    poolmanager::v1beta1::PoolType,
-};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -32,14 +29,11 @@ pub enum ExecuteMsg {
         /// The swap operations that is supposed to be taken
         route: Option<Vec<SwapAmountInRoute>>,
     },
-    CreatePool {
-        pool_type: Pool,
-    },
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    CreatePool { pool_type: Pool },
     /// Update swap router
     #[attrs(restricted)]
-    UpdateSwapRouter {
-        swap_router: AndrAddr,
-    },
+    UpdateSwapRouter { swap_router: AndrAddr },
 }
 
 #[cw_serde]
@@ -61,29 +55,6 @@ pub enum Pool {
         instantiate_msg: Vec<u8>,
     },
 }
-
-// proto/osmosis/poolmanager/v1beta1/module_route.proto
-// generates to x/poolmanager/types/module_route.pb.go
-
-// PoolType is an enumeration of all supported pool types.
-// #[cw_serde]
-// pub enum PoolType {
-//     // Balancer is the standard xy=k curve. Its pool model is defined in x/gamm.
-//     Balancer = 0,
-//     // Stableswap is the Solidly cfmm stable swap curve. Its pool model is defined
-//     // in x/gamm.
-//     StableSwap = 1,
-//     // Concentrated is the pool model specific to concentrated liquidity. It is
-//     // defined in x/concentrated-liquidity.
-//     Concentrated = 2,
-// }
-
-// #[cw_serde]
-// pub struct CreatePoolMsg {
-//     pub pool_type: PoolType,
-//     pub pool_creator: String,
-//     pub initial_liquidity: Vec<Coin>,
-// }
 
 #[cw_serde]
 pub enum OsmosisExecuteMsg {

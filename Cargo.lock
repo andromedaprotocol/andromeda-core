@@ -2970,11 +2970,13 @@ checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
 name = "e2e"
 version = "0.1.0"
 dependencies = [
+ "andromeda-adodb",
  "andromeda-app",
  "andromeda-app-contract",
  "andromeda-crowdfund",
  "andromeda-cw20",
  "andromeda-cw721",
+ "andromeda-economics",
  "andromeda-finance",
  "andromeda-fungible-tokens",
  "andromeda-kernel",
@@ -2986,6 +2988,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing-e2e",
  "andromeda-validator-staking",
+ "andromeda-vfs",
  "cosmwasm-std 2.2.2",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
