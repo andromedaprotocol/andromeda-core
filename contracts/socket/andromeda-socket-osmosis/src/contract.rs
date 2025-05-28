@@ -9,9 +9,24 @@ use andromeda_std::{
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError};
+use cosmwasm_std::{
+    attr, from_json, to_json_binary, AnyMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, Response, StdError, SubMsg,
+};
 use cw2::set_contract_version;
 use cw_utils::one_coin;
+use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
+use osmosis_std::types::osmosis::concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPool;
+use osmosis_std::types::osmosis::cosmwasmpool::v1beta1::MsgCreateCosmWasmPool;
+use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::{
+    MsgCreateBalancerPool, MsgCreateBalancerPoolResponse,
+};
+use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::MsgCreateStableswapPool;
+
+const OSMOSIS_MSG_CREATE_BALANCER_POOL_ID: u64 = 1;
+const OSMOSIS_MSG_CREATE_STABLE_POOL_ID: u64 = 2;
+const OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID: u64 = 3;
+const OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID: u64 = 4;
 
 use crate::{
     osmosis::{
@@ -22,7 +37,7 @@ use crate::{
 };
 
 use andromeda_socket::osmosis::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, Slippage, SwapAmountInRoute,
+    ExecuteMsg, InstantiateMsg, Pool, QueryMsg, Slippage, SwapAmountInRoute,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-osmosis";
@@ -73,6 +88,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::UpdateSwapRouter { swap_router } => {
             execute_update_swap_router(ctx, swap_router)
         }
+        ExecuteMsg::CreatePool { pool_type } => execute_create_pool(ctx, pool_type),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -114,6 +130,105 @@ fn execute_swap_and_forward(
             attr("to_denom", to_denom),
             attr("recipient", recipient.get_addr()),
         ]))
+}
+
+pub fn execute_create_pool(
+    ctx: ExecuteContext,
+    pool_type: Pool,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { info, .. } = ctx;
+    let denom0 = &info.funds[0].denom;
+    let amount0 = &info.funds[0].amount;
+    let denom1 = &info.funds[1].denom;
+    let amount1 = &info.funds[1].amount;
+    let sender = info.sender.to_string();
+
+    let msg: SubMsg = match pool_type {
+        Pool::Balancer {
+            pool_params,
+            pool_assets,
+        } => {
+            let msg = MsgCreateBalancerPool {
+                sender: sender.clone(),
+                pool_params,
+                pool_assets,
+                future_pool_governor: sender,
+            };
+            SubMsg::reply_always(
+                CosmosMsg::Any(AnyMsg {
+                    type_url: "/osmosis.gamm.poolmodels.balancer.v1beta1.MsgCreateBalancerPool"
+                        .to_string(),
+                    value: to_json_binary(&msg)?,
+                }),
+                OSMOSIS_MSG_CREATE_BALANCER_POOL_ID,
+            )
+        }
+        Pool::Stable {
+            pool_params,
+            scaling_factors,
+        } => {
+            let msg = MsgCreateStableswapPool {
+                sender: sender.clone(),
+                pool_params,
+                initial_pool_liquidity: vec![
+                    OsmosisCoin {
+                        denom: denom0.clone(),
+                        amount: amount0.clone().to_string(),
+                    },
+                    OsmosisCoin {
+                        denom: denom1.clone(),
+                        amount: amount1.clone().to_string(),
+                    },
+                ],
+                scaling_factors,
+                future_pool_governor: sender.clone(),
+                scaling_factor_controller: sender.clone(),
+            };
+            SubMsg::reply_always(
+                CosmosMsg::Any(AnyMsg {
+                    type_url: "/osmosis.gamm.poolmodels.stableswap.v1beta1.MsgCreateStableswapPool"
+                        .to_string(),
+                    value: to_json_binary(&msg)?,
+                }),
+                OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
+            )
+        }
+        Pool::Concentrated {
+            tick_spacing,
+            spread_factor,
+        } => {
+            let msg = MsgCreateConcentratedPool {
+                sender,
+                denom0: denom0.clone(),
+                denom1: denom1.clone(),
+                tick_spacing,
+                spread_factor,
+            };
+            SubMsg::reply_always(CosmosMsg::Any(AnyMsg {
+                type_url: "/osmosis.concentratedliquidity.poolmodel.concentrated.v1beta1.MsgCreateConcentratedPool".to_string(),
+                value: to_json_binary(&msg)?,
+            }), OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID)
+        }
+        Pool::CosmWasm {
+            code_id,
+            instantiate_msg,
+        } => {
+            let msg = MsgCreateCosmWasmPool {
+                code_id,
+                instantiate_msg,
+                sender,
+            };
+            SubMsg::reply_always(
+                CosmosMsg::Any(AnyMsg {
+                    type_url: "/osmosis.cosmwasmpool.v1beta1.MsgCreateCosmWasmPool".to_string(),
+                    value: to_json_binary(&msg)?,
+                }),
+                OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID,
+            )
+        }
+    };
+
+    Ok(Response::default().add_submessage(msg))
 }
 
 fn execute_update_swap_router(
@@ -175,6 +290,28 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             }
             Ok(Response::default()
                 .add_attributes(vec![attr("action", "message_forwarded_success")]))
+        }
+        OSMOSIS_MSG_CREATE_BALANCER_POOL_ID => {
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Osmosis balancer pool creation failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+            let msg: MsgCreateBalancerPoolResponse = from_json(&msg.result.unwrap().data.unwrap())?;
+            Ok(Response::default().add_attributes(vec![
+                attr("action", "balancer_pool_created"),
+                attr("pool_id", msg.pool_id.to_string()),
+            ]))
+        }
+        OSMOSIS_MSG_CREATE_STABLE_POOL_ID => {
+            todo!()
+        }
+        OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID => {
+            todo!()
+        }
+        OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID => {
+            todo!()
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),

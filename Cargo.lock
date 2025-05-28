@@ -875,6 +875,7 @@ dependencies = [
  "cw20 2.0.0",
  "cw3",
  "osmosis-std",
+ "prost 0.13.5",
 ]
 
 [[package]]
