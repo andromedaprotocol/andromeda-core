@@ -57,6 +57,8 @@ pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
 // Store the created pair address
 pub const PAIR_ADDRESS: Item<AndrAddr> = Item::new("pair_address");
 
+pub const LP_PAIR_ADDRESS: Item<AndrAddr> = Item::new("lp_pair_address");
+
 // Store liquidity provision parameters during pair creation
 pub const LIQUIDITY_PROVISION_STATE: Item<LiquidityProvisionState> =
     Item::new("liquidity_provision_state");

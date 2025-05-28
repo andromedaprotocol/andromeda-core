@@ -18,6 +18,7 @@ use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_utils::one_coin;
 
+use crate::state::LP_PAIR_ADDRESS;
 use crate::{
     astroport::{
         execute_swap_astroport_msg, handle_astroport_swap_reply,
@@ -32,9 +33,9 @@ use crate::{
 };
 
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairAddressResponse,
-    PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
-    WithdrawLiquidityInner, WithdrawLiquidityMsg,
+    AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, LpPairAddressResponse,
+    PairAddressResponse, PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse,
+    SwapOperation, WithdrawLiquidityInner, WithdrawLiquidityMsg,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -494,6 +495,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             operations,
         )?),
         QueryMsg::PairAddress {} => encode_binary(&query_pair_address(deps)?),
+        QueryMsg::LpPairAddress {} => encode_binary(&query_lp_pair_address(deps)?),
     }
 }
 
@@ -509,6 +511,13 @@ fn query_pair_address(deps: Deps) -> Result<PairAddressResponse, ContractError> 
     let pair_address = PAIR_ADDRESS.may_load(deps.storage)?;
     Ok(PairAddressResponse {
         pair_address: pair_address.map(|addr| addr.to_string()),
+    })
+}
+
+fn query_lp_pair_address(deps: Deps) -> Result<LpPairAddressResponse, ContractError> {
+    let pair_address = LP_PAIR_ADDRESS.may_load(deps.storage)?;
+    Ok(LpPairAddressResponse {
+        lp_pair_address: pair_address,
     })
 }
 
@@ -574,7 +583,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             // Store the pair address
             let pair_addr = AndrAddr::from_string(pair_address.clone());
-            PAIR_ADDRESS.save(deps.storage, &pair_addr)?;
+            LP_PAIR_ADDRESS.save(deps.storage, &pair_addr)?;
 
             Ok(Response::default().add_attributes(vec![
                 attr("action", "create_pair_success"),
@@ -609,6 +618,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         "Could not find pair contract address in response".to_string(),
                     ))
                 })?;
+
+            let pair_addr = AndrAddr::from_string(pair_address.clone());
+            LP_PAIR_ADDRESS.save(deps.storage, &pair_addr)?;
 
             // Load the liquidity provision parameters
             let liquidity_state = LIQUIDITY_PROVISION_STATE.load(deps.storage)?;

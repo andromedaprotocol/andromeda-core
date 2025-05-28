@@ -149,6 +149,8 @@ pub enum QueryMsg {
     },
     #[returns(PairAddressResponse)]
     PairAddress {},
+    #[returns(LpPairAddressResponse)]
+    LpPairAddress {},
 }
 
 #[cw_serde]
@@ -333,4 +335,10 @@ pub struct WithdrawLiquidityInner {}
 pub struct PairAddressResponse {
     /// The pair contract address
     pub pair_address: Option<String>,
+}
+
+#[cw_serde]
+pub struct LpPairAddressResponse {
+    /// The pair contract address
+    pub lp_pair_address: Option<AndrAddr>,
 }
