@@ -7,8 +7,7 @@ use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, ExecuteMsg, ExecuteMsgFns, InstantiateMsg, PairType, QueryMsg,
-    QueryMsgFns,
+    AssetEntry, AssetInfo, ExecuteMsgFns, InstantiateMsg, PairType, QueryMsgFns,
 };
 
 use andromeda_cw20::CW20Contract;
@@ -212,7 +211,7 @@ fn test_onchain_cw20(setup: TestCase) {
         daemon,
         app_contract,
         app_name,
-        kernel,
+        ..
     } = setup;
 
     let app_name_parsed = app_name.replace(' ', "_");
@@ -255,7 +254,7 @@ fn test_onchain_native_to_native(setup: TestCase) {
         daemon,
         app_contract,
         app_name,
-        kernel,
+        ..
     } = setup;
 
     let app_name_parsed = app_name.replace(' ', "_");
