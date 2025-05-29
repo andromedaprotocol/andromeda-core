@@ -14,17 +14,21 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
-use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
-use osmosis_std::types::osmosis::concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPool;
-use osmosis_std::types::osmosis::cosmwasmpool::v1beta1::MsgCreateCosmWasmPool;
-use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::MsgCreateBalancerPool;
-use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::MsgCreateStableswapPool;
+use osmosis_std::types::{
+    cosmos::base::v1beta1::Coin as OsmosisCoin,
+    osmosis::{
+        concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPool,
+        cosmwasmpool::v1beta1::MsgCreateCosmWasmPool,
+        gamm::poolmodels::{
+            balancer::v1beta1::MsgCreateBalancerPool, stableswap::v1beta1::MsgCreateStableswapPool,
+        },
+    },
+};
 
-const OSMOSIS_MSG_CREATE_BALANCER_POOL_ID: u64 = 3;
-const OSMOSIS_MSG_CREATE_STABLE_POOL_ID: u64 = 4;
-const OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID: u64 = 5;
-const OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID: u64 = 6;
-
+use crate::osmosis::{
+    OSMOSIS_MSG_CREATE_BALANCER_POOL_ID, OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID,
+    OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
+};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,

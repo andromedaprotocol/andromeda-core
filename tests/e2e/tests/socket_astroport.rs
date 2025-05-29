@@ -6,15 +6,12 @@ use std::sync::Once;
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, ExecuteMsg, ExecuteMsgFns, InstantiateMsg, PairType, QueryMsg,
-    QueryMsgFns,
-};
+use andromeda_socket::astroport::{AssetEntry, AssetInfo, ExecuteMsgFns, InstantiateMsg, PairType};
 
 use andromeda_cw20::CW20Contract;
 use andromeda_fungible_tokens::cw20::ExecuteMsg as Cw20ExecuteMsg;
 use andromeda_std::{
-    amp::{messages::AMPMsg, AndrAddr, Recipient},
+    amp::{AndrAddr, Recipient},
     common::denom::Asset,
 };
 use cosmwasm_std::{coin, to_json_binary, Decimal, Uint128};
@@ -32,7 +29,6 @@ struct TestCase {
     daemon: DaemonBase<Wallet>,
     app_contract: AppContract<DaemonBase<Wallet>>,
     app_name: String,
-    kernel: andromeda_kernel::KernelContract<DaemonBase<Wallet>>,
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
@@ -175,7 +171,6 @@ fn setup(
         daemon,
         app_contract,
         app_name,
-        kernel,
     }
 }
 
@@ -212,7 +207,7 @@ fn test_onchain_cw20(setup: TestCase) {
         daemon,
         app_contract,
         app_name,
-        kernel,
+        ..
     } = setup;
 
     let app_name_parsed = app_name.replace(' ', "_");
@@ -255,7 +250,7 @@ fn test_onchain_native_to_native(setup: TestCase) {
         daemon,
         app_contract,
         app_name,
-        kernel,
+        ..
     } = setup;
 
     let app_name_parsed = app_name.replace(' ', "_");
