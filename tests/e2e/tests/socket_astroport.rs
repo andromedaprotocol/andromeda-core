@@ -1,3 +1,4 @@
+use andromeda_socket::astroport::QueryMsgFns;
 use lazy_static::lazy_static;
 use std::str::FromStr;
 use std::sync::Mutex;
@@ -7,7 +8,8 @@ use andromeda_app::app::AppComponent;
 use andromeda_app_contract::AppContract;
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, ExecuteMsgFns, InstantiateMsg, PairType, QueryMsgFns,
+    AssetEntry, AssetInfo, ExecuteMsg as SocketAstroportExecuteMsg, ExecuteMsgFns, InstantiateMsg,
+    PairType,
 };
 
 use andromeda_cw20::CW20Contract;
@@ -54,7 +56,7 @@ fn setup(
 
     let _lock = DAEMON_MUTEX.lock().unwrap();
 
-    let socket_astroport_type = "socket-astroport@0.1.6-b.1";
+    let socket_astroport_type = "socket-astroport@0.1.7-b.1";
     let socket_astroport_component_name = "socket-astroport";
     let app_name = format!(
         "socket astroport with recipient {}",
@@ -128,8 +130,8 @@ fn setup(
 
     // Add CW20 component for creating native CW20 tokens on Neutron
     let cw20_init_msg = andromeda_fungible_tokens::cw20::InstantiateMsg {
-        name: "DimiTokenzz".to_string(),
-        symbol: "DIMIZZ".to_string(),
+        name: "TestToken".to_string(),
+        symbol: "Test".to_string(),
         decimals: 6,
         initial_balances: vec![cw20::Cw20Coin {
             address: daemon.sender().address().to_string(),
@@ -169,6 +171,22 @@ fn setup(
             &[],
         )
         .unwrap();
+
+    let socket_astroport_contract = SocketAstroportContract::new(daemon.clone());
+    socket_astroport_contract.upload().unwrap();
+
+    // Instantiate the fresh contract
+    let fresh_init_msg = InstantiateMsg {
+        kernel_address: kernel.address().unwrap().to_string(),
+        owner: None,
+        swap_router: None,
+    };
+
+    socket_astroport_contract
+        .instantiate(&fresh_init_msg, None, &[])
+        .unwrap();
+    let fresh_socket_addr = socket_astroport_contract.address().unwrap().to_string();
+    println!("🚀 Using fresh contract at: {}", fresh_socket_addr);
 
     TestCase {
         daemon,
@@ -506,12 +524,10 @@ fn test_create_pair_and_provide_liquidity_through_kernel(setup: TestCase) {
         "Kernel should successfully execute the message. Error: {:?}",
         result.err()
     );
-
-    println!("✅ Kernel execution succeeded!");
 }
 
 #[rstest]
-fn test_full_liquidity_cycle_with_balance_verification(setup: TestCase) {
+fn test_full_liquidity_cycle_with_fresh_contract(setup: TestCase) {
     let TestCase {
         daemon,
         app_contract,
@@ -524,10 +540,30 @@ fn test_full_liquidity_cycle_with_balance_verification(setup: TestCase) {
     let cw20_contract = CW20Contract::new(daemon.clone());
     cw20_contract.set_address(&Addr::unchecked(cw20_token_address.clone()));
 
-    let neutron_native_denom = "untrn"; // Neutron's native token
+    let socket_astroport_contract = SocketAstroportContract::new(daemon.clone());
+    let upload_res = socket_astroport_contract.upload().unwrap();
+    println!(
+        "📦 Uploaded fresh contract with code_id: {}",
+        upload_res.uploaded_code_id().unwrap()
+    );
+
+    // Instantiate the fresh contract
+    let fresh_init_msg = InstantiateMsg {
+        kernel_address: kernel.address().unwrap().to_string(),
+        owner: None,
+        swap_router: None,
+    };
+
+    socket_astroport_contract
+        .instantiate(&fresh_init_msg, None, &[])
+        .unwrap();
+    let fresh_socket_addr = socket_astroport_contract.address().unwrap().to_string();
+    println!("🚀 Using fresh contract at: {}", fresh_socket_addr);
+
+    let neutron_native_denom = "untrn";
     let sender_address = daemon.sender().address().to_string();
 
-    println!("=== Full Liquidity Cycle Test ===");
+    println!("=== Fresh Contract Liquidity Cycle Test ===");
     println!("Socket address: {}", socket_astroport_addr);
     println!("CW20 token address: {}", cw20_token_address);
     println!("Sender address: {}", sender_address);
@@ -562,22 +598,22 @@ fn test_full_liquidity_cycle_with_balance_verification(setup: TestCase) {
         },
     ];
 
-    // Transfer CW20 tokens to the socket contract
-    println!("=== Step 1: Transferring CW20 tokens to socket ===");
+    // Transfer CW20 tokens to the fresh socket contract (not the old app one)
+    println!("=== Step 1: Transferring CW20 tokens to fresh socket ===");
     let cw20_transfer_msg = Cw20ExecuteMsg::Transfer {
-        recipient: AndrAddr::from_string(socket_astroport_addr.clone()),
+        recipient: AndrAddr::from_string(fresh_socket_addr.clone()),
         amount: cw20_amount,
     };
 
     let result = cw20_contract.execute(&cw20_transfer_msg, &[]);
     assert!(
         result.is_ok(),
-        "Should successfully transfer CW20 tokens to socket contract. Error: {:?}",
+        "Should successfully transfer CW20 tokens to fresh socket contract. Error: {:?}",
         result.err()
     );
 
-    // Create pair and provide liquidity through kernel
-    println!("=== Step 2: Creating pair and providing liquidity ===");
+    // Create pair and provide liquidity through kernel using fresh contract
+    println!("=== Step 2: Creating pair and providing liquidity with fresh contract ===");
     let socket_msg = andromeda_socket::astroport::ExecuteMsg::CreatePairAndProvideLiquidity {
         pair_type,
         asset_infos,
@@ -585,11 +621,11 @@ fn test_full_liquidity_cycle_with_balance_verification(setup: TestCase) {
         assets,
         slippage_tolerance: Some(Decimal::percent(10)),
         auto_stake: Some(false),
-        receiver: Some(sender_address.clone()), // LP tokens should go to our address
+        receiver: Some(sender_address.clone()),
     };
 
     let amp_message = AMPMsg::new(
-        AndrAddr::from_string(socket_astroport_addr.clone()),
+        AndrAddr::from_string(fresh_socket_addr.clone()),
         to_json_binary(&socket_msg).unwrap(),
         Some(vec![coin(native_amount.u128(), neutron_native_denom)]),
     );
@@ -609,86 +645,92 @@ fn test_full_liquidity_cycle_with_balance_verification(setup: TestCase) {
 
     println!("✅ Liquidity provided successfully through kernel!");
 
-    // Wait and get pair address
-    println!("=== Step 3: Verifying pair creation ===");
+    // Extract LP token denom from the transaction response
+    let tx_response = result.unwrap();
+    let mut lp_token_denom: Option<String> = None;
+
+    // Look for the create_denom event to find the LP token denom
+    for event in &tx_response.events {
+        if event.r#type == "create_denom" {
+            for attr in &event.attributes {
+                if attr.key == "new_token_denom".as_bytes() {
+                    lp_token_denom = Some(String::from_utf8_lossy(&attr.value).to_string());
+                    break;
+                }
+            }
+        }
+    }
+
+    let lp_token_denom =
+        lp_token_denom.expect("LP token denom should be found in transaction events");
+    println!("🪙 LP Token Denom: {}", lp_token_denom);
+
+    // Wait and get pair address using the NEW query!
+    println!("=== Step 3: Testing NEW LpPairAddress query ===");
     std::thread::sleep(std::time::Duration::from_secs(5));
 
-    let socket_astroport_contract = SocketAstroportContract::new(daemon.clone());
-    socket_astroport_contract.set_address(&Addr::unchecked(socket_astroport_addr.clone()));
-
-    let pair_address_response = socket_astroport_contract.pair_address();
+    // This should now work with our fresh contract that has the LpPairAddress query!
+    let pair_address_response = socket_astroport_contract.lp_pair_address();
+    println!("NEW LP Pair address response: {:?}", pair_address_response);
     assert!(
         pair_address_response.is_ok(),
-        "Should be able to query pair address. Error: {:?}",
+        "Should be able to query LP pair address with the NEW query. Error: {:?}",
         pair_address_response.err()
     );
 
-    let pair_address = pair_address_response.unwrap().pair_address;
+    let pair_address = pair_address_response.unwrap().lp_pair_address;
     assert!(
         pair_address.is_some(),
-        "Pair address should be set after creating pair"
+        "LP Pair address should be set after creating pair"
     );
 
     let pair_address = pair_address.unwrap();
-    println!("📍 Pair contract address: {}", pair_address);
+    println!("📍 LP Pair contract address: {}", pair_address);
 
-    // Step 4: Test withdraw liquidity functionality
-    println!("=== Step 4: Testing withdraw liquidity ===");
+    let withdraw_msg = SocketAstroportExecuteMsg::WithdrawLiquidity {};
+    let funds = vec![coin(20, lp_token_denom.clone())];
 
-    // IMPORTANT: We DO have LP tokens! They were minted and sent to our address during liquidity provision
-    // However, to withdraw liquidity properly, we need:
-    // 1. The LP token contract address (not the pair address)
-    // 2. To call withdraw_liquidity on the LP token contract
-
-    // For a complete test, we would query the pair contract to get the LP token address:
-    // let lp_token_address = query_pair_lp_token(pair_address);
-
-    // For demonstration, let's show that we're calling withdraw with the pair address
-    // (this is conceptually correct - the socket needs to know which pair to withdraw from)
-    let withdraw_msg = andromeda_socket::astroport::ExecuteMsg::WithdrawLiquidity {
-        pair_address: AndrAddr::from_string(pair_address.clone()), // This tells socket which pair
-        sender: sender_address.clone(),
-    };
-
-    // Create AMP message for withdraw
     let withdraw_amp_message = AMPMsg::new(
-        AndrAddr::from_string(socket_astroport_addr.clone()),
+        AndrAddr::from_string(fresh_socket_addr.clone()),
         to_json_binary(&withdraw_msg).unwrap(),
-        None, // No funds needed for this call
+        Some(funds.clone()),
     );
 
-    println!("📝 Withdraw liquidity message created");
-    println!("💡 Note: We have LP tokens from the liquidity provision!");
-    println!("🔗 Pair address: {}", pair_address);
-
-    // Actually execute the withdraw liquidity call
     println!("🔄 Executing withdraw liquidity call...");
     let withdraw_result = kernel.execute(
         &andromeda_std::os::kernel::ExecuteMsg::Send {
             message: withdraw_amp_message,
         },
-        &[], // No funds needed for this call
+        &[funds[0].clone()],
     );
 
-    println!(
-        "📋 Withdraw liquidity execution result: {:?}",
-        withdraw_result
+    assert!(
+        withdraw_result.is_ok(),
+        "Withdraw liquidity should succeed. Error: {:?}",
+        withdraw_result.err()
     );
-    // The socket implementation should handle getting the LP token address from the pair
 
-    // Demonstrate complete functionality
-    println!("=== Step 5: Summary of completed operations ===");
-    println!("✅ According to Astroport mechanics:");
-    println!("   - LP tokens were minted during liquidity provision");
-    println!("   - LP tokens were sent to: {}", sender_address);
-    println!("   - To withdraw liquidity, LP tokens need to be sent back to the socket");
-    println!("   - The withdrawal would call withdraw_liquidity on the pair contract");
+    let tx_response = withdraw_result.unwrap();
+    let mut funds_received = false;
 
-    // This demonstrates the complete flow is working
-    println!("✅ Full liquidity cycle test completed successfully!");
-    println!("   - Pair creation: ✅");
-    println!("   - Liquidity provision: ✅");
-    println!("   - Pair address verification: ✅");
-    println!("   - Withdraw functionality implemented: ✅");
-    println!("   - Withdraw message structure tested: ✅");
+    // Look for refund_assets or transfer events to confirm we got assets back
+    for event in &tx_response.events {
+        if event.r#type == "wasm" {
+            for attr in &event.attributes {
+                if attr.key == "refund_assets".as_bytes() {
+                    let refunded_assets = String::from_utf8_lossy(&attr.value);
+                    println!("💰 Received refunded assets: {}", refunded_assets);
+                    funds_received = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    assert!(
+        funds_received,
+        "Should receive refunded assets from liquidity withdrawal"
+    );
+
+    println!("✅ Withdrawal completed successfully with funds received back!");
 }

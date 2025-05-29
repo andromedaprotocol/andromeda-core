@@ -44,6 +44,7 @@ pub enum AstroportFactoryExecuteMsg {
         asset_infos: Vec<AssetInfo>,
         init_params: Option<Binary>,
     },
+    WithdrawLiquidity {},
 }
 
 pub const FORWARD_REPLY_STATE: Item<ForwardReplyState> = Item::new("forward_reply_state");
@@ -62,3 +63,6 @@ pub const LP_PAIR_ADDRESS: Item<AndrAddr> = Item::new("lp_pair_address");
 // Store liquidity provision parameters during pair creation
 pub const LIQUIDITY_PROVISION_STATE: Item<LiquidityProvisionState> =
     Item::new("liquidity_provision_state");
+
+// Store withdrawal information during liquidity withdrawal
+pub const WITHDRAWAL_STATE: Item<String> = Item::new("withdrawal_receiver");

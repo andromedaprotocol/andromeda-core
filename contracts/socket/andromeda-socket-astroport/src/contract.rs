@@ -13,12 +13,13 @@ use cosmwasm_std::{
     attr, entry_point, from_json, wasm_execute, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
     Reply, Response, StdError, Uint128,
 };
+use cosmwasm_std::{CosmosMsg, SubMsg};
 
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_utils::one_coin;
 
-use crate::state::LP_PAIR_ADDRESS;
+use crate::astroport::ASTROPORT_MSG_WITHDRAW_LIQUIDITY_ID;
 use crate::{
     astroport::{
         execute_swap_astroport_msg, handle_astroport_swap_reply,
@@ -28,14 +29,15 @@ use crate::{
     },
     state::{
         AstroportFactoryExecuteMsg, ForwardReplyState, LiquidityProvisionState, FACTORY,
-        FORWARD_REPLY_STATE, LIQUIDITY_PROVISION_STATE, PAIR_ADDRESS, SWAP_ROUTER,
+        FORWARD_REPLY_STATE, LIQUIDITY_PROVISION_STATE, LP_PAIR_ADDRESS, PAIR_ADDRESS, SWAP_ROUTER,
+        WITHDRAWAL_STATE,
     },
 };
 
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, LpPairAddressResponse,
-    PairAddressResponse, PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse,
-    SwapOperation, WithdrawLiquidityInner, WithdrawLiquidityMsg,
+    AssetEntry, AssetInfo, AstroportAsset, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
+    LpPairAddressResponse, PairAddressResponse, PairExecuteMsg, PairType, QueryMsg,
+    SimulateSwapOperationResponse, SwapOperation,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -129,10 +131,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             auto_stake,
             receiver,
         ),
-        ExecuteMsg::WithdrawLiquidity {
-            pair_address,
-            sender,
-        } => withdraw_liquidity(ctx, pair_address, sender),
+        ExecuteMsg::WithdrawLiquidity {} => withdraw_liquidity(ctx),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -461,26 +460,29 @@ fn create_pair_and_provide_liquidity(
         ]))
 }
 
-fn withdraw_liquidity(
-    ctx: ExecuteContext,
-    pair_address: AndrAddr,
-    sender: String,
-) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, .. } = ctx;
+fn withdraw_liquidity(ctx: ExecuteContext) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, info, .. } = ctx;
+    let lp_pair_address = LP_PAIR_ADDRESS.load(deps.storage)?;
+    let lp_pair_address_raw = lp_pair_address.get_raw_address(&deps.as_ref())?;
+    let funds = info.funds.first().unwrap();
 
-    let pair_addr_raw = pair_address.get_raw_address(&deps.as_ref())?;
+    // Save withdrawal state to track the original sender
+    WITHDRAWAL_STATE.save(deps.storage, &info.sender.to_string())?;
 
-    let withdraw_msg = cosmwasm_std::to_json_binary(&WithdrawLiquidityMsg {
-        withdraw_liquidity: WithdrawLiquidityInner {},
-    })?;
+    let msg = AstroportFactoryExecuteMsg::WithdrawLiquidity {};
 
-    let wasm_msg = wasm_execute(&pair_addr_raw, &withdraw_msg, vec![])?;
+    let result = wasm_execute(lp_pair_address_raw, &msg, vec![funds.clone()])?;
 
-    Ok(Response::new().add_message(wasm_msg).add_attributes(vec![
-        attr("action", "withdraw_liquidity"),
-        attr("pair_address", pair_addr_raw.to_string()),
-        attr("sender", sender),
-    ]))
+    let sub_message =
+        SubMsg::reply_always(CosmosMsg::Wasm(result), ASTROPORT_MSG_WITHDRAW_LIQUIDITY_ID);
+
+    Ok(Response::new()
+        .add_attributes(vec![
+            attr("action", "withdraw_liquidity"),
+            attr("pair_address", lp_pair_address.to_string()),
+            attr("sender", info.sender.clone()),
+        ])
+        .add_submessage(sub_message))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -686,6 +688,73 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             Ok(Response::default()
                 .add_attributes(vec![attr("action", "provide_liquidity_success")]))
+        }
+        ASTROPORT_MSG_WITHDRAW_LIQUIDITY_ID => {
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Astroport withdraw liquidity failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+
+            // Load the withdrawal state to get sender information
+            let withdrawal_state = WITHDRAWAL_STATE.load(deps.storage)?;
+            WITHDRAWAL_STATE.remove(deps.storage);
+
+            // Parse the events to find what assets were refunded
+            let response = msg.result.unwrap();
+            let mut messages = vec![];
+
+            // Look for refund_assets in the events and send them back to the user
+            for event in &response.events {
+                if event.ty == "wasm" {
+                    for attr in &event.attributes {
+                        if attr.key == "refund_assets" {
+                            // Parse refund_assets: "63neutron1vsy34j8w9qwftp9p3pr74y8yvsdu3lt5rcx9t8s7gsxprenlqexssavs0j, 6untrn"
+                            let assets: Vec<&str> = attr.value.split(", ").collect();
+
+                            for asset_str in assets {
+                                let asset_str = asset_str.trim();
+                                if asset_str.is_empty() {
+                                    continue;
+                                }
+
+                                // Simple parsing: amount at start, rest is either contract address or denom
+                                let (amount_str, remainder) = asset_str.split_at(
+                                    asset_str
+                                        .find(|c: char| !c.is_ascii_digit())
+                                        .unwrap_or(asset_str.len()),
+                                );
+
+                                if let Ok(amount) = amount_str.parse::<u128>() {
+                                    if amount > 0 {
+                                        let asset = if remainder.starts_with("neutron1") {
+                                            Asset::Cw20Token(AndrAddr::from_string(
+                                                remainder.to_string(),
+                                            ))
+                                        } else {
+                                            Asset::NativeToken(remainder.to_string())
+                                        };
+
+                                        let transfer_msg = asset.transfer(
+                                            &deps.as_ref(),
+                                            &withdrawal_state,
+                                            amount.into(),
+                                        )?;
+                                        messages.push(transfer_msg.msg);
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            Ok(Response::new().add_messages(messages).add_attributes(vec![
+                attr("action", "withdraw_liquidity_success"),
+                attr("recipient", withdrawal_state),
+            ]))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),
