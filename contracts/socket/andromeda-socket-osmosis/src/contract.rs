@@ -10,17 +10,14 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, from_json, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
-    SubMsg,
+    attr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPool;
 use osmosis_std::types::osmosis::cosmwasmpool::v1beta1::MsgCreateCosmWasmPool;
-use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::{
-    MsgCreateBalancerPool, MsgCreateBalancerPoolResponse,
-};
+use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::MsgCreateBalancerPool;
 use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::MsgCreateStableswapPool;
 
 const OSMOSIS_MSG_CREATE_BALANCER_POOL_ID: u64 = 3;
@@ -137,18 +134,24 @@ pub fn execute_create_pool(
     pool_type: Pool,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { env, info, .. } = ctx;
-    let denom0 = &info.funds[0].denom;
-    let amount0 = &info.funds[0].amount;
-    let denom1 = &info.funds[1].denom;
-    let amount1 = &info.funds[1].amount;
-    let sender = info.sender.to_string();
+    let funds = info.funds.as_slice();
+    if funds.len() != 2 {
+        return Err(ContractError::InvalidAsset {
+            asset: "Expected exactly 2 coins for pool creation".to_string(),
+        });
+    }
+    let denom0 = &funds[0].denom;
+    let amount0 = &funds[0].amount;
+    let denom1 = &funds[1].denom;
+    let amount1 = &funds[1].amount;
+
+    let contract_address: String = env.contract.address.into();
 
     let msg: SubMsg = match pool_type {
         Pool::Balancer {
             pool_params,
             pool_assets,
         } => {
-            let contract_address: String = env.contract.address.into();
             let msg = MsgCreateBalancerPool {
                 sender: contract_address.clone(),
                 pool_params,
@@ -167,7 +170,7 @@ pub fn execute_create_pool(
             scaling_factors,
         } => {
             let msg = MsgCreateStableswapPool {
-                sender: sender.clone(),
+                sender: contract_address.clone(),
                 pool_params,
                 initial_pool_liquidity: vec![
                     OsmosisCoin {
@@ -180,8 +183,8 @@ pub fn execute_create_pool(
                     },
                 ],
                 scaling_factors,
-                future_pool_governor: sender.clone(),
-                scaling_factor_controller: sender.clone(),
+                future_pool_governor: contract_address.clone(),
+                scaling_factor_controller: contract_address.clone(),
             };
             SubMsg::reply_always(msg, OSMOSIS_MSG_CREATE_STABLE_POOL_ID)
         }
@@ -190,7 +193,7 @@ pub fn execute_create_pool(
             spread_factor,
         } => {
             let msg = MsgCreateConcentratedPool {
-                sender,
+                sender: contract_address.clone(),
                 denom0: denom0.clone(),
                 denom1: denom1.clone(),
                 tick_spacing,
@@ -205,7 +208,7 @@ pub fn execute_create_pool(
             let msg = MsgCreateCosmWasmPool {
                 code_id,
                 instantiate_msg,
-                sender,
+                sender: contract_address.clone(),
             };
             SubMsg::reply_always(msg, OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID)
         }
@@ -281,11 +284,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))));
             }
-            let msg: MsgCreateBalancerPoolResponse = from_json(&msg.result.unwrap().data.unwrap())?;
-            Ok(Response::default().add_attributes(vec![
-                attr("action", "balancer_pool_created"),
-                attr("pool_id", msg.pool_id.to_string()),
-            ]))
+            Ok(Response::default().add_attributes(vec![attr("action", "balancer_pool_created")]))
         }
         OSMOSIS_MSG_CREATE_STABLE_POOL_ID => {
             if msg.result.is_err() {
