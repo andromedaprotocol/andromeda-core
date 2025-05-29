@@ -175,11 +175,11 @@ pub fn execute_create_pool(
                 initial_pool_liquidity: vec![
                     OsmosisCoin {
                         denom: denom0.clone(),
-                        amount: amount0.clone().to_string(),
+                        amount: amount0.to_string(),
                     },
                     OsmosisCoin {
                         denom: denom1.clone(),
-                        amount: amount1.clone().to_string(),
+                        amount: amount1.to_string(),
                     },
                 ],
                 scaling_factors,
