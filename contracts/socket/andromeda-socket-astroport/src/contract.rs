@@ -35,9 +35,9 @@ use crate::{
 };
 
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, AstroportAsset, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    LpPairAddressResponse, PairAddressResponse, PairExecuteMsg, PairType, QueryMsg,
-    SimulateSwapOperationResponse, SwapOperation,
+    AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, LpPairAddressResponse,
+    PairAddressResponse, PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse,
+    SwapOperation,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";

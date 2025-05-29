@@ -22,11 +22,6 @@ pub enum PairType {
     /// Custom pair type
     Custom(String),
 }
-#[cw_serde]
-pub struct AstroportAsset {
-    pub info: AssetInfo,
-    pub amount: Uint128,
-}
 
 #[andr_exec]
 #[cw_serde]
