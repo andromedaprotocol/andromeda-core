@@ -41,9 +41,9 @@ fn setup() -> TestCase {
     //         &[],
     //     )
     //     .unwrap();
-    osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
+    // osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
     osmosis_socket_contract.set_address(&Addr::unchecked(
-        "osmo12l60kgf8rqxwhaqarnrwczsvtm48fale3kj8l85xt7w6dazxaaaqm8jx89".to_string(),
+        "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6".to_string(),
     ));
 
     TestCase {
@@ -85,6 +85,7 @@ fn test_create_pool(setup: TestCase) {
     };
 
     // The contract itself should have those funds, I funded the contract then called this function
+    // The contract receives the lp tokens and then transfers them to the user in the reply function
     let res = osmosis_socket_contract
         .create_pool(
             andromeda_socket::osmosis::Pool::Balancer {
@@ -107,10 +108,10 @@ fn test_withdraw_pool(setup: TestCase) {
     let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
     println!("socket_osmosis_addr: {}", socket_osmosis_addr);
 
-    let wallet_address = "osmo18epw87zc64a6m63323l6je0nlwdhnjpghtsyq8".to_string();
+    let _wallet_address = "osmo18epw87zc64a6m63323l6je0nlwdhnjpghtsyq8".to_string();
     let withdraw_msg = MsgExitPool {
         sender: socket_osmosis_addr,
-        pool_id: 939,
+        pool_id: 940, // Don't forget to change the pool id if you created a new one
         share_in_amount: "50000000000000000000".to_string(),
         token_out_mins: vec![
             OsmosisCoin {
@@ -123,14 +124,8 @@ fn test_withdraw_pool(setup: TestCase) {
             },
         ],
     };
-
-    // osmosis_socket_contract
-    //     .withdraw_pool(withdraw_msg, &[])
-    //     .unwrap();
-
-    // My wallet is sending a message with funds that it doesn't have
+    // At this point, the lp tokens are in the user's wallet
     osmosis_socket_contract
-        .withdraw_pool(withdraw_msg, &[coin(50000000000000000000, "gamm/pool/939")])
+        .withdraw_pool(withdraw_msg, &[coin(50000000000000000000, "gamm/pool/940")]) // The denom will need to be updated if you created a new pool
         .unwrap();
-    // I need to send the gam funds to my wallet
 }
