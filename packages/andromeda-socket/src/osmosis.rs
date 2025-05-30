@@ -4,8 +4,10 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Decimal, Uint128};
-use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams;
 use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
+use osmosis_std::types::osmosis::gamm::{
+    poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams, v1beta1::MsgExitPool,
+};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -31,6 +33,9 @@ pub enum ExecuteMsg {
     },
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     CreatePool { pool_type: Pool },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    WithdrawPool { withdraw_msg: MsgExitPool },
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },

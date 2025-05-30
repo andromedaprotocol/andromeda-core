@@ -10,10 +10,14 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
+    attr, ensure, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, Uint128,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
+
+use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::MsgCreateBalancerPoolResponse;
+use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
     osmosis::{
@@ -28,7 +32,9 @@ use osmosis_std::types::{
 use crate::osmosis::{
     OSMOSIS_MSG_CREATE_BALANCER_POOL_ID, OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID,
     OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
+    OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
+use crate::state::{POOL_ID, SPENDER};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -90,6 +96,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             execute_update_swap_router(ctx, swap_router)
         }
         ExecuteMsg::CreatePool { pool_type } => execute_create_pool(ctx, pool_type),
+        ExecuteMsg::WithdrawPool { withdraw_msg } => execute_withdraw_pool(ctx, withdraw_msg),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -137,7 +144,9 @@ pub fn execute_create_pool(
     ctx: ExecuteContext,
     pool_type: Pool,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { env, info, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     let funds = info.funds.as_slice();
     if funds.len() != 2 {
         return Err(ContractError::InvalidAsset {
@@ -150,6 +159,8 @@ pub fn execute_create_pool(
     let amount1 = &funds[1].amount;
 
     let contract_address: String = env.contract.address.into();
+
+    SPENDER.save(deps.storage, &info.sender.to_string())?;
 
     let msg: SubMsg = match pool_type {
         Pool::Balancer {
@@ -221,6 +232,16 @@ pub fn execute_create_pool(
     Ok(Response::default().add_submessage(msg))
 }
 
+fn execute_withdraw_pool(
+    _ctx: ExecuteContext,
+    withdraw_msg: MsgExitPool,
+) -> Result<Response, ContractError> {
+    // let pool_id = POOL_ID.load(ctx.deps.storage)?;
+    // withdraw_msg.pool_id = pool_id;
+    let sub_msg = SubMsg::reply_always(withdraw_msg, OSMOSIS_MSG_WITHDRAW_POOL_ID);
+    Ok(Response::default().add_submessage(sub_msg))
+}
+
 fn execute_update_swap_router(
     ctx: ExecuteContext,
     swap_router: AndrAddr,
@@ -288,7 +309,109 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))));
             }
-            Ok(Response::default().add_attributes(vec![attr("action", "balancer_pool_created")]))
+
+            let response = msg.result.unwrap();
+
+            // let mut spender: String = String::default();
+            // for event in &response.events {
+            //     if event.ty == "coin_spent" {
+            //         for attr in &event.attributes {
+            //             if attr.key == "spender" {
+            //                 spender = attr.value.clone();
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
+            // ensure!(
+            //     !spender.is_empty(),
+            //     ContractError::Std(StdError::generic_err("Spender not found".to_string()))
+            // );
+
+            // // This was returning an empty string for some reason
+            // // Event { r#type: "pool_created", attributes: [EventAttribute { key: b"pool_id", value: b"938", index: true },
+            // let mut pool_id: String = String::default();
+            // for event in &response.events {
+            //     if event.ty == "pool_created" {
+            //         for attr in &event.attributes {
+            //             if attr.key == "pool_id" {
+            //                 pool_id = attr.value.clone();
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
+            // ensure!(
+            //     !pool_id.is_empty(),
+            //     ContractError::Std(StdError::generic_err("Pool ID not found".to_string()))
+            // );
+
+            // let mut raw_amount: String = String::default();
+
+            // for event in &response.events {
+            //     if event.ty == "coinbase" {
+            //         for attr in &event.attributes {
+            //             if attr.key == "amount" {
+            //                 raw_amount = attr.value.clone();
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
+            // ensure!(
+            //     !raw_amount.is_empty(),
+            //     ContractError::Std(StdError::generic_err("Raw amount not found".to_string()))
+            // );
+
+            // let mut amount_of_lp_tokens: u128 = 0;
+            // let mut denom_of_lp_tokens: String = String::default();
+
+            // if !raw_amount.is_empty() {
+            //     // Split at the first non-digit character
+            //     let first_non_digit_index =
+            //         raw_amount.find(|c: char| !c.is_ascii_digit()).unwrap_or(0);
+            //     let amount = &raw_amount[..first_non_digit_index];
+            //     let denom = &raw_amount[first_non_digit_index..];
+
+            //     println!("Amount: {}", amount);
+            //     println!("Denomination: {}", denom);
+
+            //     // You can store them for later use:
+            //     let amount: u128 = amount.parse().expect("Invalid numeric amount");
+            //     let denom = denom.to_string();
+            //     amount_of_lp_tokens = amount;
+            //     denom_of_lp_tokens = denom;
+
+            //     // Now `amount` is a number, and `denom` is a string like "gamm/pool/938"
+            // } else {
+            //     println!("Amount attribute not found");
+            // }
+
+            // Query this contract's balances
+            let balances = deps.querier.query_all_balances(env.contract.address)?;
+            // Extract the denom that contains "gamm/pool/"
+            let lp_token = balances
+                .iter()
+                .find(|coin| coin.denom.contains("gamm/pool/"))
+                .ok_or(ContractError::Std(StdError::generic_err(
+                    "LP token not found".to_string(),
+                )))?;
+
+            let spender = SPENDER.load(deps.storage)?;
+            // Tranfer lp token to original sender
+            let msg = CosmosMsg::Bank(BankMsg::Send {
+                to_address: spender,
+                amount: vec![lp_token.clone()],
+            });
+
+            // let pool_id_uint128 = pool_id.parse::<Uint128>().unwrap();
+            // POOL_ID.save(deps.storage, &pool_id_uint128)?;
+            // let _lp_token = format!("gamm/pool/{}", pool_id);
+
+            Ok(Response::default().add_message(msg).add_attributes(vec![
+                attr("action", "balancer_pool_created"),
+                // attr("pool_id", pool_id.to_string()),
+            ]))
         }
         OSMOSIS_MSG_CREATE_STABLE_POOL_ID => {
             if msg.result.is_err() {
@@ -317,6 +440,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 ))));
             }
             Ok(Response::default().add_attributes(vec![attr("action", "cosmwasm_pool_created")]))
+        }
+        OSMOSIS_MSG_WITHDRAW_POOL_ID => {
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Osmosis pool withdrawal failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+            Ok(Response::default().add_attributes(vec![attr("action", "pool_withdrawn")]))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),

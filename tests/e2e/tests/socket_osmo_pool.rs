@@ -1,6 +1,5 @@
 use andromeda_socket::osmosis::ExecuteMsgFns;
 use andromeda_socket_osmosis::SocketOsmosisContract;
-
 use cosmwasm_std::coin;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
@@ -8,7 +7,7 @@ use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 use e2e::constants::OSMO_5;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
-    osmosis::gamm::v1beta1::{PoolAsset, PoolParams},
+    osmosis::gamm::v1beta1::{MsgExitPool, PoolAsset, PoolParams},
 };
 use rstest::{fixture, rstest};
 
@@ -28,6 +27,7 @@ fn setup() -> TestCase {
     let osmosis_socket_contract = SocketOsmosisContract::new(daemon.clone());
 
     // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
+    // Make sure to fund the contract after its instantiation
     // osmosis_socket_contract.upload().unwrap();
     // osmosis_socket_contract
     //     .instantiate(
@@ -41,8 +41,9 @@ fn setup() -> TestCase {
     //         &[],
     //     )
     //     .unwrap();
+    osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
     osmosis_socket_contract.set_address(&Addr::unchecked(
-        "osmo1wrkp789lzu53w8g20avhzjnm7d8xmmuqmx53ytcqgwng0mh00a7sffsjhd".to_string(),
+        "osmo12l60kgf8rqxwhaqarnrwczsvtm48fale3kj8l85xt7w6dazxaaaqm8jx89".to_string(),
     ));
 
     TestCase {
@@ -66,7 +67,7 @@ fn test_create_pool(setup: TestCase) {
                 denom: "uosmo".to_string(),
                 amount: "10000000".to_string(),
             }),
-            weight: "500000".to_string(),
+            weight: "50000".to_string(),
         },
         PoolAsset {
             token: Some(OsmosisCoin {
@@ -84,7 +85,7 @@ fn test_create_pool(setup: TestCase) {
     };
 
     // The contract itself should have those funds, I funded the contract then called this function
-    osmosis_socket_contract
+    let res = osmosis_socket_contract
         .create_pool(
             andromeda_socket::osmosis::Pool::Balancer {
                 pool_params: Some(pool_params),
@@ -93,4 +94,43 @@ fn test_create_pool(setup: TestCase) {
             &[coin(1000, "uion"), coin(10000000, "uosmo")],
         )
         .unwrap();
+    println!("res: {:?}", res);
+}
+
+#[rstest]
+fn test_withdraw_pool(setup: TestCase) {
+    let TestCase {
+        osmosis_socket_contract,
+        ..
+    } = setup;
+
+    let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
+    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+
+    let wallet_address = "osmo18epw87zc64a6m63323l6je0nlwdhnjpghtsyq8".to_string();
+    let withdraw_msg = MsgExitPool {
+        sender: socket_osmosis_addr,
+        pool_id: 939,
+        share_in_amount: "50000000000000000000".to_string(),
+        token_out_mins: vec![
+            OsmosisCoin {
+                denom: "uion".to_string(),
+                amount: "487".to_string(),
+            },
+            OsmosisCoin {
+                denom: "uosmo".to_string(),
+                amount: "4875000".to_string(),
+            },
+        ],
+    };
+
+    // osmosis_socket_contract
+    //     .withdraw_pool(withdraw_msg, &[])
+    //     .unwrap();
+
+    // My wallet is sending a message with funds that it doesn't have
+    osmosis_socket_contract
+        .withdraw_pool(withdraw_msg, &[coin(50000000000000000000, "gamm/pool/939")])
+        .unwrap();
+    // I need to send the gam funds to my wallet
 }

@@ -23,3 +23,7 @@ pub const FORWARD_REPLY_STATE: Item<ForwardReplyState> = Item::new("forward_repl
 pub const SWAP_ROUTER: Item<AndrAddr> = Item::new("swap_router");
 
 pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
+
+pub const POOL_ID: Item<Uint128> = Item::new("pool_id");
+
+pub const SPENDER: Item<String> = Item::new("spender");
