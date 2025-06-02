@@ -606,9 +606,12 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
         )
         .unwrap();
 
-    // Check that user1 has received 10 uandr
+    // Check that user1 has received 10 uusd
     let balance = router.wrap().query_balance(user1.clone(), "uusd").unwrap();
-    assert_eq!(balance.amount, Uint128::new(10 + 10u128));
+    assert_eq!(
+        balance.amount,
+        Uint128::new(USER1_INITIAL_BALANCE.u128() + 10u128)
+    );
 
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
@@ -902,7 +905,10 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
 
     // Check that user1 has received 5 uusd
     let balance = router.wrap().query_balance(user1.clone(), "uusd").unwrap();
-    assert_eq!(balance.amount, Uint128::new(10 + 5u128));
+    assert_eq!(
+        balance.amount,
+        Uint128::new(USER1_INITIAL_BALANCE.u128() + 5u128)
+    );
 
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
