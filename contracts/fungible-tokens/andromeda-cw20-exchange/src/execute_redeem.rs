@@ -19,7 +19,9 @@ use crate::state::REDEEM;
 pub fn execute_start_redeem(
     ctx: ExecuteContext,
     amount: Uint128,
+    // The asset sent with the message
     asset: Asset,
+    // The accepted asset to be redeemed for the asset sent
     redeem_asset: Asset,
     exchange_rate: Decimal256,
     // The original sender of the CW20::Send message
@@ -32,11 +34,13 @@ pub fn execute_start_redeem(
     let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
 
     let ExecuteContext { deps, env, .. } = ctx;
-    // Ensure the redeem asset is not the token address, since we will be redeeming it
     ensure!(
         asset != redeem_asset,
         ContractError::InvalidAsset {
-            asset: asset.to_string()
+            asset: format!(
+                "The asset sent: {} cannot be the same as the redeem asset",
+                asset.to_string()
+            )
         }
     );
     ensure!(

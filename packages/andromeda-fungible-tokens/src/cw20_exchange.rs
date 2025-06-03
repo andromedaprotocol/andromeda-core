@@ -111,7 +111,8 @@ pub enum Cw20HookMsg {
     StartRedeem {
         /// The accepted asset for redemption
         redeem_asset: Asset,
-        /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
+        /// An exchange rate of 2 would grant the redeemer 2 asset for 1 redeem_asset
+        /// An exchange rate of 0.5 would grant the redeemer 2 asset for 4 redeem_asset
         exchange_rate: Decimal256,
         /// The recipient of the sale proceeds
         recipient: Option<Recipient>,
