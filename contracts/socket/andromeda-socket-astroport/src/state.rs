@@ -23,8 +23,7 @@ pub struct ForwardReplyState {
     /// Asked asset returning from the astroport
     pub to_asset: Asset,
 }
-
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[cw_serde]
 pub struct LiquidityProvisionState {
     /// The assets to deposit as liquidity
     pub assets: Vec<AssetEntry>,

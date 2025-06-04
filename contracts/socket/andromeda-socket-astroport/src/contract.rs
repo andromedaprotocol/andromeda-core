@@ -68,11 +68,12 @@ pub fn instantiate(
     let swap_router = msg
         .swap_router
         .unwrap_or(AndrAddr::from_string("/lib/astroport/router"));
+
     swap_router.get_raw_address(&deps.as_ref())?;
     SWAP_ROUTER.save(deps.storage, &swap_router)?;
 
-    let factory_addr =
-        AndrAddr::from_string("neutron1jj0scx400pswhpjes589aujlqagxgcztw04srynmhf0f6zplzn2qqmhwj7");
+    let factory_addr = AndrAddr::from_string("/lib/astroport/factory");
+    factory_addr.get_raw_address(&deps.as_ref())?;
 
     FACTORY.save(deps.storage, &factory_addr)?;
 
@@ -181,7 +182,7 @@ fn handle_receive_cw20(
         } => {
             let cw20_asset = AssetEntry {
                 info: AssetInfo::Token {
-                    contract_addr: from_addr.get_raw_address(&ctx.deps.as_ref())?,
+                    contract_addr: info.sender.clone(),
                 },
                 amount,
             };
@@ -201,7 +202,7 @@ fn handle_receive_cw20(
         } => {
             let cw20_asset = AssetEntry {
                 info: AssetInfo::Token {
-                    contract_addr: from_addr.get_raw_address(&ctx.deps.as_ref())?,
+                    contract_addr: info.sender.clone(),
                 },
                 amount,
             };
