@@ -248,8 +248,10 @@ pub fn trigger_relay(
         ContractError::Unauthorized {}
     );
     let ics20_packet_info = CHANNEL_TO_EXECUTE_MSG
-        .load(ctx.deps.storage, (channel_id.clone(), packet_sequence))
-        .expect("No packet found for channel_id and sequence");
+        .may_load(ctx.deps.storage, (channel_id.clone(), packet_sequence))?
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("No packet found for channel_id and sequence".to_string()),
+        })?;
 
     let chain = ics20_packet_info
         .recipient
