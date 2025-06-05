@@ -154,7 +154,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -326,7 +326,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -343,7 +343,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -362,7 +362,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -581,7 +581,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-controllers 2.0.0",
  "cw-multi-test",
  "cw-orch",
@@ -659,7 +659,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -728,7 +728,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -869,7 +869,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-socket"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
@@ -884,12 +884,11 @@ dependencies = [
 
 [[package]]
 name = "andromeda-socket-astroport"
-version = "0.1.1-b.1"
+version = "0.1.8-b.1"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
  "andromeda-testing",
- "astroport",
  "cosmrs 0.19.0",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
@@ -907,7 +906,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-socket-osmosis"
-version = "0.1.1-b.1"
+version = "0.1.2-b.1"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
@@ -952,7 +951,7 @@ dependencies = [
  "andromeda-macros",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -1102,7 +1101,7 @@ dependencies = [
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -1327,35 +1326,6 @@ name = "arrayvec"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
-
-[[package]]
-name = "astroport"
-version = "5.9.4"
-source = "git+https://github.com/astroport-fi/astroport-core#16d43af5d64a494c8da5b47999832c4e621d9f5d"
-dependencies = [
- "astroport-circular-buffer",
- "cosmos-sdk-proto 0.19.0",
- "cosmwasm-schema 1.5.11",
- "cosmwasm-std 1.5.11",
- "cw-asset 3.1.1",
- "cw-storage-plus 1.2.0",
- "cw-utils 1.0.3",
- "cw20 1.1.2",
- "itertools 0.12.1",
- "prost 0.11.9",
- "uint",
-]
-
-[[package]]
-name = "astroport-circular-buffer"
-version = "0.2.0"
-source = "git+https://github.com/astroport-fi/astroport-core#16d43af5d64a494c8da5b47999832c4e621d9f5d"
-dependencies = [
- "cosmwasm-schema 1.5.11",
- "cosmwasm-std 1.5.11",
- "cw-storage-plus 1.2.0",
- "thiserror 1.0.69",
-]
 
 [[package]]
 name = "async-recursion"
@@ -1882,17 +1852,6 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "cosmos-sdk-proto"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73c9d2043a9e617b0d602fbc0a0ecd621568edbf3a9774890a6d562389bd8e1c"
-dependencies = [
- "prost 0.11.9",
- "prost-types 0.11.9",
- "tendermint-proto 0.32.2",
-]
-
-[[package]]
-name = "cosmos-sdk-proto"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32560304ab4c365791fd307282f76637213d8083c1a98490c35159cd67852237"
@@ -2265,34 +2224,11 @@ dependencies = [
 
 [[package]]
 name = "cw-address-like"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "451a4691083a88a3c0630a8a88799e9d4cd6679b7ce8ff22b8da2873ff31d380"
-dependencies = [
- "cosmwasm-std 1.5.11",
-]
-
-[[package]]
-name = "cw-address-like"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73553ee4dad5b1678977ff603e72c3fdd41518ca2b0bd9b245b21e4c72eafa9e"
 dependencies = [
  "cosmwasm-std 2.2.2",
-]
-
-[[package]]
-name = "cw-asset"
-version = "3.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c999a12f8cd8736f6f86e9a4ede5905530cb23cfdef946b9da1c506ad1b70799"
-dependencies = [
- "cosmwasm-schema 1.5.11",
- "cosmwasm-std 1.5.11",
- "cw-address-like 1.0.4",
- "cw-storage-plus 1.2.0",
- "cw20 1.1.2",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2303,7 +2239,7 @@ checksum = "7eaa5ed63f1d767d92c7bada3b883aa6ec90ff09e3f5bf72ff4514dcbeb9c4f2"
 dependencies = [
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-address-like 2.0.0",
+ "cw-address-like",
  "cw-storage-plus 2.0.0",
  "cw20 2.0.0",
  "thiserror 1.0.69",
@@ -2654,7 +2590,7 @@ checksum = "ed2f8ee96ac5342c795a0610410998fc075a95af8c796b6d16479cdffd2471f1"
 dependencies = [
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-address-like 2.0.0",
+ "cw-address-like",
  "cw-ownable-derive",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
@@ -3045,6 +2981,7 @@ dependencies = [
  "andromeda-cw721",
  "andromeda-finance",
  "andromeda-fungible-tokens",
+ "andromeda-kernel",
  "andromeda-non-fungible-tokens",
  "andromeda-socket",
  "andromeda-socket-astroport",
@@ -6037,24 +5974,6 @@ dependencies = [
 
 [[package]]
 name = "tendermint-proto"
-version = "0.32.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0cec054567d16d85e8c3f6a3139963d1a66d9d3051ed545d31562550e9bcc3d"
-dependencies = [
- "bytes",
- "flex-error",
- "num-derive 0.3.3",
- "num-traits",
- "prost 0.11.9",
- "prost-types 0.11.9",
- "serde",
- "serde_bytes",
- "subtle-encoding",
- "time 0.3.41",
-]
-
-[[package]]
-name = "tendermint-proto"
 version = "0.34.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b797dd3d2beaaee91d2f065e7bdf239dc8d80bba4a183a288bc1279dd5a69a1e"
@@ -6262,7 +6181,7 @@ dependencies = [
  "andromeda-vfs",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-asset 4.0.0",
+ "cw-asset",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-interchain",
