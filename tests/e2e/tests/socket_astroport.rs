@@ -34,6 +34,7 @@ struct TestCase {
     app_contract: AppContract<DaemonBase<Wallet>>,
     app_name: String,
     kernel: andromeda_kernel::KernelContract<DaemonBase<Wallet>>,
+    factory: String,
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
@@ -49,6 +50,8 @@ fn setup(
     #[default(11806)] app_code_id: u64,
     #[default("neutron1p3gh4zanng04zdnvs8cdh2kdsjrcp43qkp9zk32enu9waxv4wrmqpqnl9g")]
     kernel_address: String,
+    #[default("neutron1jj0scx400pswhpjes589aujlqagxgcztw04srynmhf0f6zplzn2qqmhwj7")]
+    factory_address: String,
 ) -> TestCase {
     INIT_LOGGER.call_once(|| {
         env_logger::init();
@@ -80,6 +83,7 @@ fn setup(
         kernel_address: kernel_address.to_string().clone(),
         owner: None,
         swap_router: None,
+        factory: Some(AndrAddr::from(factory_address.clone())),
     };
 
     // kernal is already on chain add a varuable to access it
@@ -180,6 +184,7 @@ fn setup(
         kernel_address: kernel.address().unwrap().to_string(),
         owner: None,
         swap_router: None,
+        factory: Some(AndrAddr::from(factory_address.clone())),
     };
 
     socket_astroport_contract
@@ -188,11 +193,14 @@ fn setup(
     let fresh_socket_addr = socket_astroport_contract.address().unwrap().to_string();
     println!("🚀 Using fresh contract at: {}", fresh_socket_addr);
 
+    let factory = factory_address.clone();
+
     TestCase {
         daemon,
         app_contract,
         app_name,
         kernel,
+        factory,
     }
 }
 
@@ -532,6 +540,7 @@ fn test_full_liquidity_cycle_with_fresh_contract(setup: TestCase) {
         daemon,
         app_contract,
         kernel,
+        factory,
         ..
     } = setup;
 
@@ -552,6 +561,7 @@ fn test_full_liquidity_cycle_with_fresh_contract(setup: TestCase) {
         kernel_address: kernel.address().unwrap().to_string(),
         owner: None,
         swap_router: None,
+        factory: Some(AndrAddr::from_string(factory.clone())),
     };
 
     socket_astroport_contract
