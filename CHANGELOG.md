@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Apply Serde default to previous_hops [(#829)](https://github.com/andromedaprotocol/andromeda-core/pull/829)
 - feat: CW20 Redeem ADO [(#842)](https://github.com/andromedaprotocol/andromeda-core/pull/842)
 - feat: Update to CosmWasm 2.2 from 1.5 [(#850)](https://github.com/andromedaprotocol/andromeda-core/pull/850)
+- feat: Added Astroport socket with LP and swap functionality [(#885)](https://github.com/andromedaprotocol/andromeda-core/pull/885)
 
 ### Changed
 
