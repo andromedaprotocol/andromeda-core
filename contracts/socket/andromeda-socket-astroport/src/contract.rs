@@ -72,8 +72,9 @@ pub fn instantiate(
     swap_router.get_raw_address(&deps.as_ref())?;
     SWAP_ROUTER.save(deps.storage, &swap_router)?;
 
-    let factory_addr_vfs = "/lib/astroport/factory".to_string();
-    FACTORY.save(deps.storage, &factory_addr_vfs)?;
+    let factory_addr_vfs = AndrAddr::from_string("/lib/astroport/factory");   
+    let factory_raw_address = factory_addr_vfs.get_raw_address(&deps.as_ref())?;
+    FACTORY.save(deps.storage, &factory_raw_address.into())?;
 
     Ok(inst_resp
         .add_attribute("method", "instantiate")
@@ -327,7 +328,6 @@ fn create_factory_pair(
     let ExecuteContext { deps, .. } = ctx;
 
     let factory_addr = FACTORY.load(deps.storage)?;
-    let factory_addr_raw = AndrAddr::from_string(factory_addr).get_raw_address(&deps.as_ref())?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
         pair_type: pair_type.clone(),
@@ -335,7 +335,7 @@ fn create_factory_pair(
         init_params: init_parameters,
     };
 
-    let wasm_msg = wasm_execute(factory_addr_raw, &create_factory_pair_msg, vec![])?;
+    let wasm_msg = wasm_execute(factory_addr, &create_factory_pair_msg, vec![])?;
 
     // Return response with the wasm message as a submessage with a reply ID
     // so we can extract the LP pool address from the response
@@ -424,8 +424,7 @@ fn create_pair_and_provide_liquidity(
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
 
-    let factory_addr = FACTORY.load(deps.storage)?;
-    let factory_addr_raw = AndrAddr::from_string(factory_addr).get_raw_address(&deps.as_ref())?;
+    let factory_addr: String = FACTORY.load(deps.storage)?;
 
     // Store the liquidity provision parameters for use in the reply handler
     let liquidity_state = LiquidityProvisionState {
@@ -442,7 +441,7 @@ fn create_pair_and_provide_liquidity(
         init_params: init_parameters,
     };
 
-    let wasm_msg = wasm_execute(factory_addr_raw, &create_factory_pair_msg, vec![])?;
+    let wasm_msg = wasm_execute(factory_addr, &create_factory_pair_msg, vec![])?;
 
     // Return response with the wasm message as a submessage with a specific reply ID
     // so we can extract the LP pool address and then provide liquidity
