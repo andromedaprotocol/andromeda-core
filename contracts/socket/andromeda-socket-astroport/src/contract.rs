@@ -72,7 +72,7 @@ pub fn instantiate(
     swap_router.get_raw_address(&deps.as_ref())?;
     SWAP_ROUTER.save(deps.storage, &swap_router)?;
 
-    let factory_addr_vfs = AndrAddr::from_string("/lib/astroport/factory");   
+    let factory_addr_vfs = AndrAddr::from_string("/lib/astroport/factory");
     let factory_raw_address = factory_addr_vfs.get_raw_address(&deps.as_ref())?;
     FACTORY.save(deps.storage, &factory_raw_address.into())?;
 
