@@ -50,7 +50,7 @@ pub const FORWARD_REPLY_STATE: Item<ForwardReplyState> = Item::new("forward_repl
 
 pub const SWAP_ROUTER: Item<AndrAddr> = Item::new("swap_router");
 
-pub const FACTORY: Item<AndrAddr> = Item::new("factory");
+pub const FACTORY: Item<String> = Item::new("factory");
 
 pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
 

@@ -72,10 +72,8 @@ pub fn instantiate(
     swap_router.get_raw_address(&deps.as_ref())?;
     SWAP_ROUTER.save(deps.storage, &swap_router)?;
 
-    let factory_addr = AndrAddr::from_string("/lib/astroport/factory");
-    factory_addr.get_raw_address(&deps.as_ref())?;
-
-    FACTORY.save(deps.storage, &factory_addr)?;
+    let factory_addr_vfs = "/lib/astroport/factory".to_string();
+    FACTORY.save(deps.storage, &factory_addr_vfs)?;
 
     Ok(inst_resp
         .add_attribute("method", "instantiate")
@@ -329,7 +327,7 @@ fn create_factory_pair(
     let ExecuteContext { deps, .. } = ctx;
 
     let factory_addr = FACTORY.load(deps.storage)?;
-    let factory_addr_raw = factory_addr.get_raw_address(&deps.as_ref())?;
+    let factory_addr_raw = AndrAddr::from_string(factory_addr).get_raw_address(&deps.as_ref())?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
         pair_type: pair_type.clone(),
@@ -427,7 +425,7 @@ fn create_pair_and_provide_liquidity(
     let ExecuteContext { deps, .. } = ctx;
 
     let factory_addr = FACTORY.load(deps.storage)?;
-    let factory_addr_raw = factory_addr.get_raw_address(&deps.as_ref())?;
+    let factory_addr_raw = AndrAddr::from_string(factory_addr).get_raw_address(&deps.as_ref())?;
 
     // Store the liquidity provision parameters for use in the reply handler
     let liquidity_state = LiquidityProvisionState {
