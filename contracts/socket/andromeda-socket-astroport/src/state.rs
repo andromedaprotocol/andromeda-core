@@ -23,17 +23,6 @@ pub struct ForwardReplyState {
     /// Asked asset returning from the astroport
     pub to_asset: Asset,
 }
-#[cw_serde]
-pub struct LiquidityProvisionState {
-    /// The assets to deposit as liquidity
-    pub assets: Vec<AssetEntry>,
-    /// The slippage tolerance for the liquidity provision
-    pub slippage_tolerance: Option<Decimal>,
-    /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
-    pub auto_stake: Option<bool>,
-    /// The receiver of LP tokens (if different from sender)
-    pub receiver: Option<String>,
-}
 
 // Astroport factory message format
 #[cw_serde]
@@ -46,7 +35,7 @@ pub enum AstroportFactoryExecuteMsg {
     WithdrawLiquidity {},
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[cw_serde]
 pub struct LiquidityProvisionState {
     /// The assets to deposit as liquidity
     pub assets: Vec<AssetEntry>,
@@ -56,16 +45,6 @@ pub struct LiquidityProvisionState {
     pub auto_stake: Option<bool>,
     /// The receiver of LP tokens (if different from sender)
     pub receiver: Option<String>,
-}
-
-// Astroport factory message format
-#[cw_serde]
-pub enum AstroportFactoryExecuteMsg {
-    CreatePair {
-        pair_type: PairType,
-        asset_infos: Vec<AssetInfo>,
-        init_params: Option<Binary>,
-    },
 }
 
 pub const FORWARD_REPLY_STATE: Item<ForwardReplyState> = Item::new("forward_reply_state");

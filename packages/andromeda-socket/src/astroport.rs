@@ -24,16 +24,6 @@ pub enum PairType {
     Custom(String),
 }
 
-#[cw_serde]
-pub enum PairType {
-    /// XYK pair type
-    Xyk {},
-    /// Stable pair type
-    Stable {},
-    /// Custom pair type
-    Custom(String),
-}
-
 #[andr_exec]
 #[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
