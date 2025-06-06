@@ -4,6 +4,10 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Decimal, Uint128};
+use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
+use osmosis_std::types::osmosis::gamm::{
+    poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams, v1beta1::MsgExitPool,
+};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -27,10 +31,34 @@ pub enum ExecuteMsg {
         /// The swap operations that is supposed to be taken
         route: Option<Vec<SwapAmountInRoute>>,
     },
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    CreatePool { pool_type: Pool },
 
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    WithdrawPool { withdraw_msg: MsgExitPool },
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
+}
+
+#[cw_serde]
+pub enum Pool {
+    Balancer {
+        pool_params: Option<PoolParams>,
+        pool_assets: Vec<PoolAsset>,
+    },
+    Stable {
+        pool_params: Option<StablePoolParams>,
+        scaling_factors: Vec<u64>,
+    },
+    Concentrated {
+        tick_spacing: u64,
+        spread_factor: String,
+    },
+    CosmWasm {
+        code_id: u64,
+        instantiate_msg: Vec<u8>,
+    },
 }
 
 #[cw_serde]

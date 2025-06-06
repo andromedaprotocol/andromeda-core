@@ -137,7 +137,6 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
-
 fn handle_receive_cw20(
     ctx: ExecuteContext,
     cw20_msg: Cw20ReceiveMsg,

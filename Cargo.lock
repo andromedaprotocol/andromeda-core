@@ -880,6 +880,7 @@ dependencies = [
  "cw20 2.0.0",
  "cw3",
  "osmosis-std",
+ "prost 0.13.5",
 ]
 
 [[package]]
@@ -906,7 +907,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-socket-osmosis"
-version = "0.1.2-b.1"
+version = "0.1.2-b.2"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
