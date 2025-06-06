@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-socket"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 rust-version = "1.75.0"
 description = "Utility methods and message definitions for the Andromeda Socket"

@@ -11,6 +11,17 @@ use cw20::Cw20ReceiveMsg;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub swap_router: Option<AndrAddr>,
+    pub factory: Option<AndrAddr>,
+}
+
+#[cw_serde]
+pub enum PairType {
+    /// XYK pair type
+    Xyk {},
+    /// Stable pair type
+    Stable {},
+    /// Custom pair type
+    Custom(String),
 }
 
 #[cw_serde]
@@ -84,6 +95,8 @@ pub enum ExecuteMsg {
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
+    /// Sent to the LP contract to withdraw liquidity
+    WithdrawLiquidity {},
 }
 
 #[cw_serde]
@@ -142,6 +155,8 @@ pub enum QueryMsg {
     },
     #[returns(PairAddressResponse)]
     PairAddress {},
+    #[returns(LpPairAddressResponse)]
+    LpPairAddress {},
 }
 
 #[cw_serde]
@@ -316,4 +331,10 @@ pub enum PairExecuteMsg {
 pub struct PairAddressResponse {
     /// The pair contract address
     pub pair_address: Option<String>,
+}
+
+#[cw_serde]
+pub struct LpPairAddressResponse {
+    /// The pair contract address
+    pub lp_pair_address: Option<AndrAddr>,
 }
