@@ -221,9 +221,9 @@ pub fn do_ibc_packet_receive(
             let res = execute::send(execute_env, msg)?;
 
             // Refunds must be done via the ICS20 channel
-            let ics20_channel_id = channel_info
-                .ics20_channel_id
-                .expect("Cannot refund, ICS20 Channel ID not set");
+            let ics20_channel_id = channel_info.ics20_channel_id.ok_or(ContractError::new(
+                "Cannot refund, ICS20 Channel ID not set",
+            ))?;
             // Save refund info
             REFUND_DATA.save(
                 deps.storage,

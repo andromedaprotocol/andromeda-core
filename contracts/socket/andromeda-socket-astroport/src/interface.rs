@@ -13,7 +13,7 @@ use cosmwasm_std::{to_json_binary, Decimal, Uint128};
 use cw_orch::core::serde_json;
 use cw_orch_daemon::{Daemon, DaemonBase, TxSender, Wallet};
 
-pub const CONTRACT_ID: &str = "socket_astroport";
+pub const CONTRACT_ID: &str = "socket-astroport";
 
 contract_interface!(
     SocketAstroportContract,
