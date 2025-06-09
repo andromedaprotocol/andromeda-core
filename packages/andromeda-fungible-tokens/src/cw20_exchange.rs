@@ -59,8 +59,8 @@ pub enum ExecuteMsg {
 pub struct Sale {
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
     pub exchange_rate: Uint128,
-    /// The amount for sale at the given rate
-    pub amount: Uint128,
+    pub remaining_amount: Uint128,
+    pub start_amount: Uint128,
     /// The recipient of the sale proceeds
     pub recipient: Recipient,
     /// The time when the sale starts

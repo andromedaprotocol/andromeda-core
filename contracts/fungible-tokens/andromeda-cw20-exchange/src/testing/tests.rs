@@ -195,7 +195,8 @@ pub fn test_start_sale() {
         .unwrap();
 
     assert_eq!(sale.exchange_rate, exchange_rate);
-    assert_eq!(sale.amount, sale_amount);
+    assert_eq!(sale.remaining_amount, sale_amount);
+    assert_eq!(sale.start_amount, sale_amount);
 
     let expected_start_time =
         Timestamp::from_nanos((current_time + 10) * MILLISECONDS_TO_NANOSECONDS_RATIO);
@@ -250,7 +251,8 @@ pub fn test_start_sale_no_start_no_duration() {
         .unwrap();
 
     assert_eq!(sale.exchange_rate, exchange_rate);
-    assert_eq!(sale.amount, sale_amount);
+    assert_eq!(sale.remaining_amount, sale_amount);
+    assert_eq!(sale.start_amount, sale_amount);
 
     assert_eq!(
         sale.start_time,
@@ -413,7 +415,8 @@ pub fn test_purchase_not_enough_sent() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: Uint128::from(100u128),
+            start_amount: Uint128::from(100u128),
+            remaining_amount: Uint128::from(100u128),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -462,7 +465,8 @@ pub fn test_purchase_no_tokens_left() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: Uint128::zero(),
+            start_amount: Uint128::zero(),
+            remaining_amount: Uint128::zero(),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -505,7 +509,8 @@ pub fn test_purchase_not_enough_tokens() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: Uint128::one(),
+            start_amount: Uint128::one(),
+            remaining_amount: Uint128::one(),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -549,7 +554,8 @@ pub fn test_purchase() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: sale_amount,
+            start_amount: sale_amount,
+            remaining_amount: sale_amount,
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -594,7 +600,7 @@ pub fn test_purchase() {
         .unwrap();
 
     assert_eq!(
-        sale.amount,
+        sale.remaining_amount,
         sale_amount.checked_sub(Uint128::from(10u128)).unwrap()
     );
 
@@ -635,7 +641,8 @@ pub fn test_purchase_with_start_and_duration() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: sale_amount,
+            start_amount: sale_amount,
+            remaining_amount: sale_amount,
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             // start time in the past
@@ -685,7 +692,7 @@ pub fn test_purchase_with_start_and_duration() {
         .unwrap();
 
     assert_eq!(
-        sale.amount,
+        sale.remaining_amount,
         sale_amount.checked_sub(Uint128::from(10u128)).unwrap()
     );
 
@@ -726,7 +733,8 @@ pub fn test_purchase_sale_not_started() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: sale_amount,
+            start_amount: sale_amount,
+            remaining_amount: sale_amount,
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.plus_days(1).nanos()),
@@ -770,7 +778,8 @@ pub fn test_purchase_sale_duration_ended() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: sale_amount,
+            start_amount: sale_amount,
+            remaining_amount: sale_amount,
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -829,7 +838,8 @@ pub fn test_purchase_not_enough_sent_native() {
         deps.as_mut().storage,
         "test",
         &Sale {
-            amount: Uint128::from(100u128),
+            start_amount: Uint128::from(100u128),
+            remaining_amount: Uint128::from(100u128),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -868,7 +878,8 @@ pub fn test_purchase_no_tokens_left_native() {
         deps.as_mut().storage,
         "test",
         &Sale {
-            amount: Uint128::zero(),
+            start_amount: Uint128::zero(),
+            remaining_amount: Uint128::zero(),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -903,7 +914,8 @@ pub fn test_purchase_not_enough_tokens_native() {
         deps.as_mut().storage,
         "test",
         &Sale {
-            amount: Uint128::from(1u128),
+            start_amount: Uint128::from(1u128),
+            remaining_amount: Uint128::from(1u128),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -941,7 +953,8 @@ pub fn test_purchase_native() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: sale_amount,
+            start_amount: sale_amount,
+            remaining_amount: sale_amount,
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -990,7 +1003,7 @@ pub fn test_purchase_native() {
         .unwrap();
 
     assert_eq!(
-        sale.amount,
+        sale.remaining_amount,
         sale_amount.checked_sub(Uint128::from(11u128)).unwrap()
     );
 
@@ -1019,7 +1032,8 @@ pub fn test_purchase_refund() {
         deps.as_mut().storage,
         "test",
         &Sale {
-            amount: Uint128::from(100u128),
+            start_amount: Uint128::from(100u128),
+            remaining_amount: Uint128::from(100u128),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -1066,7 +1080,8 @@ pub fn test_cancel_sale_unauthorised() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: sale_amount,
+            start_amount: sale_amount,
+            remaining_amount: sale_amount,
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -1126,7 +1141,8 @@ pub fn test_cancel_sale() {
         deps.as_mut().storage,
         &exchange_asset_str,
         &Sale {
-            amount: sale_amount,
+            start_amount: sale_amount,
+            remaining_amount: sale_amount,
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -1184,7 +1200,8 @@ fn test_query_sale() {
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
     let sale = Sale {
-        amount: sale_amount,
+        start_amount: sale_amount,
+        remaining_amount: sale_amount,
         exchange_rate,
         recipient: Recipient::from_string("owner".to_string()),
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -1223,7 +1240,8 @@ fn test_andr_query() {
     let exchange_rate = Uint128::from(10u128);
     let sale_amount = Uint128::from(100u128);
     let sale = Sale {
-        amount: sale_amount,
+        start_amount: sale_amount,
+        remaining_amount: sale_amount,
         exchange_rate,
         recipient: Recipient::from_string("owner".to_string()),
         start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -1263,7 +1281,8 @@ fn test_purchase_native_invalid_coins() {
         deps.as_mut().storage,
         "test",
         &Sale {
-            amount: Uint128::from(100u128),
+            start_amount: Uint128::from(100u128),
+            remaining_amount: Uint128::from(100u128),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -1315,7 +1334,8 @@ fn test_query_sale_assets() {
         deps.as_mut().storage,
         "test",
         &Sale {
-            amount: Uint128::from(100u128),
+            start_amount: Uint128::from(100u128),
+            remaining_amount: Uint128::from(100u128),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),
@@ -1327,7 +1347,8 @@ fn test_query_sale_assets() {
         deps.as_mut().storage,
         "cw20:testaddress",
         &Sale {
-            amount: Uint128::from(100u128),
+            start_amount: Uint128::from(100u128),
+            remaining_amount: Uint128::from(100u128),
             exchange_rate,
             recipient: Recipient::from_string(owner.to_string()),
             start_time: Milliseconds::from_nanos(env.block.time.nanos()),

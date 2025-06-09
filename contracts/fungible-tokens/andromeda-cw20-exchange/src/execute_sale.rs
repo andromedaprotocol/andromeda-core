@@ -87,7 +87,8 @@ pub fn execute_start_sale(
     ensure!(current_sale.is_none(), ContractError::SaleNotEnded {});
 
     let sale = Sale {
-        amount,
+        start_amount: amount,
+        remaining_amount: amount,
         exchange_rate,
         recipient,
         start_time,
@@ -143,7 +144,10 @@ pub fn execute_purchase(
             msg: "Not enough funds sent to purchase a token".to_string()
         }
     );
-    ensure!(sale.amount >= purchased, ContractError::NotEnoughTokens {});
+    ensure!(
+        sale.remaining_amount >= purchased,
+        ContractError::NotEnoughTokens {}
+    );
 
     // If purchase was rounded down return funds to purchaser
     if !remainder.is_zero() {
@@ -173,7 +177,7 @@ pub fn execute_purchase(
     resp = resp.add_submessage(sub_msg);
 
     // Update sale amount remaining
-    sale.amount = sale.amount.checked_sub(purchased)?;
+    sale.remaining_amount = sale.remaining_amount.checked_sub(purchased)?;
     SALE.save(deps.storage, &asset_sent_str, &sale)?;
 
     // Transfer exchanged asset to recipient
@@ -222,7 +226,7 @@ pub fn execute_cancel_sale(ctx: ExecuteContext, asset: Asset) -> Result<Response
     let mut resp = Response::default();
 
     // Refund any remaining amount
-    if !sale.amount.is_zero() {
+    if !sale.remaining_amount.is_zero() {
         let token_addr = TOKEN_ADDRESS.load(deps.storage)?;
 
         let token = Asset::Cw20Token(token_addr);
@@ -230,11 +234,11 @@ pub fn execute_cancel_sale(ctx: ExecuteContext, asset: Asset) -> Result<Response
             .add_submessage(generate_transfer_message(
                 &deps.as_ref(),
                 token,
-                sale.amount,
+                sale.remaining_amount,
                 info.sender.to_string(),
                 None,
             )?)
-            .add_attribute("refunded_amount", sale.amount);
+            .add_attribute("refunded_amount", sale.remaining_amount);
     }
 
     // Sale can now be removed
