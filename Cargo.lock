@@ -466,7 +466,7 @@ dependencies = [
  "dotenv",
  "env_logger",
  "log",
- "reqwest 0.12.18",
+ "reqwest 0.12.19",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -2444,7 +2444,7 @@ dependencies = [
  "prost 0.13.5",
  "prost-types 0.13.5",
  "rand_core 0.6.4",
- "reqwest 0.12.18",
+ "reqwest 0.12.19",
  "ring",
  "ripemd",
  "schemars",
@@ -5041,9 +5041,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.18"
+version = "0.12.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e98ff6b0dbbe4d5a37318f433d4fc82babd21631f194d370409ceb2e40b2f0b5"
+checksum = "a2f8e5513d63f2e5b386eb5106dc67eaf3f84e95258e210489136b8b92ad6119"
 dependencies = [
  "base64 0.22.1",
  "bytes",
