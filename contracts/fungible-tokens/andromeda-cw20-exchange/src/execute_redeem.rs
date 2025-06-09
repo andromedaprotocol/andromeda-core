@@ -39,7 +39,7 @@ pub fn execute_start_redeem(
         ContractError::InvalidAsset {
             asset: format!(
                 "The asset sent: {} cannot be the same as the redeem asset",
-                asset.to_string()
+                asset
             )
         }
     );
