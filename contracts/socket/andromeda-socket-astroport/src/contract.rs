@@ -16,7 +16,7 @@ use cosmwasm_std::{
 use cosmwasm_std::{CosmosMsg, SubMsg};
 
 use cw2::set_contract_version;
-use cw20::Cw20ReceiveMsg;
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_utils::one_coin;
 
 use crate::astroport::ASTROPORT_MSG_WITHDRAW_LIQUIDITY_ID;
@@ -24,8 +24,7 @@ use crate::{
     astroport::{
         execute_swap_astroport_msg, handle_astroport_swap_reply,
         query_simulate_astro_swap_operation, ASTROPORT_MSG_CREATE_PAIR_AND_PROVIDE_LIQUIDITY_ID,
-        ASTROPORT_MSG_CREATE_PAIR_ID, ASTROPORT_MSG_FORWARD_ID, ASTROPORT_MSG_PROVIDE_LIQUIDITY_ID,
-        ASTROPORT_MSG_SWAP_ID,
+        ASTROPORT_MSG_FORWARD_ID, ASTROPORT_MSG_SWAP_ID,
     },
     state::{
         AstroportFactoryExecuteMsg, ForwardReplyState, LiquidityProvisionState, FACTORY,
@@ -104,17 +103,6 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::UpdateSwapRouter { swap_router } => {
             execute_update_swap_router(ctx, swap_router)
         }
-        ExecuteMsg::CreatePair {
-            pair_type,
-            asset_infos,
-            init_params,
-        } => create_factory_pair(ctx, pair_type, asset_infos, init_params),
-        ExecuteMsg::ProvideLiquidity {
-            assets,
-            slippage_tolerance,
-            auto_stake,
-            receiver,
-        } => provide_liquidity(ctx, assets, slippage_tolerance, auto_stake, receiver),
         ExecuteMsg::CreatePairAndProvideLiquidity {
             pair_type,
             asset_infos,
@@ -173,23 +161,6 @@ fn handle_receive_cw20(
                 minimum_receive,
                 operations,
             )
-        }
-        Cw20HookMsg::ProvideLiquidity {
-            other_asset,
-            slippage_tolerance,
-            auto_stake,
-            receiver,
-        } => {
-            let cw20_asset = AssetEntry {
-                info: AssetInfo::Token {
-                    contract_addr: info.sender.clone(),
-                },
-                amount,
-            };
-
-            let assets = vec![cw20_asset, other_asset];
-
-            provide_liquidity(ctx, assets, slippage_tolerance, auto_stake, receiver)
         }
         Cw20HookMsg::CreatePairAndProvideLiquidity {
             pair_type,
@@ -320,98 +291,6 @@ fn execute_update_swap_router(
     ]))
 }
 
-fn create_factory_pair(
-    ctx: ExecuteContext,
-    pair_type: PairType,
-    asset_infos: Vec<AssetInfo>,
-    init_parameters: Option<Binary>,
-) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, .. } = ctx;
-
-    let factory_addr = FACTORY.load(deps.storage)?;
-
-    let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
-        pair_type: pair_type.clone(),
-        asset_infos: asset_infos.clone(),
-        init_params: init_parameters,
-    };
-
-    let wasm_msg = wasm_execute(factory_addr, &create_factory_pair_msg, vec![])?;
-
-    // Return response with the wasm message as a submessage with a reply ID
-    // so we can extract the LP pool address from the response
-    Ok(Response::new()
-        .add_submessage(cosmwasm_std::SubMsg::reply_always(
-            wasm_msg,
-            ASTROPORT_MSG_CREATE_PAIR_ID,
-        ))
-        .add_attributes(vec![
-            attr("action", "create_factory_pair"),
-            attr("pair_type", format!("{:?}", pair_type.clone())),
-            attr("asset_infos", format!("{:?}", asset_infos.clone())),
-        ]))
-}
-
-fn provide_liquidity(
-    ctx: ExecuteContext,
-    assets: Vec<andromeda_socket::astroport::AssetEntry>,
-    slippage_tolerance: Option<Decimal>,
-    auto_stake: Option<bool>,
-    receiver: Option<String>,
-) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, .. } = ctx;
-
-    // Load the pair address from state
-    let pair_addr = PAIR_ADDRESS.load(deps.storage)?;
-    let pair_addr_raw = pair_addr.get_raw_address(&deps.as_ref())?;
-
-    // Build the provide liquidity message
-    let provide_liquidity_msg = PairExecuteMsg::ProvideLiquidity {
-        assets: assets.clone(),
-        slippage_tolerance,
-        auto_stake,
-        receiver,
-    };
-
-    // Handle both native coins and CW20 token allowances
-    // NOTE: For CW20 tokens received via hooks, this socket contract owns the tokens
-    // and needs to give allowance to the pair contract to spend them (as per Astroport docs)
-    let mut response = Response::new();
-    let mut native_coins = vec![];
-
-    for asset in &assets {
-        match &asset.info {
-            AssetInfo::NativeToken { denom } => {
-                native_coins.push(cosmwasm_std::Coin {
-                    denom: denom.clone(),
-                    amount: asset.amount,
-                });
-            }
-            AssetInfo::Token { contract_addr } => {
-                // Set allowance for the pair contract to spend CW20 tokens owned by this socket
-                // This is required by Astroport: "increase your token allowance for the pool before providing liquidity"
-                let allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
-                    spender: pair_addr_raw.to_string(),
-                    amount: asset.amount,
-                    expires: None,
-                };
-                let allowance_wasm_msg = wasm_execute(contract_addr, &allowance_msg, vec![])?;
-                response = response.add_message(allowance_wasm_msg);
-            }
-        }
-    }
-
-    // Send the provide liquidity message to the pair (native coins attached, CW20s via allowance)
-    let provide_wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, native_coins)?;
-    response = response.add_message(provide_wasm_msg);
-
-    Ok(response.add_attributes(vec![
-        attr("action", "provide_liquidity"),
-        attr("pair_address", pair_addr.to_string()),
-        attr("assets", format!("{:?}", assets)),
-    ]))
-}
-
 #[allow(clippy::too_many_arguments)]
 fn create_pair_and_provide_liquidity(
     ctx: ExecuteContext,
@@ -423,7 +302,7 @@ fn create_pair_and_provide_liquidity(
     auto_stake: Option<bool>,
     receiver: Option<String>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, .. } = ctx;
+    let ExecuteContext { deps, info, .. } = ctx;
 
     let factory_addr: String = FACTORY.load(deps.storage)?;
 
@@ -433,6 +312,7 @@ fn create_pair_and_provide_liquidity(
         slippage_tolerance,
         auto_stake,
         receiver,
+        sender: info.sender.to_string(),
     };
     LIQUIDITY_PROVISION_STATE.save(deps.storage, &liquidity_state)?;
 
@@ -553,44 +433,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(Response::default()
                 .add_attributes(vec![attr("action", "message_forwarded_success")]))
         }
-        ASTROPORT_MSG_CREATE_PAIR_ID => {
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(format!(
-                    "Astroport create pair failed with error: {:?}",
-                    msg.result.unwrap_err()
-                ))));
-            }
-
-            // Extract the pair address from the response
-            let response = msg.result.unwrap();
-
-            // Look for the pair contract address in the events
-            let pair_address = response
-                .events
-                .iter()
-                .find(|event| event.ty == "instantiate")
-                .and_then(|event| {
-                    event
-                        .attributes
-                        .iter()
-                        .find(|attr| attr.key == "_contract_address")
-                        .map(|attr| attr.value.clone())
-                })
-                .ok_or_else(|| {
-                    ContractError::Std(StdError::generic_err(
-                        "Could not find pair contract address in response".to_string(),
-                    ))
-                })?;
-
-            // Store the pair address
-            let pair_addr = AndrAddr::from_string(pair_address.clone());
-            LP_PAIR_ADDRESS.save(deps.storage, &pair_addr)?;
-
-            Ok(Response::default().add_attributes(vec![
-                attr("action", "create_pair_success"),
-                attr("pair_address", pair_address),
-            ]))
-        }
         ASTROPORT_MSG_CREATE_PAIR_AND_PROVIDE_LIQUIDITY_ID => {
             if msg.result.is_err() {
                 return Err(ContractError::Std(StdError::generic_err(format!(
@@ -649,6 +491,16 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     }
                     AssetInfo::Token { contract_addr } => {
                         // Set allowance for the pair contract to spend CW20 tokens
+                        let response_transfer_tokens = wasm_execute(
+                            contract_addr.clone(),
+                            &Cw20ExecuteMsg::TransferFrom {
+                                owner: liquidity_state.sender.clone(),
+                                recipient: env.contract.address.to_string(),
+                                amount: asset.amount,
+                            },
+                            vec![],
+                        )?;
+                        response_msgs.push(response_transfer_tokens);
                         let allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
                             spender: pair_address.clone(),
                             amount: asset.amount,
@@ -666,7 +518,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 wasm_execute(pair_address.clone(), &provide_liquidity_msg, native_coins)?;
             response_msgs.push(provide_wasm_msg);
 
-            let mut response = Response::new();
+            let mut response: Response = Response::new();
             for msg in response_msgs {
                 response = response.add_message(msg);
             }
@@ -676,17 +528,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 attr("pair_address", pair_address),
                 attr("liquidity_assets", format!("{:?}", liquidity_state.assets)),
             ]))
-        }
-        ASTROPORT_MSG_PROVIDE_LIQUIDITY_ID => {
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(format!(
-                    "Astroport provide liquidity failed with error: {:?}",
-                    msg.result.unwrap_err()
-                ))));
-            }
-
-            Ok(Response::default()
-                .add_attributes(vec![attr("action", "provide_liquidity_success")]))
         }
         ASTROPORT_MSG_WITHDRAW_LIQUIDITY_ID => {
             if msg.result.is_err() {

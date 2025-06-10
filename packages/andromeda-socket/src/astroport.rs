@@ -11,7 +11,7 @@ use cw20::Cw20ReceiveMsg;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub swap_router: Option<AndrAddr>,
-    pub factory: Option<AndrAddr>,
+    pub factory: Option<AndrAddr>
 }
 
 #[cw_serde]
@@ -102,17 +102,6 @@ pub enum Cw20HookMsg {
         minimum_receive: Option<Uint128>,
         /// The swap operations that is supposed to be taken
         operations: Option<Vec<SwapOperation>>,
-    },
-    /// Provide liquidity to an existing pair using CW20 tokens
-    ProvideLiquidity {
-        /// The assets to deposit (the other asset info for native token)
-        other_asset: AssetEntry,
-        /// The slippage tolerance for this transaction
-        slippage_tolerance: Option<Decimal>,
-        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
-        auto_stake: Option<bool>,
-        /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
     },
     /// Create a pair and provide liquidity using CW20 tokens
     CreatePairAndProvideLiquidity {
