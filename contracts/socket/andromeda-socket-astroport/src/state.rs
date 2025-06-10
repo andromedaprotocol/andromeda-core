@@ -1,3 +1,4 @@
+use andromeda_socket::astroport::{AssetEntry, AssetInfo, PairType};
 use andromeda_std::{
     amp::{messages::AMPCtx, AndrAddr, Recipient},
     common::denom::Asset,
@@ -5,12 +6,8 @@ use andromeda_std::{
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Decimal, Uint128};
 use cw_storage_plus::Item;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-use andromeda_socket::astroport::{AssetEntry, AssetInfo, PairType};
-
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[cw_serde]
 pub struct ForwardReplyState {
     /// Forward Recipient
     pub recipient: Recipient,

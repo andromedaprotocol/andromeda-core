@@ -1,5 +1,8 @@
 pub mod astroport;
 pub mod contract;
+pub mod execute;
+pub mod query;
+pub mod reply;
 pub mod state;
 
 #[cfg(not(target_arch = "wasm32"))]
