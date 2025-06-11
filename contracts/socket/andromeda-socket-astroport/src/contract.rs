@@ -302,7 +302,9 @@ fn provide_liquidity(
     receiver: Option<String>,
     pair_address: AndrAddr,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps,info, env, .. } = ctx;
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
 
     // Load the pair address from state
     let pair_addr_raw = pair_address.get_raw_address(&deps.as_ref())?;
