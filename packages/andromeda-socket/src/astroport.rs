@@ -11,7 +11,7 @@ use cw20::Cw20ReceiveMsg;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub swap_router: Option<AndrAddr>,
-    pub factory: Option<AndrAddr>
+    pub factory: Option<AndrAddr>,
 }
 
 #[cw_serde]
