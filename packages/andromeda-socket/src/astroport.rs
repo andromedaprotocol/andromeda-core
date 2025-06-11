@@ -62,6 +62,8 @@ pub enum ExecuteMsg {
         auto_stake: Option<bool>,
         /// The receiver of LP tokens (if different from sender)
         receiver: Option<String>,
+        /// The pair address
+        pair_address: AndrAddr,
     },
     /// Create a pair and provide liquidity in a single transaction
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
@@ -86,7 +88,10 @@ pub enum ExecuteMsg {
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
     /// Sent to the LP contract to withdraw liquidity
-    WithdrawLiquidity {},
+    WithdrawLiquidity {
+        /// The pair address
+        pair_address: AndrAddr,
+    },
 }
 
 #[cw_serde]
@@ -103,23 +108,6 @@ pub enum Cw20HookMsg {
         /// The swap operations that is supposed to be taken
         operations: Option<Vec<SwapOperation>>,
     },
-    /// Create a pair and provide liquidity using CW20 tokens
-    CreatePairAndProvideLiquidity {
-        /// The pair type (exposed in [`PairType`])
-        pair_type: PairType,
-        /// The assets to create the pool for
-        asset_infos: Vec<AssetInfo>,
-        /// Optional binary serialised parameters for custom pool types
-        init_params: Option<Binary>,
-        /// The other asset to deposit (native token or another CW20)
-        other_asset: AssetEntry,
-        /// The slippage tolerance for the liquidity provision
-        slippage_tolerance: Option<Decimal>,
-        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
-        auto_stake: Option<bool>,
-        /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
-    },
 }
 #[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
@@ -132,10 +120,6 @@ pub enum QueryMsg {
         /// The swap operation to perform
         operations: Vec<SwapOperation>,
     },
-    #[returns(PairAddressResponse)]
-    PairAddress {},
-    #[returns(LpPairAddressResponse)]
-    LpPairAddress {},
 }
 
 #[cw_serde]
@@ -310,10 +294,4 @@ pub enum PairExecuteMsg {
 pub struct PairAddressResponse {
     /// The pair contract address
     pub pair_address: Option<String>,
-}
-
-#[cw_serde]
-pub struct LpPairAddressResponse {
-    /// The pair contract address
-    pub lp_pair_address: Option<AndrAddr>,
 }

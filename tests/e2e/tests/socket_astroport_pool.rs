@@ -90,6 +90,65 @@ fn setup(
     }
 }
 
+fn parse_lp_from_response(response: &cw_orch_daemon::CosmTxResponse) -> (String, u128, String) {
+    // Find the LP token denomination from create_denom event
+    let lp_denom = response
+        .events
+        .iter()
+        .find(|event| event.r#type == "create_denom")
+        .and_then(|event| {
+            event
+                .attributes
+                .iter()
+                .find(|attr| String::from_utf8_lossy(&attr.key) == "new_token_denom")
+                .map(|attr| String::from_utf8_lossy(&attr.value).to_string())
+        })
+        .expect("Could not find LP token denomination in create_denom event");
+
+    // Find the LP share amount from the provide_liquidity wasm event
+    let lp_share = response
+        .events
+        .iter()
+        .find(|event| {
+            event.r#type == "wasm"
+                && event.attributes.iter().any(|attr| {
+                    String::from_utf8_lossy(&attr.key) == "action"
+                        && String::from_utf8_lossy(&attr.value) == "provide_liquidity"
+                })
+        })
+        .and_then(|event| {
+            event
+                .attributes
+                .iter()
+                .find(|attr| String::from_utf8_lossy(&attr.key) == "share")
+                .and_then(|attr| String::from_utf8_lossy(&attr.value).parse::<u128>().ok())
+        })
+        .expect("Could not find LP share amount in provide_liquidity event");
+
+    // Find the pair address from the create_pair_and_provide_liquidity_success wasm event
+    let pair_address = response
+        .events
+        .iter()
+        .find(|event| {
+            event.r#type == "wasm"
+                && event.attributes.iter().any(|attr| {
+                    String::from_utf8_lossy(&attr.key) == "action"
+                        && String::from_utf8_lossy(&attr.value)
+                            == "create_pair_and_provide_liquidity_success"
+                })
+        })
+        .and_then(|event| {
+            event
+                .attributes
+                .iter()
+                .find(|attr| String::from_utf8_lossy(&attr.key) == "pair_address")
+                .map(|attr| String::from_utf8_lossy(&attr.value).to_string())
+        })
+        .expect("Could not find pair address in create_pair_and_provide_liquidity_success event");
+
+    (lp_denom, lp_share, pair_address)
+}
+
 #[rstest]
 fn test_create_pool_and_provide_liquidity_and_withdraw(setup: TestCase) {
     let TestCase {
@@ -99,65 +158,65 @@ fn test_create_pool_and_provide_liquidity_and_withdraw(setup: TestCase) {
         ..
     } = setup;
 
-    // Use the newly instantiated contracts - no manual address overrides needed
-    println!(
-        "CW20 contract address: {}",
-        cw20_contract.address().unwrap()
-    );
-    println!(
-        "Socket contract address: {}",
-        socket_astroport_contract.address().unwrap()
-    );
+    // provide liquidity as before
+    let cw20_amount = Uint128::new(50_000);
+    let native_amount = Uint128::new(1_000_000);
 
-    // Use much larger amounts - Astroport pools often have minimum requirements
-    let cw20_amount = Uint128::new(50000); // 0.05 tokens (with 6 decimals)
-    let native_amount = Uint128::new(1_000_000); // 1 untrn (with 6 decimals)
-
-    println!(
-        "Attempting to provide liquidity with {} CW20 tokens and {} untrn",
-        cw20_amount, native_amount
-    );
-
-    let msg = Cw20ExecuteMsg::IncreaseAllowance {
-        spender: socket_astroport_contract.address().unwrap().to_string(),
-        amount: cw20_amount,
-        expires: None,
-    };
-    cw20_contract.execute(&msg, &[]).unwrap();
-
-    let msg = SocketAstroportExecuteMsg::CreatePairAndProvideLiquidity {
-        pair_type: PairType::Xyk {},
-        asset_infos: vec![
-            AssetInfo::Token {
-                contract_addr: cw20_contract.address().unwrap(),
-            },
-            AssetInfo::NativeToken {
-                denom: "untrn".to_string(),
-            },
-        ],
-        init_params: None,
-        assets: vec![
-            AssetEntry {
-                info: AssetInfo::Token {
-                    contract_addr: cw20_contract.address().unwrap(),
-                },
+    cw20_contract
+        .execute(
+            &Cw20ExecuteMsg::IncreaseAllowance {
+                spender: socket_astroport_contract.address().unwrap().to_string(),
                 amount: cw20_amount,
+                expires: None,
             },
-            AssetEntry {
-                info: AssetInfo::NativeToken {
-                    denom: "untrn".to_string(),
-                },
-                amount: native_amount,
-            },
-        ],
-        slippage_tolerance: None,
-        auto_stake: None,
-        receiver: Some(daemon.sender().address().to_string()),
-    };
-
-    let res = socket_astroport_contract
-        .execute(&msg, &[coin(native_amount.u128(), "untrn")])
+            &[],
+        )
         .unwrap();
 
-    println!("Transaction successful! Result: {:?}", res);
+    let res = socket_astroport_contract
+        .execute(
+            &SocketAstroportExecuteMsg::CreatePairAndProvideLiquidity {
+                pair_type: PairType::Xyk {},
+                asset_infos: vec![
+                    AssetInfo::Token {
+                        contract_addr: cw20_contract.address().unwrap(),
+                    },
+                    AssetInfo::NativeToken {
+                        denom: "untrn".to_string(),
+                    },
+                ],
+                init_params: None,
+                assets: vec![
+                    AssetEntry {
+                        info: AssetInfo::Token {
+                            contract_addr: cw20_contract.address().unwrap(),
+                        },
+                        amount: cw20_amount,
+                    },
+                    AssetEntry {
+                        info: AssetInfo::NativeToken {
+                            denom: "untrn".to_string(),
+                        },
+                        amount: native_amount,
+                    },
+                ],
+                slippage_tolerance: None,
+                auto_stake: None,
+                receiver: Some(daemon.sender().address().to_string()),
+            },
+            &[coin(native_amount.u128(), "untrn")],
+        )
+        .unwrap();
+    // parse the response JSON
+    let (lp_denom, lp_share, pair_address) = parse_lp_from_response(&res);
+
+    let withdraw_msg = SocketAstroportExecuteMsg::WithdrawLiquidity {
+        pair_address: AndrAddr::from_string(pair_address),
+    };
+
+    let withdraw_res = socket_astroport_contract
+        .execute(&withdraw_msg, &[coin(lp_share, &lp_denom)])
+        .unwrap();
+
+    println!("Withdraw result: {:?}", withdraw_res);
 }

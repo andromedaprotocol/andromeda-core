@@ -57,12 +57,6 @@ pub const FACTORY: Item<String> = Item::new("factory");
 
 pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
 
-pub const PAIR_ADDRESS: Item<AndrAddr> = Item::new("pair_address");
-
-pub const LP_PAIR_ADDRESS: Item<AndrAddr> = Item::new("lp_pair_address");
-
-pub const CW20_CONTRACT: Item<AndrAddr> = Item::new("cw20_contract");
-
 // Store liquidity provision parameters during pair creation
 pub const LIQUIDITY_PROVISION_STATE: Item<LiquidityProvisionState> =
     Item::new("liquidity_provision_state");
