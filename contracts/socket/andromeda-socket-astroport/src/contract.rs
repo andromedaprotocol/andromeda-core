@@ -587,16 +587,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let liquidity_state = LIQUIDITY_PROVISION_STATE.load(deps.storage)?;
             LIQUIDITY_PROVISION_STATE.remove(deps.storage);
 
-            let receiver_raw = if let Some(receiver) = liquidity_state.receiver {
-                Some(
-                    receiver
-                        .get_raw_address(&deps.as_ref())
-                        .unwrap()
-                        .to_string(),
-                )
-            } else {
-                None
-            };
+            let receiver_raw = liquidity_state.receiver.map(|receiver| {
+                receiver.get_raw_address(&deps.as_ref())
+                .unwrap()
+                .to_string()
+            });
 
             // Build the provide liquidity message
             let provide_liquidity_msg = PairExecuteMsg::ProvideLiquidity {
