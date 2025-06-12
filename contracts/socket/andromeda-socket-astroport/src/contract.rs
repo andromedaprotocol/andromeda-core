@@ -299,7 +299,7 @@ fn provide_liquidity(
     assets: Vec<AssetEntry>,
     slippage_tolerance: Option<Decimal>,
     auto_stake: Option<bool>,
-    receiver: Option<String>,
+    receiver: Option<AndrAddr>,
     pair_address: AndrAddr,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
@@ -309,12 +309,18 @@ fn provide_liquidity(
     // Load the pair address from state
     let pair_addr_raw = pair_address.get_raw_address(&deps.as_ref())?;
 
+    let receiver_raw = if let Some(receiver) = receiver {
+        Some(receiver.get_raw_address(&deps.as_ref())?.to_string())
+    } else {
+        None
+    };
+
     // Build the provide liquidity message
     let provide_liquidity_msg = PairExecuteMsg::ProvideLiquidity {
         assets: assets.clone(),
         slippage_tolerance,
         auto_stake,
-        receiver,
+        receiver: receiver_raw,
     };
 
     let mut response_msgs = Response::new();
@@ -392,7 +398,7 @@ fn create_pair_and_provide_liquidity(
     assets: Vec<AssetEntry>,
     slippage_tolerance: Option<Decimal>,
     auto_stake: Option<bool>,
-    receiver: Option<String>,
+    receiver: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
 
@@ -581,12 +587,23 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let liquidity_state = LIQUIDITY_PROVISION_STATE.load(deps.storage)?;
             LIQUIDITY_PROVISION_STATE.remove(deps.storage);
 
+            let receiver_raw = if let Some(receiver) = liquidity_state.receiver {
+                Some(
+                    receiver
+                        .get_raw_address(&deps.as_ref())
+                        .unwrap()
+                        .to_string(),
+                )
+            } else {
+                None
+            };
+
             // Build the provide liquidity message
             let provide_liquidity_msg = PairExecuteMsg::ProvideLiquidity {
                 assets: liquidity_state.assets.clone(),
                 slippage_tolerance: liquidity_state.slippage_tolerance,
                 auto_stake: liquidity_state.auto_stake,
-                receiver: liquidity_state.receiver,
+                receiver: receiver_raw,
             };
 
             // Handle both native coins and CW20 token allowances

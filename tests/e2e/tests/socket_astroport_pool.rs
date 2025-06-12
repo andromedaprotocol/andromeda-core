@@ -202,7 +202,7 @@ fn test_create_pool_and_provide_liquidity_and_withdraw(setup: TestCase) {
                 ],
                 slippage_tolerance: None,
                 auto_stake: None,
-                receiver: Some(daemon.sender().address().to_string()),
+                receiver: Some(daemon.sender().address().into()),
             },
             &[coin(native_amount.u128(), "untrn")],
         )

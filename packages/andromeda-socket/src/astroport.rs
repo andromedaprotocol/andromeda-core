@@ -61,7 +61,7 @@ pub enum ExecuteMsg {
         /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
         auto_stake: Option<bool>,
         /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
+        receiver: Option<AndrAddr>,
         /// The pair address
         pair_address: AndrAddr,
     },
@@ -81,7 +81,7 @@ pub enum ExecuteMsg {
         /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
         auto_stake: Option<bool>,
         /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
+        receiver: Option<AndrAddr>,
     },
 
     /// Update swap router

@@ -44,7 +44,7 @@ pub struct LiquidityProvisionState {
     /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
     pub auto_stake: Option<bool>,
     /// The receiver of LP tokens (if different from sender)
-    pub receiver: Option<String>,
+    pub receiver: Option<AndrAddr>,
     /// The sender of the liquidity provision
     pub sender: String,
 }
