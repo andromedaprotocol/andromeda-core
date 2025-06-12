@@ -588,9 +588,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             LIQUIDITY_PROVISION_STATE.remove(deps.storage);
 
             let receiver_raw = liquidity_state.receiver.map(|receiver| {
-                receiver.get_raw_address(&deps.as_ref())
-                .unwrap()
-                .to_string()
+                receiver
+                    .get_raw_address(&deps.as_ref())
+                    .unwrap()
+                    .to_string()
             });
 
             // Build the provide liquidity message
