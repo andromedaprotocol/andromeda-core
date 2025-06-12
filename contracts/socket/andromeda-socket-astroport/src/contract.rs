@@ -635,7 +635,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 wasm_execute(pair_address.clone(), &provide_liquidity_msg, native_coins)?;
             response_msgs.push(provide_wasm_msg);
 
-            let mut response: Response = Response::new();
+            let mut response = Response::new();
             for msg in response_msgs {
                 response = response.add_message(msg);
             }
