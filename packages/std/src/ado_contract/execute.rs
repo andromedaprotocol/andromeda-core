@@ -81,6 +81,9 @@ impl ADOContract {
                 owner = app_owner;
                 attributes.push(attr("app_contract", info.sender.to_string()));
             }
+        } else if msg.ado_type == "crates.io:andromeda-app-contract" {
+            self.app_contract.save(storage, &env.contract.address)?;
+            attributes.push(attr("app_contract", env.contract.address));
         }
 
         self.owner.save(storage, &owner)?;
