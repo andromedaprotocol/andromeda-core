@@ -317,7 +317,7 @@ fn provide_liquidity(
         receiver,
     };
 
-    let mut response_msg = vec![];
+    let mut response_msgs = Response::new();
     let mut native_coins = vec![];
 
     for asset in &assets {
@@ -338,7 +338,7 @@ fn provide_liquidity(
                     },
                     vec![],
                 )?;
-                response_msg.push(response_transfer_tokens);
+                response_msgs = response_msgs.add_message(response_transfer_tokens);
                 // Set allowance for the pair contract to spend CW20 tokens owned by this socket
                 // This is required by Astroport: "increase your token allowance for the pool before providing liquidity"
                 let allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
@@ -347,21 +347,16 @@ fn provide_liquidity(
                     expires: None,
                 };
                 let allowance_wasm_msg = wasm_execute(contract_addr, &allowance_msg, vec![])?;
-                response_msg.push(allowance_wasm_msg);
+                response_msgs = response_msgs.add_message(allowance_wasm_msg);
             }
         }
     }
 
     // Send the provide liquidity message to the pair (native coins attached, CW20s via allowance)
     let provide_wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, native_coins)?;
-    response_msg.push(provide_wasm_msg);
+    response_msgs = response_msgs.add_message(provide_wasm_msg);
 
-    let mut response: Response = Response::new();
-    for msg in response_msg {
-        response = response.add_message(msg);
-    }
-
-    Ok(response.add_attributes(vec![
+    Ok(response_msgs.add_attributes(vec![
         attr("action", "provide_liquidity"),
         attr("pair_address", pair_address.to_string()),
         attr("assets", format!("{:?}", assets)),
@@ -635,7 +630,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 wasm_execute(pair_address.clone(), &provide_liquidity_msg, native_coins)?;
             response_msgs.push(provide_wasm_msg);
 
-            let mut response = Response::new();
+            let mut response: Response = Response::new();
             for msg in response_msgs {
                 response = response.add_message(msg);
             }
