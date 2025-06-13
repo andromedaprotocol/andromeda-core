@@ -6,8 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
-
-- chore: refactored tests to be more readable, fixed ibc direct packet bug and test setup [(#808)](https://github.com/andromedaprotocol/andromeda-core/pull/808)
+- feat: Added neutron testnet to deploy script [(##875)](https://github.com/andromedaprotocol/andromeda-core/pull/875)
 
 ### Added
 
@@ -20,15 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Batch send NFTs [(#816)](https://github.com/andromedaprotocol/andromeda-core/pull/816)
 - feat: Added Permissionless attribute to relevant messages [(#825)](https://github.com/andromedaprotocol/andromeda-core/pull/825)
 - feat: Apply Serde default to previous_hops [(#829)](https://github.com/andromedaprotocol/andromeda-core/pull/829)
+- feat: CW20 Redeem ADO [(#842)](https://github.com/andromedaprotocol/andromeda-core/pull/842)
+- feat: Update to CosmWasm 2.2 from 1.5 [(#850)](https://github.com/andromedaprotocol/andromeda-core/pull/850)
+- feat: Added Astroport socket with LP and swap functionality [(#885)](https://github.com/andromedaprotocol/andromeda-core/pull/885)
+- feat: Create pool with funds and withdraw from pool in osmosis socket [(#886)](https://github.com/andromedaprotocol/andromeda-core/pull/886)
 
 ### Changed
 
 - feat: Improved macros and execution flow for AMP [(#741)](https://github.com/andromedaprotocol/andromeda-core/pull/741)
 - chore: remove unused contracts & code [(#790)](https://github.com/andromedaprotocol/andromeda-core/pull/790)
 - feat: Recipient in rate limiting withdrawals [(#804)](https://github.com/andromedaprotocol/andromeda-core/pull/804)
+- chore: refactored tests to be more readable, fixed ibc direct packet bug and test setup [(#808)](https://github.com/andromedaprotocol/andromeda-core/pull/808)
 - feat: deploy script validate & build steps [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
 - ref: Simplify the kernel's handling of its Send ExecuteMsg [(#736)](https://github.com/andromedaprotocol/andromeda-core/pull/736)
 - fix: kernel's tx id generation [(#851)](https://github.com/andromedaprotocol/andromeda-core/pull/851)
+- ref: change cw20 exchange's sale start time and end time to Milliseconds, same for auction [(#869)](https://github.com/andromedaprotocol/andromeda-core/pull/869)
 
 ### Fixed
 
@@ -38,7 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: Prevent duplicate relay in Kernel [(#802)](https://github.com/andromedaprotocol/andromeda-core/pull/802)
 - fix: ibc username not working for ibc send with funds [(#814)](https://github.com/andromedaprotocol/andromeda-core/pull/814)
 - fix: kernel's handle_local not resolving AndrAddr [(#846)](https://github.com/andromedaprotocol/andromeda-core/pull/846)
+- fix: Timelock Release Funds [(#857)](https://github.com/andromedaprotocol/andromeda-core/pull/857)
 - fix: Added missing version bumps [(#858)](https://github.com/andromedaprotocol/andromeda-core/pull/858)
+- fix: GetComponents query's schema  [(#873)](https://github.com/andromedaprotocol/andromeda-core/pull/873)
+
 
 ## Release 4
 
@@ -131,6 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added BuyNow option for Auction [(#533)](https://github.com/andromedaprotocol/andromeda-core/pull/533)
 - Include ADOBase Version in Schema [(#574)](https://github.com/andromedaprotocol/andromeda-core/pull/574)
 - Added multi-hop support for IBC [(#604)](https://github.com/andromedaprotocol/andromeda-core/pull/604)
+- Added astroport and osmosis socket [(#845)](https://github.com/andromedaprotocol/andromeda-core/pull/845)
 
 ### Changed
 

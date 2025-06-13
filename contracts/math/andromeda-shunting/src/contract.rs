@@ -18,7 +18,7 @@ use cw2::set_contract_version;
 use serde_cw_value::Value;
 
 use crate::state::EXPRESSIONS;
-use cw_json::JSON;
+use andromeda_cw_json::JSON;
 use simple_shunting::*;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-shunting";

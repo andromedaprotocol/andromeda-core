@@ -12,7 +12,7 @@ use andromeda_testing::{
 };
 use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty};
-use cw721::OwnerOfResponse;
+use cw721::msg::OwnerOfResponse;
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCW721(Addr);
@@ -59,6 +59,25 @@ impl MockCW721 {
     ) -> ExecuteResult {
         let msg = mock_quick_mint_msg(amount, owner.into());
         self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_mint(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        token_id: String,
+        owner: AndrAddr,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &ExecuteMsg::Mint {
+                token_id,
+                owner,
+                token_uri: None,
+            },
+            sender,
+            &[],
+        )
     }
 
     pub fn execute_send_nft(
@@ -150,9 +169,7 @@ pub fn mock_mint_msg(
 pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
     let mut mint_msgs: Vec<MintMsg> = Vec::new();
     for i in 1..=amount {
-        let extension = TokenExtension {
-            publisher: owner.clone(),
-        };
+        let extension = TokenExtension {};
 
         let msg = mock_mint_msg(i.to_string(), extension, None, owner.clone());
         mint_msgs.push(msg);

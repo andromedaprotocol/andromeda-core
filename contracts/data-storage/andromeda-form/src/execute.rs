@@ -1,7 +1,6 @@
 use andromeda_data_storage::form::SubmissionInfo;
 use andromeda_modules::schema::{QueryMsg as SchemaQueryMsg, ValidateDataResponse};
 use andromeda_std::{
-    ado_contract::ADOContract,
     amp::AndrAddr,
     common::{context::ExecuteContext, encode_binary, Milliseconds},
     error::ContractError,
@@ -21,7 +20,7 @@ pub fn execute_submit_form(
     data: String,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender;
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SUBMIT_FORM_ACTION,
@@ -55,7 +54,7 @@ pub fn execute_submit_form(
                 true => {
                     submissions().save(
                         ctx.deps.storage,
-                        &(new_id.u64(), sender.clone()),
+                        (new_id.u64(), sender.clone()),
                         &SubmissionInfo {
                             submission_id: new_id.u64(),
                             wallet_address: sender.clone(),
@@ -77,7 +76,7 @@ pub fn execute_submit_form(
                     if submissions_by_address.is_empty() {
                         submissions().save(
                             ctx.deps.storage,
-                            &(new_id.u64(), sender.clone()),
+                            (new_id.u64(), sender.clone()),
                             &SubmissionInfo {
                                 submission_id: new_id.u64(),
                                 wallet_address: sender.clone(),
@@ -112,14 +111,14 @@ pub fn execute_delete_submission(
     let sender = ctx.info.sender;
     let address = wallet_address.get_raw_address(&ctx.deps.as_ref())?;
     submissions()
-        .load(ctx.deps.storage, &(submission_id, address.clone()))
+        .load(ctx.deps.storage, (submission_id, address.clone()))
         .map_err(|_| ContractError::CustomError {
             msg: format!(
                 "Submission does not exist - Submission_id {:?}, Wallet_address {:?}",
                 submission_id, wallet_address
             ),
         })?;
-    submissions().remove(ctx.deps.storage, &(submission_id, address.clone()))?;
+    submissions().remove(ctx.deps.storage, (submission_id, address.clone()))?;
 
     let response = Response::new()
         .add_attribute("method", "delete_submission")
@@ -165,7 +164,7 @@ pub fn execute_edit_submission(
     let wallet_address = wallet_address.get_raw_address(&ctx.deps.as_ref())?;
 
     if submissions()
-        .may_load(ctx.deps.storage, &(submission_id, wallet_address.clone()))?
+        .may_load(ctx.deps.storage, (submission_id, wallet_address.clone()))?
         .is_some()
     {
         ensure!(
@@ -177,7 +176,7 @@ pub fn execute_edit_submission(
             ValidateDataResponse::Valid => {
                 submissions().save(
                     ctx.deps.storage,
-                    &(submission_id, wallet_address),
+                    (submission_id, wallet_address),
                     &SubmissionInfo {
                         submission_id,
                         wallet_address: sender.clone(),

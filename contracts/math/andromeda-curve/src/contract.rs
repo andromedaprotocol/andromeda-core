@@ -93,7 +93,7 @@ pub fn execute_update_curve_config(
     curve_config: CurveConfig,
 ) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         UPDATE_CURVE_CONFIG_ACTION,
@@ -110,7 +110,7 @@ pub fn execute_update_curve_config(
 
 pub fn execute_reset(mut ctx: ExecuteContext) -> Result<Response, ContractError> {
     let sender = ctx.info.sender.clone();
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         RESET_ACTION,

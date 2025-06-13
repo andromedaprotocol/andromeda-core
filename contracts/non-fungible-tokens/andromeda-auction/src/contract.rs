@@ -20,7 +20,7 @@ use andromeda_std::{
             SEND_CW20_ACTION,
         },
         encode_binary,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
+        expiration::Expiry,
         Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
@@ -33,7 +33,10 @@ use cosmwasm_std::{
     StdError, Storage, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
+use cw721::{
+    msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse},
+    receiver::Cw721ReceiveMsg,
+};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -136,7 +139,7 @@ fn handle_receive_cw721(
     mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
@@ -262,12 +265,20 @@ fn execute_start_auction(
         }
     }
 
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
+    let start_time = match start_time {
+        Some(s) => {
+            // Check that the start time is in the future
+            s.validate(&env.block)?
+        }
+        // Set start time to current time if not provided
+        None => Expiry::FromNow(Milliseconds::zero()),
+    }
+    .get_time(&env.block);
+
+    let end_time = end_time.validate(&env.block)?.get_time(&env.block);
 
     ensure!(
-        end_expiration > start_expiration,
+        end_time > start_time,
         ContractError::StartTimeAfterEndTime {}
     );
 
@@ -295,8 +306,8 @@ fn execute_start_auction(
         deps.storage,
         auction_id.u128(),
         &TokenAuctionState {
-            start_time: start_expiration,
-            end_time: end_expiration,
+            start_time,
+            end_time,
             high_bidder_addr: Addr::unchecked(""),
             high_bidder_amount: Uint128::zero(),
             buy_now_price,
@@ -316,8 +327,8 @@ fn execute_start_auction(
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "start_auction"),
-        attr("start_time", start_expiration.to_string()),
-        attr("end_time", end_expiration.to_string()),
+        attr("start_time", start_time.to_string()),
+        attr("end_time", end_time.to_string()),
         attr("coin_denom", coin_denom),
         attr("auction_id", auction_id.to_string()),
         attr("whitelist", whitelist_str),
@@ -367,7 +378,7 @@ fn execute_update_auction(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
-        info.sender == token_auction_state.owner,
+        info.sender.as_str() == token_auction_state.owner,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -380,12 +391,20 @@ fn execute_update_auction(
         ContractError::InvalidExpiration {}
     );
 
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time)?;
-    let end_expiration = expiration_from_milliseconds(end_time.get_time(&env.block))?;
+    let start_time = match start_time {
+        Some(s) => {
+            // Check that the start time is in the future
+            s.validate(&env.block)?
+        }
+        // Set start time to current time if not provided
+        None => Expiry::FromNow(Milliseconds::zero()),
+    }
+    .get_time(&env.block);
+
+    let end_time = end_time.validate(&env.block)?.get_time(&env.block);
 
     ensure!(
-        end_expiration > start_expiration,
+        end_time > start_time,
         ContractError::StartTimeAfterEndTime {}
     );
 
@@ -413,8 +432,8 @@ fn execute_update_auction(
 
     let whitelist_str = format!("{:?}", &whitelist);
 
-    token_auction_state.start_time = start_expiration;
-    token_auction_state.end_time = end_expiration;
+    token_auction_state.start_time = start_time;
+    token_auction_state.end_time = end_time;
     token_auction_state.coin_denom.clone_from(&coin_denom);
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
@@ -429,8 +448,8 @@ fn execute_update_auction(
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_auction"),
-        attr("start_time", start_expiration.to_string()),
-        attr("end_time", end_expiration.to_string()),
+        attr("start_time", start_time.to_string()),
+        attr("end_time", end_time.to_string()),
         attr("coin_denom", coin_denom),
         attr("uses_cw20", uses_cw20.to_string()),
         attr("auction_id", token_auction_state.auction_id.to_string()),
@@ -455,7 +474,7 @@ fn execute_place_bid(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
@@ -684,7 +703,7 @@ fn execute_place_bid_cw20(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
@@ -804,7 +823,7 @@ fn execute_buy_now_cw20(
 
     validate_auction(token_auction_state.clone(), info.clone(), &env.block)?;
 
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         deps.branch(),
         env.clone(),
         token_auction_state.auction_id,
@@ -918,7 +937,7 @@ fn execute_cancel(
     let mut token_auction_state =
         get_existing_token_auction_state(deps.storage, &token_id, &token_address)?;
     ensure!(
-        info.sender == token_auction_state.owner,
+        info.sender.as_str() == token_auction_state.owner,
         ContractError::Unauthorized {}
     );
     ensure!(
@@ -995,7 +1014,7 @@ fn execute_claim(
     ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
-        token_owner == env.contract.address,
+        token_owner == env.contract.address.as_str(),
         ContractError::AuctionAlreadyClaimed {}
     );
     // This is the case where no-one bid on the token.
@@ -1129,7 +1148,7 @@ fn get_existing_token_auction_state(
     token_address: &str,
 ) -> Result<TokenAuctionState, ContractError> {
     let key = token_id.to_owned() + token_address;
-    let latest_auction_id: Uint128 = match auction_infos().may_load(storage, &key)? {
+    let latest_auction_id: Uint128 = match auction_infos().may_load(storage, key)? {
         None => return Err(ContractError::AuctionDoesNotExist {}),
         Some(auction_info) => *auction_info.last().unwrap(),
     };
@@ -1149,13 +1168,15 @@ fn get_and_increment_next_auction_id(
 
     let key = token_id.to_owned() + token_address;
 
-    let mut auction_info = auction_infos().load(storage, &key).unwrap_or_default();
+    let mut auction_info = auction_infos()
+        .load(storage, key.clone())
+        .unwrap_or_default();
     auction_info.push(next_auction_id);
     if auction_info.token_address.is_empty() {
         token_address.clone_into(&mut auction_info.token_address);
         token_id.clone_into(&mut auction_info.token_id);
     }
-    auction_infos().save(storage, &key, &auction_info)?;
+    auction_infos().save(storage, key, &auction_info)?;
     Ok(next_auction_id)
 }
 
@@ -1246,7 +1267,7 @@ fn query_is_claimed(
 
     // if token owner isn't the contract, it means that it has been claimed. If they're equal it means that it hasn't been claimed and will return false
     Ok(IsClaimedResponse {
-        is_claimed: token_owner != env.contract.address,
+        is_claimed: token_owner != env.contract.address.as_str(),
     })
 }
 
@@ -1275,7 +1296,7 @@ fn query_auction_ids(
     token_address: String,
 ) -> Result<AuctionIdsResponse, ContractError> {
     let key = token_id + &token_address;
-    let auction_info = auction_infos().may_load(deps.storage, &key)?;
+    let auction_info = auction_infos().may_load(deps.storage, key)?;
     if let Some(auction_info) = auction_info {
         return Ok(AuctionIdsResponse {
             auction_ids: auction_info.auction_ids,

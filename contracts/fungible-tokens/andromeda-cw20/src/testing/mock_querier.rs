@@ -4,7 +4,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::testing::mock_querier::MockAndromedaQuerier;
 
 use andromeda_std::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage};
+use cosmwasm_std::testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage};
 use cosmwasm_std::{
     from_json, to_json_binary, Binary, Coin, ContractResult, OwnedDeps, Querier, QuerierResult,
     QuerierWrapper, QueryRequest, SystemError, SystemResult, WasmQuery,
@@ -12,6 +12,11 @@ use cosmwasm_std::{
 
 pub const MOCK_CW20_CONTRACT: &str = "mock_cw20_contract";
 
+pub type TestDeps = cosmwasm_std::OwnedDeps<
+    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockApi,
+    WasmMockQuerier,
+>;
 pub fn mock_dependencies_custom(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
@@ -24,17 +29,17 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let sender = deps.api.addr_make("sender");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info(&sender, &[]),
             InstantiateMsg {
                 ado_type: "cw20".to_string(),
                 ado_version: "test".to_string(),
-
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
                 owner: None,
             },

@@ -8,7 +8,7 @@ use andromeda_std::{
 };
 use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Coin, Uint128};
-use cw_orch::prelude::*;
+use cw_orch::{mock::cw_multi_test::ibc::types::keccak256, prelude::*};
 use cw_orch_interchain::prelude::*;
 
 #[test]
@@ -26,6 +26,18 @@ fn test_fixed_amount_splitter_ibc() {
     let splitter_osmosis = FixedAmountSplitterContract::new(osmosis.chain.clone());
     splitter_osmosis.upload().unwrap();
 
+    let denom_path = format!(
+        "{}/{}",
+        osmosis
+            .aos
+            .get_aos_channel(&juno.chain_name)
+            .unwrap()
+            .ics20
+            .unwrap(),
+        juno.denom.clone()
+    );
+    let expected_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
+
     splitter_osmosis
         .instantiate(
             &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
@@ -36,16 +48,7 @@ fn test_fixed_amount_splitter_ibc() {
                         ibc_recovery_address: None,
                     },
                     coins: vec![Coin {
-                        denom: format!(
-                            "ibc/{}/{}",
-                            osmosis
-                                .aos
-                                .get_aos_channel(&juno.chain_name)
-                                .unwrap()
-                                .ics20
-                                .unwrap(),
-                            juno.denom
-                        ),
+                        denom: expected_denom.clone(),
                         amount: Uint128::new(100),
                     }],
                 }],
@@ -55,7 +58,7 @@ fn test_fixed_amount_splitter_ibc() {
                 owner: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -71,7 +74,7 @@ fn test_fixed_amount_splitter_ibc() {
                 version: "1.0.0".to_string(),
                 publisher: None,
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -100,10 +103,10 @@ fn test_fixed_amount_splitter_ibc() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(100000000),
                 denom: juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -113,25 +116,13 @@ fn test_fixed_amount_splitter_ibc() {
         .unwrap();
     ensure_packet_success(packet_lifetime);
 
-    // Verify IBC transfer
-    let ibc_denom = format!(
-        "ibc/{}/{}",
-        osmosis
-            .aos
-            .get_aos_channel(&juno.chain_name)
-            .unwrap()
-            .ics20
-            .unwrap(),
-        juno.denom.clone()
-    );
-
     // Check balances
     let balances = osmosis
         .chain
         .query_all_balances(&osmosis.aos.kernel.address().unwrap())
         .unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom.clone());
     assert_eq!(balances[0].amount.u128(), 100000000);
 
     // Setup trigger
@@ -142,7 +133,7 @@ fn test_fixed_amount_splitter_ibc() {
                 key: "trigger_key".to_string(),
                 value: juno.chain.sender.to_string(),
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -164,7 +155,7 @@ fn test_fixed_amount_splitter_ibc() {
                 packet_ack,
                 channel_id,
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -176,6 +167,6 @@ fn test_fixed_amount_splitter_ibc() {
     // Verify final recipient balance
     let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
     assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, ibc_denom);
+    assert_eq!(balances[0].denom, expected_denom);
     assert_eq!(balances[0].amount.u128(), 100);
 }

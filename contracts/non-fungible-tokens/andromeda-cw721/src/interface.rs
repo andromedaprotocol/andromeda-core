@@ -9,7 +9,7 @@ contract_interface!(CW721Contract, CONTRACT_ID, "andromeda_cw721.wasm");
 type Chain = DaemonBase<Wallet>;
 
 impl CW721Contract<Chain> {
-    pub fn owner_of(&self, token_id: impl Into<String>) -> cw721::OwnerOfResponse {
+    pub fn owner_of(&self, token_id: impl Into<String>) -> cw721::msg::OwnerOfResponse {
         let query_msg = QueryMsg::OwnerOf {
             token_id: token_id.into(),
             include_expired: None,

@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-time-gate"
-version = "0.1.0-a.2"
+version = "0.1.0-a.3"
 edition = "2021"
 rust-version = "1.75.0"
 
@@ -8,8 +8,7 @@ rust-version = "1.75.0"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+
 # use library feature to disable all instantiate/execute/query exports
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]

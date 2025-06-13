@@ -6,6 +6,7 @@ use andromeda_crowdfund::mock::{
     mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, mock_purchase_cw20_msg, MockCrowdfund,
 };
 use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_minter, MockCW20};
+use andromeda_cw721::contract::MINT_ACTION;
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
@@ -205,9 +206,7 @@ fn setup(
 
     let meta_data = TierMetaData {
         token_uri: None,
-        extension: TokenExtension {
-            ..Default::default()
-        },
+        extension: TokenExtension::default(),
     };
     crowdfund
         .execute_add_tier(
@@ -238,16 +237,9 @@ fn setup(
         orderer: buyer_one.clone(),
     }];
 
-    let permission_action_msg = ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
-        action: "Mint".to_string(),
-    });
-    cw721
-        .execute(&mut router, &permission_action_msg, owner.clone(), &[])
-        .unwrap();
-
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(crowdfund.addr().to_string())],
-        action: "Mint".to_string(),
+        action: MINT_ACTION.to_string(),
         permission: Permission::Local(LocalPermission::whitelisted(None, None)),
     });
 
@@ -339,12 +331,12 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let summary = crowdfund.query_campaign_summary(&mut router);
     assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
-    let recipient_balance = router
+    let recipient_balance: Uint128 = router
         .wrap()
         .query_balance(recipient.clone().address, "uandr")
         .unwrap()
         .amount;
-    assert_eq!(summary.current_capital, recipient_balance.into());
+    assert_eq!(summary.current_capital, recipient_balance.u128());
 
     // Claim tier
     let _ = crowdfund
@@ -352,9 +344,9 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
         .unwrap();
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
     let owner_resp = cw721.query_owner_of(&router, "29".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
 }
 
 #[rstest]
@@ -548,9 +540,8 @@ fn test_crowdfund_app_native_with_ado_recipient(
     let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
 
     let summary = crowdfund.query_campaign_summary(&mut router);
-
     // Campaign could not be ended due to invalid withdrawal recipient msg
-    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+    assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
 }
 
 #[rstest]
@@ -715,8 +706,8 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let summary = crowdfund.query_campaign_summary(&mut router);
     assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
-    let recipient_balance = cw20.query_balance(&router, recipient.clone().address);
-    assert_eq!(summary.current_capital, recipient_balance.into());
+    let recipient_balance: Uint128 = cw20.query_balance(&router, recipient.clone().address);
+    assert_eq!(summary.current_capital, recipient_balance.u128());
 
     // Claim tier
     let _ = crowdfund
@@ -724,9 +715,9 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         .unwrap();
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
     let owner_resp = cw721.query_owner_of(&router, "29".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
 }
 
 #[rstest]

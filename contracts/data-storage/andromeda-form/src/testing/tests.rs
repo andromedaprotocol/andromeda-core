@@ -10,7 +10,7 @@ use andromeda_std::{
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
 };
-use cosmwasm_std::{testing::mock_env, Addr, Timestamp};
+use cosmwasm_std::{testing::mock_env, Timestamp};
 use test_case::test_case;
 
 use crate::{
@@ -155,7 +155,9 @@ fn test_invalid_instantiation(
     expected_err: ContractError,
 ) {
     let (_, _, err) = invalid_initialization(
-        AndrAddr::from_string(MOCK_SCHEMA_ADO),
+        AndrAddr::from_string(
+            "cosmwasm1vrvzfjg5qx7apcsjtc7z49f5qvx3k8j7hvjnlnv7pndyffq0x3nsh44s8w",
+        ),
         None,
         form_config,
         None,
@@ -439,58 +441,64 @@ fn test_submit_form_allowed_multiple_submission() {
     let form_status = query_form_status(deps.as_ref(), 20000000000_u64).unwrap();
     assert_eq!(form_status, GetFormStatusResponse::Opened);
 
+    let user1 = deps.api.addr_make("user1");
+    let user2 = deps.api.addr_make("user2");
+    let user3 = deps.api.addr_make("user3");
+    let user4 = deps.api.addr_make("user4");
+    let user5 = deps.api.addr_make("user5");
+
     submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data1".to_string(),
         20000000000_u64,
     )
     .unwrap();
     submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data2".to_string(),
         30000000000_u64,
     )
     .unwrap();
     submit_form(
         deps.as_mut(),
-        "user2",
+        user2.as_str(),
         "valid_data3".to_string(),
         40000000000_u64,
     )
     .unwrap();
     submit_form(
         deps.as_mut(),
-        "user3",
+        user3.as_str(),
         "valid_data4".to_string(),
         50000000000_u64,
     )
     .unwrap();
     submit_form(
         deps.as_mut(),
-        "user4",
+        user4.as_str(),
         "valid_data5".to_string(),
         60000000000_u64,
     )
     .unwrap();
     submit_form(
         deps.as_mut(),
-        "user4",
+        user4.as_str(),
         "valid_data6".to_string(),
         70000000000_u64,
     )
     .unwrap();
     submit_form(
         deps.as_mut(),
-        "user4",
+        user4.as_str(),
         "valid_data7".to_string(),
         80000000000_u64,
     )
     .unwrap();
     let err = submit_form(
         deps.as_mut(),
-        "user4",
+        user4.as_str(),
         "invalid_data8".to_string(),
         85000000000_u64,
     )
@@ -507,21 +515,23 @@ fn test_submit_form_allowed_multiple_submission() {
         .all_submissions;
     assert_eq!(all_submissions.len(), 7_usize);
 
-    let submission_ids = query_submission_ids(deps.as_ref(), AndrAddr::from_string("user1"))
-        .unwrap()
-        .submission_ids;
+    let submission_ids =
+        query_submission_ids(deps.as_ref(), AndrAddr::from_string(user1.to_string()))
+            .unwrap()
+            .submission_ids;
     assert_eq!(submission_ids.len(), 2_usize);
 
-    let submission_ids = query_submission_ids(deps.as_ref(), AndrAddr::from_string("user5"))
-        .unwrap()
-        .submission_ids;
+    let submission_ids =
+        query_submission_ids(deps.as_ref(), AndrAddr::from_string(user5.to_string()))
+            .unwrap()
+            .submission_ids;
     assert_eq!(submission_ids.len(), 0_usize);
 
     delete_submission(
         deps.as_mut(),
         info.sender.as_ref(),
         4,
-        AndrAddr::from_string("user3"),
+        AndrAddr::from_string(user3.to_string()),
     )
     .unwrap();
     let all_submissions = query_all_submissions(deps.as_ref())
@@ -536,7 +546,7 @@ fn test_submit_form_allowed_multiple_submission() {
 
     let err = submit_form(
         deps.as_mut(),
-        "user5",
+        user5.as_str(),
         "valid_data8".to_string(),
         110000000000_u64,
     )
@@ -568,17 +578,18 @@ fn test_submit_form_disallowed_multiple_submission_disallowed_edit() {
         None,
         5000000000_u64,
     );
+    let user1 = deps.api.addr_make("user1");
     open_form(deps.as_mut(), info.sender.as_ref(), 10000000000_u64).unwrap();
     submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data1".to_string(),
         20000000000_u64,
     )
     .unwrap();
     let res = submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data2".to_string(),
         30000000000_u64,
     )
@@ -592,9 +603,9 @@ fn test_submit_form_disallowed_multiple_submission_disallowed_edit() {
 
     let res = edit_submission(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         1,
-        AndrAddr::from_string("user1"),
+        AndrAddr::from_string(user1.to_string()),
         "valid_data2".to_string(),
     )
     .unwrap_err();
@@ -621,10 +632,12 @@ fn test_submit_form_disallowed_multiple_submission_allowed_edit() {
         None,
         5000000000_u64,
     );
+    let user1 = deps.api.addr_make("user1");
+    let user2 = deps.api.addr_make("user2");
     open_form(deps.as_mut(), info.sender.as_ref(), 10000000000_u64).unwrap();
     submit_form(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         "valid_data1".to_string(),
         20000000000_u64,
     )
@@ -632,9 +645,9 @@ fn test_submit_form_disallowed_multiple_submission_allowed_edit() {
 
     let res = edit_submission(
         deps.as_mut(),
-        "user2",
+        user2.as_str(),
         1,
-        AndrAddr::from_string("user1"),
+        AndrAddr::from_string(user1.to_string()),
         "valid_data2".to_string(),
     )
     .unwrap_err();
@@ -642,20 +655,20 @@ fn test_submit_form_disallowed_multiple_submission_allowed_edit() {
 
     edit_submission(
         deps.as_mut(),
-        "user1",
+        user1.as_str(),
         1,
-        AndrAddr::from_string("user1"),
+        AndrAddr::from_string(user1.to_string()),
         "valid_data2".to_string(),
     )
     .unwrap();
-    let submission = query_submission(deps.as_ref(), 1, AndrAddr::from_string("user1"))
+    let submission = query_submission(deps.as_ref(), 1, AndrAddr::from_string(user1.to_string()))
         .unwrap()
         .submission;
     assert_eq!(
         submission,
         Some(SubmissionInfo {
             submission_id: 1,
-            wallet_address: Addr::unchecked("user1"),
+            wallet_address: user1,
             data: "valid_data2".to_string()
         })
     );

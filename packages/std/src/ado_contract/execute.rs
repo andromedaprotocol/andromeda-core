@@ -24,7 +24,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 type ExecuteContextFunction<M, E> = fn(ExecuteContext, M) -> Result<Response, E>;
 
-impl ADOContract<'_> {
+impl ADOContract {
     pub fn instantiate(
         &self,
         storage: &mut dyn Storage,
@@ -355,6 +355,7 @@ macro_rules! unwrap_amp_msg {
 
         if let ExecuteMsg::AMPReceive(mut pkt) = msg {
             ctx.deps.api.debug("Unwrapping AMP Packet");
+
             ctx.info = MessageInfo {
                 sender: ctx.deps.api.addr_validate(
                     pkt.get_verified_origin(&ctx.info.clone(), &ctx.deps.as_ref())
@@ -421,7 +422,7 @@ macro_rules! unwrap_amp_msg {
 mod tests {
     use super::*;
     use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     mod app_contract {
         use super::*;
@@ -431,7 +432,8 @@ mod tests {
             let contract = ADOContract::default();
             let mut deps = mock_dependencies();
 
-            let info = mock_info("owner", &[]);
+            let owner = deps.api.addr_make("owner");
+            let info = message_info(&owner, &[]);
             let deps_mut = deps.as_mut();
             contract
                 .instantiate(
@@ -449,9 +451,9 @@ mod tests {
                 )
                 .unwrap();
 
-            let address = String::from("address");
+            let address = deps.api.addr_make("address");
             let msg = AndromedaMsg::UpdateAppContract {
-                address: address.clone(),
+                address: address.to_string(),
             };
 
             let res = contract
@@ -473,6 +475,8 @@ mod tests {
 
         use crate::ado_base::rates::{LocalRate, LocalRateType, PercentRate};
         use cosmwasm_std::Decimal;
+        const RECIPIENT: &str =
+            "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
 
         #[test]
         fn test_rates_migration() {
@@ -480,7 +484,8 @@ mod tests {
             let mut deps = mock_dependencies();
 
             // Setup initial contract state
-            let info = mock_info("owner", &[]);
+            let owner = deps.api.addr_make("owner");
+            let info = message_info(&owner, &[]);
             let deps_mut = deps.as_mut();
             contract
                 .instantiate(
@@ -501,7 +506,7 @@ mod tests {
             // Set up a test rate
             let rate = LocalRate {
                 rate_type: LocalRateType::Additive,
-                recipient: Recipient::from_string("recipient"),
+                recipient: Recipient::from_string(RECIPIENT),
                 value: crate::ado_base::rates::LocalRateValue::Percent(PercentRate {
                     percent: Decimal::one(),
                 }),
@@ -511,7 +516,11 @@ mod tests {
             // Save the rate in storage
             contract
                 .rates
-                .save(deps.as_mut().storage, "Claim", &Rate::Local(rate))
+                .save(
+                    deps.as_mut().storage,
+                    "Claim".to_string(),
+                    &Rate::Local(rate),
+                )
                 .unwrap();
 
             // Verify rate is saved
@@ -539,7 +548,8 @@ mod tests {
             let mut deps = mock_dependencies();
 
             // Setup initial contract state
-            let info = mock_info("owner", &[]);
+            let owner = deps.api.addr_make("owner");
+            let info = message_info(&owner, &[]);
             let deps_mut = deps.as_mut();
             contract
                 .instantiate(
@@ -563,12 +573,13 @@ mod tests {
                 expiration: None,
             });
 
+            let actor = deps.api.addr_make("actor");
             // Save the permission in storage
             let ctx = ExecuteContext::new(deps.as_mut(), info, mock_env());
             contract
                 .execute_set_permission(
                     ctx,
-                    vec![AndrAddr::from_string("actor")],
+                    vec![AndrAddr::from_string(actor.to_string())],
                     "test_action".to_string(),
                     permission,
                 )
@@ -576,7 +587,7 @@ mod tests {
 
             // Verify permission is saved
             let saved_permissions = contract
-                .query_permissions(deps.as_ref(), "actor", None, None)
+                .query_permissions(deps.as_ref(), actor.to_string().as_str(), None, None)
                 .unwrap();
             assert_eq!(saved_permissions.len(), 1);
 
@@ -587,7 +598,7 @@ mod tests {
 
             // Verify permissions were handled correctly during migration
             let post_migration_permissions = contract
-                .query_permissions(deps.as_ref(), "actor", None, None)
+                .query_permissions(deps.as_ref(), actor.to_string().as_str(), None, None)
                 .unwrap();
             assert_eq!(post_migration_permissions.len(), 1);
         }
