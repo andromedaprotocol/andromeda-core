@@ -44,7 +44,9 @@ pub struct LiquidityProvisionState {
     /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
     pub auto_stake: Option<bool>,
     /// The receiver of LP tokens (if different from sender)
-    pub receiver: Option<String>,
+    pub receiver: Option<AndrAddr>,
+    /// The sender of the liquidity provision
+    pub sender: String,
 }
 
 pub const FORWARD_REPLY_STATE: Item<ForwardReplyState> = Item::new("forward_reply_state");
@@ -54,11 +56,6 @@ pub const SWAP_ROUTER: Item<AndrAddr> = Item::new("swap_router");
 pub const FACTORY: Item<String> = Item::new("factory");
 
 pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
-
-// Store the created pair address
-pub const PAIR_ADDRESS: Item<AndrAddr> = Item::new("pair_address");
-
-pub const LP_PAIR_ADDRESS: Item<AndrAddr> = Item::new("lp_pair_address");
 
 // Store liquidity provision parameters during pair creation
 pub const LIQUIDITY_PROVISION_STATE: Item<LiquidityProvisionState> =
