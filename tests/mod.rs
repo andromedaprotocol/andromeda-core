@@ -15,9 +15,6 @@ mod kernel;
 mod cw20_staking;
 
 #[cfg(test)]
-mod redeem;
-
-#[cfg(test)]
 mod lockdrop;
 
 #[cfg(test)]
