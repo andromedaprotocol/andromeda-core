@@ -1,7 +1,7 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy};
+use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy, Schedule};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 
@@ -44,8 +44,7 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: Option<Expiry>,
-        end_time: Expiry,
+        schedule: Option<Schedule>,
         coin_denom: Asset,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
@@ -76,10 +75,7 @@ pub enum Cw721HookMsg {
     /// Starts a new auction with the given parameters. The auction info can be modified before it
     /// has started but is immutable after that.
     StartAuction {
-        /// Start time in milliseconds since epoch
-        start_time: Option<Expiry>,
-        /// Duration in milliseconds
-        end_time: Expiry,
+        schedule: Schedule,
         coin_denom: Asset,
         buy_now_price: Option<Uint128>,
         min_bid: Option<Uint128>,

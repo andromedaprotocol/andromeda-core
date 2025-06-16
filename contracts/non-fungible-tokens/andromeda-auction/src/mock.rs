@@ -12,6 +12,7 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
+use andromeda_std::common::Schedule;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,
@@ -52,8 +53,7 @@ impl MockAuction {
         &self,
         app: &mut MockApp,
         sender: Addr,
-        start_time: Option<Expiry>,
-        end_time: Expiry,
+        schedule: Schedule,
         buy_now_price: Option<Uint128>,
         coin_denom: Asset,
         min_bid: Option<Uint128>,
@@ -62,8 +62,7 @@ impl MockAuction {
         recipient: Option<Recipient>,
     ) -> AppResponse {
         let msg = mock_start_auction(
-            start_time,
-            end_time,
+            schedule,
             buy_now_price,
             coin_denom,
             min_bid,
@@ -180,8 +179,7 @@ pub fn mock_auction_instantiate_msg(
 
 #[allow(clippy::too_many_arguments)]
 pub fn mock_start_auction(
-    start_time: Option<Expiry>,
-    end_time: Expiry,
+    schedule: Schedule,
     buy_now_price: Option<Uint128>,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
@@ -190,8 +188,7 @@ pub fn mock_start_auction(
     recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
-        start_time,
-        end_time,
+        schedule,
         buy_now_price,
         coin_denom,
         min_bid,
@@ -220,8 +217,7 @@ pub fn mock_authorize_token_address(
 pub fn mock_update_auction(
     token_id: String,
     token_address: String,
-    start_time: Option<Expiry>,
-    end_time: Expiry,
+    schedule: Option<Schedule>,
     coin_denom: Asset,
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
@@ -232,8 +228,7 @@ pub fn mock_update_auction(
     ExecuteMsg::UpdateAuction {
         token_id,
         token_address,
-        start_time,
-        end_time,
+        schedule,
         coin_denom,
         whitelist,
         min_bid,

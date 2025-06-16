@@ -22,7 +22,7 @@ use andromeda_std::{
     common::{
         denom::Asset,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
-        Milliseconds,
+        Milliseconds, Schedule,
     },
     error::ContractError,
 };
@@ -168,8 +168,7 @@ fn test_auction_app_modules() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Some(Expiry::AtTime(start_time)),
-        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        Schedule::new(Some(Expiry::AtTime(start_time)), Some(Milliseconds(1000))),
         None,
         Asset::NativeToken("uandr".to_string()),
         None,
@@ -375,8 +374,7 @@ fn test_auction_app_recipient() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Some(Expiry::AtTime(start_time)),
-        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        Schedule::new(Some(Expiry::AtTime(start_time)), Some(Milliseconds(1000))),
         None,
         Asset::NativeToken("uandr".to_string()),
         None,
@@ -632,8 +630,10 @@ fn test_auction_app_cw20_restricted() {
             AndrAddr::from_string("./auction".to_string()),
             "1",
             &mock_start_auction(
-                Some(Expiry::AtTime(Milliseconds(start_time))),
-                Expiry::AtTime(Milliseconds(start_time + 2)),
+                Schedule::new(
+                    Some(Expiry::AtTime(Milliseconds(start_time))),
+                    Some(Milliseconds(2)),
+                ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
@@ -812,8 +812,10 @@ fn test_auction_app_cw20_restricted() {
             AndrAddr::from_string("./auction".to_string()),
             "2",
             &mock_start_auction(
-                Some(Expiry::AtTime(Milliseconds(start_time))),
-                Expiry::AtTime(Milliseconds(start_time + 2)),
+                Schedule::new(
+                    Some(Expiry::AtTime(Milliseconds(start_time))),
+                    Some(Milliseconds(2)),
+                ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
@@ -830,8 +832,10 @@ fn test_auction_app_cw20_restricted() {
     let update_auction_msg = mock_update_auction(
         "1".to_string(),
         cw721.addr().to_string(),
-        Some(Expiry::AtTime(Milliseconds(start_time))),
-        Expiry::AtTime(Milliseconds(start_time + 2)),
+        Some(Schedule::new(
+            Some(Expiry::AtTime(Milliseconds(start_time))),
+            Some(Milliseconds(2)),
+        )),
         // This cw20 hasn't been permissioned
         Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
         None,
@@ -1116,8 +1120,10 @@ fn test_auction_app_cw20_unrestricted() {
             AndrAddr::from_string("./auction".to_string()),
             "1",
             &mock_start_auction(
-                Some(Expiry::AtTime(Milliseconds(start_time))),
-                Expiry::AtTime(Milliseconds(start_time + 2)),
+                Schedule::new(
+                    Some(Expiry::AtTime(Milliseconds(start_time))),
+                    Some(Milliseconds(2)),
+                ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
                 None,
@@ -1242,8 +1248,10 @@ fn test_auction_app_cw20_unrestricted() {
             AndrAddr::from_string("./auction".to_string()),
             "2",
             &mock_start_auction(
-                Some(Expiry::AtTime(Milliseconds(start_time))),
-                Expiry::AtTime(Milliseconds(start_time + 2)),
+                Schedule::new(
+                    Some(Expiry::AtTime(Milliseconds(start_time))),
+                    Some(Milliseconds(2)),
+                ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
                 None,

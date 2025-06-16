@@ -2,6 +2,8 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{BlockInfo, Timestamp};
 use cw20::Expiration;
 
+use crate::{common::expiration::Expiry, error::ContractError};
+
 #[cw_serde]
 #[derive(Default, Eq, PartialOrd, Copy)]
 /// Represents time in milliseconds.
@@ -123,6 +125,48 @@ impl std::fmt::Display for Milliseconds {
     }
 }
 
+#[cw_serde]
+pub struct Schedule {
+    pub start_time: Option<Expiry>,
+    pub duration: Option<MillisecondsDuration>,
+}
+
+impl Schedule {
+    pub fn validate(
+        &self,
+        block: &BlockInfo,
+    ) -> Result<(Expiry, Option<Milliseconds>), ContractError> {
+        let start_time = match &self.start_time {
+            Some(s) => {
+                // Check that the start time is in the future
+                s.validate(block)?
+            }
+            // Set start time to current time if not provided
+            None => Expiry::FromNow(Milliseconds::zero()),
+        };
+
+        let end_time = match self.duration {
+            Some(e) => {
+                if e.is_zero() {
+                    // If duration is 0, set end time to none
+                    None
+                } else {
+                    // Set end time to start time + duration
+                    Some(start_time.get_time(block).plus_milliseconds(e))
+                }
+            }
+            None => None,
+        };
+
+        Ok((start_time, end_time))
+    }
+    pub fn new(start_time: Option<Expiry>, duration: Option<MillisecondsDuration>) -> Self {
+        Self {
+            start_time,
+            duration,
+        }
+    }
+}
 #[cfg(test)]
 mod test {
     use cosmwasm_std::testing::mock_env;

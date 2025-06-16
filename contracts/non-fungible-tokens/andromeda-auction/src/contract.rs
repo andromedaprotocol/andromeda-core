@@ -19,9 +19,7 @@ use andromeda_std::{
             validate_native_denom, Asset, AuthorizedAddressesResponse, PermissionAction,
             SEND_CW20_ACTION,
         },
-        encode_binary,
-        expiration::Expiry,
-        Funds, Milliseconds, OrderBy,
+        encode_binary, Funds, Milliseconds, OrderBy, Schedule,
     },
     error::ContractError,
 };
@@ -86,8 +84,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::UpdateAuction {
             token_id,
             token_address,
-            start_time,
-            end_time,
+            schedule,
             coin_denom,
             whitelist,
             min_bid,
@@ -98,8 +95,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             ctx,
             token_id,
             token_address,
-            start_time,
-            end_time,
+            schedule,
             coin_denom,
             whitelist,
             min_bid,
@@ -147,8 +143,7 @@ fn handle_receive_cw721(
     )?;
     match from_json(&msg.msg)? {
         Cw721HookMsg::StartAuction {
-            start_time,
-            end_time,
+            schedule,
             coin_denom,
             buy_now_price,
             whitelist,
@@ -159,8 +154,7 @@ fn handle_receive_cw721(
             ctx,
             msg.sender,
             msg.token_id,
-            start_time,
-            end_time,
+            schedule,
             coin_denom,
             buy_now_price,
             whitelist,
@@ -236,8 +230,7 @@ fn execute_start_auction(
     ctx: ExecuteContext,
     sender: String,
     token_id: String,
-    start_time: Option<Expiry>,
-    end_time: Expiry,
+    schedule: Schedule,
     coin_denom: Asset,
     buy_now_price: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
@@ -252,10 +245,6 @@ fn execute_start_auction(
         ..
     } = ctx;
     let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
-    ensure!(
-        !end_time.get_time(&env.block).is_zero(),
-        ContractError::InvalidExpiration {}
-    );
 
     if let (Some(buy_now), Some(min)) = (buy_now_price, min_bid) {
         if min >= buy_now {
@@ -265,22 +254,11 @@ fn execute_start_auction(
         }
     }
 
-    let start_time = match start_time {
-        Some(s) => {
-            // Check that the start time is in the future
-            s.validate(&env.block)?
-        }
-        // Set start time to current time if not provided
-        None => Expiry::FromNow(Milliseconds::zero()),
-    }
-    .get_time(&env.block);
-
-    let end_time = end_time.validate(&env.block)?.get_time(&env.block);
-
-    ensure!(
-        end_time > start_time,
-        ContractError::StartTimeAfterEndTime {}
-    );
+    let (start_time, end_time) = schedule.validate(&env.block)?;
+    let start_time = start_time.get_time(&env.block);
+    let end_time = end_time.ok_or(ContractError::InvalidSchedule {
+        msg: "Duration is required in auction".to_string(),
+    })?;
 
     let token_address = info.sender.to_string();
 
@@ -340,8 +318,7 @@ fn execute_update_auction(
     ctx: ExecuteContext,
     token_id: String,
     token_address: String,
-    start_time: Option<Expiry>,
-    end_time: Expiry,
+    schedule: Option<Schedule>,
     coin_denom: Asset,
     whitelist: Option<Vec<Addr>>,
     min_bid: Option<Uint128>,
@@ -386,27 +363,13 @@ fn execute_update_auction(
         ContractError::AuctionAlreadyStarted {}
     );
 
-    ensure!(
-        !end_time.get_time(&env.block).is_zero(),
-        ContractError::InvalidExpiration {}
-    );
-
-    let start_time = match start_time {
-        Some(s) => {
-            // Check that the start time is in the future
-            s.validate(&env.block)?
-        }
-        // Set start time to current time if not provided
-        None => Expiry::FromNow(Milliseconds::zero()),
+    if let Some(schedule) = schedule {
+        let (start_time, end_time) = schedule.validate(&env.block)?;
+        token_auction_state.start_time = start_time.get_time(&env.block);
+        token_auction_state.end_time = end_time.ok_or(ContractError::InvalidSchedule {
+            msg: "Duration is required in auction".to_string(),
+        })?;
     }
-    .get_time(&env.block);
-
-    let end_time = end_time.validate(&env.block)?.get_time(&env.block);
-
-    ensure!(
-        end_time > start_time,
-        ContractError::StartTimeAfterEndTime {}
-    );
 
     if let (Some(buy_now), Some(min)) = (buy_now_price, min_bid) {
         if min >= buy_now {
@@ -432,8 +395,6 @@ fn execute_update_auction(
 
     let whitelist_str = format!("{:?}", &whitelist);
 
-    token_auction_state.start_time = start_time;
-    token_auction_state.end_time = end_time;
     token_auction_state.coin_denom.clone_from(&coin_denom);
     token_auction_state.uses_cw20 = uses_cw20;
     token_auction_state.min_bid = min_bid;
@@ -448,8 +409,8 @@ fn execute_update_auction(
     )?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_auction"),
-        attr("start_time", start_time.to_string()),
-        attr("end_time", end_time.to_string()),
+        attr("start_time", token_auction_state.start_time.to_string()),
+        attr("end_time", token_auction_state.end_time.to_string()),
         attr("coin_denom", coin_denom),
         attr("uses_cw20", uses_cw20.to_string()),
         attr("auction_id", token_auction_state.auction_id.to_string()),
