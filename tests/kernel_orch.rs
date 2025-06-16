@@ -19,7 +19,7 @@ use andromeda_std::{
         messages::{AMPMsg, AMPMsgConfig, AMPPkt},
         AndrAddr, Recipient,
     },
-    common::{denom::Asset, Milliseconds, Schedule},
+    common::{denom::Asset, expiration::Expiry, Milliseconds, Schedule},
     os::{
         self,
         kernel::{ExecuteMsg, InstantiateMsg},
@@ -1377,7 +1377,7 @@ fn test_kernel_ibc_funds_only() {
         .unwrap();
 
     let receive_msg = mock_start_auction(
-        Schedule::new(None, Some(Milliseconds(10000))),
+        Schedule::new(None, Some(Expiry::FromNow(Milliseconds(10000)))),
         None,
         Asset::NativeToken("juno".to_string()),
         None,

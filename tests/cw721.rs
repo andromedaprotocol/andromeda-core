@@ -84,7 +84,10 @@ fn test_cw721_batch_send() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg_1 = mock_start_auction(
-        Schedule::new(Some(Expiry::AtTime(start_time)), Some(Milliseconds(1000))),
+        Schedule::new(
+            Some(Expiry::AtTime(start_time)),
+            Some(Expiry::FromNow(Milliseconds(1000))),
+        ),
         None,
         Asset::NativeToken("uandr".to_string()),
         None,
@@ -93,7 +96,10 @@ fn test_cw721_batch_send() {
         None,
     );
     let receive_msg_2 = mock_start_auction(
-        Schedule::new(Some(Expiry::AtTime(start_time)), Some(Milliseconds(1000))),
+        Schedule::new(
+            Some(Expiry::AtTime(start_time)),
+            Some(Expiry::FromNow(Milliseconds(1000))),
+        ),
         None,
         Asset::NativeToken("uandr".to_string()),
         Some(Uint128::one()),

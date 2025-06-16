@@ -16,6 +16,7 @@ use andromeda_non_fungible_tokens::{
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::Schedule;
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission, PermissioningMessage},
@@ -280,7 +281,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        Schedule::new(start_time, Some(end_time)),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -371,7 +372,7 @@ fn test_crowdfund_app_native_discard(
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        Schedule::new(start_time, Some(end_time)),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -463,7 +464,7 @@ fn test_crowdfund_app_native_with_ado_recipient(
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        Schedule::new(start_time, Some(end_time)),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -562,7 +563,7 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        Schedule::new(start_time, Some(duration)),
+        Schedule::new(start_time, Some(Expiry::FromNow(duration))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -655,7 +656,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        Schedule::new(start_time, Some(end_time)),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -738,7 +739,7 @@ fn test_failed_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        Schedule::new(start_time, Some(duration)),
+        Schedule::new(start_time, Some(Expiry::FromNow(duration))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);

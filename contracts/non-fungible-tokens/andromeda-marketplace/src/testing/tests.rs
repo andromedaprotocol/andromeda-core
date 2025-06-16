@@ -83,7 +83,7 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
         // Add one to the current time to have it set in the future
         schedule: Schedule::new(
             Some(Expiry::AtTime(Milliseconds(current_time + 1))),
-            Some(Milliseconds(1)),
+            Some(Expiry::FromNow(Milliseconds(1))),
         ),
         recipient: None,
     };
@@ -126,7 +126,7 @@ fn assert_sale_created(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool
             status: Status::Open,
             price: Uint128::new(100),
             // start sale function has start_time set as None, so it defaults to the current time
-            start_time: Milliseconds(current_time + 1),
+            start_time: Milliseconds(current_time),
             end_time: None,
             uses_cw20,
             recipient: None,

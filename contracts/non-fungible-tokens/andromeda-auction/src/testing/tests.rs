@@ -94,7 +94,7 @@ fn start_auction(
     buy_now_price: Option<Uint128>,
 ) {
     let hook_msg = Cw721HookMsg::StartAuction {
-        schedule: Schedule::new(None, Some(Milliseconds(20_000_000))),
+        schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds(20_000_000)))),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist,
         min_bid,
@@ -124,7 +124,7 @@ fn start_auction_cw20(
     buy_now_price: Option<Uint128>,
 ) {
     let hook_msg = Cw721HookMsg::StartAuction {
-        schedule: Schedule::new(None, Some(Milliseconds(20_000_000))),
+        schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds(20_000_000)))),
         coin_denom: Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string())),
         whitelist,
         min_bid,
@@ -380,7 +380,7 @@ fn execute_min_bid_greater_than_buy_now() {
     let env = mock_env();
     let _res = init(&mut deps);
     let hook_msg = Cw721HookMsg::StartAuction {
-        schedule: Schedule::new(None, Some(Milliseconds(20_000_000))),
+        schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds(20_000_000)))),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: Some(Uint128::new(100)),
@@ -782,7 +782,7 @@ fn execute_start_auction_start_time_in_past() {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(
             Some(Expiry::AtTime(Milliseconds(100000))),
-            Some(Milliseconds(100000)),
+            Some(Expiry::FromNow(Milliseconds(100000))),
         ),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
@@ -819,7 +819,7 @@ fn execute_start_auction_zero_start_time() {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(
             Some(Expiry::AtTime(Milliseconds::zero())),
-            Some(Milliseconds(1)),
+            Some(Expiry::FromNow(Milliseconds(1))),
         ),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
@@ -855,9 +855,9 @@ fn execute_start_auction_start_time_not_provided() {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(
             None,
-            Some(Milliseconds::from_nanos(
+            Some(Expiry::FromNow(Milliseconds::from_nanos(
                 (current_time() + 20_000_000) * 1_000_000,
-            )),
+            ))),
         ),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
@@ -886,7 +886,7 @@ fn execute_start_auction_zero_duration() {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(
             Some(Expiry::AtTime(Milliseconds(100))),
-            Some(Milliseconds::zero()),
+            Some(Expiry::FromNow(Milliseconds::zero())),
         ),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
@@ -956,7 +956,7 @@ fn execute_update_auction_zero_start() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         schedule: Some(Schedule::new(
             Some(Expiry::AtTime(Milliseconds::zero())),
-            Some(Milliseconds(1)),
+            Some(Expiry::FromNow(Milliseconds(1))),
         )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
@@ -992,7 +992,7 @@ fn execute_update_auction_zero_duration() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         schedule: Some(Schedule::new(
             Some(Expiry::AtTime(Milliseconds(100000))),
-            Some(Milliseconds::zero()),
+            Some(Expiry::FromNow(Milliseconds::zero())),
         )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
@@ -1027,7 +1027,7 @@ fn execute_update_auction_unauthorized() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         schedule: Some(Schedule::new(
             Some(Expiry::AtTime(Milliseconds(100000))),
-            Some(Milliseconds(100)),
+            Some(Expiry::FromNow(Milliseconds(100))),
         )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
@@ -1055,7 +1055,7 @@ fn execute_update_auction_auction_started() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         schedule: Some(Schedule::new(
             Some(Expiry::AtTime(Milliseconds(100000))),
-            Some(Milliseconds(100)),
+            Some(Expiry::FromNow(Milliseconds(100))),
         )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
@@ -1085,7 +1085,7 @@ fn execute_update_auction() {
         token_address: MOCK_TOKEN_ADDR.to_string(),
         schedule: Some(Schedule::new(
             Some(Expiry::AtTime(Milliseconds(1571711019879 + 1))),
-            Some(Milliseconds(2)),
+            Some(Expiry::FromNow(Milliseconds(2))),
         )),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: Some(vec![Addr::unchecked("user")]),
@@ -1135,7 +1135,12 @@ fn execute_start_auction_after_previous_finished() {
     start_auction(&mut deps, None, None, None, None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        schedule: Schedule::new(None, Some(Milliseconds::from_nanos(20_000_000 * 1_000_000))),
+        schedule: Schedule::new(
+            None,
+            Some(Expiry::FromNow(Milliseconds::from_nanos(
+                20_000_000 * 1_000_000,
+            ))),
+        ),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,
@@ -1727,7 +1732,12 @@ fn execute_claim_auction_already_claimed() {
     let _res = init(&mut deps);
 
     let hook_msg = Cw721HookMsg::StartAuction {
-        schedule: Schedule::new(None, Some(Milliseconds::from_nanos(20_000_000 * 1_000_000))),
+        schedule: Schedule::new(
+            None,
+            Some(Expiry::FromNow(Milliseconds::from_nanos(
+                20_000_000 * 1_000_000,
+            ))),
+        ),
         coin_denom: Asset::NativeToken("uusd".to_string()),
         whitelist: None,
         min_bid: None,

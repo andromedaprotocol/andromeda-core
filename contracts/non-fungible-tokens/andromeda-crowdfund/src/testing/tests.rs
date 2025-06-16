@@ -493,7 +493,10 @@ mod test {
                 name: "standard start_campaign".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                schedule: Schedule::new(None, Some(Milliseconds::from_seconds(100))),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "start_campaign")
@@ -507,7 +510,10 @@ mod test {
                 name: "start_campaign with unauthorized sender".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                schedule: Schedule::new(None, Some(Milliseconds::from_seconds(100))),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: "owner1".to_string(),
                 expected_res: Err(ContractError::Unauthorized {}),
             },
@@ -515,7 +521,10 @@ mod test {
                 name: "start_campaign with invalid presales".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(invalid_presale.clone()),
-                schedule: Schedule::new(None, Some(Milliseconds::from_seconds(100))),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "set_tier_orders".to_string(),
@@ -526,7 +535,7 @@ mod test {
                 name: "start_campaign with invalid end_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                schedule: Schedule::new(None, Some(Milliseconds::from_seconds(0))),
+                schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds::from_seconds(0)))),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Err(ContractError::InvalidSchedule {
                     msg: "Duration is required in campaign".to_string(),
@@ -538,7 +547,7 @@ mod test {
                 presale: Some(valid_presale.clone()),
                 schedule: Schedule::new(
                     Some(Expiry::AtTime(Milliseconds::from_seconds(1))),
-                    Some(Milliseconds::from_seconds(500)),
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(500))),
                 ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Err(ContractError::StartTimeInThePast {
@@ -571,16 +580,23 @@ mod test {
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().start_time,
                     test.schedule
-                        .start_time
+                        .start
                         .map(|exp| exp.get_time(&env.block))
                         .unwrap_or(Milliseconds(1571797419879)),
                 );
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().end_time,
                     test.schedule
-                        .duration
-                        .unwrap_or_default()
-                        .plus_milliseconds(Milliseconds(1571797419879))
+                        .end
+                        .map(|limit| {
+                            match limit {
+                                Expiry::FromNow(duration) => {
+                                    duration.plus_milliseconds(Milliseconds(1571797419879))
+                                }
+                                Expiry::AtTime(end_time) => end_time,
+                            }
+                        })
+                        .unwrap_or(Milliseconds(1571797419879))
                 );
                 assert_eq!(
                     CAMPAIGN_STAGE.load(&deps.storage).unwrap(),

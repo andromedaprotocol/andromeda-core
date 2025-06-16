@@ -36,6 +36,21 @@ impl Expiry {
         }
     }
 
+    /// Gets the expected expiry time provided the given block, using the user provided start time instead of the current time
+    pub fn get_end_time(&self, start_time: Milliseconds) -> Option<Milliseconds> {
+        match self {
+            Expiry::FromNow(milliseconds) => {
+                if milliseconds.is_zero() {
+                    return None;
+                }
+                // Add the expected expiry time from now
+                Some(start_time.plus_milliseconds(*milliseconds))
+            }
+            // Given time is absolute
+            Expiry::AtTime(milliseconds) => Some(*milliseconds),
+        }
+    }
+
     /// Validates that the expiry time is in the future
     pub fn validate(&self, block: &BlockInfo) -> Result<Self, ContractError> {
         let current_time = Milliseconds::from_nanos(block.time.nanos()).milliseconds();

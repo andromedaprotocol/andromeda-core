@@ -13,7 +13,7 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, Milliseconds, Schedule},
+    common::{denom::Asset, expiration::Expiry, Milliseconds, Schedule},
     os::adodb::ExecuteMsgFns as AdodbExecuteMsgFns,
 };
 use andromeda_testing_e2e::{
@@ -364,7 +364,10 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
     let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
 
     crowdfund_contract
-        .start_campaign(Schedule::new(start_time, Some(end_time)), Some(presale))
+        .start_campaign(
+            Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
+            Some(presale),
+        )
         .unwrap();
 
     let summary = crowdfund_contract.campaign_summary();
@@ -445,7 +448,10 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
 
     crowdfund_contract
-        .start_campaign(Schedule::new(start_time, Some(end_time)), Some(presale))
+        .start_campaign(
+            Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
+            Some(presale),
+        )
         .unwrap();
 
     let summary = crowdfund_contract.campaign_summary();

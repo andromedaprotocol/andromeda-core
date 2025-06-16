@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{BlockInfo, Timestamp};
+use cosmwasm_std::{ensure, BlockInfo, Timestamp};
 use cw20::Expiration;
 
 use crate::{common::expiration::Expiry, error::ContractError};
@@ -127,8 +127,8 @@ impl std::fmt::Display for Milliseconds {
 
 #[cw_serde]
 pub struct Schedule {
-    pub start_time: Option<Expiry>,
-    pub duration: Option<MillisecondsDuration>,
+    pub start: Option<Expiry>,
+    pub end: Option<Expiry>,
 }
 
 impl Schedule {
@@ -136,7 +136,7 @@ impl Schedule {
         &self,
         block: &BlockInfo,
     ) -> Result<(Milliseconds, Option<Milliseconds>), ContractError> {
-        let start_time = match &self.start_time {
+        let start_time = match &self.start {
             Some(s) => {
                 // Check that the start time is in the future
                 s.validate(block)?.get_time(block)
@@ -145,26 +145,27 @@ impl Schedule {
             None => Expiry::FromNow(Milliseconds::zero()).get_time(block),
         };
 
-        let end_time = match self.duration {
-            Some(e) => {
-                if e.is_zero() {
-                    // If duration is 0, set end time to none
-                    None
-                } else {
-                    // Set end time to start time + duration
-                    Some(start_time.plus_milliseconds(e))
+        let end_time = match &self.end {
+            Some(limit) => {
+                let end_time = limit.get_end_time(start_time);
+                // Start time has already been validated, so no need to check if the end time is in the past
+                if let Some(end_time) = end_time {
+                    ensure!(
+                        end_time > start_time,
+                        ContractError::InvalidSchedule {
+                            msg: "End time must be after start time".to_string(),
+                        }
+                    );
                 }
+                end_time
             }
             None => None,
         };
 
         Ok((start_time, end_time))
     }
-    pub fn new(start_time: Option<Expiry>, duration: Option<MillisecondsDuration>) -> Self {
-        Self {
-            start_time,
-            duration,
-        }
+    pub fn new(start: Option<Expiry>, end: Option<Expiry>) -> Self {
+        Self { start, end }
     }
 }
 #[cfg(test)]

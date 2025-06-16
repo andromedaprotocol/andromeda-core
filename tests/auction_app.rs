@@ -168,7 +168,10 @@ fn test_auction_app_modules() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Schedule::new(Some(Expiry::AtTime(start_time)), Some(Milliseconds(1000))),
+        Schedule::new(
+            Some(Expiry::AtTime(start_time)),
+            Some(Expiry::FromNow(Milliseconds(1000))),
+        ),
         None,
         Asset::NativeToken("uandr".to_string()),
         None,
@@ -374,7 +377,10 @@ fn test_auction_app_recipient() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg = mock_start_auction(
-        Schedule::new(Some(Expiry::AtTime(start_time)), Some(Milliseconds(1000))),
+        Schedule::new(
+            Some(Expiry::AtTime(start_time)),
+            Some(Expiry::FromNow(Milliseconds(1000))),
+        ),
         None,
         Asset::NativeToken("uandr".to_string()),
         None,
@@ -622,7 +628,8 @@ fn test_auction_app_cw20_restricted() {
         .unwrap();
 
     // Send Token to Auction
-    let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
+    let start_time =
+        Milliseconds(router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100);
     cw721
         .execute_send_nft(
             &mut router,
@@ -631,8 +638,10 @@ fn test_auction_app_cw20_restricted() {
             "1",
             &mock_start_auction(
                 Schedule::new(
-                    Some(Expiry::AtTime(Milliseconds(start_time))),
-                    Some(Milliseconds(2)),
+                    Some(Expiry::AtTime(start_time)),
+                    Some(Expiry::AtTime(
+                        start_time.plus_milliseconds(Milliseconds(2)),
+                    )),
                 ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
@@ -646,7 +655,7 @@ fn test_auction_app_cw20_restricted() {
 
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: Timestamp::from_nanos(start_time * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        time: Timestamp::from_nanos(start_time.0 * MILLISECONDS_TO_NANOSECONDS_RATIO),
         chain_id: router.block_info().chain_id,
     });
 
@@ -761,7 +770,7 @@ fn test_auction_app_cw20_restricted() {
     // Forward time
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        time: Timestamp::from_nanos((start_time.0 + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
         chain_id: router.block_info().chain_id,
     });
 
@@ -814,7 +823,7 @@ fn test_auction_app_cw20_restricted() {
             &mock_start_auction(
                 Schedule::new(
                     Some(Expiry::AtTime(Milliseconds(start_time))),
-                    Some(Milliseconds(2)),
+                    Some(Expiry::FromNow(Milliseconds(2))),
                 ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
@@ -834,7 +843,7 @@ fn test_auction_app_cw20_restricted() {
         cw721.addr().to_string(),
         Some(Schedule::new(
             Some(Expiry::AtTime(Milliseconds(start_time))),
-            Some(Milliseconds(2)),
+            Some(Expiry::FromNow(Milliseconds(2))),
         )),
         // This cw20 hasn't been permissioned
         Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
@@ -1112,7 +1121,8 @@ fn test_auction_app_cw20_unrestricted() {
 
     // Send Token to Auction
     let auction: MockAuction = app.query_ado_by_component_name(&router, auction_component.name);
-    let start_time = router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100;
+    let start_time =
+        Milliseconds(router.block_info().time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO + 100);
     cw721
         .execute_send_nft(
             &mut router,
@@ -1121,8 +1131,10 @@ fn test_auction_app_cw20_unrestricted() {
             "1",
             &mock_start_auction(
                 Schedule::new(
-                    Some(Expiry::AtTime(Milliseconds(start_time))),
-                    Some(Milliseconds(2)),
+                    Some(Expiry::AtTime(start_time)),
+                    Some(Expiry::AtTime(
+                        start_time.plus_milliseconds(Milliseconds(2)),
+                    )),
                 ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().to_string())),
@@ -1136,7 +1148,7 @@ fn test_auction_app_cw20_unrestricted() {
 
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: Timestamp::from_nanos(start_time * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        time: Timestamp::from_nanos(start_time.0 * MILLISECONDS_TO_NANOSECONDS_RATIO),
         chain_id: router.block_info().chain_id,
     });
 
@@ -1192,7 +1204,7 @@ fn test_auction_app_cw20_unrestricted() {
     // End Auction
     router.set_block(BlockInfo {
         height: router.block_info().height,
-        time: Timestamp::from_nanos((start_time + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
+        time: Timestamp::from_nanos((start_time.0 + 1001) * MILLISECONDS_TO_NANOSECONDS_RATIO),
         chain_id: router.block_info().chain_id,
     });
     auction
@@ -1250,7 +1262,7 @@ fn test_auction_app_cw20_unrestricted() {
             &mock_start_auction(
                 Schedule::new(
                     Some(Expiry::AtTime(Milliseconds(start_time))),
-                    Some(Milliseconds(2)),
+                    Some(Expiry::FromNow(Milliseconds(2))),
                 ),
                 None,
                 Asset::Cw20Token(AndrAddr::from_string(second_cw20.addr().to_string())),
