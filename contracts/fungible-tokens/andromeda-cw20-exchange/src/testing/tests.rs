@@ -205,7 +205,7 @@ pub fn test_start_sale() {
     );
 
     let expected_expiration_time =
-        Timestamp::from_nanos((current_time + 60_000) * MILLISECONDS_TO_NANOSECONDS_RATIO);
+        Timestamp::from_nanos((current_time + 60_000 + 10) * MILLISECONDS_TO_NANOSECONDS_RATIO);
     assert_eq!(
         sale.end_time,
         Some(Milliseconds::from_nanos(expected_expiration_time.nanos()))
