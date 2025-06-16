@@ -12,7 +12,7 @@ use cw_storage_plus::{Bound, Item, Map};
 #[cw_serde]
 pub struct Duration {
     /// Time when campaign starts
-    pub start_time: Option<MillisecondsExpiration>,
+    pub start_time: MillisecondsExpiration,
     /// Time when campaign ends
     pub end_time: MillisecondsExpiration,
 }

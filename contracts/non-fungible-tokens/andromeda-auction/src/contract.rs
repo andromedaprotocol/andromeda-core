@@ -255,7 +255,6 @@ fn execute_start_auction(
     }
 
     let (start_time, end_time) = schedule.validate(&env.block)?;
-    let start_time = start_time.get_time(&env.block);
     let end_time = end_time.ok_or(ContractError::InvalidSchedule {
         msg: "Duration is required in auction".to_string(),
     })?;
@@ -365,7 +364,7 @@ fn execute_update_auction(
 
     if let Some(schedule) = schedule {
         let (start_time, end_time) = schedule.validate(&env.block)?;
-        token_auction_state.start_time = start_time.get_time(&env.block);
+        token_auction_state.start_time = start_time;
         token_auction_state.end_time = end_time.ok_or(ContractError::InvalidSchedule {
             msg: "Duration is required in auction".to_string(),
         })?;

@@ -16,10 +16,11 @@ use andromeda_non_fungible_tokens::{
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
 };
+use andromeda_std::common::Schedule;
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission, PermissioningMessage},
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, encode_binary, expiration::Expiry, Milliseconds},
+    common::{denom::Asset, encode_binary, Milliseconds},
 };
 use andromeda_testing::{
     mock::{mock_app, MockApp},
@@ -279,8 +280,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(end_time)),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -371,8 +371,7 @@ fn test_crowdfund_app_native_discard(
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(end_time)),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -464,8 +463,7 @@ fn test_crowdfund_app_native_with_ado_recipient(
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(end_time)),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -559,13 +557,12 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
 
     // Start campaign
     let start_time = None;
-    let end_time = Milliseconds::from_nanos(router.block_info().time.plus_days(1).nanos());
+    let duration = Milliseconds::from_nanos(86400000000000);
 
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(duration)),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -658,8 +655,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(end_time)),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -737,13 +733,12 @@ fn test_failed_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
 
     // Start campaign
     let start_time = None;
-    let end_time = Milliseconds::from_nanos(router.block_info().time.plus_days(1).nanos());
+    let duration = Milliseconds::from_nanos(86400000000000);
 
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(duration)),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);

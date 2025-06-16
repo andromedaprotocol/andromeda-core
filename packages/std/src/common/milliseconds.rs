@@ -135,14 +135,14 @@ impl Schedule {
     pub fn validate(
         &self,
         block: &BlockInfo,
-    ) -> Result<(Expiry, Option<Milliseconds>), ContractError> {
+    ) -> Result<(Milliseconds, Option<Milliseconds>), ContractError> {
         let start_time = match &self.start_time {
             Some(s) => {
                 // Check that the start time is in the future
-                s.validate(block)?
+                s.validate(block)?.get_time(block)
             }
             // Set start time to current time if not provided
-            None => Expiry::FromNow(Milliseconds::zero()),
+            None => Expiry::FromNow(Milliseconds::zero()).get_time(block),
         };
 
         let end_time = match self.duration {
@@ -152,7 +152,7 @@ impl Schedule {
                     None
                 } else {
                     // Set end time to start time + duration
-                    Some(start_time.get_time(block).plus_milliseconds(e))
+                    Some(start_time.plus_milliseconds(e))
                 }
             }
             None => None,

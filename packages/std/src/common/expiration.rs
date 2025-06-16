@@ -51,6 +51,16 @@ impl Expiry {
 
         Ok(self.clone())
     }
+    pub fn to_expiration(&self) -> Expiration {
+        match self {
+            Expiry::FromNow(milliseconds) => {
+                Expiration::AtTime(Timestamp::from_nanos(milliseconds.nanos()))
+            }
+            Expiry::AtTime(milliseconds) => {
+                Expiration::AtTime(Timestamp::from_nanos(milliseconds.nanos()))
+            }
+        }
+    }
 }
 
 /// Expiry defaults to an absolute time of 0

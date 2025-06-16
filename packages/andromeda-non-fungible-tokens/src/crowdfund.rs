@@ -1,15 +1,13 @@
-use andromeda_std::amp::addresses::AndrAddr;
-use andromeda_std::amp::Recipient;
-use andromeda_std::common::denom::Asset;
-use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::{MillisecondsExpiration, OrderBy};
-use andromeda_std::error::ContractError;
-use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use crate::cw721::TokenExtension;
+use andromeda_std::{
+    amp::{addresses::AndrAddr, Recipient},
+    andr_exec, andr_instantiate, andr_query,
+    common::{denom::Asset, MillisecondsExpiration, OrderBy, Schedule},
+    error::ContractError,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, DepsMut, Env, Uint128, Uint64};
 use cw20::Cw20ReceiveMsg;
-
-use crate::cw721::TokenExtension;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -36,8 +34,7 @@ pub enum ExecuteMsg {
     /// Start the campaign
     #[attrs(restricted)]
     StartCampaign {
-        start_time: Option<Expiry>,
-        end_time: Expiry,
+        schedule: Schedule,
         presale: Option<Vec<PresaleTierOrder>>,
     },
     /// Purchase tiers
@@ -260,7 +257,7 @@ pub struct CampaignSummaryResponse {
     pub withdrawal_recipient: Recipient,
     pub soft_cap: Option<Uint128>,
     pub hard_cap: Option<Uint128>,
-    pub start_time: Option<MillisecondsExpiration>,
+    pub start_time: MillisecondsExpiration,
     pub end_time: MillisecondsExpiration,
     // Current Status
     pub current_stage: String,

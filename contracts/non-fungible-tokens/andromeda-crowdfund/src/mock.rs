@@ -5,7 +5,7 @@ use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TiersResponse,
 };
-use andromeda_std::common::{expiration::Expiry, OrderBy};
+use andromeda_std::common::{OrderBy, Schedule};
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
@@ -60,11 +60,10 @@ impl MockCrowdfund {
         &self,
         sender: Addr,
         app: &mut MockApp,
-        start_time: Option<Expiry>,
-        end_time: Expiry,
+        schedule: Schedule,
         presale: Option<Vec<PresaleTierOrder>>,
     ) -> ExecuteResult {
-        let msg = mock_start_campaign_msg(start_time, end_time, presale);
+        let msg = mock_start_campaign_msg(schedule, presale);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -149,15 +148,10 @@ pub fn mock_add_tier_msg(
 }
 
 pub fn mock_start_campaign_msg(
-    start_time: Option<Expiry>,
-    end_time: Expiry,
+    schedule: Schedule,
     presale: Option<Vec<PresaleTierOrder>>,
 ) -> ExecuteMsg {
-    ExecuteMsg::StartCampaign {
-        start_time,
-        end_time,
-        presale,
-    }
+    ExecuteMsg::StartCampaign { schedule, presale }
 }
 
 pub fn mock_purchase_msg(orders: Vec<SimpleTierOrder>) -> ExecuteMsg {
