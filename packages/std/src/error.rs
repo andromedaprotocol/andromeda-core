@@ -371,6 +371,9 @@ pub enum ContractError {
     #[error("SaleEnded")]
     SaleEnded {},
 
+    #[error("RedeemEnded")]
+    RedeemEnded {},
+
     #[error("SaleNotOpen")]
     SaleNotOpen {},
 
@@ -601,11 +604,20 @@ pub enum ContractError {
     #[error("No Ongoing Sale")]
     NoOngoingSale {},
 
+    #[error("No Ongoing Redeem")]
+    NoOngoingRedeem {},
+
     #[error("Purchase limit reached")]
     PurchaseLimitReached {},
 
     #[error("Sale not ended")]
     SaleNotEnded {},
+
+    #[error("Redeem not ended")]
+    RedeemNotEnded {},
+
+    #[error("Redeem not started")]
+    RedeemNotStarted {},
 
     #[error("Redemption condition already exists")]
     RedemptionConditionAlreadyExists {},
