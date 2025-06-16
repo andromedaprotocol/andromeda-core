@@ -7,7 +7,7 @@ use andromeda_std::{
     common::{
         denom::Asset,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
-        Milliseconds,
+        Milliseconds, Schedule,
     },
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
@@ -70,8 +70,7 @@ pub fn test_start_sale_invalid_token() {
         asset: exchange_asset,
         exchange_rate: Uint128::from(10u128),
         recipient: None,
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
     };
     // Owner set as Cw20ReceiveMsg sender to ensure that this message will error even if a malicious user
     // sends the message directly with the owner address provided
@@ -107,8 +106,7 @@ pub fn test_start_sale_unauthorised() {
         asset: exchange_asset,
         exchange_rate: Uint128::from(10u128),
         recipient: None,
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: "not_owner".to_string(),
@@ -137,8 +135,7 @@ pub fn test_start_sale_zero_amount() {
         asset: exchange_asset,
         exchange_rate: Uint128::from(10u128),
         recipient: None,
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: "not_owner".to_string(),
@@ -177,8 +174,10 @@ pub fn test_start_sale() {
         exchange_rate,
         recipient: None,
         // A start time ahead of the current time
-        start_time: Some(Expiry::AtTime(Milliseconds(current_time + 10))),
-        duration: Some(Milliseconds(60_000)),
+        schedule: Schedule::new(
+            Some(Expiry::AtTime(Milliseconds(current_time + 10))),
+            Some(Expiry::FromNow(Milliseconds(60_000))),
+        ),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -233,8 +232,7 @@ pub fn test_start_sale_no_start_no_duration() {
         exchange_rate,
         recipient: None,
         // A start time ahead of the current time
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -282,8 +280,7 @@ pub fn test_start_sale_invalid_start_time() {
         asset: exchange_asset,
         exchange_rate,
         recipient: None,
-        start_time: Some(Expiry::AtTime(Milliseconds(1))),
-        duration: None,
+        schedule: Schedule::new(Some(Expiry::AtTime(Milliseconds(1))), None),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -322,8 +319,7 @@ pub fn test_start_sale_ongoing() {
         asset: exchange_asset,
         exchange_rate,
         recipient: None,
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -357,8 +353,7 @@ pub fn test_start_sale_zero_exchange_rate() {
         asset: exchange_asset,
         exchange_rate,
         recipient: None,
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
     };
     let receive_msg = Cw20ReceiveMsg {
         sender: owner.to_string(),
@@ -1383,8 +1378,7 @@ fn test_start_sale_same_asset() {
             asset: Asset::Cw20Token(AndrAddr::from_string(cw20_addr.to_string())),
             exchange_rate: Uint128::from(10u128),
             recipient: None,
-            start_time: None,
-            duration: None,
+            schedule: Schedule::new(None, None),
         })
         .unwrap(),
         amount: Uint128::from(100u128),

@@ -126,6 +126,7 @@ impl std::fmt::Display for Milliseconds {
 }
 
 #[cw_serde]
+#[derive(Default)]
 pub struct Schedule {
     pub start: Option<Expiry>,
     pub end: Option<Expiry>,

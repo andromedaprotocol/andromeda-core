@@ -4,7 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20_exchange::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, expiration::Expiry, Milliseconds, MillisecondsDuration},
+    common::{denom::Asset, Schedule},
 };
 use cosmwasm_std::{Decimal256, Empty, Uint128};
 
@@ -31,15 +31,13 @@ pub fn mock_cw20_exchange_start_sale_msg(
     asset: Asset,
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
-    start_time: Option<Expiry>,
-    duration: Option<MillisecondsDuration>,
+    schedule: Schedule,
 ) -> Cw20HookMsg {
     Cw20HookMsg::StartSale {
         asset,
         exchange_rate,
         recipient,
-        start_time,
-        duration,
+        schedule,
     }
 }
 
@@ -71,15 +69,13 @@ pub fn mock_start_redeem_cw20_msg(
     recipient: Option<Recipient>,
     redeem_asset: Asset,
     exchange_rate: Decimal256,
-    start_time: Option<Expiry>,
-    end_time: Option<Milliseconds>,
+    schedule: Schedule,
 ) -> Cw20HookMsg {
     Cw20HookMsg::StartRedeem {
         recipient,
         redeem_asset,
         exchange_rate,
-        start_time,
-        end_time,
+        schedule,
     }
 }
 
@@ -87,15 +83,13 @@ pub fn mock_set_redeem_condition_native_msg(
     redeem_asset: Asset,
     exchange_rate: Decimal256,
     recipient: Option<Recipient>,
-    start_time: Option<Expiry>,
-    end_time: Option<Milliseconds>,
+    schedule: Schedule,
 ) -> ExecuteMsg {
     ExecuteMsg::StartRedeem {
         redeem_asset,
         exchange_rate,
         recipient,
-        start_time,
-        end_time,
+        schedule,
     }
 }
 
