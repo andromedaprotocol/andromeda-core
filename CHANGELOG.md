@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Apply Serde default to previous_hops [(#829)](https://github.com/andromedaprotocol/andromeda-core/pull/829)
 - feat: CW20 Redeem ADO [(#842)](https://github.com/andromedaprotocol/andromeda-core/pull/842)
 - feat: Update to CosmWasm 2.2 from 1.5 [(#850)](https://github.com/andromedaprotocol/andromeda-core/pull/850)
-- feat: CW20 Exchange V2 [(#874)](https://github.com/andromedaprotocol/andromeda-core/pull/874)
+- feat: CW20 Exchange V2, delete CW20 Redeem [(#874)](https://github.com/andromedaprotocol/andromeda-core/pull/874)
 - feat: Added Astroport socket with LP and swap functionality [(#885)](https://github.com/andromedaprotocol/andromeda-core/pull/885)
 - feat: Create pool with funds and withdraw from pool in osmosis socket [(#886)](https://github.com/andromedaprotocol/andromeda-core/pull/886)
 
