@@ -12,6 +12,25 @@ else
   PLATFORM="linux/amd64"
 fi
 
+# Check if Rust Alpine 1.86.0 is installed, if not install it via Docker
+if ! rustc --version | grep -q "1.86.0"; then
+  echo "🔧 Rust Alpine 1.86.0 not found. Installing via Docker..."
+  
+  # Create a temporary Dockerfile for Rust installation
+  cat > Dockerfile.rust << 'EOF'
+FROM rust:1.86.0-alpine
+RUN apk add --no-cache musl-dev
+EOF
+
+  # Build the Rust image
+  docker build -t rust-alpine-1.86.0 -f Dockerfile.rust .
+  
+  # Clean up the temporary Dockerfile
+  rm Dockerfile.rust
+  
+  echo "✅ Rust Alpine 1.86.0 has been installed via Docker"
+fi
+
 # Check if the image already exists
 if ! docker image inspect "$OPTIMIZER_TAG" > /dev/null 2>&1; then
   echo "🔧 Building $OPTIMIZER_TAG from GitHub repo..."
