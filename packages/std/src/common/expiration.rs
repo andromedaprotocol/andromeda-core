@@ -36,17 +36,16 @@ impl Expiry {
         }
     }
 
-    /// Gets the expected expiry time provided the given block, using the user provided start time instead of the current time
+    /// Gets the expected expiry time using the user provided start time instead of the current time
     pub fn get_end_time(&self, start_time: Milliseconds) -> Option<Milliseconds> {
         match self {
             Expiry::FromNow(milliseconds) => {
                 if milliseconds.is_zero() {
                     return None;
                 }
-                // Add the expected expiry time from now
+                // Add the expected expiry time from start time
                 Some(start_time.plus_milliseconds(*milliseconds))
             }
-            // Given time is absolute
             Expiry::AtTime(milliseconds) => Some(*milliseconds),
         }
     }
