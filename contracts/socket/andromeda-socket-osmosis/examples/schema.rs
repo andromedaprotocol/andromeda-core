@@ -1,3 +1,5 @@
+use std::env::current_dir;
+
 use andromeda_socket::osmosis::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 use cosmwasm_schema::write_api;
