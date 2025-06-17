@@ -354,7 +354,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.2.0-b.7"
+version = "2.2.0-b.8"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
