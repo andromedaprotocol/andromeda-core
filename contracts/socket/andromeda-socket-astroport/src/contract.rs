@@ -275,7 +275,7 @@ fn create_factory_pair(
 
     let asset_infos: Vec<AssetInfo> = asset_infos
         .iter()
-        .map(|asset_info| transform_asset_info(&asset_info, &deps))
+        .map(|asset_info| transform_asset_info(asset_info, &deps))
         .collect::<Result<Vec<AssetInfo>, ContractError>>()?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
@@ -422,7 +422,7 @@ fn create_pair_and_provide_liquidity(
 
     let asset_infos: Vec<AssetInfo> = asset_infos
         .iter()
-        .map(|asset_info| transform_asset_info(&asset_info, &deps))
+        .map(|asset_info| transform_asset_info(asset_info, &deps))
         .collect::<Result<Vec<AssetInfo>, ContractError>>()?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
