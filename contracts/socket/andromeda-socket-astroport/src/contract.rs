@@ -36,8 +36,9 @@ use crate::{
 };
 
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, AssetInfoAstroport, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
-    PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
+    transform_asset_info, AssetEntry, AssetInfo, AssetInfoAstroport, Cw20HookMsg, ExecuteMsg,
+    InstantiateMsg, PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse,
+    SwapOperation,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -274,15 +275,8 @@ fn create_factory_pair(
 
     let asset_infos: Vec<AssetInfo> = asset_infos
         .iter()
-        .map(|asset_info| match asset_info {
-            AssetInfoAstroport::Token { contract_addr } => AssetInfo::Token {
-                contract_addr: contract_addr.get_raw_address(&deps.as_ref()).unwrap(),
-            },
-            AssetInfoAstroport::NativeToken { denom } => AssetInfo::NativeToken {
-                denom: denom.clone(),
-            },
-        })
-        .collect();
+        .map(|asset_info| transform_asset_info(&asset_info, &deps))
+        .collect::<Result<Vec<AssetInfo>, ContractError>>()?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
         pair_type: pair_type.clone(),
@@ -428,15 +422,8 @@ fn create_pair_and_provide_liquidity(
 
     let asset_infos: Vec<AssetInfo> = asset_infos
         .iter()
-        .map(|asset_info| match asset_info {
-            AssetInfoAstroport::Token { contract_addr } => AssetInfo::Token {
-                contract_addr: contract_addr.get_raw_address(&deps.as_ref()).unwrap(),
-            },
-            AssetInfoAstroport::NativeToken { denom } => AssetInfo::NativeToken {
-                denom: denom.clone(),
-            },
-        })
-        .collect();
+        .map(|asset_info| transform_asset_info(&asset_info, &deps))
+        .collect::<Result<Vec<AssetInfo>, ContractError>>()?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
         pair_type: pair_type.clone(),

@@ -2,9 +2,10 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate,
     common::denom::Asset,
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
+use cosmwasm_std::{Addr, Binary, Decimal, DepsMut, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
@@ -299,4 +300,18 @@ pub enum PairExecuteMsg {
 pub struct PairAddressResponse {
     /// The pair contract address
     pub pair_address: Option<String>,
+}
+
+pub fn transform_asset_info(
+    asset_info: &AssetInfoAstroport,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    match asset_info {
+        AssetInfoAstroport::Token { contract_addr } => Ok(AssetInfo::Token {
+            contract_addr: contract_addr.get_raw_address(&deps.as_ref())?,
+        }),
+        AssetInfoAstroport::NativeToken { denom } => Ok(AssetInfo::NativeToken {
+            denom: denom.clone(),
+        }),
+    }
 }
