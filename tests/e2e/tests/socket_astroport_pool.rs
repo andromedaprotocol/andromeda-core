@@ -1,6 +1,7 @@
 use andromeda_app_contract::AppContract;
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, ExecuteMsg as SocketAstroportExecuteMsg, InstantiateMsg, PairType,
+    AssetEntry, AssetInfo, AssetInfoAstroport, ExecuteMsg as SocketAstroportExecuteMsg,
+    InstantiateMsg, PairType,
 };
 
 use andromeda_cw20::CW20Contract;
@@ -178,10 +179,10 @@ fn test_create_pool_and_provide_liquidity_and_withdraw(setup: TestCase) {
             &SocketAstroportExecuteMsg::CreatePairAndProvideLiquidity {
                 pair_type: PairType::Xyk {},
                 asset_infos: vec![
-                    AssetInfo::Token {
-                        contract_addr: cw20_contract.address().unwrap(),
+                    AssetInfoAstroport::Token {
+                        contract_addr: cw20_contract.address().unwrap().into(),
                     },
-                    AssetInfo::NativeToken {
+                    AssetInfoAstroport::NativeToken {
                         denom: "untrn".to_string(),
                     },
                 ],
