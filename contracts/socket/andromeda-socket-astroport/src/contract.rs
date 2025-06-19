@@ -36,8 +36,9 @@ use crate::{
 };
 
 use andromeda_socket::astroport::{
-    AssetEntry, AssetInfo, Cw20HookMsg, ExecuteMsg, InstantiateMsg, PairExecuteMsg, PairType,
-    QueryMsg, SimulateSwapOperationResponse, SwapOperation,
+    transform_asset_info, AssetEntry, AssetInfo, AssetInfoAstroport, Cw20HookMsg, ExecuteMsg,
+    InstantiateMsg, PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse,
+    SwapOperation,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -265,12 +266,17 @@ fn swap_and_forward_cw20(
 fn create_factory_pair(
     ctx: ExecuteContext,
     pair_type: PairType,
-    asset_infos: Vec<AssetInfo>,
+    asset_infos: Vec<AssetInfoAstroport>,
     init_parameters: Option<Binary>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, .. } = ctx;
 
     let factory_addr = FACTORY.load(deps.storage)?;
+
+    let asset_infos: Vec<AssetInfo> = asset_infos
+        .iter()
+        .map(|asset_info| transform_asset_info(asset_info, &deps))
+        .collect::<Result<Vec<AssetInfo>, ContractError>>()?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
         pair_type: pair_type.clone(),
@@ -393,7 +399,7 @@ fn execute_update_swap_router(
 fn create_pair_and_provide_liquidity(
     ctx: ExecuteContext,
     pair_type: PairType,
-    asset_infos: Vec<AssetInfo>,
+    asset_infos: Vec<AssetInfoAstroport>,
     init_parameters: Option<Binary>,
     assets: Vec<AssetEntry>,
     slippage_tolerance: Option<Decimal>,
@@ -413,6 +419,11 @@ fn create_pair_and_provide_liquidity(
         sender: info.sender.to_string(),
     };
     LIQUIDITY_PROVISION_STATE.save(deps.storage, &liquidity_state)?;
+
+    let asset_infos: Vec<AssetInfo> = asset_infos
+        .iter()
+        .map(|asset_info| transform_asset_info(asset_info, &deps))
+        .collect::<Result<Vec<AssetInfo>, ContractError>>()?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
         pair_type: pair_type.clone(),

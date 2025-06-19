@@ -2,9 +2,10 @@ use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate,
     common::denom::Asset,
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
+use cosmwasm_std::{Addr, Binary, Decimal, DepsMut, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
@@ -48,7 +49,7 @@ pub enum ExecuteMsg {
         /// The pair type (exposed in [`PairType`])
         pair_type: PairType,
         /// The assets to create the pool for
-        asset_infos: Vec<AssetInfo>,
+        asset_infos: Vec<AssetInfoAstroport>,
         /// Optional binary serialised parameters for custom pool types
         init_params: Option<Binary>,
     },
@@ -71,7 +72,7 @@ pub enum ExecuteMsg {
         /// The pair type (exposed in [`PairType`])
         pair_type: PairType,
         /// The assets to create the pool for
-        asset_infos: Vec<AssetInfo>,
+        asset_infos: Vec<AssetInfoAstroport>,
         /// Optional binary serialised parameters for custom pool types
         init_params: Option<Binary>,
         /// The assets to deposit as liquidity
@@ -139,11 +140,16 @@ pub struct SimulateSwapOperationResponse {
 // Imports directly from astroport
 /// This enum describes available Token types.
 #[cw_serde]
-#[derive(Hash, Eq)]
 pub enum AssetInfo {
     /// Non-native Token
     Token { contract_addr: Addr },
     /// Native token
+    NativeToken { denom: String },
+}
+
+#[cw_serde]
+pub enum AssetInfoAstroport {
+    Token { contract_addr: AndrAddr },
     NativeToken { denom: String },
 }
 
@@ -294,4 +300,18 @@ pub enum PairExecuteMsg {
 pub struct PairAddressResponse {
     /// The pair contract address
     pub pair_address: Option<String>,
+}
+
+pub fn transform_asset_info(
+    asset_info: &AssetInfoAstroport,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    match asset_info {
+        AssetInfoAstroport::Token { contract_addr } => Ok(AssetInfo::Token {
+            contract_addr: contract_addr.get_raw_address(&deps.as_ref())?,
+        }),
+        AssetInfoAstroport::NativeToken { denom } => Ok(AssetInfo::NativeToken {
+            denom: denom.clone(),
+        }),
+    }
 }
