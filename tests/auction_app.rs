@@ -22,7 +22,8 @@ use andromeda_std::{
     common::{
         denom::Asset,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
-        Milliseconds, schedule::Schedule,
+        schedule::Schedule,
+        Milliseconds,
     },
     error::ContractError,
 };

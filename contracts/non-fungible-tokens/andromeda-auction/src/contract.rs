@@ -19,7 +19,9 @@ use andromeda_std::{
             validate_native_denom, Asset, AuthorizedAddressesResponse, PermissionAction,
             SEND_CW20_ACTION,
         },
-        encode_binary, Funds, Milliseconds, OrderBy, schedule::Schedule,
+        encode_binary,
+        schedule::Schedule,
+        Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
 };
