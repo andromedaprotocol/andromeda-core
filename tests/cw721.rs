@@ -8,7 +8,7 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_non_fungible_tokens::cw721::BatchSendMsg;
 use andromeda_std::{
     amp::AndrAddr,
-    common::{denom::Asset, expiration::Expiry, Milliseconds, Schedule},
+    common::{denom::Asset, expiration::Expiry, schedule::Schedule, Milliseconds},
 };
 use andromeda_testing::{
     mock::mock_app, mock_builder::MockAndromedaBuilder, mock_contract::MockContract,

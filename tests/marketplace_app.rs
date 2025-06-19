@@ -21,7 +21,7 @@ use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate,
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::Asset;
-use andromeda_std::common::Schedule;
+use andromeda_std::common::schedule::Schedule;
 use andromeda_std::error::ContractError;
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;

@@ -1,7 +1,7 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::{Milliseconds, MillisecondsExpiration, OrderBy, Schedule};
+use andromeda_std::common::{schedule::Schedule, Milliseconds, MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 

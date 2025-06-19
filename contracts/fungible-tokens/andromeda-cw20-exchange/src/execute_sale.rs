@@ -5,7 +5,7 @@ use andromeda_std::{
         context::ExecuteContext,
         denom::Asset,
         msg_generation::{generate_transfer_message, generate_transfer_message_recipient},
-        Schedule,
+        schedule::Schedule,
     },
     error::ContractError,
 };

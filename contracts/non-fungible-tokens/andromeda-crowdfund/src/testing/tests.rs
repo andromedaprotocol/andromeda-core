@@ -97,7 +97,7 @@ mod test {
     };
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
-        common::{denom::Asset, encode_binary, Milliseconds, Schedule},
+        common::{denom::Asset, encode_binary, schedule::Schedule, Milliseconds},
         testing::mock_querier::MOCK_CW20_CONTRACT,
     };
     use cosmwasm_std::{coin, coins, testing::MOCK_CONTRACT_ADDR, wasm_execute, BankMsg, Coin};

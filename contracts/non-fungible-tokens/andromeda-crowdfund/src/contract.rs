@@ -19,7 +19,8 @@ use andromeda_std::{
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
         migration::ensure_compatibility,
-        OrderBy, Schedule,
+        schedule::Schedule,
+        OrderBy,
     },
     error::ContractError,
 };

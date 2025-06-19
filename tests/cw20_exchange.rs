@@ -14,7 +14,7 @@ use andromeda_cw20_exchange::mock::{
 use andromeda_fungible_tokens::cw20_exchange::RedeemResponse;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, Schedule},
+    common::{denom::Asset, schedule::Schedule},
     error::ContractError,
 };
 use andromeda_testing::{

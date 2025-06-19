@@ -19,7 +19,7 @@ use andromeda_std::{
         messages::{AMPMsg, AMPMsgConfig, AMPPkt},
         AndrAddr, Recipient,
     },
-    common::{denom::Asset, expiration::Expiry, Milliseconds, Schedule},
+    common::{denom::Asset, expiration::Expiry, schedule::Schedule, Milliseconds},
     os::{
         self,
         kernel::{ExecuteMsg, InstantiateMsg},

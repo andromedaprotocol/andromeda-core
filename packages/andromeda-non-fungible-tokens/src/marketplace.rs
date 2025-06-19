@@ -4,7 +4,8 @@ use andromeda_std::{
     common::{
         denom::{Asset, PermissionAction},
         expiration::Expiry,
-        Milliseconds, OrderBy, Schedule,
+        schedule::Schedule,
+        Milliseconds, OrderBy,
     },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};

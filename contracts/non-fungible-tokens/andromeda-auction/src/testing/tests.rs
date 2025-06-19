@@ -25,7 +25,7 @@ use andromeda_std::{
         denom::Asset,
         encode_binary,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
-        Milliseconds, Schedule,
+        Milliseconds, schedule::Schedule,
     },
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,

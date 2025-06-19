@@ -1,7 +1,7 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
-    common::{denom::Asset, Milliseconds, Schedule},
+    common::{denom::Asset, schedule::Schedule, Milliseconds},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ConversionOverflowError, Decimal256, StdError, StdResult, Uint128};

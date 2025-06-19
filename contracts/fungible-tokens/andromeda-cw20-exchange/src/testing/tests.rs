@@ -7,7 +7,8 @@ use andromeda_std::{
     common::{
         denom::Asset,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
-        Milliseconds, Schedule,
+        schedule::Schedule,
+        Milliseconds,
     },
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,

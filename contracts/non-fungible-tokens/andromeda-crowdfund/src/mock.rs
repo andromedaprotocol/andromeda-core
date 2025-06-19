@@ -5,7 +5,7 @@ use andromeda_non_fungible_tokens::crowdfund::{
     CampaignConfig, CampaignSummaryResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
     PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TiersResponse,
 };
-use andromeda_std::common::{OrderBy, Schedule};
+use andromeda_std::common::{schedule::Schedule, OrderBy};
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,

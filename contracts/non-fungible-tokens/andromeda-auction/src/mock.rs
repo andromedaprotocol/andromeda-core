@@ -12,7 +12,7 @@ use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::Schedule;
+use andromeda_std::common::schedule::Schedule;
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
     mock_ado,

@@ -20,7 +20,7 @@ use andromeda_std::{
         },
         encode_binary,
         rates::{get_tax_amount, get_tax_amount_cw20},
-        Funds, Milliseconds, OrderBy, Schedule,
+        Funds, Milliseconds, OrderBy, schedule::Schedule,
     },
     error::ContractError,
 };

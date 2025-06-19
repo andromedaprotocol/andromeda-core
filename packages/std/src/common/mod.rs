@@ -12,6 +12,7 @@ pub mod msg_generation;
 pub mod rates;
 pub mod reply;
 pub mod response;
+pub mod schedule;
 pub mod withdraw;
 
 pub use milliseconds::*;

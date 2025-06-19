@@ -14,7 +14,7 @@ use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
-use andromeda_std::common::Schedule;
+use andromeda_std::common::schedule::Schedule;
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
 };

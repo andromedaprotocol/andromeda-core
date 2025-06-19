@@ -4,8 +4,8 @@ use andromeda_std::{
     common::{
         context::ExecuteContext,
         denom::Asset,
-        milliseconds::Schedule,
         msg_generation::{generate_transfer_message, generate_transfer_message_recipient},
+        schedule::Schedule,
     },
     error::ContractError,
 };

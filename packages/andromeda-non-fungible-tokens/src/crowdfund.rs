@@ -2,7 +2,7 @@ use crate::cw721::TokenExtension;
 use andromeda_std::{
     amp::{addresses::AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
-    common::{denom::Asset, MillisecondsExpiration, OrderBy, Schedule},
+    common::{denom::Asset, schedule::Schedule, MillisecondsExpiration, OrderBy},
     error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};

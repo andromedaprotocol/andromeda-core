@@ -4,7 +4,7 @@ use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20_exchange::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, Schedule},
+    common::{denom::Asset, schedule::Schedule},
 };
 use cosmwasm_std::{Decimal256, Empty, Uint128};
 
