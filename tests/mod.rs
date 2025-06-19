@@ -30,7 +30,7 @@ mod timelock;
 mod cw20_app;
 
 #[cfg(test)]
-mod cw20_exchange;
+mod exchange;
 
 #[cfg(test)]
 mod fixed_amount_splitter;

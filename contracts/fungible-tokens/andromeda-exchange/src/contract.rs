@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::cw20_exchange::{
+use andromeda_fungible_tokens::exchange::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RedeemResponse, SaleAssetsResponse,
     SaleResponse, TokenAddressResponse,
 };
@@ -31,7 +31,7 @@ use crate::{
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:andromeda-cw20-exchange";
+const CONTRACT_NAME: &str = "crates.io:andromeda-exchange";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -7,6 +7,6 @@ The CW20 Exchange ADO is used to sell CW20 tokens for other assets. The CW20 tok
 
 Users can then purchase the CW20 token being sold by sending the required asset to the contract.
 
-[CW20 Exchange Full Documentation](https://docs.andromedaprotocol.io/andromeda/andromeda-digital-objects/cw20-exchange)
+[CW20 Exchange Full Documentation](https://docs.andromedaprotocol.io/andromeda/andromeda-digital-objects/exchange)
 
 

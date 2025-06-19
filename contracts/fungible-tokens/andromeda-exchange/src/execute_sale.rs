@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::cw20_exchange::Sale;
+use andromeda_fungible_tokens::exchange::Sale;
 use andromeda_std::{
     amp::Recipient,
     common::{

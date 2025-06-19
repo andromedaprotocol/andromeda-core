@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::cw20_exchange::{Redeem, Sale};
+use andromeda_fungible_tokens::exchange::{Redeem, Sale};
 use andromeda_std::amp::AndrAddr;
 use cw_storage_plus::{Item, Map};
 

@@ -1,7 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_fungible_tokens::cw20_exchange::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_fungible_tokens::exchange::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{denom::Asset, expiration::Expiry, Milliseconds, MillisecondsDuration},
@@ -10,12 +10,12 @@ use cosmwasm_std::{Decimal256, Empty, Uint128};
 
 use cw_multi_test::{Contract, ContractWrapper};
 
-pub fn mock_andromeda_cw20_exchange() -> Box<dyn Contract<Empty>> {
+pub fn mock_andromeda_exchange() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
     Box::new(contract)
 }
 
-pub fn mock_cw20_exchange_instantiate_msg(
+pub fn mock_exchange_instantiate_msg(
     token_address: AndrAddr,
     kernel_address: String,
     owner: Option<String>,
@@ -27,7 +27,7 @@ pub fn mock_cw20_exchange_instantiate_msg(
     }
 }
 
-pub fn mock_cw20_exchange_start_sale_msg(
+pub fn mock_exchange_start_sale_msg(
     asset: Asset,
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
@@ -43,11 +43,11 @@ pub fn mock_cw20_exchange_start_sale_msg(
     }
 }
 
-pub fn mock_cw20_exchange_hook_purchase_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
+pub fn mock_exchange_hook_purchase_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
     Cw20HookMsg::Purchase { recipient }
 }
 
-pub fn mock_cw20_exchange_purchase_msg(recipient: Option<Recipient>) -> ExecuteMsg {
+pub fn mock_exchange_purchase_msg(recipient: Option<Recipient>) -> ExecuteMsg {
     ExecuteMsg::Purchase { recipient }
 }
 
