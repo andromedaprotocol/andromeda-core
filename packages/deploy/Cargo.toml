@@ -47,7 +47,7 @@ andromeda-string-storage = { path = "../../contracts/data-storage/andromeda-stri
 # Fungible Tokens Contracts
 andromeda-cw20-staking = { path = "../../contracts/fungible-tokens/andromeda-cw20-staking" }
 andromeda-cw20 = { path = "../../contracts/fungible-tokens/andromeda-cw20" }
-andromeda-cw20-exchange = { path = "../../contracts/fungible-tokens/andromeda-cw20-exchange" }
+andromeda-exchange = { path = "../../contracts/fungible-tokens/andromeda-exchange" }
 andromeda-lockdrop = { path = "../../contracts/fungible-tokens/andromeda-lockdrop" }
 andromeda-merkle-airdrop = { path = "../../contracts/fungible-tokens/andromeda-merkle-airdrop" }
 

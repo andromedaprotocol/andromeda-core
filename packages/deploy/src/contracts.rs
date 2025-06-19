@@ -8,11 +8,11 @@ use andromeda_counter::CounterContract;
 use andromeda_crowdfund::CrowdfundContract;
 use andromeda_curve::CurveContract;
 use andromeda_cw20::CW20Contract;
-use andromeda_exchange::Cw20ExchangeContract;
 use andromeda_cw20_staking::CW20StakingContract;
 use andromeda_cw721::CW721Contract;
 use andromeda_distance::DistanceContract;
 use andromeda_economics::EconomicsContract;
+use andromeda_exchange::ExchangeContract;
 use andromeda_fixed_amount_splitter::FixedAmountSplitterContract;
 use andromeda_graph::GraphContract;
 use andromeda_ibc_registry::IBCRegistryContract;
@@ -75,7 +75,7 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(RateLimitingWithdrawalsContract),
         deployable!(FixedAmountSplitterContract),
         deployable!(WeightedDistributionSplitterContract),
-        deployable!(Cw20ExchangeContract),
+        deployable!(ExchangeContract),
         deployable!(LockdropContract),
         deployable!(MerkleAirdropContract),
         deployable!(AddressListContract),

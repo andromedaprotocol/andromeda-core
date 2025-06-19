@@ -3,4 +3,4 @@ use andromeda_std::{ado_base::MigrateMsg, contract_interface, deploy::ADOMetadat
 
 pub const CONTRACT_ID: &str = "exchange";
 
-contract_interface!(Cw20ExchangeContract, CONTRACT_ID, "andromeda_exchange.wasm");
+contract_interface!(ExchangeContract, CONTRACT_ID, "andromeda_exchange.wasm");

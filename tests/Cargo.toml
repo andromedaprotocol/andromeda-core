@@ -46,7 +46,7 @@ andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-s
     "testing",
 ] }
 
-andromeda-cw20-exchange = { path = "../contracts/fungible-tokens/andromeda-cw20-exchange", features = [
+andromeda-exchange = { path = "../contracts/fungible-tokens/andromeda-exchange", features = [
     "testing",
 ] }
 
