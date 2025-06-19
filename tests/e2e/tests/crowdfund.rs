@@ -13,7 +13,7 @@ use andromeda_non_fungible_tokens::{
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, expiration::Expiry, Milliseconds, Schedule},
+    common::{denom::Asset, expiration::Expiry, schedule::Schedule, Milliseconds},
     os::adodb::ExecuteMsgFns as AdodbExecuteMsgFns,
 };
 use andromeda_testing_e2e::{
