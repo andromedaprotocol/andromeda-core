@@ -867,7 +867,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-socket-astroport"
-version = "0.1.8-b.2"
+version = "0.1.8-b.3"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
