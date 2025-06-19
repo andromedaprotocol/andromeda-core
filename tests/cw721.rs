@@ -8,7 +8,7 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_non_fungible_tokens::cw721::BatchSendMsg;
 use andromeda_std::{
     amp::AndrAddr,
-    common::{denom::Asset, expiration::Expiry, Milliseconds},
+    common::{denom::Asset, expiration::Expiry, schedule::Schedule, Milliseconds},
 };
 use andromeda_testing::{
     mock::mock_app, mock_builder::MockAndromedaBuilder, mock_contract::MockContract,
@@ -84,8 +84,10 @@ fn test_cw721_batch_send() {
     let start_time = Milliseconds::from_nanos(router.block_info().time.nanos())
         .plus_milliseconds(Milliseconds(100));
     let receive_msg_1 = mock_start_auction(
-        Some(Expiry::AtTime(start_time)),
-        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        Schedule::new(
+            Some(Expiry::AtTime(start_time)),
+            Some(Expiry::FromNow(Milliseconds(1000))),
+        ),
         None,
         Asset::NativeToken("uandr".to_string()),
         None,
@@ -94,8 +96,10 @@ fn test_cw721_batch_send() {
         None,
     );
     let receive_msg_2 = mock_start_auction(
-        Some(Expiry::AtTime(start_time)),
-        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(1000))),
+        Schedule::new(
+            Some(Expiry::AtTime(start_time)),
+            Some(Expiry::FromNow(Milliseconds(1000))),
+        ),
         None,
         Asset::NativeToken("uandr".to_string()),
         Some(Uint128::one()),

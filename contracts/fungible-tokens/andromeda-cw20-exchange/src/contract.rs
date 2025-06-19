@@ -82,16 +82,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             redeem_asset,
             exchange_rate,
             recipient,
-            start_time,
-            end_time,
-        } => execute_start_redeem_native(
-            ctx,
-            redeem_asset,
-            exchange_rate,
-            recipient,
-            start_time,
-            end_time,
-        ),
+            schedule,
+        } => execute_start_redeem_native(ctx, redeem_asset, exchange_rate, recipient, schedule),
         ExecuteMsg::ReplenishRedeem { redeem_asset } => {
             execute_replenish_redeem_native(ctx, redeem_asset)
         }
@@ -122,8 +114,7 @@ pub fn execute_receive(
             asset,
             exchange_rate,
             recipient,
-            start_time,
-            duration,
+            schedule,
         } => execute_start_sale(
             ctx,
             amount_sent,
@@ -131,8 +122,7 @@ pub fn execute_receive(
             exchange_rate,
             sender,
             recipient,
-            start_time,
-            duration,
+            schedule,
         ),
         Cw20HookMsg::Purchase { recipient } => {
             let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
@@ -142,8 +132,7 @@ pub fn execute_receive(
             redeem_asset,
             exchange_rate,
             recipient,
-            start_time,
-            end_time,
+            schedule,
         } => execute_start_redeem(
             ctx,
             amount_sent,
@@ -152,8 +141,7 @@ pub fn execute_receive(
             exchange_rate,
             sender,
             recipient,
-            start_time,
-            end_time,
+            schedule,
         ),
         Cw20HookMsg::ReplenishRedeem { redeem_asset } => {
             execute_replenish_redeem(ctx, amount_sent, asset_sent, redeem_asset)

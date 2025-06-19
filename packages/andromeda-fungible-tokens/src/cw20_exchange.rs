@@ -1,7 +1,7 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
-    common::{denom::Asset, expiration::Expiry, Milliseconds, MillisecondsDuration},
+    common::{denom::Asset, schedule::Schedule, Milliseconds},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ConversionOverflowError, Decimal256, StdError, StdResult, Uint128};
@@ -33,10 +33,7 @@ pub enum ExecuteMsg {
         exchange_rate: Decimal256,
         /// The recipient of the sale proceeds
         recipient: Option<Recipient>,
-        /// The time when the sale starts
-        start_time: Option<Expiry>,
-        /// The time when the sale ends
-        end_time: Option<Milliseconds>,
+        schedule: Schedule,
     },
 
     /// Replenishes a redeem
@@ -99,8 +96,7 @@ pub enum Cw20HookMsg {
         /// The recipient of the sale proceeds
         /// Sender is used if `None` provided
         recipient: Option<Recipient>,
-        start_time: Option<Expiry>,
-        duration: Option<MillisecondsDuration>,
+        schedule: Schedule,
     },
     /// Purchases tokens
     Purchase {
@@ -116,10 +112,7 @@ pub enum Cw20HookMsg {
         exchange_rate: Decimal256,
         /// The recipient of the sale proceeds
         recipient: Option<Recipient>,
-        /// The time when the sale starts
-        start_time: Option<Expiry>,
-        /// The time when the sale ends
-        end_time: Option<Milliseconds>,
+        schedule: Schedule,
     },
     /// Replenishes a redeem
     ReplenishRedeem {
