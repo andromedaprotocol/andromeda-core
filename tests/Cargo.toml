@@ -217,8 +217,8 @@ name = "cw20_app"
 path = "cw20_app.rs"
 
 [[test]]
-name = "cw20_exchange"
-path = "cw20_exchange.rs"
+name = "exchange"
+path = "exchange.rs"
 
 [[test]]
 name = "timelock"

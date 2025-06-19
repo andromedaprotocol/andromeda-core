@@ -483,6 +483,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-exchange"
+version = "3.0.0-b.1"
+dependencies = [
+ "andromeda-app",
+ "andromeda-fungible-tokens",
+ "andromeda-std",
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-storage-plus 2.0.0",
+ "cw-utils 2.0.0",
+ "cw20 2.0.0",
+ "rstest",
+]
+
+[[package]]
 name = "andromeda-finance"
 version = "1.0.0"
 dependencies = [

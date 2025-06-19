@@ -8,7 +8,7 @@ use andromeda_counter::CounterContract;
 use andromeda_crowdfund::CrowdfundContract;
 use andromeda_curve::CurveContract;
 use andromeda_cw20::CW20Contract;
-use andromeda_cw20_exchange::Cw20ExchangeContract;
+use andromeda_exchange::Cw20ExchangeContract;
 use andromeda_cw20_staking::CW20StakingContract;
 use andromeda_cw721::CW721Contract;
 use andromeda_distance::DistanceContract;

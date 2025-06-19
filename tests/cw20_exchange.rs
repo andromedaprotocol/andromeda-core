@@ -4,14 +4,13 @@ use andromeda_cw20::mock::{
     mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_cw20_send, mock_get_cw20_balance,
     mock_minter,
 };
-use andromeda_cw20_exchange::mock::{
-    mock_andromeda_cw20_exchange, mock_cw20_exchange_hook_purchase_msg,
-    mock_cw20_exchange_instantiate_msg, mock_cw20_exchange_start_sale_msg, mock_redeem_cw20_msg,
-    mock_redeem_native_msg, mock_redeem_query_msg, mock_replenish_redeem_cw20_msg,
-    mock_replenish_redeem_native_msg, mock_set_redeem_condition_native_msg,
-    mock_start_redeem_cw20_msg,
+use andromeda_exchange::mock::{
+    mock_andromeda_exchange, mock_exchange_hook_purchase_msg, mock_exchange_instantiate_msg,
+    mock_exchange_start_sale_msg, mock_redeem_cw20_msg, mock_redeem_native_msg,
+    mock_redeem_query_msg, mock_replenish_redeem_cw20_msg, mock_replenish_redeem_native_msg,
+    mock_set_redeem_condition_native_msg, mock_start_redeem_cw20_msg,
 };
-use andromeda_fungible_tokens::cw20_exchange::RedeemResponse;
+use andromeda_fungible_tokens::exchange::RedeemResponse;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::denom::Asset,
@@ -45,7 +44,7 @@ fn setup_andr(router: &mut MockApp) -> MockAndromeda {
         ])
         .with_contracts(vec![
             ("cw20", mock_andromeda_cw20()),
-            ("cw20_exchange", mock_andromeda_cw20_exchange()),
+            ("exchange", mock_andromeda_exchange()),
             ("app-contract", mock_andromeda_app()),
         ])
         .build(router)
@@ -121,19 +120,19 @@ fn setup_app(andr: &MockAndromeda, router: &mut MockApp) -> MockAppContract {
         to_json_binary(&cw20_init_msg).unwrap(),
     );
 
-    let cw20_exchange_init_msg = mock_cw20_exchange_instantiate_msg(
+    let exchange_init_msg = mock_exchange_instantiate_msg(
         AndrAddr::from_string("./cw20-2"),
         andr.kernel.addr().to_string(),
         Some(owner.to_string()),
     );
-    let cw20_exchange_component = AppComponent::new(
-        "cw20_exchange".to_string(),
-        "cw20_exchange".to_string(),
-        to_json_binary(&cw20_exchange_init_msg).unwrap(),
+    let exchange_component = AppComponent::new(
+        "exchange".to_string(),
+        "exchange".to_string(),
+        to_json_binary(&exchange_init_msg).unwrap(),
     );
 
     // Create App
-    let app_components = vec![cw20_component_1, cw20_component_2, cw20_exchange_component];
+    let app_components = vec![cw20_component_1, cw20_component_2, exchange_component];
     let app_init_msg = mock_app_instantiate_msg(
         "Redeem App".to_string(),
         app_components,
@@ -175,7 +174,7 @@ fn _advance_time(router: &mut MockApp, seconds: u64) {
 struct TestAddresses {
     cw20: Addr,
     cw20_2: Addr,
-    cw20_exchange: Addr,
+    exchange: Addr,
 }
 
 fn get_addresses(
@@ -190,16 +189,16 @@ fn get_addresses(
         cw20_2: andr
             .vfs
             .query_resolve_path(router, format!("/home/{}/cw20-2", app.addr())),
-        cw20_exchange: andr
+        exchange: andr
             .vfs
-            .query_resolve_path(router, format!("/home/{}/cw20_exchange", app.addr())),
+            .query_resolve_path(router, format!("/home/{}/exchange", app.addr())),
     }
 }
 
 const ORIGINAL_SALE_AMOUNT: Uint128 = Uint128::new(1000u128);
 
 #[test]
-fn test_cw20_exchange_app_cw20_to_native() {
+fn test_exchange_app_cw20_to_native() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -211,17 +210,17 @@ fn test_cw20_exchange_app_cw20_to_native() {
 
     let cw20_addr = addresses.cw20;
     let cw20_addr_2 = addresses.cw20_2;
-    let cw20_exchange_addr = addresses.cw20_exchange;
+    let exchange_addr = addresses.exchange;
 
     let cw20_addr_2_asset = Asset::Cw20Token(AndrAddr::from_string(cw20_addr_2.to_string()));
     let cw20_redeem_asset = Asset::Cw20Token(AndrAddr::from_string(cw20_addr.to_string()));
 
     // Sell a cw20
     let start_sale_msg =
-        mock_cw20_exchange_start_sale_msg(cw20_redeem_asset, Uint128::new(2), None, None, None);
+        mock_exchange_start_sale_msg(cw20_redeem_asset, Uint128::new(2), None, None, None);
 
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         ORIGINAL_SALE_AMOUNT,
         to_json_binary(&start_sale_msg).unwrap(),
     );
@@ -234,9 +233,9 @@ fn test_cw20_exchange_app_cw20_to_native() {
     // user1 will purchase 10 cw20addr2
 
     let purchase_msg =
-        mock_cw20_exchange_hook_purchase_msg(Some(Recipient::from_string(user1.to_string())));
+        mock_exchange_hook_purchase_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(10u128),
         to_json_binary(&purchase_msg).unwrap(),
     );
@@ -260,7 +259,7 @@ fn test_cw20_exchange_app_cw20_to_native() {
     router
         .execute_contract(
             owner.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(100u128, "uandr")],
         )
@@ -269,7 +268,7 @@ fn test_cw20_exchange_app_cw20_to_native() {
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -280,7 +279,7 @@ fn test_cw20_exchange_app_cw20_to_native() {
     // Now user1 will try to redeem 5 cw20addr_2
     let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(5u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -296,7 +295,7 @@ fn test_cw20_exchange_app_cw20_to_native() {
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -310,7 +309,7 @@ fn test_cw20_exchange_app_cw20_to_native() {
     // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
     let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(60u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -335,14 +334,14 @@ fn test_cw20_exchange_app_cw20_to_native() {
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::zero());
 
     // User 1 will try to redeem but there is no redeemable amount left
     let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(1u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -361,7 +360,7 @@ fn test_cw20_exchange_app_cw20_to_native() {
 }
 
 #[test]
-fn test_cw20_exchange_app_cw20_to_cw20() {
+fn test_exchange_app_cw20_to_cw20() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -373,17 +372,17 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
 
     let cw20_addr = addresses.cw20;
     let cw20_addr_2 = addresses.cw20_2;
-    let cw20_exchange_addr = addresses.cw20_exchange;
+    let exchange_addr = addresses.exchange;
 
     let cw20_addr_2_asset = Asset::Cw20Token(AndrAddr::from_string(cw20_addr_2.to_string()));
     let cw20_redeem_asset = Asset::Cw20Token(AndrAddr::from_string(cw20_addr.to_string()));
 
     // Sell a cw20
     let start_sale_msg =
-        mock_cw20_exchange_start_sale_msg(cw20_redeem_asset, Uint128::new(2), None, None, None);
+        mock_exchange_start_sale_msg(cw20_redeem_asset, Uint128::new(2), None, None, None);
 
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         ORIGINAL_SALE_AMOUNT,
         to_json_binary(&start_sale_msg).unwrap(),
     );
@@ -396,9 +395,9 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     // user1 will purchase 10 cw20addr2
 
     let purchase_msg =
-        mock_cw20_exchange_hook_purchase_msg(Some(Recipient::from_string(user1.to_string())));
+        mock_exchange_hook_purchase_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(10u128),
         to_json_binary(&purchase_msg).unwrap(),
     );
@@ -421,7 +420,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     );
 
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(100u128),
         to_json_binary(&start_redeem_msg).unwrap(),
     );
@@ -433,7 +432,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -444,7 +443,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     // Now user1 will try to redeem 5 cw20addr_2
     let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(5u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -460,7 +459,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -474,7 +473,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     // User1 will now try to redeem 60 cw20addr2, but he should be refunded 10 since the first 50 will deplete the redeemable amount
     let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(60u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -498,14 +497,14 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(redeem_query_resp.redeem.unwrap().amount, Uint128::zero());
 
     // User 1 will try to redeem but there is no redeemable amount left
     let redeem_msg = mock_redeem_cw20_msg(Some(Recipient::from_string(user1.to_string())));
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(1u128),
         to_json_binary(&redeem_msg).unwrap(),
     );
@@ -525,7 +524,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     // Replenish the redeem
     let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone());
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(10u128),
         to_json_binary(&replenish_msg).unwrap(),
     );
@@ -537,7 +536,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
     let redeem_query_msg = mock_redeem_query_msg(cw20_addr_2_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.unwrap().amount,
@@ -546,7 +545,7 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
 }
 
 #[test]
-fn test_cw20_exchange_app_redeem_native_to_native() {
+fn test_exchange_app_redeem_native_to_native() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -556,7 +555,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
 
     let addresses = get_addresses(&mut router, &andr, &app);
 
-    let cw20_exchange_addr = addresses.cw20_exchange;
+    let exchange_addr = addresses.exchange;
     let uandr_asset = Asset::NativeToken("uandr".to_string());
 
     // Now the owner will setup a redeem condition for 2 uandr per cw20addr
@@ -570,7 +569,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     router
         .execute_contract(
             owner.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(100u128, "uusd")],
         )
@@ -579,7 +578,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -600,7 +599,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     router
         .execute_contract(
             user1.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(5u128, "uandr")],
         )
@@ -616,7 +615,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -638,7 +637,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     router
         .execute_contract(
             user1.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(60u128, "uandr")],
         )
@@ -660,7 +659,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().amount,
@@ -674,7 +673,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     let err: ContractError = router
-        .execute_contract(user1.clone(), cw20_exchange_addr.clone(), &redeem_msg, &[])
+        .execute_contract(user1.clone(), exchange_addr.clone(), &redeem_msg, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -688,7 +687,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     router
         .execute_contract(
             owner.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &replenish_msg,
             &[coin(10u128, "uusd")],
         )
@@ -697,7 +696,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.unwrap().amount,
@@ -706,7 +705,7 @@ fn test_cw20_exchange_app_redeem_native_to_native() {
 }
 
 #[test]
-fn test_cw20_exchange_app_redeem_native_to_cw20() {
+fn test_exchange_app_redeem_native_to_cw20() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -716,7 +715,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
 
     let addresses = get_addresses(&mut router, &andr, &app);
 
-    let cw20_exchange_addr = addresses.cw20_exchange;
+    let exchange_addr = addresses.exchange;
     let cw20_addr = addresses.cw20;
     let uandr_asset = Asset::NativeToken("uandr".to_string());
     // Now the owner will setup a redeem condition for 2 cw20 per cw20addr
@@ -729,7 +728,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     );
 
     let cw20_send_msg = mock_cw20_send(
-        cw20_exchange_addr.clone(),
+        exchange_addr.clone(),
         Uint128::new(100u128),
         to_json_binary(&start_redeem_msg).unwrap(),
     );
@@ -741,7 +740,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -762,7 +761,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     router
         .execute_contract(
             user1.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(5u128, "uandr")],
         )
@@ -775,7 +774,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -797,7 +796,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     router
         .execute_contract(
             user1.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(60u128, "uandr")],
         )
@@ -819,7 +818,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().amount,
@@ -833,7 +832,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
     let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     let err: ContractError = router
-        .execute_contract(user1.clone(), cw20_exchange_addr.clone(), &redeem_msg, &[])
+        .execute_contract(user1.clone(), exchange_addr.clone(), &redeem_msg, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -844,7 +843,7 @@ fn test_cw20_exchange_app_redeem_native_to_cw20() {
 }
 
 #[test]
-fn test_cw20_exchange_app_redeem_native_fractional() {
+fn test_exchange_app_redeem_native_fractional() {
     let mut router = mock_app(None);
 
     let andr = setup_andr(&mut router);
@@ -854,7 +853,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
 
     let addresses = get_addresses(&mut router, &andr, &app);
 
-    let cw20_exchange_addr = addresses.cw20_exchange;
+    let exchange_addr = addresses.exchange;
     let uandr_asset = Asset::NativeToken("uandr".to_string());
 
     let redeem_msg = mock_set_redeem_condition_native_msg(
@@ -867,7 +866,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     router
         .execute_contract(
             owner.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(100u128, "uusd")],
         )
@@ -876,7 +875,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -897,7 +896,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     router
         .execute_contract(
             user1.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(10u128, "uandr")],
         )
@@ -913,7 +912,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().asset,
@@ -935,7 +934,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     router
         .execute_contract(
             user1.clone(),
-            cw20_exchange_addr.clone(),
+            exchange_addr.clone(),
             &redeem_msg,
             &[coin(200u128, "uandr")],
         )
@@ -957,7 +956,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
     let redeem_query_resp: RedeemResponse = router
         .wrap()
-        .query_wasm_smart(cw20_exchange_addr.clone(), &redeem_query_msg)
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
         .unwrap();
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().amount,
@@ -971,7 +970,7 @@ fn test_cw20_exchange_app_redeem_native_fractional() {
     let redeem_msg = mock_redeem_native_msg(Some(Recipient::from_string(user1.to_string())));
 
     let err: ContractError = router
-        .execute_contract(user1.clone(), cw20_exchange_addr.clone(), &redeem_msg, &[])
+        .execute_contract(user1.clone(), exchange_addr.clone(), &redeem_msg, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
