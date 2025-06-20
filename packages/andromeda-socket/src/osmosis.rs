@@ -1,6 +1,6 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    andr_exec, andr_instantiate,
+    andr_exec, andr_instantiate, andr_query,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Decimal, Uint128};
@@ -78,9 +78,9 @@ pub enum OsmosisExecuteMsg {
         route: Option<Vec<SwapAmountInRoute>>,
     },
 }
-
-#[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
+#[andr_query]
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GetRouteResponse)]

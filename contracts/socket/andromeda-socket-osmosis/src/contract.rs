@@ -277,12 +277,13 @@ fn execute_update_swap_router(
     ]))
 }
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::GetRoute {
             from_denom,
             to_denom,
         } => encode_binary(&query_get_route(deps, from_denom, to_denom)?),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 

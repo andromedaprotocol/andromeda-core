@@ -476,7 +476,7 @@ fn withdraw_liquidity(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::SimulateSwapOperation {
             offer_amount,
@@ -486,6 +486,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             offer_amount,
             operations,
         )?),
+        _ => ADOContract::default().query(deps, env, msg),
     }
 }
 
