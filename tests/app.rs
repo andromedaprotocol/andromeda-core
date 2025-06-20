@@ -77,4 +77,7 @@ fn test_app() {
 
     let component_addresses = app.query_components(&router);
     assert_eq!(component_addresses.len(), components.len() + 2);
+
+    let app_address = app.query_app_address(&router);
+    assert_eq!(app_address, Some(app.addr()).cloned());
 }
