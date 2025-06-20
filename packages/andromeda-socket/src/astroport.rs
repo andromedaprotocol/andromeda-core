@@ -1,6 +1,6 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    andr_exec, andr_instantiate,
+    andr_exec, andr_instantiate, andr_query,
     common::denom::Asset,
     error::ContractError,
 };
@@ -110,8 +110,10 @@ pub enum Cw20HookMsg {
         operations: Option<Vec<SwapOperation>>,
     },
 }
-#[cw_serde]
+
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
+#[andr_query]
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SimulateSwapOperationResponse)]
