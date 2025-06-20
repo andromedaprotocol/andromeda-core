@@ -5,13 +5,13 @@ use andromeda_cw20::mock::{
     mock_minter,
 };
 use andromeda_cw20_exchange::mock::{
-    mock_andromeda_cw20_exchange, mock_cw20_exchange_hook_purchase_msg,
+    mock_andromeda_cw20_exchange, mock_cancel_sale_msg, mock_cw20_exchange_hook_purchase_msg,
     mock_cw20_exchange_instantiate_msg, mock_cw20_exchange_start_sale_msg, mock_redeem_cw20_msg,
     mock_redeem_native_msg, mock_redeem_query_msg, mock_replenish_redeem_cw20_msg,
-    mock_replenish_redeem_native_msg, mock_set_redeem_condition_native_msg,
+    mock_replenish_redeem_native_msg, mock_sale_query_msg, mock_set_redeem_condition_native_msg,
     mock_start_redeem_cw20_msg,
 };
-use andromeda_fungible_tokens::cw20_exchange::RedeemResponse;
+use andromeda_fungible_tokens::cw20_exchange::{RedeemResponse, SaleResponse};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::denom::Asset,
@@ -543,6 +543,70 @@ fn test_cw20_exchange_app_cw20_to_cw20() {
         redeem_query_resp.redeem.unwrap().amount,
         Uint128::new(10u128)
     );
+}
+
+#[test]
+fn test_cw20_exchange_app_cancel_sale() {
+    let mut router = mock_app(None);
+
+    let andr = setup_andr(&mut router);
+    let app = setup_app(&andr, &mut router);
+    let owner = andr.get_wallet("owner");
+
+    let addresses = get_addresses(&mut router, &andr, &app);
+
+    let cw20_addr = addresses.cw20;
+    let cw20_addr_2 = addresses.cw20_2;
+    let cw20_exchange_addr = addresses.cw20_exchange;
+
+    let cw20_redeem_asset = Asset::Cw20Token(AndrAddr::from_string(cw20_addr.to_string()));
+
+    // Sell a cw20
+    let start_sale_msg = mock_cw20_exchange_start_sale_msg(
+        cw20_redeem_asset.clone(),
+        Uint128::new(2),
+        None,
+        None,
+        None,
+    );
+
+    let cw20_send_msg = mock_cw20_send(
+        cw20_exchange_addr.clone(),
+        ORIGINAL_SALE_AMOUNT,
+        to_json_binary(&start_sale_msg).unwrap(),
+    );
+
+    router
+        .execute_contract(owner.clone(), cw20_addr_2.clone(), &cw20_send_msg, &[])
+        .unwrap();
+
+    // Query to see that the sale exists
+    let sale_query_msg = mock_sale_query_msg(cw20_addr.to_string());
+    let sale_query_resp: SaleResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_exchange_addr.clone(), &sale_query_msg)
+        .unwrap();
+
+    assert!(sale_query_resp.sale.is_some());
+
+    // Cancel the sale
+    let cancel_sale_msg = mock_cancel_sale_msg(cw20_redeem_asset.clone());
+    router
+        .execute_contract(
+            owner.clone(),
+            cw20_exchange_addr.clone(),
+            &cancel_sale_msg,
+            &[],
+        )
+        .unwrap();
+
+    // Query to see that the sale does not exist
+    let sale_query_msg = mock_sale_query_msg(cw20_addr.to_string());
+    let sale_query_resp: SaleResponse = router
+        .wrap()
+        .query_wasm_smart(cw20_exchange_addr.clone(), &sale_query_msg)
+        .unwrap();
+    assert!(sale_query_resp.sale.is_none());
 }
 
 #[test]
