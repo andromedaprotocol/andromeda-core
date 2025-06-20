@@ -110,3 +110,7 @@ pub fn mock_sale_query_msg(asset: String) -> QueryMsg {
 pub fn mock_cancel_sale_msg(asset: Asset) -> ExecuteMsg {
     ExecuteMsg::CancelSale { asset }
 }
+
+pub fn mock_cancel_redeem_msg(asset: Asset) -> ExecuteMsg {
+    ExecuteMsg::CancelRedeem { asset }
+}
