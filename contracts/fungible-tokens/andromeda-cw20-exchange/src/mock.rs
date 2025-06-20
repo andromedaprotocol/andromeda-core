@@ -102,3 +102,15 @@ pub fn mock_set_redeem_condition_native_msg(
 pub fn mock_redeem_query_msg(asset: Asset) -> QueryMsg {
     QueryMsg::Redeem { asset }
 }
+
+pub fn mock_sale_query_msg(asset: String) -> QueryMsg {
+    QueryMsg::Sale { asset }
+}
+
+pub fn mock_cancel_sale_msg(asset: Asset) -> ExecuteMsg {
+    ExecuteMsg::CancelSale { asset }
+}
+
+pub fn mock_cancel_redeem_msg(asset: Asset) -> ExecuteMsg {
+    ExecuteMsg::CancelRedeem { asset }
+}

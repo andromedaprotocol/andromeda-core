@@ -218,8 +218,9 @@ pub fn execute_purchase_native(
 
 pub fn execute_cancel_sale(ctx: ExecuteContext, asset: Asset) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
+    let inner_asset = asset.inner(&deps.as_ref())?;
 
-    let Some(sale) = SALE.may_load(deps.storage, &asset.inner(&deps.as_ref())?)? else {
+    let Some(sale) = SALE.may_load(deps.storage, &inner_asset)? else {
         return Err(ContractError::NoOngoingSale {});
     };
 
@@ -242,7 +243,7 @@ pub fn execute_cancel_sale(ctx: ExecuteContext, asset: Asset) -> Result<Response
     }
 
     // Sale can now be removed
-    SALE.remove(deps.storage, &asset.to_string());
+    SALE.remove(deps.storage, &inner_asset);
 
     Ok(resp.add_attributes(vec![
         attr("action", "cancel_sale"),
