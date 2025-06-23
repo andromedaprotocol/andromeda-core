@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: Timelock Release Funds [(#857)](https://github.com/andromedaprotocol/andromeda-core/pull/857)
 - fix: Added missing version bumps [(#858)](https://github.com/andromedaprotocol/andromeda-core/pull/858)
 - fix: GetComponents query's schema  [(#873)](https://github.com/andromedaprotocol/andromeda-core/pull/873)
+- fix: Remove sale after Cancel Sale in Exchange  [(#913)](https://github.com/andromedaprotocol/andromeda-core/pull/913)
 
 
 ## Release 4
