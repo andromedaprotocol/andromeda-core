@@ -1,14 +1,24 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_fungible_tokens::cw20_exchange::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_fungible_tokens::cw20::ExecuteMsg as Cw20ExecuteMsg;
+use andromeda_fungible_tokens::cw20_exchange::{
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RedeemResponse, SaleResponse,
+};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{denom::Asset, expiration::Expiry, Milliseconds, MillisecondsDuration},
 };
-use cosmwasm_std::{Decimal256, Empty, Uint128};
+use andromeda_testing::mock::MockApp;
+use andromeda_testing::{
+    mock_ado,
+    mock_contract::{MockADO, MockContract},
+};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Decimal256, Empty, Uint128};
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
-use cw_multi_test::{Contract, ContractWrapper};
+pub struct MockExchange(Addr);
+mock_ado!(MockExchange, ExecuteMsg, QueryMsg);
 
 pub fn mock_andromeda_cw20_exchange() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
@@ -24,6 +34,74 @@ pub fn mock_cw20_exchange_instantiate_msg(
         token_address,
         kernel_address,
         owner,
+    }
+}
+
+impl MockExchange {
+    pub fn execute_cancel_redeem(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        asset: Asset,
+    ) -> AppResponse {
+        let msg = mock_cancel_redeem_msg(asset);
+        app.execute_contract(sender, self.addr().clone(), &msg, &[])
+            .unwrap()
+    }
+
+    pub fn execute_cancel_sale(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        asset: Asset,
+    ) -> AppResponse {
+        let msg = mock_cancel_sale_msg(asset);
+        app.execute_contract(sender, self.addr().clone(), &msg, &[])
+            .unwrap()
+    }
+
+    pub fn execute_cw20_start_redeem(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        asset: Asset,
+        amount: Uint128,
+        exchange_rate: Decimal256,
+        cw20_addr: Addr,
+    ) -> AppResponse {
+        let msg = mock_start_redeem_cw20_msg(None, asset, exchange_rate, None, None);
+        let cw20_send_msg =
+            mock_cw20_send(self.addr().clone(), amount, to_json_binary(&msg).unwrap());
+        app.execute_contract(sender, cw20_addr, &cw20_send_msg, &[])
+            .unwrap()
+    }
+
+    pub fn execute_cw20_start_sale(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        asset: Asset,
+        amount: Uint128,
+        exchange_rate: Uint128,
+        cw20_addr: Addr,
+    ) -> AppResponse {
+        let msg = mock_cw20_exchange_start_sale_msg(asset, exchange_rate, None, None, None);
+        let cw20_send_msg =
+            mock_cw20_send(self.addr().clone(), amount, to_json_binary(&msg).unwrap());
+        app.execute_contract(sender, cw20_addr, &cw20_send_msg, &[])
+            .unwrap()
+    }
+
+    pub fn query_redeem(&self, app: &mut MockApp, asset: Asset) -> RedeemResponse {
+        let msg = mock_redeem_query_msg(asset);
+        let res: RedeemResponse = self.query(app, msg);
+        res
+    }
+
+    pub fn query_sale(&self, app: &mut MockApp, asset: String) -> SaleResponse {
+        let msg = mock_sale_query_msg(asset);
+        let res: SaleResponse = self.query(app, msg);
+        res
     }
 }
 
@@ -80,6 +158,14 @@ pub fn mock_start_redeem_cw20_msg(
         exchange_rate,
         start_time,
         end_time,
+    }
+}
+
+pub fn mock_cw20_send(contract: impl Into<String>, amount: Uint128, msg: Binary) -> Cw20ExecuteMsg {
+    Cw20ExecuteMsg::Send {
+        contract: AndrAddr::from_string(contract.into()),
+        amount,
+        msg,
     }
 }
 
