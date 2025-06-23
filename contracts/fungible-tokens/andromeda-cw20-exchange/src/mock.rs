@@ -92,6 +92,21 @@ impl MockExchange {
             .unwrap()
     }
 
+    pub fn execute_cw20_purchase(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        recipient: Option<Recipient>,
+        amount: Uint128,
+        cw20_addr: Addr,
+    ) -> AppResponse {
+        let msg = mock_cw20_exchange_purchase_msg(recipient);
+        let cw20_send_msg =
+            mock_cw20_send(self.addr().clone(), amount, to_json_binary(&msg).unwrap());
+        app.execute_contract(sender, cw20_addr, &cw20_send_msg, &[])
+            .unwrap()
+    }
+
     pub fn query_redeem(&self, app: &mut MockApp, asset: Asset) -> RedeemResponse {
         let msg = mock_redeem_query_msg(asset);
         let res: RedeemResponse = self.query(app, msg);

@@ -17,7 +17,7 @@ use andromeda_testing::{
     mock_ado,
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
-use cosmwasm_std::{Addr, Coin, Empty, Uint128}; 
+use cosmwasm_std::{Addr, Coin, Empty, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
