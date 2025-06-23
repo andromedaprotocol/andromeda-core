@@ -4,7 +4,7 @@ use andromeda_non_fungible_tokens::{
         InstantiateMsg, PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder,
         TierOrdersResponse, TiersResponse,
     },
-    cw721::ExecuteMsg as Cw721ExecuteMsg,
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg},
 };
 use andromeda_std::{
     ado_base::{
@@ -639,11 +639,11 @@ fn mint(
 
     Ok(Response::new().add_message(WasmMsg::Execute {
         contract_addr: tier_contract,
-        msg: encode_binary(&Cw721ExecuteMsg::Mint {
+        msg: encode_binary(&Cw721ExecuteMsg::Mint(MintMsg {
             token_id,
             owner,
             token_uri: tier_metadata.token_uri,
-        })?,
+        }))?,
         funds: vec![],
     }))
 }

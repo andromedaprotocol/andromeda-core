@@ -1368,11 +1368,13 @@ fn test_kernel_ibc_funds_only() {
 
     cw721_juno
         .execute(
-            &andromeda_non_fungible_tokens::cw721::ExecuteMsg::Mint {
-                token_id: "1".to_string(),
-                owner: sender_addr.into(),
-                token_uri: None,
-            },
+            &andromeda_non_fungible_tokens::cw721::ExecuteMsg::Mint(
+                andromeda_non_fungible_tokens::cw721::MintMsg {
+                    token_id: "1".to_string(),
+                    owner: sender_addr.into(),
+                    token_uri: None,
+                },
+            ),
             &[],
         )
         .unwrap();

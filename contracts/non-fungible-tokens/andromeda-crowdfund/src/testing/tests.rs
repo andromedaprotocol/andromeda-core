@@ -3,7 +3,7 @@ use andromeda_non_fungible_tokens::{
         CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, SimpleTierOrder, Tier,
         TierMetaData,
     },
-    cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
+    cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::{
@@ -92,8 +92,9 @@ fn get_user_orders(
 }
 #[cfg(test)]
 mod test {
-    use andromeda_non_fungible_tokens::crowdfund::{
-        Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder,
+    use andromeda_non_fungible_tokens::{
+        crowdfund::{Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder},
+        cw721::MintMsg,
     };
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
@@ -218,20 +219,14 @@ mod test {
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let duplicated_tier = Tier {
             level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -307,20 +302,14 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -396,20 +385,14 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -1303,21 +1286,21 @@ mod test {
                     .add_attribute("action", "claim")
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: MOCK_TIER_CONTRACT.to_string(),
-                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint(MintMsg {
                             token_id: "0".to_string(),
                             owner: orderer.clone().into(),
                             token_uri: None,
-                        })
+                        }))
                         .unwrap(),
                         funds: vec![],
                     }))
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: MOCK_TIER_CONTRACT.to_string(),
-                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint(MintMsg {
                             token_id: "1".to_string(),
                             owner: orderer.clone().into(),
                             token_uri: None,
-                        })
+                        }))
                         .unwrap(),
                         funds: vec![],
                     }))),
