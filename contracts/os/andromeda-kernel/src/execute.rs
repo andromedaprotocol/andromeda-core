@@ -21,7 +21,8 @@ use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
-    ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+    is_os_contract, ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo,
+    InternalMsg,
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
@@ -106,11 +107,7 @@ pub fn handle_local(
         // Ensure that the recipient addr is not an OS contract
         if let Some(ado_type) = ado_type {
             ensure!(
-                !ado_type.contains("vfs")
-                    && !ado_type.contains("ibc_registry")
-                    && !ado_type.contains("economics")
-                    && !ado_type.contains("adodb")
-                    && !ado_type.contains("kernel"),
+                !is_os_contract(&ado_type),
                 ContractError::InvalidRecipientType {
                     msg: "Recipient is an OS contract".to_string(),
                 }
