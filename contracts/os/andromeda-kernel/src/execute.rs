@@ -102,7 +102,7 @@ pub fn handle_local(
     let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
 
     // Generate submessage based on whether recipient is an ADO or if the message is direct
-    let sub_msg = if config.direct || !ado_type.is_some() {
+    let sub_msg = if config.direct || ado_type.is_none() {
         // Ensure that the recipient addr is not an OS contract
         if let Some(ado_type) = ado_type {
             ensure!(
