@@ -113,12 +113,11 @@ pub fn handle_local(
                 }
             );
         }
-
         amp_message.generate_sub_msg_direct(recipient_addr, ReplyId::AMPMsg.repr())
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
         let previous_sender = info.sender.to_string();
-
+        // OS contracts don't have an AMP Receive entry point, so there's no risk of bypassing authorization checks
         AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]).to_sub_msg(
             recipient_addr,
             Some(funds.clone()),
