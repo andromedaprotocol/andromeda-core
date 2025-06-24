@@ -28,6 +28,14 @@ impl Default for ChannelInfo {
     }
 }
 
+pub fn is_os_contract(ado_type: &str) -> bool {
+    ado_type.contains("vfs")
+        || ado_type.contains("ibc_registry")
+        || ado_type.contains("economics")
+        || ado_type.contains("adodb")
+        || ado_type.contains("kernel")
+}
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
