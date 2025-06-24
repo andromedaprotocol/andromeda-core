@@ -30,11 +30,15 @@ pub fn mock_register_user(username: impl Into<String>) -> ExecuteMsg {
     }
 }
 
-pub fn mock_add_path(name: impl Into<String>, address: Addr) -> ExecuteMsg {
+pub fn mock_add_path(
+    name: impl Into<String>,
+    address: Addr,
+    parent_address: Option<AndrAddr>,
+) -> ExecuteMsg {
     ExecuteMsg::AddPath {
         name: name.into(),
         address,
-        parent_address: None,
+        parent_address,
     }
 }
 
