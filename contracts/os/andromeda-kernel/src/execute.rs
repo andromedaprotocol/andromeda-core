@@ -99,10 +99,24 @@ pub fn handle_local(
     // Verify recipient is a contract
     let code_id = get_code_id(&deps, recipient)?;
     // Check if the recipient is an ADO
-    let is_ado = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?.is_some();
+    let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
 
     // Generate submessage based on whether recipient is an ADO or if the message is direct
-    let sub_msg = if config.direct || !is_ado {
+    let sub_msg = if config.direct || !ado_type.is_some() {
+        // Ensure that the recipient addr is not an OS contract
+        if let Some(ado_type) = ado_type {
+            ensure!(
+                !ado_type.contains("vfs")
+                    && !ado_type.contains("ibc_registry")
+                    && !ado_type.contains("economics")
+                    && !ado_type.contains("adodb")
+                    && !ado_type.contains("kernel"),
+                ContractError::InvalidRecipientType {
+                    msg: "Recipient is an OS contract".to_string(),
+                }
+            );
+        }
+
         amp_message.generate_sub_msg_direct(recipient_addr, ReplyId::AMPMsg.repr())
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
