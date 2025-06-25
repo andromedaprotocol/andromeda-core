@@ -319,11 +319,12 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-exchange"
-version = "3.0.0-b.1"
+version = "3.0.0-b.2"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
  "andromeda-std",
+ "andromeda-testing",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
  "cw-multi-test",
