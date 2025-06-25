@@ -102,22 +102,23 @@ pub fn handle_local(
     // Check if the recipient is an ADO
     let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
 
+    // Ensure that the recipient addr is not an OS contract
+    if let Some(ado_type) = &ado_type {
+        ensure!(
+            !is_os_contract(ado_type),
+            ContractError::InvalidRecipientType {
+                msg: "Recipient is an OS contract".to_string(),
+            }
+        );
+    }
+
     // Generate submessage based on whether recipient is an ADO or if the message is direct
     let sub_msg = if config.direct || ado_type.is_none() {
-        // Ensure that the recipient addr is not an OS contract
-        if let Some(ado_type) = ado_type {
-            ensure!(
-                !is_os_contract(&ado_type),
-                ContractError::InvalidRecipientType {
-                    msg: "Recipient is an OS contract".to_string(),
-                }
-            );
-        }
         amp_message.generate_sub_msg_direct(recipient_addr, ReplyId::AMPMsg.repr())
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
         let previous_sender = info.sender.to_string();
-        // OS contracts don't have an AMP Receive entry point, so there's no risk of bypassing authorization checks
+
         AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]).to_sub_msg(
             recipient_addr,
             Some(funds.clone()),
