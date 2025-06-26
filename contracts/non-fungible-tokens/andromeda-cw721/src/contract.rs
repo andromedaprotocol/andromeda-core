@@ -77,7 +77,10 @@ pub fn instantiate(
 
     Ok(res
         .add_attribute("minter", msg.minter.to_string())
-        .add_submessages(resp.messages))
+        .add_submessages(resp.messages)
+        .add_events(resp.events)
+        .set_data(resp.data.unwrap_or_default())
+        .add_attributes(resp.attributes))
 }
 
 #[andr_execute_fn]

@@ -21,7 +21,8 @@ use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
-    ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+    is_os_contract, ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo,
+    InternalMsg,
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
@@ -99,10 +100,20 @@ pub fn handle_local(
     // Verify recipient is a contract
     let code_id = get_code_id(&deps, recipient)?;
     // Check if the recipient is an ADO
-    let is_ado = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?.is_some();
+    let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
+
+    // Ensure that the recipient addr is not an OS contract
+    if let Some(ado_type) = &ado_type {
+        ensure!(
+            !is_os_contract(ado_type),
+            ContractError::InvalidRecipientType {
+                msg: "Recipient is an OS contract".to_string(),
+            }
+        );
+    }
 
     // Generate submessage based on whether recipient is an ADO or if the message is direct
-    let sub_msg = if config.direct || !is_ado {
+    let sub_msg = if config.direct || ado_type.is_none() {
         amp_message.generate_sub_msg_direct(recipient_addr, ReplyId::AMPMsg.repr())
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
