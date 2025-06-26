@@ -60,6 +60,7 @@ impl MockExchange {
             .unwrap()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_cw20_start_redeem(
         &self,
         app: &mut MockApp,
@@ -77,6 +78,7 @@ impl MockExchange {
             .unwrap()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_cw20_start_sale(
         &self,
         app: &mut MockApp,
