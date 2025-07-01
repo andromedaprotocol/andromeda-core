@@ -3839,9 +3839,9 @@ dependencies = [
 
 [[package]]
 name = "ibc-relayer-types"
-version = "0.32.1"
+version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8df757d85fde149ac33525a3ecfc50da6af06d42d837aa1a9f6b07f5d512dc1a"
+checksum = "13e9dad15166953b11212fed4e6f6b00796c56c0b29aa88f536fe3a144e75633"
 dependencies = [
  "bytes",
  "derive_more 0.99.20",
@@ -6170,7 +6170,7 @@ dependencies = [
  "cw721",
  "cw721-base",
  "hex",
- "ibc-relayer-types 0.32.1",
+ "ibc-relayer-types 0.32.2",
  "rstest",
  "toml 0.8.23",
 ]
