@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.2.0-b.8"
+version = "2.2.0-b.9"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -735,7 +735,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-non-fungible-tokens"
-version = "1.0.1-b.1"
+version = "1.0.1-b.2"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
