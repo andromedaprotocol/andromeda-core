@@ -3,7 +3,7 @@ use crate::{amp::Recipient, error::ContractError};
 use cosmwasm_std::{coin, wasm_execute, BankMsg, CosmosMsg, Deps, ReplyOn, SubMsg, Uint128};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 
-/// Used in CW20 Redeem and CW20 Exchange
+/// Used in Exchange ADO
 /// Generates a transfer message given an asset and an amount
 pub fn generate_transfer_message(
     deps: &Deps,

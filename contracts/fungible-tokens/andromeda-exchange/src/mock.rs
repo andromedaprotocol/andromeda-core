@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::ExecuteMsg as Cw20ExecuteMsg;
-use andromeda_fungible_tokens::cw20_exchange::{
+use andromeda_fungible_tokens::exchange::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RedeemResponse, SaleResponse,
 };
 use andromeda_std::{
@@ -20,12 +20,12 @@ use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 pub struct MockExchange(Addr);
 mock_ado!(MockExchange, ExecuteMsg, QueryMsg);
 
-pub fn mock_andromeda_cw20_exchange() -> Box<dyn Contract<Empty>> {
+pub fn mock_andromeda_exchange() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query);
     Box::new(contract)
 }
 
-pub fn mock_cw20_exchange_instantiate_msg(
+pub fn mock_exchange_instantiate_msg(
     token_address: AndrAddr,
     kernel_address: String,
     owner: Option<String>,
@@ -85,7 +85,7 @@ impl MockExchange {
         exchange_rate: Uint128,
         cw20_addr: Addr,
     ) -> AppResponse {
-        let msg = mock_cw20_exchange_start_sale_msg(asset, exchange_rate, None, None, None);
+        let msg = mock_exchange_start_sale_msg(asset, exchange_rate, None, None, None);
         let cw20_send_msg =
             mock_cw20_send(self.addr().clone(), amount, to_json_binary(&msg).unwrap());
         app.execute_contract(sender, cw20_addr, &cw20_send_msg, &[])
@@ -100,7 +100,7 @@ impl MockExchange {
         amount: Uint128,
         cw20_addr: Addr,
     ) -> AppResponse {
-        let msg = mock_cw20_exchange_purchase_msg(recipient);
+        let msg = mock_exchange_purchase_msg(recipient);
         let cw20_send_msg =
             mock_cw20_send(self.addr().clone(), amount, to_json_binary(&msg).unwrap());
         app.execute_contract(sender, cw20_addr, &cw20_send_msg, &[])
@@ -120,7 +120,7 @@ impl MockExchange {
     }
 }
 
-pub fn mock_cw20_exchange_start_sale_msg(
+pub fn mock_exchange_start_sale_msg(
     asset: Asset,
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
@@ -136,11 +136,11 @@ pub fn mock_cw20_exchange_start_sale_msg(
     }
 }
 
-pub fn mock_cw20_exchange_hook_purchase_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
+pub fn mock_exchange_hook_purchase_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
     Cw20HookMsg::Purchase { recipient }
 }
 
-pub fn mock_cw20_exchange_purchase_msg(recipient: Option<Recipient>) -> ExecuteMsg {
+pub fn mock_exchange_purchase_msg(recipient: Option<Recipient>) -> ExecuteMsg {
     ExecuteMsg::Purchase { recipient }
 }
 
