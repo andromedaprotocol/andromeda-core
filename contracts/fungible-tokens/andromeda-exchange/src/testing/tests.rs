@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::cw20_exchange::{
+use andromeda_fungible_tokens::exchange::{
     Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Redeem, RedeemResponse, Sale,
     SaleAssetsResponse, SaleResponse, TokenAddressResponse,
 };

@@ -9,8 +9,6 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, DepsMut, Env, Uint128, Uint64};
 use cw20::Cw20ReceiveMsg;
 
-use crate::cw721::TokenExtension;
-
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -211,8 +209,6 @@ pub struct TierMetaData {
     /// Should point to a JSON file that conforms to the CW721
     /// Metadata JSON Schema
     pub token_uri: Option<String>,
-    /// Any custom extension used by this contract
-    pub extension: TokenExtension,
 }
 
 #[andr_query]

@@ -75,7 +75,7 @@ fn test_cw721_batch_send() {
     // Mint 2 NFTs
     let cw721: MockCW721 = app.query_ado_by_component_name(&router, cw721_component.name);
     cw721
-        .execute_quick_mint(&mut router, owner.clone(), 2, owner.to_string())
+        .execute_quick_mint(&mut router, owner.clone(), 2, owner.to_string().into())
         .unwrap();
 
     // Send Token to Auction

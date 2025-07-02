@@ -11,7 +11,7 @@ use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, Mo
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
     crowdfund::{CampaignConfig, CampaignStage, PresaleTierOrder, SimpleTierOrder, TierMetaData},
-    cw721::{ExecuteMsg, TokenExtension},
+    cw721::ExecuteMsg,
 };
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
@@ -204,10 +204,7 @@ fn setup(
         false => Some(app.query_ado_by_component_name(&router, cw20_component.unwrap().name)),
     };
 
-    let meta_data = TierMetaData {
-        token_uri: None,
-        extension: TokenExtension::default(),
-    };
+    let meta_data = TierMetaData { token_uri: None };
     crowdfund
         .execute_add_tier(
             owner.clone(),

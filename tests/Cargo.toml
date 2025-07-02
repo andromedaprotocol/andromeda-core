@@ -46,7 +46,7 @@ andromeda-cw20-staking = { path = "../contracts/fungible-tokens/andromeda-cw20-s
     "testing",
 ] }
 
-andromeda-cw20-exchange = { path = "../contracts/fungible-tokens/andromeda-cw20-exchange", features = [
+andromeda-exchange = { path = "../contracts/fungible-tokens/andromeda-exchange", features = [
     "testing",
 ] }
 
@@ -151,7 +151,7 @@ cw-utils = { workspace = true }
 toml = "0.8"
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.8.1"
-ibc-relayer-types = "0.32.1"
+ibc-relayer-types = "0.32.2"
 
 andromeda-std = { workspace = true }
 
@@ -217,8 +217,8 @@ name = "cw20_app"
 path = "cw20_app.rs"
 
 [[test]]
-name = "cw20_exchange"
-path = "cw20_exchange.rs"
+name = "exchange"
+path = "exchange.rs"
 
 [[test]]
 name = "timelock"
