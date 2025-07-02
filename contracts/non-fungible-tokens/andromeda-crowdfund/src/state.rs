@@ -300,7 +300,7 @@ pub(crate) fn get_and_increase_tier_token_id(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use andromeda_non_fungible_tokens::{crowdfund::TierMetaData, cw721::TokenExtension};
+    use andromeda_non_fungible_tokens::crowdfund::TierMetaData;
     use cosmwasm_std::testing::MockStorage;
 
     fn mock_storage() -> MockStorage {
@@ -312,20 +312,14 @@ mod tests {
                 price: Uint128::new(100),
                 limit: Some(Uint128::new(1000)),
                 label: "tier 1".to_string(),
-                metadata: TierMetaData {
-                    token_uri: None,
-                    extension: TokenExtension::default(),
-                },
+                metadata: TierMetaData { token_uri: None },
             },
             Tier {
                 level: Uint64::new(2u64),
                 price: Uint128::new(200),
                 limit: None,
                 label: "tier 2".to_string(),
-                metadata: TierMetaData {
-                    token_uri: None,
-                    extension: TokenExtension::default(),
-                },
+                metadata: TierMetaData { token_uri: None },
             },
         ];
         set_tiers(&mut storage, tiers).unwrap();

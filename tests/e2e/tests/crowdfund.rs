@@ -9,7 +9,7 @@ use andromeda_non_fungible_tokens::{
         self, CampaignConfig, CampaignStage, Cw20HookMsg, ExecuteMsgFns as CrowdfundExecuteMsgFns,
         PresaleTierOrder, SimpleTierOrder, Tier, TierMetaData,
     },
-    cw721::{self, TokenExtension},
+    cw721::{self},
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -285,10 +285,7 @@ fn setup(
         cw20_contract.set_address(&Addr::unchecked(cw20_addr));
     }
 
-    let meta_data = TierMetaData {
-        token_uri: None,
-        extension: TokenExtension::default(),
-    };
+    let meta_data = TierMetaData { token_uri: None };
     crowdfund_contract
         .add_tier(Tier {
             label: "Tier 1".to_string(),

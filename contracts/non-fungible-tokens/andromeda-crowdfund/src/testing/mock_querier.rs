@@ -1,7 +1,4 @@
-use andromeda_non_fungible_tokens::{
-    crowdfund::{CampaignConfig, Tier, TierMetaData},
-    cw721::TokenExtension,
-};
+use andromeda_non_fungible_tokens::crowdfund::{CampaignConfig, Tier, TierMetaData};
 use andromeda_std::{
     ado_base::InstantiateMsg,
     ado_contract::ADOContract,
@@ -45,20 +42,14 @@ pub fn mock_campaign_tiers() -> Vec<Tier> {
             label: "Basic Tier".to_string(),
             limit: None,
             price: Uint128::new(10u128),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         },
         Tier {
             level: Uint64::new(1u64),
             label: "Tier 1".to_string(),
             limit: Some(Uint128::new(MOCK_DEFAULT_LIMIT)),
             price: Uint128::new(10u128),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         },
     ]
 }
@@ -69,10 +60,7 @@ pub fn mock_zero_price_tier(level: Uint64) -> Tier {
         label: "Invalid Tier".to_string(),
         limit: None,
         price: Uint128::zero(),
-        metadata: TierMetaData {
-            extension: TokenExtension {},
-            token_uri: None,
-        },
+        metadata: TierMetaData { token_uri: None },
     }
 }
 

@@ -1,4 +1,3 @@
-use crate::cw721::TokenExtension;
 use andromeda_std::{
     amp::{addresses::AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
@@ -208,8 +207,6 @@ pub struct TierMetaData {
     /// Should point to a JSON file that conforms to the CW721
     /// Metadata JSON Schema
     pub token_uri: Option<String>,
-    /// Any custom extension used by this contract
-    pub extension: TokenExtension,
 }
 
 #[andr_query]
