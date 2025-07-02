@@ -1,11 +1,9 @@
-use crate::state::{
-    read_sale_infos, sale_infos, SaleInfo, TokenSaleState, NEXT_SALE_ID, TOKEN_SALE_STATE,
-};
+use crate::state::{read_sale_infos, sale_infos, TokenSaleState, NEXT_SALE_ID, TOKEN_SALE_STATE};
 use std::vec;
 
 use andromeda_non_fungible_tokens::marketplace::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
-    SaleStateResponse, Status,
+    SaleStateResponse, SalesInfoForAddressResponse, Status,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -815,8 +813,9 @@ pub fn query_sale_infos_for_address(
     token_address: String,
     start_after: Option<String>,
     limit: Option<u64>,
-) -> Result<Vec<SaleInfo>, ContractError> {
-    read_sale_infos(deps.storage, token_address, start_after, limit)
+) -> Result<SalesInfoForAddressResponse, ContractError> {
+    let sales_info = read_sale_infos(deps.storage, token_address, start_after, limit)?;
+    Ok(SalesInfoForAddressResponse { sales_info })
 }
 
 fn query_latest_sale_state(

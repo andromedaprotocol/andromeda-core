@@ -1,4 +1,4 @@
-use andromeda_non_fungible_tokens::marketplace::{SaleStateResponse, Status};
+use andromeda_non_fungible_tokens::marketplace::{SaleInfo, SaleStateResponse, Status};
 use andromeda_std::{amp::Recipient, error::ContractError};
 
 use cosmwasm_schema::cw_serde;
@@ -34,24 +34,6 @@ pub struct Purchase {
     pub msgs: Vec<SubMsg>,
     /// The purchaser of the token.
     pub purchaser: String,
-}
-
-#[cw_serde]
-#[derive(Default)]
-pub struct SaleInfo {
-    pub sale_ids: Vec<Uint128>,
-    pub token_address: String,
-    pub token_id: String,
-}
-
-impl SaleInfo {
-    pub fn last(&self) -> Option<&Uint128> {
-        self.sale_ids.last()
-    }
-
-    pub fn push(&mut self, e: Uint128) {
-        self.sale_ids.push(e)
-    }
 }
 
 impl From<TokenSaleState> for SaleStateResponse {
