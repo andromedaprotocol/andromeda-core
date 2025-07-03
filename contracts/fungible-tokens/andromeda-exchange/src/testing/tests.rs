@@ -1519,7 +1519,7 @@ fn test_cancel_redeem_unauthorized() {
             deps.as_mut().storage,
             &redeem_asset_str,
             &Redeem {
-                asset: payout_asset,
+                asset: payout_asset.clone(),
                 amount: Uint128::from(100u128),
                 amount_paid_out: Uint128::zero(),
                 exchange_rate: Decimal256::percent(200),
@@ -1531,9 +1531,63 @@ fn test_cancel_redeem_unauthorized() {
         .unwrap();
 
     let msg = ExecuteMsg::CancelRedeem {
-        asset: redeem_asset,
+        asset: redeem_asset.clone(),
     };
 
-    let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
+
+    // Try to create a duplicate redeem
+    let redeem_msg = ExecuteMsg::StartRedeem {
+        redeem_asset: redeem_asset.clone(),
+        exchange_rate: Decimal256::percent(200),
+        recipient: None,
+        start_time: None,
+        end_time: None,
+    };
+    let info = message_info(&owner, &[coin(100u128, "uusd")]);
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), redeem_msg.clone()).unwrap_err();
+    assert_eq!(err, ContractError::RedeemNotEnded {});
+
+    // Set up a redeem with an unexpired end time
+    REDEEM
+        .save(
+            deps.as_mut().storage,
+            &redeem_asset_str,
+            &Redeem {
+                asset: payout_asset.clone(),
+                amount: Uint128::from(100u128),
+                amount_paid_out: Uint128::zero(),
+                exchange_rate: Decimal256::percent(200),
+                recipient: Recipient::from_string(owner.to_string()),
+                start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+                end_time: Some(Milliseconds::from_nanos(
+                    env.block.time.nanos() + 10000000000000,
+                )),
+            },
+        )
+        .unwrap();
+    let err = execute(deps.as_mut(), env.clone(), info.clone(), redeem_msg.clone()).unwrap_err();
+    assert_eq!(err, ContractError::RedeemNotEnded {});
+
+    // Set up a redeem with an no funds left, and unexpired end time
+    REDEEM
+        .save(
+            deps.as_mut().storage,
+            &redeem_asset_str,
+            &Redeem {
+                asset: payout_asset,
+                amount: Uint128::zero(),
+                amount_paid_out: Uint128::zero(),
+                exchange_rate: Decimal256::percent(200),
+                recipient: Recipient::from_string(owner.to_string()),
+                start_time: Milliseconds::from_nanos(env.block.time.nanos()),
+                end_time: Some(Milliseconds::from_nanos(
+                    env.block.time.nanos() + 10000000000000,
+                )),
+            },
+        )
+        .unwrap();
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), redeem_msg);
+    assert!(res.is_ok());
 }

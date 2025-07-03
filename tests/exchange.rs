@@ -635,7 +635,7 @@ fn test_exchange_app_redeem_native_to_native() {
     let exchange_addr = addresses.exchange;
     let uandr_asset = Asset::NativeToken("uandr".to_string());
 
-    // Now the owner will setup a redeem condition for 2 uandr per cw20addr
+    // Now the owner will setup a redeem condition for 2 uandr per uusd
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
         Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
