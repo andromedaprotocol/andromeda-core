@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.6-b.3"
+version = "2.2.6-b.4"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.2.1-b.4"
+version = "2.2.1-b.5"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -660,7 +660,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "2.3.1-b.3"
+version = "2.3.1-b.4"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",

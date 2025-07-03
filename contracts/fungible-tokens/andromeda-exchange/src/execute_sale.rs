@@ -4,9 +4,8 @@ use andromeda_std::{
     common::{
         context::ExecuteContext,
         denom::Asset,
-        expiration::Expiry,
         msg_generation::{generate_transfer_message, generate_transfer_message_recipient},
-        Milliseconds, MillisecondsDuration,
+        schedule::Schedule,
     },
     error::ContractError,
 };
@@ -25,8 +24,7 @@ pub fn execute_start_sale(
     sender: String,
     // The recipient of the sale proceeds
     recipient: Option<Recipient>,
-    start_time: Option<Expiry>,
-    duration: Option<MillisecondsDuration>,
+    schedule: Schedule,
 ) -> Result<Response, ContractError> {
     let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
 
@@ -58,28 +56,7 @@ pub fn execute_start_sale(
         }
     );
 
-    let start_time = match start_time {
-        Some(s) => {
-            // Check that the start time is in the future
-            s.validate(&env.block)?
-        }
-        // Set start time to current time if not provided
-        None => Expiry::FromNow(Milliseconds::zero()),
-    }
-    .get_time(&env.block);
-
-    let end_time = match duration {
-        Some(e) => {
-            if e.is_zero() {
-                // If duration is 0, set end time to none
-                None
-            } else {
-                // Set end time to current time + duration
-                Some(Expiry::FromNow(e).get_time(&env.block))
-            }
-        }
-        None => None,
-    };
+    let (start_time, end_time) = schedule.validate(&env.block)?;
 
     // Do not allow duplicate sales
     let asset_str = asset.inner(&deps.as_ref())?;

@@ -13,7 +13,7 @@ use andromeda_exchange::mock::{
 use andromeda_fungible_tokens::exchange::{RedeemResponse, SaleResponse};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::denom::Asset,
+    common::{denom::Asset, schedule::Schedule},
     error::ContractError,
 };
 use andromeda_testing::{
@@ -225,6 +225,7 @@ fn test_exchange_app_cw20_to_native() {
         ORIGINAL_SALE_AMOUNT,
         Uint128::new(2),
         cw20_addr_2.clone(),
+        Schedule::default(),
     );
 
     // Now there's a sale for cw20addr2 for 2 cw20addr per token
@@ -246,8 +247,7 @@ fn test_exchange_app_cw20_to_native() {
         cw20_addr_2_asset.clone(),
         Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
         Some(Recipient::from_string(owner.to_string())),
-        None,
-        None,
+        Schedule::default(),
     );
     router
         .execute_contract(
@@ -368,8 +368,12 @@ fn test_exchange_app_cw20_to_cw20() {
     let cw20_redeem_asset = Asset::Cw20Token(AndrAddr::from_string(cw20_addr.to_string()));
 
     // Sell a cw20
-    let start_sale_msg =
-        mock_exchange_start_sale_msg(cw20_redeem_asset, Uint128::new(2), None, None, None);
+    let start_sale_msg = mock_exchange_start_sale_msg(
+        cw20_redeem_asset,
+        Uint128::new(2),
+        None,
+        Schedule::default(),
+    );
 
     let cw20_send_msg = mock_cw20_send(
         exchange_addr.clone(),
@@ -405,8 +409,7 @@ fn test_exchange_app_cw20_to_cw20() {
         None,
         cw20_addr_2_asset.clone(),
         Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
-        None,
-        None,
+        Schedule::default(),
     );
 
     let cw20_send_msg = mock_cw20_send(
@@ -559,6 +562,7 @@ fn test_exchange_app_cancel_sale() {
         ORIGINAL_SALE_AMOUNT,
         Uint128::new(2),
         cw20_addr_2.clone(),
+        Schedule::default(),
     );
 
     // Query to see that the sale exists
@@ -600,6 +604,7 @@ fn test_exchange_app_cancel_redeem() {
         Uint128::new(100),
         exchange_rate,
         cw20_addr.clone(),
+        Schedule::default(),
     );
 
     // Query to see that the redeem exists
@@ -635,8 +640,7 @@ fn test_exchange_app_redeem_native_to_native() {
         uandr_asset.clone(),
         Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
         Some(Recipient::from_string(owner.to_string())),
-        None,
-        None,
+        Schedule::default(),
     );
     router
         .execute_contract(
@@ -795,8 +799,7 @@ fn test_exchange_app_redeem_native_to_cw20() {
         None,
         uandr_asset.clone(),
         Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
-        None,
-        None,
+        Schedule::default(),
     );
 
     let cw20_send_msg = mock_cw20_send(
@@ -932,8 +935,7 @@ fn test_exchange_app_redeem_native_fractional() {
         uandr_asset.clone(),
         Decimal256::from_ratio(Uint128::new(1), Uint128::new(2)),
         Some(Recipient::from_string(owner.to_string())),
-        None,
-        None,
+        Schedule::default(),
     );
     router
         .execute_contract(

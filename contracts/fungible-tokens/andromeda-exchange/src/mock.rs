@@ -7,7 +7,7 @@ use andromeda_fungible_tokens::exchange::{
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, expiration::Expiry, Milliseconds, MillisecondsDuration},
+    common::{denom::Asset, schedule::Schedule},
 };
 use andromeda_testing::mock::MockApp;
 use andromeda_testing::{
@@ -60,6 +60,7 @@ impl MockExchange {
             .unwrap()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_cw20_start_redeem(
         &self,
         app: &mut MockApp,
@@ -68,14 +69,16 @@ impl MockExchange {
         amount: Uint128,
         exchange_rate: Decimal256,
         cw20_addr: Addr,
+        schedule: Schedule,
     ) -> AppResponse {
-        let msg = mock_start_redeem_cw20_msg(None, asset, exchange_rate, None, None);
+        let msg = mock_start_redeem_cw20_msg(None, asset, exchange_rate, schedule);
         let cw20_send_msg =
             mock_cw20_send(self.addr().clone(), amount, to_json_binary(&msg).unwrap());
         app.execute_contract(sender, cw20_addr, &cw20_send_msg, &[])
             .unwrap()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_cw20_start_sale(
         &self,
         app: &mut MockApp,
@@ -84,8 +87,9 @@ impl MockExchange {
         amount: Uint128,
         exchange_rate: Uint128,
         cw20_addr: Addr,
+        schedule: Schedule,
     ) -> AppResponse {
-        let msg = mock_exchange_start_sale_msg(asset, exchange_rate, None, None, None);
+        let msg = mock_exchange_start_sale_msg(asset, exchange_rate, None, schedule);
         let cw20_send_msg =
             mock_cw20_send(self.addr().clone(), amount, to_json_binary(&msg).unwrap());
         app.execute_contract(sender, cw20_addr, &cw20_send_msg, &[])
@@ -124,15 +128,13 @@ pub fn mock_exchange_start_sale_msg(
     asset: Asset,
     exchange_rate: Uint128,
     recipient: Option<Recipient>,
-    start_time: Option<Expiry>,
-    duration: Option<MillisecondsDuration>,
+    schedule: Schedule,
 ) -> Cw20HookMsg {
     Cw20HookMsg::StartSale {
         asset,
         exchange_rate,
         recipient,
-        start_time,
-        duration,
+        schedule,
     }
 }
 
@@ -164,15 +166,13 @@ pub fn mock_start_redeem_cw20_msg(
     recipient: Option<Recipient>,
     redeem_asset: Asset,
     exchange_rate: Decimal256,
-    start_time: Option<Expiry>,
-    end_time: Option<Milliseconds>,
+    schedule: Schedule,
 ) -> Cw20HookMsg {
     Cw20HookMsg::StartRedeem {
         recipient,
         redeem_asset,
         exchange_rate,
-        start_time,
-        end_time,
+        schedule,
     }
 }
 
@@ -188,15 +188,13 @@ pub fn mock_set_redeem_condition_native_msg(
     redeem_asset: Asset,
     exchange_rate: Decimal256,
     recipient: Option<Recipient>,
-    start_time: Option<Expiry>,
-    end_time: Option<Milliseconds>,
+    schedule: Schedule,
 ) -> ExecuteMsg {
     ExecuteMsg::StartRedeem {
         redeem_asset,
         exchange_rate,
         recipient,
-        start_time,
-        end_time,
+        schedule,
     }
 }
 
