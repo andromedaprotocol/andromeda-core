@@ -338,11 +338,11 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(String)]
     GetAddress { name: String },
-    #[returns(Vec<AppComponent>)]
+    #[returns(GetComponentsResponse)]
     GetComponents {},
     #[returns(ComponentExistsResponse)]
     ComponentExists { name: String },
-    #[returns(Vec<AppComponent>)]
+    #[returns(GetAddressesWithNamesResponse)]
     GetAddressesWithNames {},
     #[returns(ConfigResponse)]
     Config {},
@@ -363,4 +363,14 @@ pub struct ComponentExistsResponse {
 pub struct ComponentAddress {
     pub name: String,
     pub address: String,
+}
+
+#[cw_serde]
+pub struct GetAddressesWithNamesResponse {
+    pub addresses: Vec<ComponentAddress>,
+}
+
+#[cw_serde]
+pub struct GetComponentsResponse {
+    pub components: Vec<AppComponent>,
 }

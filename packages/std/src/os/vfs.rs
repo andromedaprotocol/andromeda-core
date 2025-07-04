@@ -207,11 +207,16 @@ pub struct PathInfo {
 }
 
 #[cw_serde]
+pub struct SubDirResponse {
+    pub subdirs: Vec<PathInfo>,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(Addr)]
     ResolvePath { path: AndrAddr },
-    #[returns(Vec<PathInfo>)]
+    #[returns(SubDirResponse)]
     SubDir {
         path: AndrAddr,
         min: Option<SubDirBound>,

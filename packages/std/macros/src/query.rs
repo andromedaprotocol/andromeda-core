@@ -27,9 +27,9 @@ pub fn enum_implementation(_metadata: TokenStream, input: TokenStream) -> TokenS
                 #[returns(andromeda_std::ado_base::version::ADOBaseVersionResponse)]
                 #[schemars(example = "andromeda_std::ado_base::version::base_crate_version")]
                 ADOBaseVersion {},
-                #[returns(Vec<::andromeda_std::ado_base::permissioning::PermissionInfo>)]
+                #[returns(andromeda_std::ado_base::permissioning::PermissionInfo)]
                 Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
-                #[returns(Vec<String>)]
+                #[returns(andromeda_std::ado_base::permissioning::PermissionedActionsResponse)]
                 PermissionedActions { },
             }
         }

@@ -28,7 +28,7 @@ use crate::{
 
 use andromeda_fungible_tokens::cw20_staking::{
     Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardToken, RewardTokenUnchecked,
-    RewardType, StakerResponse, State,
+    RewardType, StakerResponse, StakersResponse, State,
 };
 
 // Version info, for migration info
@@ -826,7 +826,7 @@ fn query_stakers(
     env: Env,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> Result<Vec<StakerResponse>, ContractError> {
+) -> Result<StakersResponse, ContractError> {
     let start = start_after.as_deref();
     get_stakers(deps, &deps.querier, deps.api, &env, start, limit)
 }

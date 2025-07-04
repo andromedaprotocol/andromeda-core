@@ -75,7 +75,7 @@ pub enum QueryMsg {
     Staker { address: String },
     /// Returns a `Vec<StakerResponse>` for range of stakers. The pending rewards are updated to the
     /// present index for each staker.
-    #[returns(Vec<StakerResponse>)]
+    #[returns(StakersResponse)]
     Stakers {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -237,4 +237,9 @@ pub struct StakerResponse {
     pub balance: Uint128,
     /// The staker's pending rewards represented as [(token_1, amount_1), ..., (token_n, amount_n)]
     pub pending_rewards: Vec<(String, Uint128)>,
+}
+
+#[cw_serde]
+pub struct StakersResponse {
+    pub stakers: Vec<StakerResponse>,
 }

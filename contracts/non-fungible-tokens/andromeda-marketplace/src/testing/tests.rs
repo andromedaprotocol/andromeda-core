@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::marketplace::{
-    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Status,
+    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleInfo, Status,
 };
 use andromeda_std::{
     ado_base::{
@@ -31,7 +31,7 @@ use cw721::{msg::Cw721ExecuteMsg, receiver::Cw721ReceiveMsg};
 use super::mock_querier::{TestDeps, MOCK_KERNEL_CONTRACT};
 use crate::{
     contract::{execute, instantiate, query},
-    state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
+    state::{sale_infos, TokenSaleState, TOKEN_SALE_STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CW721_ADDR, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
         MOCK_UNCLAIMED_TOKEN,

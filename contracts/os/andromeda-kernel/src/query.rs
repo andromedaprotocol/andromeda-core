@@ -5,11 +5,11 @@ use andromeda_std::{
         aos_querier::AOSQuerier,
         kernel::{
             ChainNameResponse, ChannelInfoResponse, EnvResponse, PacketInfoAndSequence,
-            PendingPacketResponse, VerifyAddressResponse,
+            PendingPacketResponse, RecoveriesResponse, VerifyAddressResponse,
         },
     },
 };
-use cosmwasm_std::{Addr, Coin, Deps, Order};
+use cosmwasm_std::{Addr, Deps, Order};
 
 use crate::state::{
     CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN, ENV_VARIABLES,
@@ -61,10 +61,12 @@ pub fn chain_name_by_channel(deps: Deps, channel: String) -> Result<Option<Strin
     Ok(info)
 }
 
-pub fn recoveries(deps: Deps, addr: Addr) -> Result<Vec<Coin>, ContractError> {
-    Ok(IBC_FUND_RECOVERY
-        .may_load(deps.storage, &addr)?
-        .unwrap_or_default())
+pub fn recoveries(deps: Deps, addr: Addr) -> Result<RecoveriesResponse, ContractError> {
+    Ok(RecoveriesResponse {
+        recoveries: IBC_FUND_RECOVERY
+            .may_load(deps.storage, &addr)?
+            .unwrap_or_default(),
+    })
 }
 
 pub fn chain_name(deps: Deps) -> Result<ChainNameResponse, ContractError> {

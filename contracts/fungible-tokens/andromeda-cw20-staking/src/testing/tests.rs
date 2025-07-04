@@ -24,7 +24,7 @@ use crate::{
 };
 use andromeda_fungible_tokens::cw20_staking::{
     AllocationConfig, AllocationState, Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
-    RewardToken, RewardTokenUnchecked, RewardType, StakerResponse, State,
+    RewardToken, RewardTokenUnchecked, RewardType, StakerResponse, StakersResponse, State,
 };
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
 
@@ -1008,24 +1008,25 @@ fn test_claim_rewards() {
         start_after: None,
         limit: None,
     };
-    let res: Vec<StakerResponse> =
-        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: StakersResponse = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
-        vec![
-            StakerResponse {
-                address: "user1".to_string(),
-                share: Uint128::new(100),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(66))],
-                balance: Uint128::new(200),
-            },
-            StakerResponse {
-                address: "user2".to_string(),
-                share: Uint128::new(50),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::new(33))],
-                balance: Uint128::new(100),
-            },
-        ],
+        StakersResponse {
+            stakers: vec![
+                StakerResponse {
+                    address: "user1".to_string(),
+                    share: Uint128::new(100),
+                    pending_rewards: vec![("native:uusd".to_string(), Uint128::new(66))],
+                    balance: Uint128::new(200),
+                },
+                StakerResponse {
+                    address: "user2".to_string(),
+                    share: Uint128::new(50),
+                    pending_rewards: vec![("native:uusd".to_string(), Uint128::new(33))],
+                    balance: Uint128::new(100),
+                },
+            ]
+        },
         res
     );
 
@@ -1123,24 +1124,25 @@ fn test_claim_rewards() {
         start_after: None,
         limit: None,
     };
-    let res: Vec<StakerResponse> =
-        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: StakersResponse = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
-        vec![
-            StakerResponse {
-                address: "user1".to_string(),
-                share: Uint128::new(100),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())],
-                balance: Uint128::new(200),
-            },
-            StakerResponse {
-                address: "user2".to_string(),
-                share: Uint128::new(50),
-                pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())],
-                balance: Uint128::new(100),
-            },
-        ],
+        StakersResponse {
+            stakers: vec![
+                StakerResponse {
+                    address: "user1".to_string(),
+                    share: Uint128::new(100),
+                    pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())],
+                    balance: Uint128::new(200),
+                },
+                StakerResponse {
+                    address: "user2".to_string(),
+                    share: Uint128::new(50),
+                    pending_rewards: vec![("native:uusd".to_string(), Uint128::zero())],
+                    balance: Uint128::new(100),
+                },
+            ]
+        },
         res
     );
 }
@@ -2366,24 +2368,25 @@ fn test_claim_rewards_after_remove() {
         start_after: None,
         limit: None,
     };
-    let res: Vec<StakerResponse> =
-        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    let res: StakersResponse = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
-        vec![
-            StakerResponse {
-                address: USER1.to_string(),
-                share: Uint128::new(100),
-                pending_rewards: vec![],
-                balance: Uint128::new(200),
-            },
-            StakerResponse {
-                address: user2.to_string(),
-                share: Uint128::new(50),
-                pending_rewards: vec![],
-                balance: Uint128::new(100),
-            },
-        ],
+        StakersResponse {
+            stakers: vec![
+                StakerResponse {
+                    address: USER1.to_string(),
+                    share: Uint128::new(100),
+                    pending_rewards: vec![],
+                    balance: Uint128::new(200),
+                },
+                StakerResponse {
+                    address: user2.to_string(),
+                    share: Uint128::new(50),
+                    pending_rewards: vec![],
+                    balance: Uint128::new(100),
+                },
+            ]
+        },
         res
     );
 }

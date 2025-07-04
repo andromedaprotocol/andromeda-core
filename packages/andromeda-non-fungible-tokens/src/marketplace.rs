@@ -99,10 +99,21 @@ impl Display for Status {
 }
 
 #[cw_serde]
+#[derive(Default)]
 pub struct SaleInfo {
     pub sale_ids: Vec<Uint128>,
     pub token_address: String,
     pub token_id: String,
+}
+
+impl SaleInfo {
+    pub fn last(&self) -> Option<&Uint128> {
+        self.sale_ids.last()
+    }
+
+    pub fn push(&mut self, e: Uint128) {
+        self.sale_ids.push(e)
+    }
 }
 
 #[andr_query]
@@ -125,7 +136,7 @@ pub enum QueryMsg {
         token_id: String,
         token_address: String,
     },
-    #[returns(Vec<SaleInfo>)]
+    #[returns(SalesInfoForAddressResponse)]
     /// Gets all of the sale infos for a given token address.
     SaleInfosForAddress {
         token_address: String,
@@ -155,4 +166,9 @@ pub struct SaleStateResponse {
 #[cw_serde]
 pub struct SaleIdsResponse {
     pub sale_ids: Vec<Uint128>,
+}
+
+#[cw_serde]
+pub struct SalesInfoForAddressResponse {
+    pub sales_info: Vec<SaleInfo>,
 }
