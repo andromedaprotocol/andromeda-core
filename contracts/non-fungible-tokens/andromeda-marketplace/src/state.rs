@@ -1,10 +1,9 @@
 use andromeda_non_fungible_tokens::marketplace::{SaleInfo, SaleStateResponse, Status};
-use andromeda_std::{amp::Recipient, error::ContractError};
+use andromeda_std::{amp::Recipient, common::Milliseconds, error::ContractError};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
-use cw_utils::Expiration;
 
 const MAX_LIMIT: u64 = 30;
 const DEFAULT_LIMIT: u64 = 10;
@@ -18,8 +17,8 @@ pub struct TokenSaleState {
     pub token_address: String,
     pub price: Uint128,
     pub status: Status,
-    pub start_time: Expiration,
-    pub end_time: Expiration,
+    pub start_time: Milliseconds,
+    pub end_time: Option<Milliseconds>,
     pub uses_cw20: bool,
     pub recipient: Option<Recipient>,
 }

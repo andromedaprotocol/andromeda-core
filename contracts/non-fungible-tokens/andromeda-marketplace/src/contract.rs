@@ -17,9 +17,9 @@ use andromeda_std::{
             AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
         },
         encode_binary,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         rates::{get_tax_amount, get_tax_amount_cw20},
-        Funds, Milliseconds, MillisecondsDuration, OrderBy,
+        schedule::Schedule,
+        Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
 };
@@ -37,8 +37,6 @@ use cosmwasm_std::{
     QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
     WasmQuery,
 };
-
-use cw_utils::Expiration;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -126,8 +124,7 @@ fn handle_receive_cw721(
         Cw721HookMsg::StartSale {
             price,
             coin_denom,
-            start_time,
-            duration,
+            schedule,
             recipient,
         } => execute_start_sale(
             ctx.deps,
@@ -136,9 +133,8 @@ fn handle_receive_cw721(
             msg.token_id,
             ctx.info.sender.to_string(),
             price,
-            start_time,
+            schedule,
             coin_denom,
-            duration,
             recipient,
         ),
     }
@@ -191,9 +187,8 @@ fn execute_start_sale(
     token_id: String,
     token_address: String,
     price: Uint128,
-    start_time: Option<Expiry>,
+    schedule: Schedule,
     coin_denom: Asset,
-    duration: Option<MillisecondsDuration>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
@@ -201,22 +196,7 @@ fn execute_start_sale(
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
 
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;
-
-    let end_expiration = if let Some(duration) = duration {
-        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
-        expiration_from_milliseconds(
-            start_time
-                // If start time isn't provided, it is set one second in advance from the current time
-                .unwrap_or(Expiry::FromNow(Milliseconds::from_seconds(1)))
-                .get_time(&env.block)
-                .plus_milliseconds(duration),
-        )?
-    } else {
-        // If no duration is provided, the exipration will be set as Never
-        Expiration::Never {}
-    };
+    let (start_time, end_time) = schedule.validate(&env.block)?;
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
 
@@ -231,8 +211,8 @@ fn execute_start_sale(
             token_address: token_address.clone(),
             price,
             status: Status::Open,
-            start_time: start_expiration,
-            end_time: end_expiration,
+            start_time,
+            end_time,
             uses_cw20,
             recipient,
         },
@@ -245,8 +225,11 @@ fn execute_start_sale(
         attr("sale_id", sale_id.to_string()),
         attr("token_id", token_id),
         attr("token_address", token_address),
-        attr("start_time", start_expiration.to_string()),
-        attr("end_time", end_expiration.to_string()),
+        attr("start_time", start_time.to_string()),
+        attr(
+            "end_time",
+            end_time.unwrap_or(Milliseconds::zero()).to_string(),
+        ),
         attr("uses_cw20", uses_cw20.to_string()),
     ]))
 }
@@ -318,10 +301,12 @@ fn execute_buy(
     match token_sale_state.status {
         Status::Open => {
             // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
-            ensure!(
-                !token_sale_state.end_time.is_expired(&env.block),
-                ContractError::SaleExpired {}
-            );
+            if let Some(end_time) = token_sale_state.end_time {
+                ensure!(
+                    !end_time.is_expired(&env.block),
+                    ContractError::SaleExpired {}
+                );
+            }
 
             // If start time hasn't expired, it means that the sale hasn't started yet.
             ensure!(
@@ -459,11 +444,13 @@ fn execute_buy_cw20(
 
     match token_sale_state.status {
         Status::Open => {
-            // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
-            ensure!(
-                !token_sale_state.end_time.is_expired(&env.block),
-                ContractError::SaleExpired {}
-            );
+            if let Some(end_time) = token_sale_state.end_time {
+                // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
+                ensure!(
+                    !end_time.is_expired(&env.block),
+                    ContractError::SaleExpired {}
+                );
+            }
 
             // If start time hasn't expired, it means that the sale hasn't started yet.
             ensure!(

@@ -724,6 +724,9 @@ pub enum ContractError {
     #[error("Invalid expiration")]
     InvalidExpiration {},
 
+    #[error("Invalid schedule: {msg}")]
+    InvalidSchedule { msg: String },
+
     #[error("Invalid start time")]
     InvalidStartTime {},
 
