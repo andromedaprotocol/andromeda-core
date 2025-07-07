@@ -62,7 +62,7 @@ cw4 = "2.0.0"
 cw721 = { git = "https://github.com/andromedaprotocol/cw721-2.2", branch = "removeExtension" }
 cw721-base = { git = "https://github.com/andromedaprotocol/cw721-2.2", branch = "removeExtension" }
 cw-asset = "4.0.0"
-cosmwasm-schema = "^2.2"
+cosmwasm-schema = "^3.0"
 semver = "1.0.25"
 enum-repr = "0.2.6"
 cw-multi-test = "2.4.0"
