@@ -127,7 +127,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw3",
 ]
 
@@ -144,7 +144,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -235,7 +235,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -312,7 +312,7 @@ dependencies = [
  "cw-orch",
  "cw-orch-daemon 0.29.2",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "cw20-base",
 ]
@@ -359,7 +359,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "serde",
 ]
 
@@ -377,7 +377,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -449,7 +449,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -478,7 +478,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "rstest",
 ]
@@ -492,7 +492,7 @@ dependencies = [
  "cosmwasm-std 2.2.2",
  "cw-multi-test",
  "cw-orch",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "cw721",
  "rstest",
@@ -513,7 +513,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "rstest",
 ]
@@ -531,7 +531,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw2 2.0.0",
  "cw3",
 ]
@@ -549,7 +549,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "serde",
  "serde_json",
@@ -567,7 +567,7 @@ dependencies = [
  "cw-controllers 3.0.0",
  "cw-multi-test",
  "cw-orch",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "cw20-base",
  "rstest",
@@ -586,7 +586,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
 ]
 
@@ -600,7 +600,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
 ]
 
@@ -616,7 +616,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "hex",
  "k256",
@@ -671,7 +671,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "cw721",
 ]
@@ -683,7 +683,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -728,7 +728,7 @@ dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw721",
  "serde",
 ]
@@ -742,7 +742,7 @@ dependencies = [
  "cosmwasm-std 2.2.2",
  "cw-multi-test",
  "cw-orch",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "cw721",
  "cw721-base",
@@ -791,7 +791,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "rstest",
 ]
@@ -809,7 +809,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
 ]
 
@@ -859,7 +859,7 @@ dependencies = [
  "cosmwasm-std 2.2.2",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "cw3",
  "osmosis-std",
@@ -880,7 +880,7 @@ dependencies = [
  "cw-orch",
  "cw-orch-daemon 0.29.2",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw2 2.0.0",
  "cw20 2.0.0",
  "schemars 0.8.22",
@@ -901,7 +901,7 @@ dependencies = [
  "cw-orch",
  "cw-orch-daemon 0.24.6",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw2 2.0.0",
  "cw20 1.1.2",
  "osmosis-std",
@@ -923,7 +923,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "rstest",
 ]
@@ -939,7 +939,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw2 2.0.0",
  "cw20 2.0.0",
  "cw20-base",
@@ -1037,7 +1037,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -1053,7 +1053,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -1089,7 +1089,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
 ]
 
 [[package]]
@@ -1118,7 +1118,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "rstest",
 ]
 
@@ -1680,7 +1680,7 @@ checksum = "43d193de1f7487df1914d3a568b772458861d33f9c54249612cc2893d6915054"
 dependencies = [
  "bitcoin_hashes 0.13.0",
  "rand",
- "rand_core 0.6.4",
+ "rand_core 0.5.1",
  "serde",
  "unicode-normalization",
 ]
@@ -6666,7 +6666,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-orch-interchain",
- "cw-utils 2.0.0",
+ "cw-utils 3.0.0",
  "cw20 2.0.0",
  "cw721",
  "cw721-base",
