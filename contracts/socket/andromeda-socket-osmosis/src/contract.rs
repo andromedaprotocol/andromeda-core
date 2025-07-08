@@ -10,13 +10,16 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg,
+    attr, ensure, from_json, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, Uint128,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
 
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
+    MsgCreateDenom, MsgCreateDenomResponse, MsgMint,
+};
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
     osmosis::{
@@ -30,10 +33,10 @@ use osmosis_std::types::{
 
 use crate::osmosis::{
     OSMOSIS_MSG_CREATE_BALANCER_POOL_ID, OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID,
-    OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
-    OSMOSIS_MSG_WITHDRAW_POOL_ID,
+    OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_DENOM_ID,
+    OSMOSIS_MSG_CREATE_STABLE_POOL_ID, OSMOSIS_MSG_MINT_ID, OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{SPENDER, WITHDRAW};
+use crate::state::{MINT_AMOUNT, SPENDER, WITHDRAW};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -96,8 +99,42 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         }
         ExecuteMsg::CreatePool { pool_type } => execute_create_pool(ctx, pool_type),
         ExecuteMsg::WithdrawPool { withdraw_msg } => execute_withdraw_pool(ctx, withdraw_msg),
+        ExecuteMsg::CreateDenom { subdenom, amount } => execute_create_denom(ctx, subdenom, amount),
+        ExecuteMsg::Mint { coin } => execute_mint(ctx, coin),
         _ => ADOContract::default().execute(ctx, msg),
     }
+}
+
+fn execute_create_denom(
+    ctx: ExecuteContext,
+    subdenom: String,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, env, .. } = ctx;
+
+    let msg = MsgCreateDenom {
+        sender: env.contract.address.to_string(),
+        subdenom,
+    };
+    let mint_msg: CosmosMsg = msg.into();
+    let sub_msg = SubMsg::reply_always(mint_msg, OSMOSIS_MSG_CREATE_DENOM_ID);
+    MINT_AMOUNT.save(deps.storage, &amount)?;
+
+    Ok(Response::default().add_submessage(sub_msg))
+}
+
+fn execute_mint(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
+    let ExecuteContext { env, .. } = ctx;
+
+    let msg = MsgMint {
+        sender: env.contract.address.to_string(),
+        amount: Some(coin),
+        mint_to_address: env.contract.address.to_string(),
+    };
+    let mint_msg: CosmosMsg = msg.into();
+    let sub_msg = SubMsg::reply_always(mint_msg, OSMOSIS_MSG_MINT_ID);
+
+    Ok(Response::default().add_submessage(sub_msg))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -394,6 +431,37 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 ))));
             }
             Ok(Response::default().add_attributes(vec![attr("action", "pool_withdrawn")]))
+        }
+
+        OSMOSIS_MSG_CREATE_DENOM_ID => {
+            let amount = MINT_AMOUNT.load(deps.storage)?;
+            MINT_AMOUNT.remove(deps.storage);
+            if msg.result.is_err() {
+                return Err(ContractError::Std(StdError::generic_err(format!(
+                    "Osmosis denom creation failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))));
+            }
+            let response: MsgCreateDenomResponse = from_json(
+                &msg.result
+                    .clone()
+                    .unwrap()
+                    .msg_responses
+                    .first()
+                    .unwrap()
+                    .clone()
+                    .value,
+            )?;
+            let msg = MsgMint {
+                sender: env.contract.address.to_string(),
+                mint_to_address: env.contract.address.to_string(),
+                amount: Some(OsmosisCoin {
+                    denom: response.new_token_denom,
+                    amount: amount.to_string(),
+                }),
+            };
+            let mint_msg: CosmosMsg = msg.into();
+            Ok(Response::default().add_message(mint_msg))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),

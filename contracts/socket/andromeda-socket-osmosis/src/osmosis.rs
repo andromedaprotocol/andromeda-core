@@ -25,6 +25,8 @@ pub const OSMOSIS_MSG_CREATE_STABLE_POOL_ID: u64 = 4;
 pub const OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID: u64 = 5;
 pub const OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID: u64 = 6;
 pub const OSMOSIS_MSG_WITHDRAW_POOL_ID: u64 = 7;
+pub const OSMOSIS_MSG_CREATE_DENOM_ID: u64 = 8;
+pub const OSMOSIS_MSG_MINT_ID: u64 = 9;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn execute_swap_osmosis_msg(

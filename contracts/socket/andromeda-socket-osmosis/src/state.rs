@@ -28,3 +28,5 @@ pub const SPENDER: Item<String> = Item::new("spender");
 
 // pool creator to pool id
 pub const WITHDRAW: Map<String, String> = Map::new("withdraw");
+
+pub const MINT_AMOUNT: Item<Uint128> = Item::new("mint_amount");
