@@ -57,7 +57,11 @@ pub fn execute_start_redeem(
     if let Some(redeem) = current_redeem {
         // The old redeem should either be expired or have no amount left
         ensure!(
-            redeem.start_time.is_expired(&env.block) || redeem.amount.is_zero(),
+            redeem
+                .end_time
+                .map(|e| e.is_expired(&env.block))
+                .unwrap_or(false)
+                || redeem.amount.is_zero(),
             ContractError::RedeemNotEnded {}
         );
     }
