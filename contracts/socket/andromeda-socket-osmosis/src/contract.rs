@@ -18,7 +18,7 @@ use cw_utils::one_coin;
 
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgCreateDenom, MsgCreateDenomResponse, MsgMint,
+    MsgBurn, MsgCreateDenom, MsgCreateDenomResponse, MsgMint,
 };
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
@@ -32,9 +32,10 @@ use osmosis_std::types::{
 };
 
 use crate::osmosis::{
-    OSMOSIS_MSG_CREATE_BALANCER_POOL_ID, OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID,
-    OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_DENOM_ID,
-    OSMOSIS_MSG_CREATE_STABLE_POOL_ID, OSMOSIS_MSG_MINT_ID, OSMOSIS_MSG_WITHDRAW_POOL_ID,
+    OSMOSIS_MSG_BURN_ID, OSMOSIS_MSG_CREATE_BALANCER_POOL_ID,
+    OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID, OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID,
+    OSMOSIS_MSG_CREATE_DENOM_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID, OSMOSIS_MSG_MINT_ID,
+    OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
 use crate::state::{MINT_AMOUNT, SPENDER, WITHDRAW};
 use crate::{
@@ -101,6 +102,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::WithdrawPool { withdraw_msg } => execute_withdraw_pool(ctx, withdraw_msg),
         ExecuteMsg::CreateDenom { subdenom, amount } => execute_create_denom(ctx, subdenom, amount),
         ExecuteMsg::Mint { coin } => execute_mint(ctx, coin),
+        ExecuteMsg::Burn { coin } => execute_burn(ctx, coin),
+
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
@@ -133,6 +136,19 @@ fn execute_mint(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, Cont
     };
     let mint_msg: CosmosMsg = msg.into();
     let sub_msg = SubMsg::reply_always(mint_msg, OSMOSIS_MSG_MINT_ID);
+
+    Ok(Response::default().add_submessage(sub_msg))
+}
+
+fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
+    let ExecuteContext { env, .. } = ctx;
+    let msg = MsgBurn {
+        sender: env.contract.address.to_string(),
+        amount: Some(coin),
+        burn_from_address: env.contract.address.to_string(),
+    };
+    let burn_msg: CosmosMsg = msg.into();
+    let sub_msg = SubMsg::reply_always(burn_msg, OSMOSIS_MSG_BURN_ID);
 
     Ok(Response::default().add_submessage(sub_msg))
 }

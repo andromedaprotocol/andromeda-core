@@ -44,6 +44,9 @@ pub enum ExecuteMsg {
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Mint { coin: OsmosisCoin },
 
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Burn { coin: OsmosisCoin },
+
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
