@@ -1542,8 +1542,7 @@ fn test_cancel_redeem_unauthorized() {
         redeem_asset: redeem_asset.clone(),
         exchange_rate: Decimal256::percent(200),
         recipient: None,
-        start_time: None,
-        end_time: None,
+        schedule: Schedule::new(None, None),
     };
     let info = message_info(&owner, &[coin(100u128, "uusd")]);
     let err = execute(deps.as_mut(), env.clone(), info.clone(), redeem_msg.clone()).unwrap_err();
