@@ -10,8 +10,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, from_json, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdError, SubMsg, Uint128,
+    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError, SubMsg, SubMsgResponse, SubMsgResult, Uint128,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
@@ -120,6 +120,7 @@ fn execute_create_denom(
         subdenom,
     };
     let mint_msg: CosmosMsg = msg.into();
+    // Initiates minting of the denom in the Reply, sets the contract as the owner
     let sub_msg = SubMsg::reply_always(mint_msg, OSMOSIS_MSG_CREATE_DENOM_ID);
     MINT_AMOUNT.save(deps.storage, &amount)?;
 
@@ -450,34 +451,33 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
         }
 
         OSMOSIS_MSG_CREATE_DENOM_ID => {
-            let amount = MINT_AMOUNT.load(deps.storage)?;
-            MINT_AMOUNT.remove(deps.storage);
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(format!(
+            #[allow(deprecated)]
+            if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
+                let res: MsgCreateDenomResponse = b.try_into().map_err(ContractError::Std)?;
+                let amount = MINT_AMOUNT.load(deps.storage)?;
+                MINT_AMOUNT.remove(deps.storage);
+
+                let msg = MsgMint {
+                    sender: env.contract.address.to_string(),
+                    mint_to_address: env.contract.address.to_string(),
+                    amount: Some(OsmosisCoin {
+                        denom: res.new_token_denom,
+                        amount: amount.to_string(),
+                    }),
+                };
+                let mint_msg: CosmosMsg = msg.into();
+                Ok(Response::default().add_message(mint_msg))
+            } else {
+                Err(ContractError::Std(StdError::generic_err(format!(
                     "Osmosis denom creation failed with error: {:?}",
                     msg.result.unwrap_err()
-                ))));
+                ))))
             }
-            let response: MsgCreateDenomResponse = from_json(
-                &msg.result
-                    .clone()
-                    .unwrap()
-                    .msg_responses
-                    .first()
-                    .unwrap()
-                    .clone()
-                    .value,
-            )?;
-            let msg = MsgMint {
-                sender: env.contract.address.to_string(),
-                mint_to_address: env.contract.address.to_string(),
-                amount: Some(OsmosisCoin {
-                    denom: response.new_token_denom,
-                    amount: amount.to_string(),
-                }),
-            };
-            let mint_msg: CosmosMsg = msg.into();
-            Ok(Response::default().add_message(mint_msg))
+        }
+
+        OSMOSIS_MSG_BURN_ID => {
+            // Send IBC packet to unlock the cw20
+            todo!()
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),

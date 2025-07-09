@@ -1,6 +1,6 @@
 use andromeda_socket::osmosis::ExecuteMsgFns;
 use andromeda_socket_osmosis::SocketOsmosisContract;
-use cosmwasm_std::coin;
+use cosmwasm_std::{coin, Uint128};
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
@@ -28,23 +28,23 @@ fn setup() -> TestCase {
 
     // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
     // Make sure to fund the contract after its instantiation
-    // osmosis_socket_contract.upload().unwrap();
-    // osmosis_socket_contract
-    //     .instantiate(
-    //         &andromeda_socket::osmosis::InstantiateMsg {
-    //             kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
-    //                 .to_string(),
-    //             owner: None,
-    //             swap_router: None,
-    //         },
-    //         None,
-    //         &[],
-    //     )
-    //     .unwrap();
-    // osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
-    osmosis_socket_contract.set_address(&Addr::unchecked(
-        "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6".to_string(),
-    ));
+    osmosis_socket_contract.upload().unwrap();
+    osmosis_socket_contract
+        .instantiate(
+            &andromeda_socket::osmosis::InstantiateMsg {
+                kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
+                    .to_string(),
+                owner: None,
+                swap_router: None,
+            },
+            None,
+            &[],
+        )
+        .unwrap();
+    osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
+    // osmosis_socket_contract.set_address(&Addr::unchecked(
+    //     "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6".to_string(),
+    // ));
 
     TestCase {
         osmosis_socket_contract,
@@ -128,4 +128,23 @@ fn test_withdraw_pool(setup: TestCase) {
     osmosis_socket_contract
         .withdraw_pool(withdraw_msg, &[coin(50000000000000000000, "gamm/pool/940")]) // The denom will need to be updated if you created a new pool
         .unwrap();
+}
+
+#[rstest]
+fn test_create_denom(setup: TestCase) {
+    let TestCase {
+        osmosis_socket_contract,
+        ..
+    } = setup;
+
+    let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
+    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+
+    let subdenom = "test".to_string();
+    let amount = Uint128::from(10u128);
+
+    let res = osmosis_socket_contract
+        .create_denom(amount, subdenom, &[])
+        .unwrap();
+    println!("res: {:?}", res);
 }
