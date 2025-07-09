@@ -43,7 +43,7 @@ fn setup() -> TestCase {
     //     .unwrap();
     // osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
     osmosis_socket_contract.set_address(&Addr::unchecked(
-        "osmo1daajc40gp7ewhn7vjewmgwc8vwe4dqky98fp7smft5krjwlkxekqm70lxf".to_string(),
+        "osmo1r2vw2g92f5mt78mj029qlllfsfhrgyh6pzc4zgacllwg7p6x40rqnxgndc".to_string(),
     ));
 
     TestCase {
@@ -162,6 +162,7 @@ fn test_burn(setup: TestCase) {
     let subdenom = "test".to_string();
     let amount = Uint128::from(1u128);
     let denom = format!("factory/{}/{}", socket_osmosis_addr, subdenom);
+    println!("denom: {}", denom);
 
     let coin = OsmosisCoin {
         denom: denom.clone(),

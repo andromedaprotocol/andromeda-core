@@ -114,9 +114,7 @@ fn execute_create_denom(
     subdenom: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext {
-        deps, env, info, ..
-    } = ctx;
+    let ExecuteContext { deps, env, .. } = ctx;
 
     let msg = MsgCreateDenom {
         sender: env.contract.address.to_string(),
@@ -145,7 +143,7 @@ fn execute_mint(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, Cont
 }
 
 fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
-    let ExecuteContext { env, info, .. } = ctx;
+    let ExecuteContext { env, .. } = ctx;
     let msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(coin),
