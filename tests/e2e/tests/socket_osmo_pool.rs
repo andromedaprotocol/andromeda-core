@@ -26,25 +26,25 @@ fn setup() -> TestCase {
 
     let osmosis_socket_contract = SocketOsmosisContract::new(daemon.clone());
 
-    // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
-    // Make sure to fund the contract after its instantiation
-    osmosis_socket_contract.upload().unwrap();
-    osmosis_socket_contract
-        .instantiate(
-            &andromeda_socket::osmosis::InstantiateMsg {
-                kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
-                    .to_string(),
-                owner: None,
-                swap_router: None,
-            },
-            None,
-            &[],
-        )
-        .unwrap();
-    osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
-    // osmosis_socket_contract.set_address(&Addr::unchecked(
-    //     "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6".to_string(),
-    // ));
+    // // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
+    // // Make sure to fund the contract after its instantiation
+    // osmosis_socket_contract.upload().unwrap();
+    // osmosis_socket_contract
+    //     .instantiate(
+    //         &andromeda_socket::osmosis::InstantiateMsg {
+    //             kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
+    //                 .to_string(),
+    //             owner: None,
+    //             swap_router: None,
+    //         },
+    //         None,
+    //         &[],
+    //     )
+    //     .unwrap();
+    // osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
+    osmosis_socket_contract.set_address(&Addr::unchecked(
+        "osmo1daajc40gp7ewhn7vjewmgwc8vwe4dqky98fp7smft5krjwlkxekqm70lxf".to_string(),
+    ));
 
     TestCase {
         osmosis_socket_contract,
@@ -146,5 +146,28 @@ fn test_create_denom(setup: TestCase) {
     let res = osmosis_socket_contract
         .create_denom(amount, subdenom, &[])
         .unwrap();
+    println!("res: {:?}", res);
+}
+
+#[rstest]
+fn test_burn(setup: TestCase) {
+    let TestCase {
+        osmosis_socket_contract,
+        ..
+    } = setup;
+
+    let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
+    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+
+    let subdenom = "test".to_string();
+    let amount = Uint128::from(1u128);
+    let denom = format!("factory/{}/{}", socket_osmosis_addr, subdenom);
+
+    let coin = OsmosisCoin {
+        denom: denom.clone(),
+        amount: amount.to_string(),
+    };
+
+    let res = osmosis_socket_contract.burn(coin, &[]).unwrap();
     println!("res: {:?}", res);
 }

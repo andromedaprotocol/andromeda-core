@@ -114,7 +114,9 @@ fn execute_create_denom(
     subdenom: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
 
     let msg = MsgCreateDenom {
         sender: env.contract.address.to_string(),
@@ -143,7 +145,7 @@ fn execute_mint(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, Cont
 }
 
 fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
-    let ExecuteContext { env, .. } = ctx;
+    let ExecuteContext { env, info, .. } = ctx;
     let msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(coin),
@@ -151,7 +153,6 @@ fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, Cont
     };
     let burn_msg: CosmosMsg = msg.into();
     let sub_msg = SubMsg::reply_always(burn_msg, OSMOSIS_MSG_BURN_ID);
-
     Ok(Response::default().add_submessage(sub_msg))
 }
 
@@ -483,7 +484,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
         OSMOSIS_MSG_BURN_ID => {
             // Send IBC packet to unlock the cw20
-            todo!()
+            if msg.result.is_err() {
+                Err(ContractError::Std(StdError::generic_err(format!(
+                    "Osmosis swap failed with error: {:?}",
+                    msg.result.unwrap_err()
+                ))))
+            } else {
+                Ok(Response::default().add_attributes(vec![attr("action", "token_burned")]))
+            }
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),
