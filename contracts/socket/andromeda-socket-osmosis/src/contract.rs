@@ -18,7 +18,8 @@ use cw_utils::one_coin;
 
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgBurn, MsgCreateDenom, MsgCreateDenomResponse, MsgMint,
+    MsgBurn, MsgCreateDenom, MsgCreateDenomResponse, MsgMint, QueryDenomAuthorityMetadataResponse,
+    TokenfactoryQuerier,
 };
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
@@ -337,6 +338,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             from_denom,
             to_denom,
         } => encode_binary(&query_get_route(deps, from_denom, to_denom)?),
+        QueryMsg::TokenAuthority { denom } => {
+            let res: QueryDenomAuthorityMetadataResponse =
+                TokenfactoryQuerier::new(&deps.querier).denom_authority_metadata(denom)?;
+            encode_binary(&res)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
