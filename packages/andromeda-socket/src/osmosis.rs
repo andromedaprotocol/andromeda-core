@@ -15,6 +15,7 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetad
 #[cw_serde]
 pub struct InstantiateMsg {
     pub swap_router: Option<AndrAddr>,
+    pub authorized_address: String,
 }
 
 #[andr_exec]

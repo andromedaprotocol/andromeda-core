@@ -54,6 +54,9 @@ fn setup(
         kernel_address: kernel_address.to_string(),
         owner: None,
         swap_router: None,
+        // TODO: put a legit address here
+        authorized_address: "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6"
+            .to_string(),
     };
 
     let socket_osmosis_component = AppComponent::new(

@@ -38,7 +38,7 @@ use crate::osmosis::{
     OSMOSIS_MSG_CREATE_DENOM_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID, OSMOSIS_MSG_MINT_ID,
     OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{MINT_AMOUNT, SPENDER, WITHDRAW};
+use crate::state::{is_authorized, AUTHORIZED_ADDRESS, MINT_AMOUNT, SPENDER, WITHDRAW};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -82,6 +82,8 @@ pub fn instantiate(
     swap_router.get_raw_address(&deps.as_ref())?;
     SWAP_ROUTER.save(deps.storage, &swap_router)?;
 
+    AUTHORIZED_ADDRESS.save(deps.storage, &msg.authorized_address)?;
+
     Ok(inst_resp
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender))
@@ -114,6 +116,9 @@ fn execute_create_denom(
     subdenom: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    // TODO: this is commented to facilitate initial testing
+    // is_authorized(&ctx)?;
+
     let ExecuteContext { deps, env, .. } = ctx;
 
     let msg = MsgCreateDenom {
@@ -129,6 +134,8 @@ fn execute_create_denom(
 }
 
 fn execute_mint(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
+    // TODO: this is commented to facilitate initial testing
+    // is_authorized(&ctx)?;
     let ExecuteContext { env, .. } = ctx;
 
     let msg = MsgMint {
@@ -143,6 +150,8 @@ fn execute_mint(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, Cont
 }
 
 fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
+    // TODO: this is commented to facilitate initial testing
+    // is_authorized(&ctx)?;
     let ExecuteContext { env, .. } = ctx;
     let msg = MsgBurn {
         sender: env.contract.address.to_string(),
