@@ -18,11 +18,11 @@ pub fn handle_add_app_component(
     ctx: ExecuteContext,
     component: AppComponent,
 ) -> Result<Response, ContractError> {
-    let querier = &ctx.deps.querier;
-    let env = ctx.env;
+    let ExecuteContext { deps, env, .. } = ctx;
+    let querier = &deps.querier;
     let sender = ctx.info.sender.as_str();
 
-    let maybe_app_component = ADO_ADDRESSES.may_load(ctx.deps.storage, &component.name)?;
+    let maybe_app_component = ADO_ADDRESSES.may_load(deps.storage, &component.name)?;
     ensure!(
         maybe_app_component.is_none(),
         ContractError::InvalidComponent {
@@ -30,29 +30,35 @@ pub fn handle_add_app_component(
         }
     );
 
-    ensure!(
-        !matches!(component.component_type, ComponentType::CrossChain(..)),
-        ContractError::CrossChainComponentsCurrentlyDisabled {}
-    );
+    let kernel_addr = ctx.contract.get_kernel_address(deps.storage)?;
 
-    let idx = add_app_component(ctx.deps.storage, &component)?;
+    let is_cross_chain_enabled =
+        AOSQuerier::get_env_variable::<String>(&querier, &kernel_addr, "cross_chain_enabled")?
+            .unwrap_or("false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false);
+
+    if !is_cross_chain_enabled {
+        ensure!(
+            !matches!(component.component_type, ComponentType::CrossChain(..)),
+            ContractError::CrossChainComponentsCurrentlyDisabled {}
+        );
+    }
+
+    let idx = add_app_component(deps.storage, &component)?;
     ensure!(idx < 50, ContractError::TooManyAppComponents {});
 
-    let adodb_addr = ctx.contract.get_adodb_address(ctx.deps.storage, querier)?;
-    let vfs_addr = ctx.contract.get_vfs_address(ctx.deps.storage, querier)?;
+    let adodb_addr = ctx.contract.get_adodb_address(deps.storage, querier)?;
+    let vfs_addr = ctx.contract.get_vfs_address(deps.storage, querier)?;
 
     let mut resp = Response::new()
         .add_attribute("method", "add_app_component")
         .add_attribute("name", component.name.clone())
         .add_attribute("type", component.ado_type.clone());
 
-    let app_name = APP_NAME.load(ctx.deps.storage)?;
-    let new_addr = component.get_new_addr(
-        ctx.deps.api,
-        &adodb_addr,
-        querier,
-        env.contract.address.clone(),
-    )?;
+    let app_name = APP_NAME.load(deps.storage)?;
+    let new_addr =
+        component.get_new_addr(deps.api, &adodb_addr, querier, env.contract.address.clone())?;
     let registration_msg = component.generate_vfs_registration(
         new_addr.clone(),
         &env.contract.address,
@@ -80,8 +86,8 @@ pub fn handle_add_app_component(
     }
 
     if let ComponentType::Symlink(ref val) = component.component_type {
-        let component_address: Addr = val.get_raw_address(&ctx.deps.as_ref())?;
-        ADO_ADDRESSES.save(ctx.deps.storage, &component.name, &component_address)?;
+        let component_address: Addr = val.get_raw_address(&deps.as_ref())?;
+        ADO_ADDRESSES.save(deps.storage, &component.name, &component_address)?;
     } else if let ComponentType::New(_) = component.component_type {
         ensure!(
             new_addr.is_some(),
@@ -89,11 +95,7 @@ pub fn handle_add_app_component(
                 name: "Could not generate address for new component".to_string()
             }
         );
-        ADO_ADDRESSES.save(
-            ctx.deps.storage,
-            &component.name,
-            &new_addr.clone().unwrap(),
-        )?;
+        ADO_ADDRESSES.save(deps.storage, &component.name, &new_addr.clone().unwrap())?;
     }
 
     let event = component.generate_event(new_addr);
