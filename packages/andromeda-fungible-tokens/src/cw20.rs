@@ -105,10 +105,7 @@ pub enum ExecuteMsg {
         factory_contract: AndrAddr,
     },
     /// Unlock tokens from factory (called by Osmosis socket when bridging back)
-    UnlockFromFactory {
-        user: String,
-        amount: Uint128,
-    },
+    UnlockFromFactory { user: String, amount: Uint128 },
 }
 
 impl From<ExecuteMsg> for Cw20ExecuteMsg {
@@ -178,8 +175,12 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
                 marketing,
             },
             ExecuteMsg::UploadLogo(logo) => Cw20ExecuteMsg::UploadLogo(logo),
-            ExecuteMsg::LockAndMintFactory { .. } => panic!("LockAndMintFactory should be handled by contract"),
-            ExecuteMsg::UnlockFromFactory { .. } => panic!("UnlockFromFactory should be handled by contract"),
+            ExecuteMsg::LockAndMintFactory { .. } => {
+                panic!("LockAndMintFactory should be handled by contract")
+            }
+            ExecuteMsg::UnlockFromFactory { .. } => {
+                panic!("UnlockFromFactory should be handled by contract")
+            }
             _ => panic!("Unsupported message"),
         }
     }

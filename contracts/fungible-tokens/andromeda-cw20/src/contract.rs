@@ -1,4 +1,7 @@
-use andromeda_fungible_tokens::{cw20::{ExecuteMsg, InstantiateMsg, QueryMsg}, state::{FactoryInfo, LOCKED_TOKENS}};
+use andromeda_fungible_tokens::{
+    cw20::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    state::{FactoryInfo, LOCKED_TOKENS},
+};
 use andromeda_std::{
     ado_base::{AndromedaMsg, AndromedaQuery, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
@@ -7,11 +10,11 @@ use andromeda_std::{
     common::{context::ExecuteContext, encode_binary, Funds},
     error::ContractError,
 };
-use cosmwasm_std::{entry_point, wasm_execute, QueryRequest, Reply, StdError, WasmQuery};
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, Storage, SubMsg, Uint128, WasmMsg, ensure
+    ensure, from_json, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdResult, Storage, SubMsg, Uint128, WasmMsg,
 };
+use cosmwasm_std::{entry_point, wasm_execute, QueryRequest, Reply, StdError, WasmQuery};
 
 use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
 use cw20_base::{
@@ -81,8 +84,13 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             msg,
         } => execute_send_from(ctx, contract, amount, msg, action, owner),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
-        ExecuteMsg::LockAndMintFactory { amount, factory_contract } => lock_and_mint_factory(ctx, amount, factory_contract),
-        ExecuteMsg::UnlockFromFactory { user, amount } => execute_unlock_from_factory(ctx, user, amount),
+        ExecuteMsg::LockAndMintFactory {
+            amount,
+            factory_contract,
+        } => lock_and_mint_factory(ctx, amount, factory_contract),
+        ExecuteMsg::UnlockFromFactory { user, amount } => {
+            execute_unlock_from_factory(ctx, user, amount)
+        }
         _ => {
             let serialized = encode_binary(&msg)?;
             match from_json::<AndromedaMsg>(&serialized) {
@@ -93,11 +101,19 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     }
 }
 
-fn lock_and_mint_factory(ctx: ExecuteContext, amount: Uint128, factory_contract: AndrAddr) -> Result<Response, ContractError> {
+fn lock_and_mint_factory(
+    ctx: ExecuteContext,
+    amount: Uint128,
+    factory_contract: AndrAddr,
+) -> Result<Response, ContractError> {
     let ExecuteContext {
-        deps, info, env, contract, ..
+        deps,
+        info,
+        env,
+        contract,
+        ..
     } = ctx;
-    
+
     ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
@@ -114,14 +130,15 @@ fn lock_and_mint_factory(ctx: ExecuteContext, amount: Uint128, factory_contract:
         Ok(balance.unwrap_or_default().checked_sub(amount)?)
     })?;
 
-    LOCKED_TOKENS.save(deps.storage,&locked_info)?;
+    LOCKED_TOKENS.save(deps.storage, &locked_info)?;
 
     let factory_address = factory_contract.get_raw_address(&deps.as_ref())?;
 
-    let token_info: TokenInfoResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: env.contract.address.to_string(),
-        msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
-    }))?;
+    let token_info: TokenInfoResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: env.contract.address.to_string(),
+            msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
+        }))?;
 
     let msg = SocketExecuteMsg::CreateDenom {
         subdenom: token_info.name.clone(),
@@ -130,44 +147,52 @@ fn lock_and_mint_factory(ctx: ExecuteContext, amount: Uint128, factory_contract:
 
     let response = wasm_execute(factory_address, &msg, vec![])?;
     let sub_msg = SubMsg::reply_always(response, OSMOSIS_MINT_REPLY_ID);
-   
+
     Ok(Response::new()
-       .add_submessage(sub_msg)
-       .add_attribute("action", "lock_and_mint_factory")
-       .add_attribute("sender", info.sender.to_string())
-       .add_attribute("cw20_tokens_locked", amount)
-       .add_attribute("osmosis_subdenom", token_info.name)
-       .add_attribute("osmosis_factory_contract", factory_contract.to_string())
-       .add_attribute("status", "cw20_locked_osmosis_mint_initiated"))
+        .add_submessage(sub_msg)
+        .add_attribute("action", "lock_and_mint_factory")
+        .add_attribute("sender", info.sender.to_string())
+        .add_attribute("cw20_tokens_locked", amount)
+        .add_attribute("osmosis_subdenom", token_info.name)
+        .add_attribute("osmosis_factory_contract", factory_contract.to_string())
+        .add_attribute("status", "cw20_locked_osmosis_mint_initiated"))
 }
 
-fn get_locked_amount_for_user(storage: &dyn cosmwasm_std::Storage, user: &Addr) -> Result<Uint128, ContractError> {
+fn get_locked_amount_for_user(
+    storage: &dyn cosmwasm_std::Storage,
+    user: &Addr,
+) -> Result<Uint128, ContractError> {
     let locked_info = LOCKED_TOKENS.may_load(storage)?;
     match locked_info {
         Some(info) if info.user == *user => Ok(info.amount),
-        _ => Ok(Uint128::zero())
+        _ => Ok(Uint128::zero()),
     }
 }
 
-fn get_available_balance(storage: &dyn cosmwasm_std::Storage, user: &Addr) -> Result<Uint128, ContractError> {
+fn get_available_balance(
+    storage: &dyn cosmwasm_std::Storage,
+    user: &Addr,
+) -> Result<Uint128, ContractError> {
     let total_balance = BALANCES.may_load(storage, user)?.unwrap_or_default();
     let locked_amount = get_locked_amount_for_user(storage, user)?;
-    
+
     // Available = Total - Locked
     Ok(total_balance.saturating_sub(locked_amount))
 }
 
 fn ensure_sufficient_available_balance(
-    storage: &dyn cosmwasm_std::Storage, 
-    user: &Addr, 
-    required: Uint128
+    storage: &dyn cosmwasm_std::Storage,
+    user: &Addr,
+    required: Uint128,
 ) -> Result<(), ContractError> {
     let available = get_available_balance(storage, user)?;
     if available < required {
-        return Err(ContractError::Std(StdError::generic_err(
-            format!("Insufficient available balance. Available: {}, Required: {}, Locked: {}", 
-                available, required, get_locked_amount_for_user(storage, user)?)
-        )));
+        return Err(ContractError::Std(StdError::generic_err(format!(
+            "Insufficient available balance. Available: {}, Required: {}, Locked: {}",
+            available,
+            required,
+            get_locked_amount_for_user(storage, user)?
+        ))));
     }
     Ok(())
 }
@@ -435,37 +460,38 @@ fn execute_unlock_from_factory(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-    
+
     // Verify caller is authorized (only owner for now - you can modify this)
     let contract = ADOContract::default();
     ensure!(
         contract.is_contract_owner(deps.storage, info.sender.as_str())?,
         ContractError::Unauthorized {}
     );
-    
+
     // Validate user address
     let user_addr = deps.api.addr_validate(&user)?;
-    
+
     // Check that there are locked tokens for this user
     let locked_info = LOCKED_TOKENS.load(deps.storage)?;
     ensure!(
         locked_info.user == user_addr,
         ContractError::Std(StdError::generic_err("No locked tokens for this user"))
     );
-    
+
     // Check that unlock amount doesn't exceed locked amount
     ensure!(
         amount <= locked_info.amount,
-        ContractError::Std(StdError::generic_err(
-            format!("Cannot unlock {} tokens, only {} are locked", amount, locked_info.amount)
-        ))
+        ContractError::Std(StdError::generic_err(format!(
+            "Cannot unlock {} tokens, only {} are locked",
+            amount, locked_info.amount
+        )))
     );
-    
+
     // Restore user's balance
     BALANCES.update(deps.storage, &user_addr, |balance| -> StdResult<_> {
         Ok(balance.unwrap_or_default().checked_add(amount)?)
     })?;
-    
+
     // Update locked tokens state
     if amount == locked_info.amount {
         // Full unlock - remove locked state
@@ -479,7 +505,7 @@ fn execute_unlock_from_factory(
         };
         LOCKED_TOKENS.save(deps.storage, &updated_info)?;
     }
-    
+
     Ok(Response::new()
         .add_attribute("action", "unlock_from_factory")
         .add_attribute("user", user_addr)
@@ -549,9 +575,15 @@ fn handle_osmosis_mint_reply(msg: Reply, deps: DepsMut) -> Result<Response, Cont
         }
         cosmwasm_std::SubMsgResult::Err(error) => {
             let balance_to_refund = LOCKED_TOKENS.load(deps.storage)?;
-            BALANCES.update(deps.storage, &balance_to_refund.user, |balance| -> StdResult<_> {
-                Ok(balance.unwrap_or_default().checked_add(balance_to_refund.amount)?)
-            })?;
+            BALANCES.update(
+                deps.storage,
+                &balance_to_refund.user,
+                |balance| -> StdResult<_> {
+                    Ok(balance
+                        .unwrap_or_default()
+                        .checked_add(balance_to_refund.amount)?)
+                },
+            )?;
             LOCKED_TOKENS.remove(deps.storage);
 
             Err(ContractError::Std(StdError::generic_err(error)))
