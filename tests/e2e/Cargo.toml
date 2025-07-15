@@ -57,6 +57,10 @@ andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osm
     "testing",
 ] }
 
+andromeda-osmosis-token-factory = { path = "../../contracts/socket/andromeda-osmosis-token-factory", features = [
+    "testing",
+] }
+
 andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-astroport", features = [
     "testing",
 ] }

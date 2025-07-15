@@ -4,7 +4,6 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Decimal, Uint128};
-use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
 use osmosis_std::types::osmosis::gamm::{
     poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams, v1beta1::MsgExitPool,
@@ -15,7 +14,6 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetad
 #[cw_serde]
 pub struct InstantiateMsg {
     pub swap_router: Option<AndrAddr>,
-    pub authorized_address: String,
 }
 
 #[andr_exec]
@@ -39,15 +37,6 @@ pub enum ExecuteMsg {
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     WithdrawPool { withdraw_msg: MsgExitPool },
-
-    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    CreateDenom { subdenom: String, amount: Uint128 },
-
-    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Mint { coin: OsmosisCoin },
-
-    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Burn { coin: OsmosisCoin },
 
     /// Update swap router
     #[attrs(restricted)]
