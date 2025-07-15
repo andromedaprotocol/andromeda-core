@@ -2,7 +2,7 @@
 name = "andromeda-socket-astroport"
 version = "0.1.8-b.4"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 
 
 exclude = [

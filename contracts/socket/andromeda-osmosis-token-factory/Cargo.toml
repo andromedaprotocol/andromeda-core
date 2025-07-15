@@ -2,7 +2,7 @@
 name = "andromeda-osmosis-token-factory"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 
 
 exclude = [

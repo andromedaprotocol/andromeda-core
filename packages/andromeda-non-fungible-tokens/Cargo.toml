@@ -2,7 +2,7 @@
 name = "andromeda-non-fungible-tokens"
 version = "1.0.1-b.2"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 description = "Message definitions and utility methods for Andromeda non-fungible token contracts"
 license = "MIT"
 
