@@ -485,6 +485,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-factory"
+version = "0.0.1"
+dependencies = [
+ "andromeda-std",
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "cw-orch",
+ "cw-orch-daemon 0.29.2",
+ "cw-utils 2.0.0",
+ "cw20 2.0.0",
+ "cw3",
+ "osmosis-std",
+ "prost 0.13.5",
+]
+
+[[package]]
 name = "andromeda-finance"
 version = "1.0.0"
 dependencies = [
@@ -749,6 +765,29 @@ dependencies = [
  "cw721",
  "cw721-base",
  "serde",
+]
+
+[[package]]
+name = "andromeda-osmosis-token-factory"
+version = "0.1.0"
+dependencies = [
+ "andromeda-factory",
+ "andromeda-socket",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-orch-daemon 0.24.6",
+ "cw-storage-plus 2.0.0",
+ "cw-utils 2.0.0",
+ "cw2 2.0.0",
+ "cw20 2.0.0",
+ "osmosis-std",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

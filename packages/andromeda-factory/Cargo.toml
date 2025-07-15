@@ -1,0 +1,28 @@
+[package]
+name = "andromeda-factory"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.75.0"
+description = "Utility methods and message definitions for the Andromeda Socket"
+license = "MIT"
+
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw20 = { workspace = true }
+cw3 = { workspace = true }
+cw-utils = { workspace = true }
+osmosis-std = "0.27.0"
+prost = "0.13.5"
+
+andromeda-std = { workspace = true, features = [] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = { workspace = true }
+cw-orch-daemon = { workspace = true }
