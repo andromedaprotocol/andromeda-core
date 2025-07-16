@@ -45,20 +45,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let minter = msg.minter.get_raw_address(&deps.as_ref())?.into_string();
-    let cw721_instantiate_msg = Cw721InstantiateMsg {
-        creator: msg.owner.clone(),
-        withdraw_address: None,
-        name: msg.name.clone(),
-        symbol: msg.symbol.clone(),
-        minter: Some(minter),
-    };
-    ANDR_MINTER.save(deps.storage, &msg.minter)?;
-
     let contract = ADOContract::default();
-
-    contract.permission_action(deps.storage, MINT_ACTION)?;
-
     let resp = contract.instantiate(
         deps.storage,
         env.clone(),
@@ -69,9 +56,21 @@ pub fn instantiate(
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
-            owner: msg.owner,
+            owner: msg.owner.clone(),
         },
     )?;
+
+    let minter = msg.minter.get_raw_address(&deps.as_ref())?.into_string();
+    let cw721_instantiate_msg = Cw721InstantiateMsg {
+        creator: msg.owner.clone(),
+        withdraw_address: None,
+        name: msg.name.clone(),
+        symbol: msg.symbol.clone(),
+        minter: Some(minter),
+    };
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
+    contract.permission_action(deps.storage, MINT_ACTION)?;
 
     let res = cw721_instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 

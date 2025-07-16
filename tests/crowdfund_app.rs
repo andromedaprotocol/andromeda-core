@@ -112,7 +112,7 @@ fn setup(
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Campaign Tier".to_string(),
         "CT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );

@@ -26,14 +26,14 @@ impl MockCW721 {
         app: &mut MockApp,
         name: impl Into<String>,
         symbol: impl Into<String>,
-        minter: impl Into<String>,
+        minter: AndrAddr,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCW721 {
         let msg = mock_cw721_instantiate_msg(
             name.into(),
             symbol.into(),
-            minter.into(),
+            minter,
             kernel_address.into(),
             owner,
         );
@@ -130,14 +130,14 @@ pub fn mock_andromeda_cw721() -> Box<dyn Contract<Empty>> {
 pub fn mock_cw721_instantiate_msg(
     name: String,
     symbol: String,
-    minter: impl Into<String>,
+    minter: AndrAddr,
     kernel_address: String,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         name,
         symbol,
-        minter: AndrAddr::from_string(minter.into()),
+        minter,
         kernel_address,
         owner,
     }
