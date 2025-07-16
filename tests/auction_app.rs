@@ -62,7 +62,7 @@ fn test_auction_app_modules() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -295,7 +295,7 @@ fn test_auction_app_recipient() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -506,7 +506,7 @@ fn test_auction_app_cw20_restricted() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -1007,7 +1007,7 @@ fn test_auction_app_cw20_unrestricted() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );

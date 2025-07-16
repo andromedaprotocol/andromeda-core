@@ -33,7 +33,7 @@ fn test_cw721_batch_send() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -149,4 +149,51 @@ fn test_cw721_batch_send() {
     assert_eq!(auction_state_2.coin_denom, "uandr".to_string());
     // The distinguishing factor between the two auctions is the min_bid
     assert_eq!(auction_state_2.min_bid, Some(Uint128::one()));
+}
+#[test]
+fn test_cw721_init_andr_addr() {
+    let mut router = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![("owner", vec![])])
+        .with_contracts(vec![
+            ("cw721", mock_andromeda_cw721()),
+            ("auction", mock_andromeda_auction()),
+            ("app-contract", mock_andromeda_app()),
+        ])
+        .build(&mut router);
+    let owner = andr.get_wallet("owner");
+
+    // Generate App Components
+    let cw721_init_msg = mock_cw721_instantiate_msg(
+        "Test Tokens".to_string(),
+        "TT".to_string(),
+        AndrAddr::from_string("./auction".to_string()),
+        andr.kernel.addr().to_string(),
+        None,
+    );
+    let cw721_component = AppComponent::new(
+        "cw721".to_string(),
+        "cw721".to_string(),
+        to_json_binary(&cw721_init_msg).unwrap(),
+    );
+
+    let auction_init_msg =
+        mock_auction_instantiate_msg(andr.kernel.addr().to_string(), None, None, None);
+    let auction_component = AppComponent::new(
+        "auction".to_string(),
+        "auction".to_string(),
+        to_json_binary(&auction_init_msg).unwrap(),
+    );
+
+    // Create App
+    let app_components = vec![cw721_component.clone(), auction_component.clone()];
+    let _app = MockAppContract::instantiate(
+        andr.get_code_id(&mut router, "app-contract"),
+        owner,
+        &mut router,
+        "Auction App",
+        app_components,
+        andr.kernel.addr(),
+        Some(owner.to_string()),
+    );
 }
