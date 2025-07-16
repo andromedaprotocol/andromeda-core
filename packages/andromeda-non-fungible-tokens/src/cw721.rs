@@ -154,7 +154,7 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(cw721::msg::CollectionInfoAndExtensionResponse)]
+    #[returns(cw721::state::CollectionInfo)]
     ContractInfo {},
     #[returns(cw721::msg::MinterResponse)]
     Minter {},

@@ -15,6 +15,7 @@ use cosmwasm_std::{
 use cw721::{
     msg::{AllNftInfoResponse, OwnerOfResponse},
     query::query_num_tokens,
+    state::CollectionInfo,
 };
 use rstest::rstest;
 
@@ -182,9 +183,13 @@ fn test_agreed_transfer_nft() {
         token_id,
         include_expired: None,
     };
-    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+    let query_resp = query(deps.as_ref(), env.clone(), query_msg).unwrap();
     let resp: OwnerOfResponse = from_json(query_resp).unwrap();
-    assert_eq!(resp.owner, recipient_addr.to_string())
+    assert_eq!(resp.owner, recipient_addr.to_string());
+
+    let query_msg = QueryMsg::ContractInfo {};
+    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+    let _resp: CollectionInfo = from_json(query_resp).unwrap();
 }
 
 // TODO reenable wildcard functionality

@@ -1680,7 +1680,7 @@ checksum = "43d193de1f7487df1914d3a568b772458861d33f9c54249612cc2893d6915054"
 dependencies = [
  "bitcoin_hashes 0.13.0",
  "rand",
- "rand_core 0.6.4",
+ "rand_core 0.5.1",
  "serde",
  "unicode-normalization",
 ]
@@ -3089,7 +3089,7 @@ dependencies = [
 [[package]]
 name = "cw721"
 version = "0.20.0"
-source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#0cd6de437714ebc5d5e474246142bbe2906523cf"
+source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#38a71c3ba241502b7be6ac6e22d0b2f3bc79b4f7"
 dependencies = [
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
@@ -3106,7 +3106,7 @@ dependencies = [
 [[package]]
 name = "cw721-base"
 version = "0.20.0"
-source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#0cd6de437714ebc5d5e474246142bbe2906523cf"
+source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#38a71c3ba241502b7be6ac6e22d0b2f3bc79b4f7"
 dependencies = [
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
