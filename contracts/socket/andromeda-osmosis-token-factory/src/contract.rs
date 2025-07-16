@@ -114,6 +114,7 @@ fn execute_mint(
     Ok(Response::default().add_message(msg))
 }
 
+// TODO: https://github.com/andromedaprotocol/andromeda-core/pull/929#discussion_r2207821091
 fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
     let ExecuteContext { env, .. } = ctx;
 
