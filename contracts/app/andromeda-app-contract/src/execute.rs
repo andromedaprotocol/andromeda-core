@@ -33,7 +33,7 @@ pub fn handle_add_app_component(
     let kernel_addr = ctx.contract.get_kernel_address(deps.storage)?;
 
     let is_cross_chain_enabled =
-        AOSQuerier::get_env_variable::<String>(&querier, &kernel_addr, "cross_chain_enabled")?
+        AOSQuerier::get_env_variable::<String>(querier, &kernel_addr, "cross_chain_enabled")?
             .unwrap_or("false".to_string())
             .parse::<bool>()
             .unwrap_or(false);
