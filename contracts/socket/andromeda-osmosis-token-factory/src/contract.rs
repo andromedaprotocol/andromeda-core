@@ -1,8 +1,10 @@
-use andromeda_std::andr_execute_fn;
-
+use crate::state::{MINT_RECIPIENT_AMOUNT, OSMOSIS_MSG_BURN_ID, OSMOSIS_MSG_CREATE_DENOM_ID};
+use andromeda_socket::osmosis_token_factory::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
+    amp::{addresses::get_raw_address_or_default, AndrAddr},
+    andr_execute_fn,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
@@ -13,19 +15,13 @@ use cosmwasm_std::{
     SubMsgResponse, SubMsgResult, Uint128,
 };
 use cw2::set_contract_version;
-
-use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgBurn, MsgCreateDenom, MsgCreateDenomResponse, MsgMint, QueryDenomAuthorityMetadataResponse,
-    TokenfactoryQuerier,
+use osmosis_std::types::{
+    cosmos::base::v1beta1::Coin as OsmosisCoin,
+    osmosis::tokenfactory::v1beta1::{
+        MsgBurn, MsgCreateDenom, MsgCreateDenomResponse, MsgMint,
+        QueryDenomAuthorityMetadataResponse, TokenfactoryQuerier,
+    },
 };
-
-use crate::state::{
-    AUTHORIZED_ADDRESS, MINT_AMOUNT, OSMOSIS_MSG_BURN_ID, OSMOSIS_MSG_CREATE_DENOM_ID,
-    OSMOSIS_MSG_MINT_ID,
-};
-
-use andromeda_socket::osmosis_token_factory::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-osmosis-token-factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -51,8 +47,6 @@ pub fn instantiate(
             owner: msg.owner,
         },
     )?;
-    let authorized_address = msg.authorized_address.get_raw_address(&deps.as_ref())?;
-    AUTHORIZED_ADDRESS.save(deps.storage, &authorized_address.into_string())?;
 
     Ok(inst_resp
         .add_attribute("method", "instantiate")
@@ -62,8 +56,12 @@ pub fn instantiate(
 #[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::CreateDenom { subdenom, amount } => execute_create_denom(ctx, subdenom, amount),
-        ExecuteMsg::Mint { coin } => execute_mint(ctx, coin),
+        ExecuteMsg::CreateDenom {
+            subdenom,
+            amount,
+            recipient,
+        } => execute_create_denom(ctx, subdenom, amount, recipient),
+        ExecuteMsg::Mint { coin, recipient } => execute_mint(ctx, coin, recipient),
         ExecuteMsg::Burn { coin } => execute_burn(ctx, coin),
         _ => ADOContract::default().execute(ctx, msg),
     }
@@ -73,51 +71,59 @@ fn execute_create_denom(
     ctx: ExecuteContext,
     subdenom: String,
     amount: Uint128,
+    // Defaults to message sender
+    recipient: Option<AndrAddr>,
 ) -> Result<Response, ContractError> {
-    // TODO: this is commented to facilitate initial testing
-    // is_authorized(&ctx)?;
-
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
 
     let msg = MsgCreateDenom {
         sender: env.contract.address.to_string(),
         subdenom,
     };
-    let mint_msg: CosmosMsg = msg.into();
-    // Initiates minting of the denom in the Reply, sets the contract as the owner
-    let sub_msg = SubMsg::reply_always(mint_msg, OSMOSIS_MSG_CREATE_DENOM_ID);
-    MINT_AMOUNT.save(deps.storage, &amount)?;
+    // Initiates minting of the denom in the Reply
+    let sub_msg = SubMsg::reply_always(msg, OSMOSIS_MSG_CREATE_DENOM_ID);
+
+    let recipient =
+        get_raw_address_or_default(&deps.as_ref(), &recipient, info.sender.as_str())?.into_string();
+
+    MINT_RECIPIENT_AMOUNT.save(deps.storage, &(recipient, amount))?;
 
     Ok(Response::default().add_submessage(sub_msg))
 }
 
-fn execute_mint(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
-    // TODO: this is commented to facilitate initial testing
-    // is_authorized(&ctx)?;
-    let ExecuteContext { env, .. } = ctx;
+fn execute_mint(
+    ctx: ExecuteContext,
+    coin: OsmosisCoin,
+    // Defaults to message sender
+    recipient: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
+
+    let recipient =
+        get_raw_address_or_default(&deps.as_ref(), &recipient, info.sender.as_str())?.into_string();
 
     let msg = MsgMint {
         sender: env.contract.address.to_string(),
         amount: Some(coin),
-        mint_to_address: env.contract.address.to_string(),
+        mint_to_address: recipient,
     };
-    let mint_msg: CosmosMsg = msg.into();
-    let sub_msg = SubMsg::reply_always(mint_msg, OSMOSIS_MSG_MINT_ID);
-
-    Ok(Response::default().add_submessage(sub_msg))
+    Ok(Response::default().add_message(msg))
 }
 
 fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
-    // TODO: this is commented to facilitate initial testing
-    // is_authorized(&ctx)?;
     let ExecuteContext { env, .. } = ctx;
+
     let msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(coin),
         burn_from_address: env.contract.address.to_string(),
     };
-    let burn_msg: CosmosMsg = msg.into();
-    let sub_msg = SubMsg::reply_always(burn_msg, OSMOSIS_MSG_BURN_ID);
+    let sub_msg = SubMsg::reply_always(msg, OSMOSIS_MSG_BURN_ID);
+
     Ok(Response::default().add_submessage(sub_msg))
 }
 
@@ -145,12 +151,12 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             #[allow(deprecated)]
             if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
                 let res: MsgCreateDenomResponse = b.try_into().map_err(ContractError::Std)?;
-                let amount = MINT_AMOUNT.load(deps.storage)?;
-                MINT_AMOUNT.remove(deps.storage);
+                let (recipient, amount) = MINT_RECIPIENT_AMOUNT.load(deps.storage)?;
+                MINT_RECIPIENT_AMOUNT.remove(deps.storage);
 
                 let msg = MsgMint {
                     sender: env.contract.address.to_string(),
-                    mint_to_address: env.contract.address.to_string(),
+                    mint_to_address: recipient,
                     amount: Some(OsmosisCoin {
                         denom: res.new_token_denom,
                         amount: amount.to_string(),

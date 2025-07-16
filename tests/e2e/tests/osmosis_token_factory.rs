@@ -65,7 +65,7 @@ fn test_create_denom(setup: TestCase) {
     let amount = Uint128::from(10u128);
 
     let res = osmosis_token_factory_contract
-        .create_denom(amount, subdenom, &[])
+        .create_denom(amount, subdenom, None, &[])
         .unwrap();
     println!("res: {:?}", res);
 }

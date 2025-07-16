@@ -18,10 +18,17 @@ pub struct InstantiateMsg {
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    CreateDenom { subdenom: String, amount: Uint128 },
+    CreateDenom {
+        subdenom: String,
+        amount: Uint128,
+        recipient: Option<AndrAddr>,
+    },
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Mint { coin: OsmosisCoin },
+    Mint {
+        coin: OsmosisCoin,
+        recipient: Option<AndrAddr>,
+    },
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Burn { coin: OsmosisCoin },
