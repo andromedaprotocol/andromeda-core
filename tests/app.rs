@@ -1,5 +1,5 @@
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
+use andromeda_app_contract::mock::{mock_andromeda_app, mock_app_instantiate_msg, MockAppContract};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
 use andromeda_std::{amp::AndrAddr, os::vfs::convert_component_name};
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
@@ -40,6 +40,18 @@ fn test_app() {
         to_json_binary(&cw721_init_msg).unwrap(),
     );
 
+    let inner_app_init_msg = mock_app_instantiate_msg(
+        app_name,
+        vec![cw721_component_ref.clone()],
+        andr.kernel.addr().to_string(),
+        None,
+    );
+    let inner_app_component = AppComponent::new(
+        "inner-app".to_string(),
+        "app-contract".to_string(),
+        to_json_binary(&inner_app_init_msg).unwrap(),
+    );
+
     // Create App
     let app_components = vec![cw721_component, cw721_component_ref];
     let app_code_id = andr.get_code_id(&mut router, "app-contract");
@@ -77,4 +89,14 @@ fn test_app() {
 
     let component_addresses = app.query_components(&router);
     assert_eq!(component_addresses.len(), components.len() + 2);
+
+    let app_address = app.query_app_address(&router);
+    assert_eq!(app_address, Some(app.addr()).cloned());
+
+    app.execute_add_app_component(&mut router, owner.clone(), inner_app_component)
+        .unwrap();
+
+    let inner_app_ado: MockAppContract = app.query_ado_by_component_name(&router, "inner-app");
+    let inner_app_address = inner_app_ado.query_app_address(&router);
+    assert_eq!(inner_app_address, Some(app.addr()).cloned());
 }
