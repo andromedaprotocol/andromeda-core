@@ -7,7 +7,7 @@ use andromeda_std::{
     amp::AndrAddr,
     os::{
         kernel::{ExecuteMsg as KernelExecuteMsg, InternalMsg},
-        vfs::{ExecuteMsg, InstantiateMsg, PathInfo},
+        vfs::{ExecuteMsg, InstantiateMsg, PathInfo, SubDirResponse},
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
@@ -762,8 +762,13 @@ fn test_get_subdir() {
         limit: None,
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: Vec<PathInfo> = from_json(res).unwrap();
-    assert_eq!(val, root_paths);
+    let val: SubDirResponse = from_json(res).unwrap();
+    assert_eq!(
+        val,
+        SubDirResponse {
+            subdirs: root_paths.clone()
+        }
+    );
 
     let subdir = &root_paths[0].name;
     let query_msg = QueryMsg::SubDir {
@@ -773,8 +778,8 @@ fn test_get_subdir() {
         limit: None,
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: Vec<PathInfo> = from_json(res).unwrap();
-    assert_eq!(val, sub_paths);
+    let val: SubDirResponse = from_json(res).unwrap();
+    assert_eq!(val, SubDirResponse { subdirs: sub_paths });
 }
 
 #[test]

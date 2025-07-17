@@ -50,7 +50,7 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -105,7 +105,7 @@ fn test_mint_permission(
     let (mut router, andr, cw721) = setup_cw721;
 
     // Attempt to mint token #1 to the sender's address
-    let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string());
+    let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string().into());
     let cw721_path = format!(
         "/home/{}/{}/{}",
         andr.get_wallet(CW721_OWNER),
@@ -151,7 +151,7 @@ fn test_transfer_permission(
     let expected_token_id = "1";
 
     // First mint a token to the sender
-    let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string());
+    let mint_msg = mock_quick_mint_msg(1, andr.get_wallet(sender).to_string().into());
     let cw721_path = format!(
         "/home/{}/{}/{}",
         andr.get_wallet(CW721_OWNER),

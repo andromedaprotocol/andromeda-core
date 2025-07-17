@@ -4,13 +4,14 @@ use andromeda_std::{
     common::{
         denom::{Asset, PermissionAction},
         expiration::Expiry,
-        MillisecondsDuration, OrderBy,
+        schedule::Schedule,
+        Milliseconds, OrderBy,
     },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
-use cw721::{receiver::Cw721ReceiveMsg, Expiration};
+use cw721::receiver::Cw721ReceiveMsg;
 use std::fmt::{Display, Formatter, Result};
 
 #[andr_instantiate]
@@ -65,9 +66,8 @@ pub enum Cw721HookMsg {
     /// has started but is immutable after that.
     StartSale {
         price: Uint128,
-        start_time: Option<Expiry>,
+        schedule: Schedule,
         coin_denom: Asset,
-        duration: Option<MillisecondsDuration>,
         recipient: Option<Recipient>,
     },
 }
@@ -99,10 +99,21 @@ impl Display for Status {
 }
 
 #[cw_serde]
+#[derive(Default)]
 pub struct SaleInfo {
     pub sale_ids: Vec<Uint128>,
     pub token_address: String,
     pub token_id: String,
+}
+
+impl SaleInfo {
+    pub fn last(&self) -> Option<&Uint128> {
+        self.sale_ids.last()
+    }
+
+    pub fn push(&mut self, e: Uint128) {
+        self.sale_ids.push(e)
+    }
 }
 
 #[andr_query]
@@ -125,7 +136,7 @@ pub enum QueryMsg {
         token_id: String,
         token_address: String,
     },
-    #[returns(Vec<SaleInfo>)]
+    #[returns(SalesInfoForAddressResponse)]
     /// Gets all of the sale infos for a given token address.
     SaleInfosForAddress {
         token_address: String,
@@ -147,12 +158,17 @@ pub struct SaleStateResponse {
     pub coin_denom: String,
     pub price: Uint128,
     pub status: Status,
-    pub start_time: Expiration,
-    pub end_time: Expiration,
+    pub start_time: Milliseconds,
+    pub end_time: Option<Milliseconds>,
     pub recipient: Option<Recipient>,
 }
 
 #[cw_serde]
 pub struct SaleIdsResponse {
     pub sale_ids: Vec<Uint128>,
+}
+
+#[cw_serde]
+pub struct SalesInfoForAddressResponse {
+    pub sales_info: Vec<SaleInfo>,
 }

@@ -1,10 +1,11 @@
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    andr_exec, andr_instantiate,
+    andr_exec, andr_instantiate, andr_query,
     common::denom::Asset,
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
+use cosmwasm_std::{Addr, Binary, Decimal, DepsMut, Uint128};
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
@@ -48,7 +49,7 @@ pub enum ExecuteMsg {
         /// The pair type (exposed in [`PairType`])
         pair_type: PairType,
         /// The assets to create the pool for
-        asset_infos: Vec<AssetInfo>,
+        asset_infos: Vec<AssetInfoAstroport>,
         /// Optional binary serialised parameters for custom pool types
         init_params: Option<Binary>,
     },
@@ -61,7 +62,9 @@ pub enum ExecuteMsg {
         /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
         auto_stake: Option<bool>,
         /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
+        receiver: Option<AndrAddr>,
+        /// The pair address
+        pair_address: AndrAddr,
     },
     /// Create a pair and provide liquidity in a single transaction
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
@@ -69,7 +72,7 @@ pub enum ExecuteMsg {
         /// The pair type (exposed in [`PairType`])
         pair_type: PairType,
         /// The assets to create the pool for
-        asset_infos: Vec<AssetInfo>,
+        asset_infos: Vec<AssetInfoAstroport>,
         /// Optional binary serialised parameters for custom pool types
         init_params: Option<Binary>,
         /// The assets to deposit as liquidity
@@ -79,14 +82,17 @@ pub enum ExecuteMsg {
         /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
         auto_stake: Option<bool>,
         /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
+        receiver: Option<AndrAddr>,
     },
 
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
     /// Sent to the LP contract to withdraw liquidity
-    WithdrawLiquidity {},
+    WithdrawLiquidity {
+        /// The pair address
+        pair_address: AndrAddr,
+    },
 }
 
 #[cw_serde]
@@ -103,37 +109,11 @@ pub enum Cw20HookMsg {
         /// The swap operations that is supposed to be taken
         operations: Option<Vec<SwapOperation>>,
     },
-    /// Provide liquidity to an existing pair using CW20 tokens
-    ProvideLiquidity {
-        /// The assets to deposit (the other asset info for native token)
-        other_asset: AssetEntry,
-        /// The slippage tolerance for this transaction
-        slippage_tolerance: Option<Decimal>,
-        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
-        auto_stake: Option<bool>,
-        /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
-    },
-    /// Create a pair and provide liquidity using CW20 tokens
-    CreatePairAndProvideLiquidity {
-        /// The pair type (exposed in [`PairType`])
-        pair_type: PairType,
-        /// The assets to create the pool for
-        asset_infos: Vec<AssetInfo>,
-        /// Optional binary serialised parameters for custom pool types
-        init_params: Option<Binary>,
-        /// The other asset to deposit (native token or another CW20)
-        other_asset: AssetEntry,
-        /// The slippage tolerance for the liquidity provision
-        slippage_tolerance: Option<Decimal>,
-        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
-        auto_stake: Option<bool>,
-        /// The receiver of LP tokens (if different from sender)
-        receiver: Option<String>,
-    },
 }
-#[cw_serde]
+
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
+#[andr_query]
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SimulateSwapOperationResponse)]
@@ -143,10 +123,6 @@ pub enum QueryMsg {
         /// The swap operation to perform
         operations: Vec<SwapOperation>,
     },
-    #[returns(PairAddressResponse)]
-    PairAddress {},
-    #[returns(LpPairAddressResponse)]
-    LpPairAddress {},
 }
 
 #[cw_serde]
@@ -166,11 +142,16 @@ pub struct SimulateSwapOperationResponse {
 // Imports directly from astroport
 /// This enum describes available Token types.
 #[cw_serde]
-#[derive(Hash, Eq)]
 pub enum AssetInfo {
     /// Non-native Token
     Token { contract_addr: Addr },
     /// Native token
+    NativeToken { denom: String },
+}
+
+#[cw_serde]
+pub enum AssetInfoAstroport {
+    Token { contract_addr: AndrAddr },
     NativeToken { denom: String },
 }
 
@@ -323,8 +304,16 @@ pub struct PairAddressResponse {
     pub pair_address: Option<String>,
 }
 
-#[cw_serde]
-pub struct LpPairAddressResponse {
-    /// The pair contract address
-    pub lp_pair_address: Option<AndrAddr>,
+pub fn transform_asset_info(
+    asset_info: &AssetInfoAstroport,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    match asset_info {
+        AssetInfoAstroport::Token { contract_addr } => Ok(AssetInfo::Token {
+            contract_addr: contract_addr.get_raw_address(&deps.as_ref())?,
+        }),
+        AssetInfoAstroport::NativeToken { denom } => Ok(AssetInfo::NativeToken {
+            denom: denom.clone(),
+        }),
+    }
 }

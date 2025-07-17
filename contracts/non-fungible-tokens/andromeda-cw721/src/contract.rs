@@ -45,20 +45,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let minter = msg.minter.get_raw_address(&deps.as_ref())?.into_string();
-    let cw721_instantiate_msg = Cw721InstantiateMsg {
-        creator: msg.owner.clone(),
-        withdraw_address: None,
-        name: msg.name.clone(),
-        symbol: msg.symbol.clone(),
-        minter: Some(minter),
-    };
-    ANDR_MINTER.save(deps.storage, &msg.minter)?;
-
     let contract = ADOContract::default();
-
-    contract.permission_action(deps.storage, MINT_ACTION)?;
-
     let resp = contract.instantiate(
         deps.storage,
         env.clone(),
@@ -69,15 +56,30 @@ pub fn instantiate(
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
-            owner: msg.owner,
+            owner: msg.owner.clone(),
         },
     )?;
+
+    let minter = msg.minter.get_raw_address(&deps.as_ref())?.into_string();
+    let cw721_instantiate_msg = Cw721InstantiateMsg {
+        creator: msg.owner.clone(),
+        withdraw_address: None,
+        name: msg.name.clone(),
+        symbol: msg.symbol.clone(),
+        minter: Some(minter),
+    };
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
+    contract.permission_action(deps.storage, MINT_ACTION)?;
 
     let res = cw721_instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
     Ok(res
         .add_attribute("minter", msg.minter.to_string())
-        .add_submessages(resp.messages))
+        .add_submessages(resp.messages)
+        .add_events(resp.events)
+        .set_data(resp.data.unwrap_or_default())
+        .add_attributes(resp.attributes))
 }
 
 #[andr_execute_fn]
@@ -90,11 +92,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     }
 
     let res = match msg {
-        ExecuteMsg::Mint {
-            token_id,
-            token_uri,
-            owner,
-        } => execute_mint(ctx, token_id, token_uri, owner),
+        ExecuteMsg::Mint(mint_msg) => execute_mint(ctx, mint_msg),
         ExecuteMsg::BatchMint { tokens } => execute_batch_mint(ctx, tokens),
         ExecuteMsg::TransferNft {
             recipient,
@@ -159,26 +157,20 @@ macro_rules! ensure_can_mint {
     };
 }
 
-fn execute_mint(
-    mut ctx: ExecuteContext,
-    token_id: String,
-    token_uri: Option<String>,
-    owner: AndrAddr,
-) -> Result<Response, ContractError> {
+fn execute_mint(mut ctx: ExecuteContext, mint_msg: MintMsg) -> Result<Response, ContractError> {
     ensure_can_mint!(ctx);
-
-    let owner: Addr = owner.get_raw_address(&ctx.deps.as_ref())?;
+    let owner: Addr = mint_msg.owner.get_raw_address(&ctx.deps.as_ref())?;
     let token_msg: NftInfo = NftInfo {
         owner: owner.clone(),
         approvals: vec![],
-        token_uri: token_uri.clone(),
+        token_uri: mint_msg.token_uri.clone(),
     };
 
     let config = Cw721Config::default();
 
     config
         .nft_info
-        .update(ctx.deps.storage, &token_id, |old| match old {
+        .update(ctx.deps.storage, &mint_msg.token_id, |old| match old {
             Some(_) => Err(ContractError::Claimed {}),
             None => Ok(token_msg),
         })?;
@@ -189,7 +181,7 @@ fn execute_mint(
         .add_attribute("action", "mint")
         .add_attribute("minter", ctx.info.sender.to_string())
         .add_attribute("owner", owner)
-        .add_attribute("token_id", token_id);
+        .add_attribute("token_id", mint_msg.token_id);
     Ok(res)
 }
 
@@ -206,7 +198,7 @@ fn execute_batch_mint(
     for msg in tokens_to_mint {
         let mut ctx = ExecuteContext::new(ctx.deps.branch(), ctx.info.clone(), ctx.env.clone());
         ctx.amp_ctx = ctx.amp_ctx.clone();
-        let mint_resp = execute_mint(ctx, msg.token_id, msg.token_uri, msg.owner.into())?;
+        let mint_resp = execute_mint(ctx, msg)?;
         resp = resp
             .add_attributes(mint_resp.attributes)
             .add_submessages(mint_resp.messages);

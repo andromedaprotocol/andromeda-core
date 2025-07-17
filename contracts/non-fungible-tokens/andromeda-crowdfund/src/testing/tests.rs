@@ -3,7 +3,7 @@ use andromeda_non_fungible_tokens::{
         CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, SimpleTierOrder, Tier,
         TierMetaData,
     },
-    cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
+    cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::{
@@ -92,12 +92,13 @@ fn get_user_orders(
 }
 #[cfg(test)]
 mod test {
-    use andromeda_non_fungible_tokens::crowdfund::{
-        Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder,
+    use andromeda_non_fungible_tokens::{
+        crowdfund::{Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder},
+        cw721::MintMsg,
     };
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
-        common::{denom::Asset, encode_binary, Milliseconds},
+        common::{denom::Asset, encode_binary, schedule::Schedule, Milliseconds},
         testing::mock_querier::MOCK_CW20_CONTRACT,
     };
     use cosmwasm_std::{coin, coins, testing::MOCK_CONTRACT_ADDR, wasm_execute, BankMsg, Coin};
@@ -218,20 +219,14 @@ mod test {
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let duplicated_tier = Tier {
             level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -307,20 +302,14 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -396,20 +385,14 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {},
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -467,8 +450,7 @@ mod test {
         name: String,
         tiers: Vec<Tier>,
         presale: Option<Vec<PresaleTierOrder>>,
-        start_time: Option<Expiry>,
-        end_time: Expiry,
+        schedule: Schedule,
         expected_res: Result<Response, ContractError>,
         payee: String,
     }
@@ -494,22 +476,27 @@ mod test {
                 name: "standard start_campaign".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "start_campaign")
+                    .add_attribute("start_time", "1571797419879")
                     .add_attribute(
                         "end_time",
-                        Expiry::FromNow(Milliseconds::from_seconds(100)).to_string(),
+                        Expiry::FromNow(Milliseconds::from_seconds(100)).get_time(&env.block),
                     )),
             },
             StartCampaignTestCase {
                 name: "start_campaign with unauthorized sender".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: "owner1".to_string(),
                 expected_res: Err(ContractError::Unauthorized {}),
             },
@@ -517,8 +504,10 @@ mod test {
                 name: "start_campaign with invalid presales".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(invalid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "set_tier_orders".to_string(),
@@ -529,19 +518,25 @@ mod test {
                 name: "start_campaign with invalid end_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::AtTime(Milliseconds::from_seconds(0)),
+                schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds::from_seconds(0)))),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
-                expected_res: Err(ContractError::InvalidExpiration {}),
+                expected_res: Err(ContractError::InvalidSchedule {
+                    msg: "Duration is required in campaign".to_string(),
+                }),
             },
             StartCampaignTestCase {
                 name: "start_campaign with invalid start_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: Some(Expiry::FromNow(Milliseconds::from_seconds(10000000))),
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(500)),
+                schedule: Schedule::new(
+                    Some(Expiry::AtTime(Milliseconds::from_seconds(1))),
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(500))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
-                expected_res: Err(ContractError::StartTimeAfterEndTime {}),
+                expected_res: Err(ContractError::StartTimeInThePast {
+                    current_time: 1571797419879,
+                    current_block: 12345,
+                }),
             },
         ];
         for test in test_cases {
@@ -555,22 +550,36 @@ mod test {
             let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::StartCampaign {
-                start_time: test.start_time.clone(),
-                end_time: test.end_time.clone(),
+                schedule: test.schedule.clone(),
                 presale: test.presale.clone(),
             };
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
 
+            // let (start_time, end_time) = test.schedule.validate(&env.block);
+
             if res.is_ok() {
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().start_time,
-                    test.start_time.map(|exp| exp.get_time(&env.block))
+                    test.schedule
+                        .start
+                        .map(|exp| exp.get_time(&env.block))
+                        .unwrap_or(Milliseconds(1571797419879)),
                 );
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().end_time,
-                    test.end_time.get_time(&env.block)
+                    test.schedule
+                        .end
+                        .map(|limit| {
+                            match limit {
+                                Expiry::FromNow(duration) => {
+                                    duration.plus_milliseconds(Milliseconds(1571797419879))
+                                }
+                                Expiry::AtTime(end_time) => end_time,
+                            }
+                        })
+                        .unwrap_or(Milliseconds(1571797419879))
                 );
                 assert_eq!(
                     CAMPAIGN_STAGE.load(&deps.storage).unwrap(),
@@ -756,7 +765,7 @@ mod test {
 
             let mock_config: CampaignConfig = mock_campaign_config(test.denom);
             let duration = Duration {
-                start_time: test.start_time,
+                start_time: test.start_time.unwrap_or(Milliseconds(1571797419879)),
                 end_time: test.end_time,
             };
             set_campaign_config(deps.as_mut().storage, &mock_config);
@@ -941,7 +950,7 @@ mod test {
             set_campaign_config(deps.as_mut().storage, &mock_config);
 
             let duration = Duration {
-                start_time: test.start_time,
+                start_time: test.start_time.unwrap_or(Milliseconds(1571797419879)),
                 end_time: test.end_time,
             };
             set_campaign_duration(deps.as_mut().storage, &duration);
@@ -1140,7 +1149,7 @@ mod test {
 
             mock_config.soft_cap = test.soft_cap;
             let duration = Duration {
-                start_time: None,
+                start_time: Milliseconds(1571797419879),
                 end_time: test.end_time,
             };
 
@@ -1245,7 +1254,7 @@ mod test {
 
             mock_config.soft_cap = test.soft_cap;
             let duration = Duration {
-                start_time: None,
+                start_time: Milliseconds(1571797419879),
                 end_time: test.end_time,
             };
 
@@ -1303,21 +1312,21 @@ mod test {
                     .add_attribute("action", "claim")
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: MOCK_TIER_CONTRACT.to_string(),
-                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint(MintMsg {
                             token_id: "0".to_string(),
                             owner: orderer.clone().into(),
                             token_uri: None,
-                        })
+                        }))
                         .unwrap(),
                         funds: vec![],
                     }))
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: MOCK_TIER_CONTRACT.to_string(),
-                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint(MintMsg {
                             token_id: "1".to_string(),
                             owner: orderer.clone().into(),
                             token_uri: None,
-                        })
+                        }))
                         .unwrap(),
                         funds: vec![],
                     }))),

@@ -2,7 +2,9 @@ use cosmwasm_std::{Api, Decimal256, Deps, Env, Order, QuerierWrapper, Uint128};
 use cw_storage_plus::{Bound, Item, Map};
 
 use crate::contract::{get_pending_rewards, get_staking_token};
-use andromeda_fungible_tokens::cw20_staking::{Config, RewardToken, StakerResponse, State};
+use andromeda_fungible_tokens::cw20_staking::{
+    Config, RewardToken, StakerResponse, StakersResponse, State,
+};
 use andromeda_std::error::ContractError;
 use cosmwasm_schema::cw_serde;
 
@@ -45,11 +47,11 @@ pub(crate) fn get_stakers(
     env: &Env,
     start_after: Option<&str>,
     limit: Option<u32>,
-) -> Result<Vec<StakerResponse>, ContractError> {
+) -> Result<StakersResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive);
 
-    STAKERS
+    let stakers = STAKERS
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|elem| {
@@ -70,5 +72,7 @@ pub(crate) fn get_stakers(
                 balance,
             })
         })
-        .collect()
+        .collect::<Result<Vec<StakerResponse>, ContractError>>()?;
+
+    Ok(StakersResponse { stakers })
 }

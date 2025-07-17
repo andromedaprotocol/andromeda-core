@@ -1,7 +1,6 @@
 use crate::{contract::*, state::TRANSFER_AGREEMENTS};
 use andromeda_non_fungible_tokens::cw721::{
-    ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg, TokenExtension,
-    TransferAgreement,
+    ExecuteMsg, InstantiateMsg, IsArchivedResponse, MintMsg, QueryMsg, TransferAgreement,
 };
 use andromeda_std::{
     amp::addresses::AndrAddr,
@@ -16,6 +15,7 @@ use cosmwasm_std::{
 use cw721::{
     msg::{AllNftInfoResponse, OwnerOfResponse},
     query::query_num_tokens,
+    state::CollectionInfo,
 };
 use rstest::rstest;
 
@@ -46,19 +46,13 @@ fn init_setup(
     instantiate(deps.as_mut(), env, info, inst_msg).unwrap();
 }
 
-fn mint_token(
-    deps: DepsMut,
-    env: Env,
-    token_id: String,
-    owner: impl Into<String>,
-    _extension: TokenExtension,
-) {
+fn mint_token(deps: DepsMut, env: Env, token_id: String, owner: impl Into<String>) {
     let info = message_info(&Addr::unchecked(MINTER), &[]);
-    let mint_msg = ExecuteMsg::Mint {
+    let mint_msg = ExecuteMsg::Mint(MintMsg {
         token_id,
         owner: AndrAddr::from_string(owner.into()),
         token_uri: None,
-    };
+    });
     execute(deps, env, info, mint_msg).unwrap();
 }
 
@@ -76,7 +70,6 @@ fn test_transfer_nft() {
         env.clone(),
         token_id.clone(),
         creator_addr.to_string(),
-        TokenExtension {},
     );
 
     let recipient_addr = deps.api.addr_make("recipient");
@@ -148,7 +141,6 @@ fn test_agreed_transfer_nft() {
         env.clone(),
         token_id.clone(),
         creator_addr.to_string(),
-        TokenExtension {},
     );
 
     let transfer_agreement_msg = ExecuteMsg::TransferAgreement {
@@ -191,9 +183,13 @@ fn test_agreed_transfer_nft() {
         token_id,
         include_expired: None,
     };
-    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+    let query_resp = query(deps.as_ref(), env.clone(), query_msg).unwrap();
     let resp: OwnerOfResponse = from_json(query_resp).unwrap();
-    assert_eq!(resp.owner, recipient_addr.to_string())
+    assert_eq!(resp.owner, recipient_addr.to_string());
+
+    let query_msg = QueryMsg::ContractInfo {};
+    let query_resp = query(deps.as_ref(), env, query_msg).unwrap();
+    let _resp: CollectionInfo = from_json(query_resp).unwrap();
 }
 
 // TODO reenable wildcard functionality
@@ -215,7 +211,6 @@ fn test_agreed_transfer_nft_wildcard() {
         env.clone(),
         token_id.clone(),
         creator.clone(),
-        TokenExtension::default(),
     );
 
     // Update transfer agreement.
@@ -261,7 +256,6 @@ fn test_archive() {
         env.clone(),
         token_id.clone(),
         creator_addr.to_string(),
-        TokenExtension {},
     );
 
     let msg = ExecuteMsg::Archive {
@@ -295,7 +289,6 @@ fn test_burn() {
         env.clone(),
         token_id.clone(),
         creator.to_string(),
-        TokenExtension {},
     );
 
     let msg = ExecuteMsg::Burn {
@@ -339,7 +332,6 @@ fn test_archived_check() {
         env.clone(),
         token_id.clone(),
         creator.to_string(),
-        TokenExtension {},
     );
 
     let archive_msg = ExecuteMsg::Archive {
@@ -376,7 +368,6 @@ fn test_transfer_agreement() {
         env.clone(),
         token_id.clone(),
         creator.to_string(),
-        TokenExtension {},
     );
 
     let msg = ExecuteMsg::TransferAgreement {
@@ -418,11 +409,11 @@ fn test_update_app_contract_invalid_minter() {
 
     instantiate(deps.as_mut(), mock_env(), info.clone(), inst_msg).unwrap();
 
-    let msg = ExecuteMsg::Mint {
+    let msg = ExecuteMsg::Mint(MintMsg {
         token_id: "1".to_string(),
         owner: owner.into(),
         token_uri: None,
-    };
+    });
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     assert!(res.is_err());
@@ -450,7 +441,6 @@ fn test_batch_mint() {
             token_id: i.to_string(),
             owner: owner.clone().into(),
             token_uri: None,
-            extension: TokenExtension {},
         };
         i += 1;
         mint_msgs.push(mint_msg)
@@ -529,7 +519,6 @@ fn test_batch_send_nft(
             token_id: i.to_string(),
             owner: owner.clone().into(),
             token_uri: None,
-            extension: TokenExtension {},
         })
         .collect();
 
@@ -616,7 +605,6 @@ fn test_transfer_agreement_invalid_address() {
         env.clone(),
         token_id.clone(),
         creator.to_string(),
-        TokenExtension {},
     );
 
     let msg = ExecuteMsg::TransferAgreement {

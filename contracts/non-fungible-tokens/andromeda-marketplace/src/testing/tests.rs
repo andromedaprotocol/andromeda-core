@@ -1,5 +1,5 @@
 use andromeda_non_fungible_tokens::marketplace::{
-    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Status,
+    Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleInfo, Status,
 };
 use andromeda_std::{
     ado_base::{
@@ -13,7 +13,8 @@ use andromeda_std::{
             Asset, AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
         },
         encode_binary,
-        expiration::{expiration_from_milliseconds, Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
+        schedule::Schedule,
         Milliseconds,
     },
     error::ContractError,
@@ -26,12 +27,11 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ReceiveMsg;
 use cw721::{msg::Cw721ExecuteMsg, receiver::Cw721ReceiveMsg};
-use cw_utils::Expiration;
 
 use super::mock_querier::{TestDeps, MOCK_KERNEL_CONTRACT};
 use crate::{
     contract::{execute, instantiate, query},
-    state::{sale_infos, SaleInfo, TokenSaleState, TOKEN_SALE_STATE},
+    state::{sale_infos, TokenSaleState, TOKEN_SALE_STATE},
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_CW721_ADDR, MOCK_TOKEN_ADDR, MOCK_TOKEN_OWNER,
         MOCK_UNCLAIMED_TOKEN,
@@ -42,8 +42,7 @@ fn start_sale(deps: DepsMut, coin_denom: Asset) {
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom,
         price: Uint128::new(100),
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
         recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -63,8 +62,7 @@ fn start_sale_future_start(deps: DepsMut, env: Env, coin_denom: Asset) {
         coin_denom,
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
-        start_time: Some(Expiry::AtTime(Milliseconds(current_time + 1))),
-        duration: None,
+        schedule: Schedule::new(Some(Expiry::AtTime(Milliseconds(current_time + 1))), None),
         recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -84,9 +82,10 @@ fn start_sale_future_start_with_duration(deps: DepsMut, env: Env) {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
-        start_time: Some(Expiry::AtTime(Milliseconds(current_time + 1))),
-        // Add duration, the end time's expiration will be current time + duration
-        duration: Some(Milliseconds(1)),
+        schedule: Schedule::new(
+            Some(Expiry::AtTime(Milliseconds(current_time + 1))),
+            Some(Expiry::FromNow(Milliseconds(1))),
+        ),
         recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -118,8 +117,6 @@ fn init(
 
 fn assert_sale_created(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
-    let start_time_expiration =
-        expiration_from_milliseconds(Milliseconds(current_time + 1)).unwrap();
     assert_eq!(
         TokenSaleState {
             coin_denom,
@@ -130,8 +127,8 @@ fn assert_sale_created(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool
             status: Status::Open,
             price: Uint128::new(100),
             // start sale function has start_time set as None, so it defaults to the current time
-            start_time: start_time_expiration,
-            end_time: Expiration::Never {},
+            start_time: Milliseconds(current_time),
+            end_time: None,
             uses_cw20,
             recipient: None,
         },
@@ -156,8 +153,6 @@ fn assert_sale_created(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool
 fn assert_sale_created_future_start(deps: Deps, env: Env, coin_denom: String, uses_cw20: bool) {
     let current_time = env.block.time.nanos() / MILLISECONDS_TO_NANOSECONDS_RATIO;
     // Add one to the current time to have it set in the future
-    let start_time_expiration =
-        expiration_from_milliseconds(Milliseconds(current_time + 1)).unwrap();
     assert_eq!(
         TokenSaleState {
             coin_denom,
@@ -167,8 +162,8 @@ fn assert_sale_created_future_start(deps: Deps, env: Env, coin_denom: String, us
             token_address: MOCK_TOKEN_ADDR.to_owned(),
             status: Status::Open,
             price: Uint128::new(100),
-            start_time: start_time_expiration,
-            end_time: Expiration::Never {},
+            start_time: Milliseconds(current_time + 1),
+            end_time: None,
             uses_cw20,
             recipient: None,
         },
@@ -272,8 +267,7 @@ fn test_authorized_cw721() {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         price: Uint128::new(100),
         // Add one to the current time to have it set in the future
-        start_time: Some(Expiry::AtTime(Milliseconds(current_time + 1))),
-        duration: None,
+        schedule: Schedule::new(Some(Expiry::AtTime(Milliseconds(current_time + 1))), None),
         recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -291,9 +285,6 @@ fn test_authorized_cw721() {
     let info = message_info(&Addr::unchecked(MOCK_CW721_ADDR), &[]);
     let _res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    // Add one to the current time to have it set in the future
-    let start_time_expiration =
-        expiration_from_milliseconds(Milliseconds(current_time + 1)).unwrap();
     assert_eq!(
         TokenSaleState {
             coin_denom: "uusd".to_string(),
@@ -303,8 +294,8 @@ fn test_authorized_cw721() {
             token_address: MOCK_CW721_ADDR.to_owned(),
             status: Status::Open,
             price: Uint128::new(100),
-            start_time: start_time_expiration,
-            end_time: Expiration::Never {},
+            start_time: Milliseconds(current_time + 1),
+            end_time: None,
             uses_cw20: false,
             recipient: None,
         },
@@ -763,8 +754,7 @@ fn test_execute_start_sale_invalid_price() {
     let hook_msg = Cw721HookMsg::StartSale {
         coin_denom: Asset::NativeToken("uusd".to_string()),
         price: Uint128::zero(),
-        start_time: None,
-        duration: None,
+        schedule: Schedule::new(None, None),
         recipient: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {

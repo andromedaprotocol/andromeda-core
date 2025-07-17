@@ -21,6 +21,7 @@ use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate,
 use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::Asset;
+use andromeda_std::common::schedule::Schedule;
 use andromeda_std::error::ContractError;
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
@@ -55,7 +56,7 @@ fn test_marketplace_app() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -176,8 +177,7 @@ fn test_marketplace_app() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::NativeToken("uandr".to_string()),
-                None,
-                None,
+                Schedule::new(None, None),
                 None,
             ),
         )
@@ -313,7 +313,7 @@ fn test_marketplace_app_recipient() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -393,8 +393,7 @@ fn test_marketplace_app_recipient() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::NativeToken("uandr".to_string()),
-                None,
-                None,
+                Schedule::new(None, None),
                 Some(
                     Recipient::from_string(format!("./{}", splitter_component.name))
                         .with_msg(mock_splitter_send_msg(None)),
@@ -463,7 +462,7 @@ fn test_marketplace_app_cw20_restricted() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -643,8 +642,7 @@ fn test_marketplace_app_cw20_restricted() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().clone())),
-                None,
-                None,
+                Schedule::new(None, None),
                 None,
             ),
         )
@@ -750,7 +748,7 @@ fn test_marketplace_app_cw20_unrestricted() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -930,8 +928,7 @@ fn test_marketplace_app_cw20_unrestricted() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::Cw20Token(AndrAddr::from_string(cw20.addr().clone())),
-                None,
-                None,
+                Schedule::new(None, None),
                 None,
             ),
         )

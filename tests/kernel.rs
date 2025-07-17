@@ -4,23 +4,25 @@ use andromeda_finance::splitter::AddressPercent;
 use andromeda_fixed_amount_splitter::{
     fixed_amount_splitter_instantiate, FixedAmountSplitterContract,
 };
+use andromeda_std::amp::messages::AMPMsgConfig;
+use andromeda_std::{
+    amp::{AndrAddr, Recipient},
+    error::ContractError,
+};
+use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
+use andromeda_vfs::mock::mock_add_path;
+use cosmwasm_std::{coin, to_json_binary, Addr, ReplyOn, Uint128};
+use cw20::{BalanceResponse, Cw20Coin};
+
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg, MockSplitter,
 };
 use andromeda_std::{
-    amp::{messages::AMPMsg, AndrAddr, Recipient},
-    error::ContractError,
+    amp::messages::AMPMsg,
     os::{self, kernel::Cw20HookMsg},
 };
-use andromeda_testing::{
-    ado_deployer,
-    mock::mock_app,
-    mock_builder::MockAndromedaBuilder,
-    mock_contract::{MockADO, MockContract},
-    InterchainTestEnv,
-};
-use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Coin, Decimal, Uint128};
-use cw20::{BalanceResponse, Cw20Coin};
+use andromeda_testing::{ado_deployer, mock_contract::MockADO, InterchainTestEnv};
+use cosmwasm_std::{Binary, Coin, Decimal};
 use cw_orch::prelude::*;
 use rstest::*;
 use std::vec;
@@ -530,4 +532,54 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
         let expected_amount = if i == 0 { 100u128 } else { 200u128 };
         assert_eq!(balances[0].amount.u128(), expected_amount);
     }
+}
+
+#[test]
+// Written to address the security issue where users were able to bypass OS contract authorization checks through the kernel's send msg
+fn test_kernel_send_to_vfs() {
+    let mut router = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![
+            ("owner", vec![coin(10000, "uandr"), coin(10000, "uusd")]),
+            ("user1", vec![coin(1000, "uandr")]),
+            ("user2", vec![]),
+        ])
+        .build(&mut router);
+
+    let owner = andr.get_wallet("owner");
+    let user2 = andr.get_wallet("user2");
+    // get kernel and vfs addresses
+    let vfs_addr = andr.vfs.addr().clone();
+
+    // send 10000 uandr to vfs
+    let err: ContractError = andr
+        .kernel
+        .execute_send(
+            &mut router,
+            owner.clone(),
+            vfs_addr,
+            mock_add_path(
+                "testing-wallet".to_string(),
+                user2.clone(),
+                Some(AndrAddr::from_string("/lib/localdev".to_string())),
+            ),
+            vec![],
+            Some(AMPMsgConfig {
+                reply_on: ReplyOn::Error,
+                exit_at_error: true,
+                gas_limit: None,
+                direct: true,
+                ibc_config: None,
+            }),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidRecipientType {
+            msg: "Recipient is an OS contract".to_string(),
+        }
+    );
 }

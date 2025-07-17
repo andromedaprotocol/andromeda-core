@@ -19,7 +19,7 @@ use andromeda_std::{
         messages::{AMPMsg, AMPMsgConfig, AMPPkt},
         AndrAddr, Recipient,
     },
-    common::{denom::Asset, expiration::Expiry, Milliseconds},
+    common::{denom::Asset, expiration::Expiry, schedule::Schedule, Milliseconds},
     os::{
         self,
         kernel::{ExecuteMsg, InstantiateMsg},
@@ -30,7 +30,6 @@ use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Decimal, StdAck, Uint128}
 use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::PortId;
 use cw_orch_interchain::prelude::*;
-// use ibc_relayer_types::core::ics24_host::identifier::PortId;
 
 #[test]
 fn test_kernel_ibc_execute_only() {
@@ -1368,19 +1367,19 @@ fn test_kernel_ibc_funds_only() {
 
     cw721_juno
         .execute(
-            &andromeda_non_fungible_tokens::cw721::ExecuteMsg::Mint {
-                token_id: "1".to_string(),
-                owner: sender_addr.into(),
-                token_uri: None,
-            },
+            &andromeda_non_fungible_tokens::cw721::ExecuteMsg::Mint(
+                andromeda_non_fungible_tokens::cw721::MintMsg {
+                    token_id: "1".to_string(),
+                    owner: sender_addr.into(),
+                    token_uri: None,
+                },
+            ),
             &[],
         )
         .unwrap();
 
-    let start_time = Milliseconds::from_nanos(juno.block_info().unwrap().time.nanos());
     let receive_msg = mock_start_auction(
-        None,
-        Expiry::AtTime(start_time.plus_milliseconds(Milliseconds(10000))),
+        Schedule::new(None, Some(Expiry::FromNow(Milliseconds(10000)))),
         None,
         Asset::NativeToken("juno".to_string()),
         None,

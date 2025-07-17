@@ -9,11 +9,11 @@ use andromeda_non_fungible_tokens::{
         self, CampaignConfig, CampaignStage, Cw20HookMsg, ExecuteMsgFns as CrowdfundExecuteMsgFns,
         PresaleTierOrder, SimpleTierOrder, Tier, TierMetaData,
     },
-    cw721::{self, TokenExtension},
+    cw721::{self},
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, expiration::Expiry, Milliseconds},
+    common::{denom::Asset, expiration::Expiry, schedule::Schedule, Milliseconds},
     os::adodb::ExecuteMsgFns as AdodbExecuteMsgFns,
 };
 use andromeda_testing_e2e::{
@@ -285,10 +285,7 @@ fn setup(
         cw20_contract.set_address(&Addr::unchecked(cw20_addr));
     }
 
-    let meta_data = TierMetaData {
-        token_uri: None,
-        extension: TokenExtension::default(),
-    };
+    let meta_data = TierMetaData { token_uri: None };
     crowdfund_contract
         .add_tier(Tier {
             label: "Tier 1".to_string(),
@@ -362,10 +359,12 @@ fn test_successful_crowdfund_app_native(#[with(true, LOCAL_WASM)] setup: TestCas
 
     let start_time = None;
     let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
-    let end_time = Expiry::AtTime(end_time);
 
     crowdfund_contract
-        .start_campaign(end_time, Some(presale), start_time)
+        .start_campaign(
+            Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
+            Some(presale),
+        )
         .unwrap();
 
     let summary = crowdfund_contract.campaign_summary();
@@ -444,10 +443,12 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
 
     let start_time = None;
     let end_time = Milliseconds::from_nanos(daemon.block_info().unwrap().time.plus_days(1).nanos());
-    let end_time = Expiry::AtTime(end_time);
 
     crowdfund_contract
-        .start_campaign(end_time, Some(presale), start_time)
+        .start_campaign(
+            Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
+            Some(presale),
+        )
         .unwrap();
 
     let summary = crowdfund_contract.campaign_summary();

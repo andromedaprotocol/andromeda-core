@@ -25,40 +25,23 @@ pub struct TransferAgreement {
     pub purchaser: String,
 }
 
-/// https://docs.opensea.io/docs/metadata-standards
-/// Replicates OpenSea Metadata Standards
-#[cw_serde]
-#[derive(Default)]
-pub struct TokenExtension {}
-
 #[cw_serde]
 pub struct MintMsg {
     /// Unique ID of the NFT
     pub token_id: String,
     /// The owner of the newly minter NFT
-    pub owner: String,
+    pub owner: AndrAddr,
     /// Universal resource identifier for this NFT
     /// Should point to a JSON file that conforms to the ERC721
     /// Metadata JSON Schema
     pub token_uri: Option<String>,
-    /// Any custom extension used by this contract
-    pub extension: TokenExtension,
 }
 
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Mints a token
-    Mint {
-        /// Unique ID of the NFT
-        token_id: String,
-        /// The owner of the newly minter NFT
-        owner: AndrAddr,
-        /// Universal resource identifier for this NFT
-        /// Should point to a JSON file that conforms to the ERC721
-        /// Metadata JSON Schema
-        token_uri: Option<String>,
-    },
+    Mint(MintMsg),
     /// Transfers ownership of a token
     TransferNft {
         recipient: AndrAddr,
@@ -171,7 +154,7 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(cw721::msg::CollectionInfoAndExtensionResponse)]
+    #[returns(cw721::state::CollectionInfo)]
     ContractInfo {},
     #[returns(cw721::msg::MinterResponse)]
     Minter {},

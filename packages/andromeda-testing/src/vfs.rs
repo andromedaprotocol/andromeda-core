@@ -1,5 +1,8 @@
 use crate::{mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract};
-use andromeda_std::os::vfs::{ExecuteMsg, QueryMsg};
+use andromeda_std::{
+    amp::AndrAddr,
+    os::vfs::{ExecuteMsg, QueryMsg},
+};
 use andromeda_vfs::mock::*;
 use cosmwasm_std::Addr;
 use cw_multi_test::Executor;
@@ -45,8 +48,9 @@ impl MockVFS {
         sender: Addr,
         name: impl Into<String>,
         address: Addr,
+        parent_address: Option<AndrAddr>,
     ) -> ExecuteResult {
-        let msg = mock_add_path(name, address);
+        let msg = mock_add_path(name, address, parent_address);
 
         self.execute(app, &msg, sender, &[])
     }

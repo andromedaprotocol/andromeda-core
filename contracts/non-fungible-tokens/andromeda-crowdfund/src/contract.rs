@@ -4,7 +4,7 @@ use andromeda_non_fungible_tokens::{
         InstantiateMsg, PresaleTierOrder, QueryMsg, SimpleTierOrder, Tier, TierMetaData, TierOrder,
         TierOrdersResponse, TiersResponse,
     },
-    cw721::ExecuteMsg as Cw721ExecuteMsg,
+    cw721::{ExecuteMsg as Cw721ExecuteMsg, MintMsg},
 };
 use andromeda_std::{
     ado_base::{
@@ -18,9 +18,9 @@ use andromeda_std::{
         context::ExecuteContext,
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
-        expiration::Expiry,
         migration::ensure_compatibility,
-        Milliseconds, OrderBy,
+        schedule::Schedule,
+        OrderBy,
     },
     error::ContractError,
 };
@@ -108,11 +108,9 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::AddTier { tier } => execute_add_tier(ctx, tier),
         ExecuteMsg::UpdateTier { tier } => execute_update_tier(ctx, tier),
         ExecuteMsg::RemoveTier { level } => execute_remove_tier(ctx, level),
-        ExecuteMsg::StartCampaign {
-            start_time,
-            end_time,
-            presale,
-        } => execute_start_campaign(ctx, start_time, end_time, presale),
+        ExecuteMsg::StartCampaign { schedule, presale } => {
+            execute_start_campaign(ctx, schedule, presale)
+        }
         ExecuteMsg::PurchaseTiers { orders } => execute_purchase_tiers(ctx, orders),
         ExecuteMsg::Receive(msg) => handle_receive_cw20(ctx, msg),
         ExecuteMsg::EndCampaign {} => execute_end_campaign(ctx),
@@ -203,33 +201,17 @@ fn execute_remove_tier(ctx: ExecuteContext, level: Uint64) -> Result<Response, C
 
 fn execute_start_campaign(
     ctx: ExecuteContext,
-    start_time: Option<Expiry>,
-    end_time: Expiry,
+    schedule: Schedule,
     presale: Option<Vec<PresaleTierOrder>>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
 
     ensure!(is_valid_tiers(deps.storage), ContractError::InvalidTiers {});
 
-    // Validate parameters
-    let start_time_milliseconds = start_time.clone().map(|exp| exp.get_time(&env.block));
-    let end_time_milliseconds = end_time.get_time(&env.block);
-    ensure!(
-        !end_time_milliseconds.is_zero(),
-        ContractError::InvalidExpiration {}
-    );
-
-    // Validate start time is before end time if provided, otherwise validate end time is in future
-    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
-    ensure!(
-        start_time_milliseconds.map_or(end_time_milliseconds > current_time, |start| start
-            <= end_time_milliseconds),
-        if start_time_milliseconds.is_some() {
-            ContractError::StartTimeAfterEndTime {}
-        } else {
-            ContractError::InvalidExpiration {}
-        }
-    );
+    let (start_time, end_time) = schedule.validate(&env.block)?;
+    let end_time = end_time.ok_or(ContractError::InvalidSchedule {
+        msg: "Duration is required in campaign".to_string(),
+    })?;
 
     // Campaign can only start on READY stage
     let curr_stage = get_current_stage(deps.storage);
@@ -249,21 +231,18 @@ fn execute_start_campaign(
 
     // Set start time and end time
     let duration = Duration {
-        start_time: start_time_milliseconds,
-        end_time: end_time_milliseconds,
+        start_time,
+        end_time,
     };
     set_duration(deps.storage, duration)?;
 
     // update stage
     set_current_stage(deps.storage, CampaignStage::ONGOING)?;
 
-    let mut resp = Response::new()
+    let resp = Response::new()
         .add_attribute("action", "start_campaign")
+        .add_attribute("start_time", start_time.to_string())
         .add_attribute("end_time", end_time.to_string());
-
-    if start_time.is_some() {
-        resp = resp.add_attribute("start_time", start_time.unwrap().to_string());
-    }
 
     Ok(resp)
 }
@@ -440,10 +419,7 @@ fn purchase_tiers(
 
     // Need to wait until start_time
     ensure!(
-        duration
-            .start_time
-            .unwrap_or_default()
-            .is_expired(&env.block),
+        duration.start_time.is_expired(&env.block),
         ContractError::CampaignNotStarted {}
     );
 
@@ -639,11 +615,11 @@ fn mint(
 
     Ok(Response::new().add_message(WasmMsg::Execute {
         contract_addr: tier_contract,
-        msg: encode_binary(&Cw721ExecuteMsg::Mint {
+        msg: encode_binary(&Cw721ExecuteMsg::Mint(MintMsg {
             token_id,
             owner,
             token_uri: tier_metadata.token_uri,
-        })?,
+        }))?,
         funds: vec![],
     }))
 }
