@@ -46,7 +46,9 @@ pub fn execute_start_redeem(
         ExchangeRate::Variable(rate) => {
             let rate_decimal = Decimal256::from_ratio(rate, 1u128);
             let amount_decimal = Decimal256::from_ratio(amount, 1u128);
-            rate_decimal.checked_mul(amount_decimal)?
+            rate_decimal
+                .checked_div(amount_decimal)
+                .map_err(|_| ContractError::Overflow {})?
         }
     };
     ensure!(

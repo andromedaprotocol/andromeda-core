@@ -23,6 +23,7 @@ use andromeda_testing::{
 };
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal256, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
+use rstest::rstest;
 
 use cw_multi_test::Executor;
 
@@ -1052,5 +1053,67 @@ fn test_exchange_app_redeem_native_fractional() {
     assert_eq!(
         err,
         ContractError::Payment(cw_utils::PaymentError::NoFunds {})
+    );
+}
+
+#[rstest]
+#[case::rate_100(Uint128::new(100), 100u128, Decimal256::one())]
+#[case::rate_50(
+    Uint128::new(200),
+    100u128,
+    Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))
+)]
+fn test_exchange_app_redeem_native_to_native_dynamic_exchange_rate(
+    #[case] variable_rate: Uint128,
+    #[case] amount_sent: u128,
+    #[case] expected_exchange_rate: Decimal256,
+) {
+    let mut router = mock_app(None);
+
+    let andr = setup_andr(&mut router);
+    let app = setup_app(&andr, &mut router);
+    let owner = andr.get_wallet("owner");
+
+    let addresses = get_addresses(&mut router, &andr, &app);
+
+    let exchange_addr = addresses.exchange;
+    let uandr_asset = Asset::NativeToken("uandr".to_string());
+
+    // Setup redeem condition with variable exchange rate
+    let redeem_msg = mock_set_redeem_condition_native_msg(
+        uandr_asset.clone(),
+        ExchangeRate::Variable(variable_rate),
+        Some(Recipient::from_string(owner.to_string())),
+        Schedule::default(),
+    );
+    router
+        .execute_contract(
+            owner.clone(),
+            exchange_addr.clone(),
+            &redeem_msg,
+            &[coin(amount_sent, "uusd")],
+        )
+        .unwrap();
+
+    let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().asset,
+        Asset::NativeToken("uusd".to_string())
+    );
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().amount,
+        Uint128::new(100)
+    );
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().amount_paid_out,
+        Uint128::zero()
+    );
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().exchange_rate,
+        expected_exchange_rate
     );
 }
