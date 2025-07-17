@@ -2,7 +2,7 @@
 name = "andromeda-matrix"
 version = "0.1.0-a.3"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.

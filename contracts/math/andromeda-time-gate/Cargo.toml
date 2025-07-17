@@ -2,7 +2,7 @@
 name = "andromeda-time-gate"
 version = "0.1.0-a.3"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

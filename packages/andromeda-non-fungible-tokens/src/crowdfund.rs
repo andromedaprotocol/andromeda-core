@@ -102,8 +102,9 @@ impl CampaignConfig {
 
         // validate target capital
         ensure!(
-            (self.soft_cap).map_or(true, |soft_cap| soft_cap
-                < self.hard_cap.unwrap_or(soft_cap + Uint128::new(1))),
+            (self.soft_cap).is_none_or(
+                |soft_cap| soft_cap < self.hard_cap.unwrap_or(soft_cap + Uint128::new(1))
+            ),
             ContractError::InvalidParameter {
                 error: Some("soft_cap can not exceed hard_cap".to_string())
             }

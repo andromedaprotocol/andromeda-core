@@ -2,7 +2,7 @@
 name = "andromeda-app-contract"
 version = "1.2.1-b.2"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

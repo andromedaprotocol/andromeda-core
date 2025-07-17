@@ -26,8 +26,8 @@ fn setup() -> TestCase {
 
     let osmosis_socket_contract = SocketOsmosisContract::new(daemon.clone());
 
-    // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
-    // Make sure to fund the contract after its instantiation
+    // // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
+    // // Make sure to fund the contract after its instantiation
     // osmosis_socket_contract.upload().unwrap();
     // osmosis_socket_contract
     //     .instantiate(
@@ -43,7 +43,7 @@ fn setup() -> TestCase {
     //     .unwrap();
     // osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
     osmosis_socket_contract.set_address(&Addr::unchecked(
-        "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6".to_string(),
+        "osmo1r2vw2g92f5mt78mj029qlllfsfhrgyh6pzc4zgacllwg7p6x40rqnxgndc".to_string(),
     ));
 
     TestCase {

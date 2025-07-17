@@ -1,0 +1,114 @@
+use andromeda_std::amp::AndrAddr;
+use andromeda_std::{andr_exec, andr_instantiate, andr_query};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Addr, Uint128};
+use cw20::Cw20ReceiveMsg;
+use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
+use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams;
+use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse;
+
+#[andr_instantiate]
+#[cw_serde]
+pub struct InstantiateMsg {
+    pub authorized_address: AndrAddr,
+}
+
+#[andr_exec]
+#[cw_serde]
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
+pub enum ExecuteMsg {
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    CreateDenom {
+        subdenom: String,
+        amount: Uint128,
+        recipient: Option<AndrAddr>,
+    },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Mint {
+        coin: OsmosisCoin,
+        recipient: Option<AndrAddr>,
+    },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Burn { coin: OsmosisCoin },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Receive { msg: Cw20ReceiveMsg },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Unlock {
+        cw20_addr: Addr,
+        factory_denom: String,
+        amount: Uint128,
+    },
+}
+
+#[cw_serde]
+pub enum ReceiveHook {
+    /// Lock the received CW20 tokens and mint factory tokens
+    Lock {},
+}
+#[cw_serde]
+pub enum Pool {
+    Balancer {
+        pool_params: Option<PoolParams>,
+        pool_assets: Vec<PoolAsset>,
+    },
+    Stable {
+        pool_params: Option<StablePoolParams>,
+        scaling_factors: Vec<u64>,
+    },
+    Concentrated {
+        tick_spacing: u64,
+        spread_factor: String,
+    },
+    CosmWasm {
+        code_id: u64,
+        instantiate_msg: Vec<u8>,
+    },
+}
+
+#[cw_serde]
+pub enum OsmosisExecuteMsg {
+    TransferOwnership { new_owner: String },
+}
+#[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
+#[andr_query]
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(QueryDenomAuthorityMetadataResponse)]
+    TokenAuthority { denom: String },
+
+    #[returns(LockedResponse)]
+    Locked { owner: Addr, cw20_addr: Addr },
+
+    #[returns(FactoryDenomResponse)]
+    FactoryDenom { cw20_addr: Addr },
+
+    #[returns(AllLockedResponse)]
+    AllLocked { owner: Addr },
+}
+
+#[cw_serde]
+pub struct LockedResponse {
+    pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct FactoryDenomResponse {
+    pub denom: Option<String>,
+}
+
+#[cw_serde]
+pub struct LockedInfo {
+    pub cw20_addr: Addr,
+    pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct AllLockedResponse {
+    pub locked: Vec<LockedInfo>,
+}

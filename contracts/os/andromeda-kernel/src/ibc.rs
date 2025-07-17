@@ -163,7 +163,13 @@ pub fn do_ibc_packet_receive(
                     }
                 }
                 None => {
-                    execute_env.amp_ctx = None;
+                    // Added this to keep track of original sender, even if the address is invalid on the receiving chain
+                    let new_amp_packet = AMPPkt::new(
+                        amp_packet.ctx.get_origin(),
+                        env.contract.address,
+                        amp_packet.messages.clone(),
+                    );
+                    execute_env.amp_ctx = Some(new_amp_packet);
                 }
             }
 
