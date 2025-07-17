@@ -10,7 +10,7 @@ use andromeda_exchange::mock::{
     mock_redeem_query_msg, mock_replenish_redeem_cw20_msg, mock_replenish_redeem_native_msg,
     mock_set_redeem_condition_native_msg, mock_start_redeem_cw20_msg, MockExchange,
 };
-use andromeda_fungible_tokens::exchange::{RedeemResponse, SaleResponse};
+use andromeda_fungible_tokens::exchange::{ExchangeRate, RedeemResponse, SaleResponse};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{denom::Asset, schedule::Schedule},
@@ -245,7 +245,7 @@ fn test_exchange_app_cw20_to_native() {
     // Now the owner will setup a redeem condition for 2 uandr per cw20addr
     let redeem_msg = mock_set_redeem_condition_native_msg(
         cw20_addr_2_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
         Some(Recipient::from_string(owner.to_string())),
         Schedule::default(),
     );
@@ -408,7 +408,7 @@ fn test_exchange_app_cw20_to_cw20() {
     let start_redeem_msg = mock_start_redeem_cw20_msg(
         None,
         cw20_addr_2_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
         Schedule::default(),
     );
 
@@ -596,7 +596,8 @@ fn test_exchange_app_cancel_redeem() {
     let exchange: MockExchange = app.query_ado_by_component_name(&router, "exchange");
 
     // Now the owner will setup a redeem condition for 2 cw20 per cw20addr
-    let exchange_rate = Decimal256::from_ratio(Uint128::new(2), Uint128::new(1));
+    let exchange_rate =
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)));
     exchange.execute_cw20_start_redeem(
         &mut router,
         owner.clone(),
@@ -638,7 +639,7 @@ fn test_exchange_app_redeem_native_to_native() {
     // Now the owner will setup a redeem condition for 2 uandr per uusd
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
         Some(Recipient::from_string(owner.to_string())),
         Schedule::default(),
     );
@@ -798,7 +799,7 @@ fn test_exchange_app_redeem_native_to_cw20() {
     let start_redeem_msg = mock_start_redeem_cw20_msg(
         None,
         uandr_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
         Schedule::default(),
     );
 
@@ -933,7 +934,7 @@ fn test_exchange_app_redeem_native_fractional() {
 
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(1), Uint128::new(2)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(1), Uint128::new(2))),
         Some(Recipient::from_string(owner.to_string())),
         Schedule::default(),
     );

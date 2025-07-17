@@ -14,6 +14,12 @@ pub struct InstantiateMsg {
     pub token_address: AndrAddr,
 }
 
+#[cw_serde]
+pub enum ExchangeRate {
+    Fixed(Decimal256),
+    Variable(Uint128),
+}
+
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -30,7 +36,7 @@ pub enum ExecuteMsg {
         /// The accepted asset for redemption
         redeem_asset: Asset,
         /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
-        exchange_rate: Decimal256,
+        exchange_rate: ExchangeRate,
         /// The recipient of the sale proceeds
         recipient: Option<Recipient>,
         schedule: Schedule,
@@ -109,7 +115,7 @@ pub enum Cw20HookMsg {
         redeem_asset: Asset,
         /// An exchange rate of 2 would grant the redeemer 2 asset for 1 redeem_asset
         /// An exchange rate of 0.5 would grant the redeemer 2 asset for 4 redeem_asset
-        exchange_rate: Decimal256,
+        exchange_rate: ExchangeRate,
         /// The recipient of the sale proceeds
         recipient: Option<Recipient>,
         schedule: Schedule,

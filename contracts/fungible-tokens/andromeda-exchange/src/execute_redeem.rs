@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::exchange::Redeem;
+use andromeda_fungible_tokens::exchange::{ExchangeRate, Redeem};
 use andromeda_std::{
     amp::Recipient,
     common::{
@@ -22,7 +22,7 @@ pub fn execute_start_redeem(
     asset: Asset,
     // The accepted asset to be redeemed for the asset sent
     redeem_asset: Asset,
-    exchange_rate: Decimal256,
+    exchange_rate: ExchangeRate,
     // The original sender of the CW20::Send message
     sender: String,
     // The recipient of the redeem proceeds
@@ -41,6 +41,14 @@ pub fn execute_start_redeem(
             )
         }
     );
+    let exchange_rate: Decimal256 = match exchange_rate {
+        ExchangeRate::Fixed(rate) => rate,
+        ExchangeRate::Variable(rate) => {
+            let rate_decimal = Decimal256::from_ratio(rate, 1u128);
+            let amount_decimal = Decimal256::from_ratio(amount, 1u128);
+            rate_decimal.checked_mul(amount_decimal)?
+        }
+    };
     ensure!(
         !exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
@@ -252,7 +260,7 @@ pub fn execute_redeem(
 pub fn execute_start_redeem_native(
     ctx: ExecuteContext,
     redeem_asset: Asset,
-    exchange_rate: Decimal256,
+    exchange_rate: ExchangeRate,
     recipient: Option<Recipient>,
     schedule: Schedule,
 ) -> Result<Response, ContractError> {

@@ -1,5 +1,5 @@
 use andromeda_fungible_tokens::exchange::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, Redeem, RedeemResponse, Sale,
+    Cw20HookMsg, ExchangeRate, ExecuteMsg, InstantiateMsg, QueryMsg, Redeem, RedeemResponse, Sale,
     SaleAssetsResponse, SaleResponse, TokenAddressResponse,
 };
 use andromeda_std::{
@@ -1540,7 +1540,7 @@ fn test_cancel_redeem_unauthorized() {
     // Try to create a duplicate redeem
     let redeem_msg = ExecuteMsg::StartRedeem {
         redeem_asset: redeem_asset.clone(),
-        exchange_rate: Decimal256::percent(200),
+        exchange_rate: ExchangeRate::Fixed(Decimal256::percent(200)),
         recipient: None,
         schedule: Schedule::new(None, None),
     };
