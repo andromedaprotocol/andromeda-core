@@ -1422,6 +1422,7 @@ fn test_cancel_redeem() {
                 amount: redeem_amount,
                 amount_paid_out: Uint128::zero(),
                 exchange_rate,
+                exchange_type: ExchangeRate::Fixed(exchange_rate),
                 recipient: Recipient::from_string(owner.to_string()),
                 start_time: Milliseconds::from_nanos(env.block.time.nanos()),
                 end_time: None,
@@ -1523,6 +1524,7 @@ fn test_cancel_redeem_unauthorized() {
                 amount: Uint128::from(100u128),
                 amount_paid_out: Uint128::zero(),
                 exchange_rate: Decimal256::percent(200),
+                exchange_type: ExchangeRate::Fixed(Decimal256::percent(200)),
                 recipient: Recipient::from_string(owner.to_string()),
                 start_time: Milliseconds::from_nanos(env.block.time.nanos()),
                 end_time: None,
@@ -1558,6 +1560,7 @@ fn test_cancel_redeem_unauthorized() {
                 amount: Uint128::from(100u128),
                 amount_paid_out: Uint128::zero(),
                 exchange_rate: Decimal256::percent(200),
+                exchange_type: ExchangeRate::Fixed(Decimal256::percent(200)),
                 recipient: Recipient::from_string(owner.to_string()),
                 start_time: Milliseconds::from_nanos(env.block.time.nanos()),
                 end_time: Some(Milliseconds::from_nanos(
@@ -1579,6 +1582,7 @@ fn test_cancel_redeem_unauthorized() {
                 amount: Uint128::zero(),
                 amount_paid_out: Uint128::zero(),
                 exchange_rate: Decimal256::percent(200),
+                exchange_type: ExchangeRate::Fixed(Decimal256::percent(200)),
                 recipient: Recipient::from_string(owner.to_string()),
                 start_time: Milliseconds::from_nanos(env.block.time.nanos()),
                 end_time: Some(Milliseconds::from_nanos(

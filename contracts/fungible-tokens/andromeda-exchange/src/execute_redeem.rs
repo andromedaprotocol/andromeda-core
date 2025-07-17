@@ -41,18 +41,9 @@ pub fn execute_start_redeem(
             )
         }
     );
-    let exchange_rate: Decimal256 = match exchange_rate {
-        ExchangeRate::Fixed(rate) => rate,
-        ExchangeRate::Variable(rate) => {
-            let rate_decimal = Decimal256::from_ratio(rate, 1u128);
-            let amount_decimal = Decimal256::from_ratio(amount, 1u128);
-            rate_decimal
-                .checked_div(amount_decimal)
-                .map_err(|_| ContractError::Overflow {})?
-        }
-    };
+    let derived_exchange_rate = exchange_rate.get_exchange_rate(amount)?;
     ensure!(
-        !exchange_rate.is_zero(),
+        !derived_exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
     ensure!(
@@ -80,7 +71,8 @@ pub fn execute_start_redeem(
         asset: asset.clone(),
         amount,
         amount_paid_out: Uint128::zero(),
-        exchange_rate,
+        exchange_rate: derived_exchange_rate,
+        exchange_type: exchange_rate.clone(),
         recipient,
         start_time,
         end_time,
@@ -91,7 +83,8 @@ pub fn execute_start_redeem(
         attr("action", "start_redeem"),
         attr("redeem_asset", redeem_asset.to_string()),
         attr("asset", asset.to_string()),
-        attr("rate", exchange_rate.to_string()),
+        attr("rate", derived_exchange_rate.to_string()),
+        attr("exchange_type", exchange_rate.to_string()),
         attr("amount", amount),
         attr("start_time", start_time.to_string()),
         attr("end_time", end_time.unwrap_or_default().to_string()),
@@ -124,7 +117,8 @@ pub fn execute_replenish_redeem(
             ContractError::RedeemEnded {}
         );
     }
-
+    let exchange_rate = redeem.exchange_type.get_exchange_rate(amount)?;
+    redeem.exchange_rate = exchange_rate;
     redeem.amount = redeem.amount.checked_add(amount)?;
 
     REDEEM.save(deps.storage, &redeem_asset_str, &redeem)?;

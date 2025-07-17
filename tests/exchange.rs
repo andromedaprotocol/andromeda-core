@@ -21,7 +21,9 @@ use andromeda_testing::{
     mock_builder::MockAndromedaBuilder,
     MockContract,
 };
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal256, Timestamp, Uint128};
+use cosmwasm_std::{
+    coin, to_json_binary, Addr, BlockInfo, Decimal256, Timestamp, Uint128, Uint256,
+};
 use cw20::{BalanceResponse, Cw20Coin};
 use rstest::rstest;
 
@@ -1057,14 +1059,20 @@ fn test_exchange_app_redeem_native_fractional() {
 }
 
 #[rstest]
-#[case::rate_100(Uint128::new(100), 100u128, Decimal256::one())]
-#[case::rate_50(
-    Uint128::new(200),
+#[case::variable_rate_200(
+    Uint256::from(200u128),
+    100u128,
+    Decimal256::from_ratio(Uint128::new(1), Uint128::new(2))
+)]
+#[case::variable_rate_100(Uint256::from(100u128), 100u128, Decimal256::one())]
+#[case::variable_rate_50(
+    Uint256::from(50u128),
     100u128,
     Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))
 )]
+
 fn test_exchange_app_redeem_native_to_native_dynamic_exchange_rate(
-    #[case] variable_rate: Uint128,
+    #[case] variable_rate: Uint256,
     #[case] amount_sent: u128,
     #[case] expected_exchange_rate: Decimal256,
 ) {
@@ -1106,7 +1114,7 @@ fn test_exchange_app_redeem_native_to_native_dynamic_exchange_rate(
     );
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().amount,
-        Uint128::new(100)
+        Uint128::new(amount_sent)
     );
     assert_eq!(
         redeem_query_resp.redeem.clone().unwrap().amount_paid_out,

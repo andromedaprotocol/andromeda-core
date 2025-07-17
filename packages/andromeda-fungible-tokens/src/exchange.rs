@@ -1,10 +1,13 @@
+use std::fmt::Display;
+
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     andr_exec, andr_instantiate, andr_query,
     common::{denom::Asset, schedule::Schedule, Milliseconds},
+    error::ContractError,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{ConversionOverflowError, Decimal256, StdError, StdResult, Uint128};
+use cosmwasm_std::{ConversionOverflowError, Decimal256, StdError, StdResult, Uint128, Uint256};
 use cw20::Cw20ReceiveMsg;
 
 #[andr_instantiate]
@@ -17,7 +20,30 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExchangeRate {
     Fixed(Decimal256),
-    Variable(Uint128),
+    Variable(Uint256),
+}
+impl Display for ExchangeRate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExchangeRate::Fixed(rate) => write!(f, "Fixed({})", rate),
+            ExchangeRate::Variable(rate) => write!(f, "Variable({})", rate),
+        }
+    }
+}
+impl ExchangeRate {
+    /// Returns the rate as is if it's fixed, but if it's dynamic, the exchange rate will be influenced by the amount of funds sent alongside the message. The higher the funds, the higher the rate and vice versa.
+    pub fn get_exchange_rate(&self, amount_sent: Uint128) -> Result<Decimal256, ContractError> {
+        match self {
+            ExchangeRate::Fixed(rate) => Ok(*rate),
+            ExchangeRate::Variable(rate) => {
+                let amount_decimal = Decimal256::from_ratio(amount_sent, 1u128);
+                let rate_decimal = Decimal256::from_ratio(*rate, 1u128);
+                Ok(amount_decimal
+                    .checked_div(rate_decimal)
+                    .map_err(|_| ContractError::Overflow {})?)
+            }
+        }
+    }
 }
 
 #[andr_exec]
@@ -79,6 +105,8 @@ pub struct Redeem {
     pub asset: Asset,
     /// The rate at which to exchange tokens (amount of exchanged asset to purchase sale asset)
     pub exchange_rate: Decimal256,
+    /// The type of exchange rate whether it was fixed or variable
+    pub exchange_type: ExchangeRate,
     /// The amount for sale at the given rate
     pub amount: Uint128,
     /// The amount paid out
