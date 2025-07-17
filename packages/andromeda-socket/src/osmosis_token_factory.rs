@@ -1,7 +1,8 @@
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
+use cw20::Cw20ReceiveMsg;
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams;
 use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
@@ -32,8 +33,23 @@ pub enum ExecuteMsg {
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Burn { coin: OsmosisCoin },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Receive { msg: Cw20ReceiveMsg },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Unlock {
+        cw20_addr: Addr,
+        factory_denom: String,
+        amount: Uint128,
+    },
 }
 
+#[cw_serde]
+pub enum ReceiveHook {
+    /// Lock the received CW20 tokens and mint factory tokens
+    Lock {},
+}
 #[cw_serde]
 pub enum Pool {
     Balancer {
@@ -65,4 +81,34 @@ pub enum OsmosisExecuteMsg {
 pub enum QueryMsg {
     #[returns(QueryDenomAuthorityMetadataResponse)]
     TokenAuthority { denom: String },
+
+    #[returns(LockedResponse)]
+    Locked { owner: Addr, cw20_addr: Addr },
+
+    #[returns(FactoryDenomResponse)]
+    FactoryDenom { cw20_addr: Addr },
+
+    #[returns(AllLockedResponse)]
+    AllLocked { owner: Addr },
+}
+
+#[cw_serde]
+pub struct LockedResponse {
+    pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct FactoryDenomResponse {
+    pub denom: Option<String>,
+}
+
+#[cw_serde]
+pub struct LockedInfo {
+    pub cw20_addr: Addr,
+    pub amount: Uint128,
+}
+
+#[cw_serde]
+pub struct AllLockedResponse {
+    pub locked: Vec<LockedInfo>,
 }

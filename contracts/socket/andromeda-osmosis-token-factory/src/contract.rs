@@ -1,5 +1,10 @@
-use crate::state::{MINT_RECIPIENT_AMOUNT, OSMOSIS_MSG_BURN_ID, OSMOSIS_MSG_CREATE_DENOM_ID};
-use andromeda_socket::osmosis_token_factory::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{
+    FACTORY_DENOMS, LOCKED, MINT_RECIPIENT_AMOUNT, OSMOSIS_MSG_BURN_ID, OSMOSIS_MSG_CREATE_DENOM_ID,
+};
+use andromeda_socket::osmosis_token_factory::{
+    AllLockedResponse, ExecuteMsg, FactoryDenomResponse, InstantiateMsg, LockedInfo,
+    LockedResponse, QueryMsg, ReceiveHook,
+};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
@@ -11,10 +16,12 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, SubMsg,
-    SubMsgResponse, SubMsgResult, Uint128,
+    attr, ensure, from_json, to_json_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, QueryRequest, Reply, Response, StdError, SubMsg, SubMsgResponse,
+    SubMsgResult, Uint128, WasmQuery,
 };
 use cw2::set_contract_version;
+use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg, TokenInfoResponse};
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
     osmosis::tokenfactory::v1beta1::{
@@ -63,8 +70,131 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         } => execute_create_denom(ctx, subdenom, amount, recipient),
         ExecuteMsg::Mint { coin, recipient } => execute_mint(ctx, coin, recipient),
         ExecuteMsg::Burn { coin } => execute_burn(ctx, coin),
+        ExecuteMsg::Receive { msg } => execute_receive(ctx, msg),
+        ExecuteMsg::Unlock {
+            cw20_addr,
+            factory_denom,
+            amount,
+        } => execute_unlock(ctx, cw20_addr, factory_denom, amount),
         _ => ADOContract::default().execute(ctx, msg),
     }
+}
+
+fn execute_receive(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
+    let hook: ReceiveHook = from_json(&msg.msg)?;
+
+    match hook {
+        ReceiveHook::Lock {} => {
+            let cw20_addr = ctx.info.sender.clone();
+            let user_addr = ctx.deps.api.addr_validate(&msg.sender)?;
+            let amount = msg.amount;
+
+            execute_lock(ctx, user_addr, cw20_addr, amount)
+        }
+    }
+}
+
+fn execute_lock(
+    ctx: ExecuteContext,
+    user_addr: Addr,
+    cw20_addr: Addr,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    // Update locked amount for this (user, cw20_token) pair
+    LOCKED.update(
+        ctx.deps.storage,
+        (user_addr.clone(), cw20_addr.clone()),
+        |existing| -> Result<Uint128, ContractError> { Ok(existing.unwrap_or_default() + amount) },
+    )?;
+
+    let token_info: TokenInfoResponse =
+        ctx.deps
+            .querier
+            .query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: cw20_addr.to_string(),
+                msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
+            }))?;
+
+    // Check if factory denom exists for this CW20
+    let factory_denom = FACTORY_DENOMS.may_load(ctx.deps.storage, cw20_addr.clone())?;
+    match factory_denom {
+        Some(denom) => {
+            // Denom exists, mint directly
+            execute_mint(
+                ctx,
+                OsmosisCoin {
+                    denom,
+                    amount: amount.to_string(),
+                },
+                Some(user_addr.into()),
+            )
+        }
+        None => {
+            // Create new denom first(mints the token in the reply)
+            execute_create_denom(ctx, token_info.name, amount, Some(user_addr.into()))
+        }
+    }
+}
+
+fn execute_unlock(
+    ctx: ExecuteContext,
+    cw20_addr: Addr,
+    factory_denom: String,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    let user_addr = ctx.info.sender.clone();
+
+    // 1. Validate factory denom matches the CW20
+    let expected_denom = FACTORY_DENOMS.load(ctx.deps.storage, cw20_addr.clone())?;
+    ensure!(
+        expected_denom == factory_denom,
+        ContractError::Std(StdError::generic_err(
+            "Invalid factory denom for this CW20 token"
+        ))
+    );
+
+    // 2. Check that user has enough locked tokens (only original locker can unlock)
+    let locked_amount = LOCKED.load(ctx.deps.storage, (user_addr.clone(), cw20_addr.clone()))?;
+    ensure!(locked_amount >= amount, ContractError::InsufficientFunds {});
+
+    // 3. Prepare CW20 transfer message (sends CW20 tokens back to user)
+    let transfer_msg = Cw20ExecuteMsg::Transfer {
+        recipient: user_addr.to_string(),
+        amount,
+    };
+    let resp = wasm_execute(
+        cw20_addr.to_string(),
+        &to_json_binary(&transfer_msg)?,
+        vec![],
+    )?;
+
+    // 4. Update LOCKED state (before preparing burn message)
+    LOCKED.update(
+        ctx.deps.storage,
+        (user_addr.clone(), cw20_addr.clone()),
+        |existing| -> Result<Uint128, ContractError> {
+            Ok(existing.unwrap_or_default() - amount) // Safe since we checked above
+        },
+    )?;
+
+    // 5. Prepare burn message (burns factory tokens from caller's address)
+    let burn_msg = execute_burn(
+        ctx,
+        OsmosisCoin {
+            denom: factory_denom.clone(),
+            amount: amount.to_string(),
+        },
+    )?;
+
+    Ok(Response::new()
+        .add_message(resp)
+        .add_submessages(burn_msg.messages)
+        .add_attributes(burn_msg.attributes)
+        .add_attribute("action", "unlock")
+        .add_attribute("user", user_addr.to_string())
+        .add_attribute("cw20_addr", cw20_addr.to_string())
+        .add_attribute("factory_denom", factory_denom)
+        .add_attribute("amount", amount.to_string()))
 }
 
 fn execute_create_denom(
@@ -116,12 +246,12 @@ fn execute_mint(
 
 // TODO: https://github.com/andromedaprotocol/andromeda-core/pull/929#discussion_r2207821091
 fn execute_burn(ctx: ExecuteContext, coin: OsmosisCoin) -> Result<Response, ContractError> {
-    let ExecuteContext { env, .. } = ctx;
+    let ExecuteContext { env, info, .. } = ctx;
 
     let msg = MsgBurn {
         sender: env.contract.address.to_string(),
         amount: Some(coin),
-        burn_from_address: env.contract.address.to_string(),
+        burn_from_address: info.sender.to_string(), // Always burn from caller
     };
     let sub_msg = SubMsg::reply_always(msg, OSMOSIS_MSG_BURN_ID);
 
@@ -136,6 +266,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
                 TokenfactoryQuerier::new(&deps.querier).denom_authority_metadata(denom)?;
             encode_binary(&res)
         }
+        QueryMsg::Locked { owner, cw20_addr } => {
+            encode_binary(&query_locked(deps, owner, cw20_addr)?)
+        }
+        QueryMsg::FactoryDenom { cw20_addr } => {
+            encode_binary(&query_factory_denom(deps, cw20_addr)?)
+        }
+        QueryMsg::AllLocked { owner } => encode_binary(&query_all_locked(deps, owner)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -188,4 +325,31 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             "Invalid Reply ID".to_string(),
         ))),
     }
+}
+
+fn query_locked(deps: Deps, owner: Addr, cw20_addr: Addr) -> Result<LockedResponse, ContractError> {
+    let amount = LOCKED
+        .may_load(deps.storage, (owner, cw20_addr))?
+        .unwrap_or_default();
+    Ok(LockedResponse { amount })
+}
+
+fn query_factory_denom(deps: Deps, cw20_addr: Addr) -> Result<FactoryDenomResponse, ContractError> {
+    let denom = FACTORY_DENOMS.may_load(deps.storage, cw20_addr)?;
+    Ok(FactoryDenomResponse { denom })
+}
+
+fn query_all_locked(deps: Deps, owner: Addr) -> Result<AllLockedResponse, ContractError> {
+    let locked: Vec<LockedInfo> = LOCKED
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .filter_map(|item| {
+            let ((user, cw20_addr), amount) = item.ok()?;
+            if user == owner && !amount.is_zero() {
+                Some(LockedInfo { cw20_addr, amount })
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(AllLockedResponse { locked })
 }
