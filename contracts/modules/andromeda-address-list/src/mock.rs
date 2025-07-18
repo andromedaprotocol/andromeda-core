@@ -68,6 +68,20 @@ impl MockAddressList {
             &[],
         )
     }
+
+    pub fn execute_authorize_permission_actors(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        actors: Vec<AndrAddr>,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &mock_authorize_permission_actors_action_msg(actors),
+            sender,
+            &[],
+        )
+    }
 }
 
 pub fn mock_andromeda_address_list() -> Box<dyn Contract<Empty>> {
@@ -96,6 +110,10 @@ pub fn mock_add_actor_permission_msg(
     permission: LocalPermission,
 ) -> ExecuteMsg {
     ExecuteMsg::PermissionActors { actors, permission }
+}
+
+pub fn mock_authorize_permission_actors_action_msg(actors: Vec<AndrAddr>) -> ExecuteMsg {
+    ExecuteMsg::AuthorizePermissionActorsAction { actors }
 }
 
 pub fn mock_set_permission_actor_msg(

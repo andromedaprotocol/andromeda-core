@@ -92,12 +92,36 @@ pub fn instantiate(
 #[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AuthorizePermissionActorsAction { actors } => {
+            execute_authorize_permission_actors(ctx, actors)
+        }
         ExecuteMsg::PermissionActors { actors, permission } => {
             execute_permission_actors(ctx, actors, permission)
         }
         ExecuteMsg::RemovePermissions { actors } => execute_remove_permissions(ctx, actors),
         _ => ADOContract::default().execute(ctx, msg),
     }
+}
+
+fn execute_authorize_permission_actors(
+    ctx: ExecuteContext,
+    actors: Vec<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, .. } = ctx;
+
+    ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
+
+    actors.iter().try_for_each(|actor| {
+        let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+        ADOContract::set_permission(
+            deps.storage,
+            PERMISSION_ACTORS_ACTION.to_string(),
+            verified_actor,
+            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+        )
+    })?;
+
+    Ok(Response::new().add_attributes(vec![attr("action", "authorize_permission_actors")]))
 }
 
 fn execute_permission_actors(
