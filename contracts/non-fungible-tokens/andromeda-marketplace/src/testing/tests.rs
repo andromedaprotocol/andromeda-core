@@ -226,7 +226,9 @@ fn test_instantiate_with_multiple_authorized_cw20_addresses() {
         assert_eq!(
             permission,
             Some(Permission::Local(LocalPermission::whitelisted(
-                None, None, None, None
+                Schedule::new(None, None),
+                None,
+                None,
             )))
         );
     }
@@ -1030,7 +1032,9 @@ fn test_execute_authorize_cw20_contract() {
     assert_eq!(
         permission,
         Some(Permission::Local(LocalPermission::whitelisted(
-            None, None, None, None
+            Schedule::new(None, None),
+            None,
+            None,
         )))
     );
 
@@ -1065,8 +1069,7 @@ fn test_execute_authorize_cw20_contract() {
     assert_eq!(
         permission,
         Some(Permission::Local(LocalPermission::whitelisted(
-            None,
-            Some(expiration),
+            Schedule::new(None, Some(expiration)),
             None,
             None,
         )))
@@ -1098,7 +1101,9 @@ fn test_execute_deauthorize_cw20_contract() {
     assert_eq!(
         permission,
         Some(Permission::Local(LocalPermission::whitelisted(
-            None, None, None, None
+            Schedule::new(None, None),
+            None,
+            None,
         )))
     );
 

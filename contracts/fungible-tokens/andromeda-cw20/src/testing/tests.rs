@@ -6,7 +6,7 @@ use andromeda_std::ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, P
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::context::ExecuteContext;
-
+use andromeda_std::common::schedule::Schedule;
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
@@ -116,7 +116,7 @@ fn test_transfer() {
     ]);
 
     // Blacklist the sender who otherwise would have been able to call the function successfully
-    let permission = Permission::Local(LocalPermission::blacklisted(None, None));
+    let permission = Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None)));
     let actors = vec![AndrAddr::from_string(sender.to_string())];
     let action = "Transfer";
     let ctx = ExecuteContext::new(deps.as_mut(), message_info(&owner, &[]), mock_env());
@@ -129,7 +129,11 @@ fn test_transfer() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Now whitelist the sender, that should allow him to call the function successfully
-    let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None));
+    let permission = Permission::Local(LocalPermission::whitelisted(
+        Schedule::new(None, None),
+        None,
+        None,
+    ));
     let actors = vec![AndrAddr::from_string(sender.to_string())];
     let action = "Transfer";
     let owner = deps.api.addr_make("owner");

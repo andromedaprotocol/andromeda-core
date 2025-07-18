@@ -8,6 +8,7 @@ use andromeda_non_fungible_tokens::cw721::ExecuteMsg;
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission, PermissioningMessage},
     amp::AndrAddr,
+    common::schedule::Schedule,
 };
 use andromeda_testing::{
     mock::mock_app, mock_builder::MockAndromedaBuilder, MockAndromeda, MockContract,
@@ -80,7 +81,11 @@ fn setup_cw721() -> (App<BankKeeper, MockApiBech32>, MockAndromeda, MockCW721) {
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(user)],
         action: CW721_MINT_ACTION.to_string(),
-        permission: Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+        permission: Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )),
     });
     cw721
         .execute(&mut router, &permission_msg, owner.clone(), &[])

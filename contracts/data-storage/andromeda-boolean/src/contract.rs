@@ -18,7 +18,7 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     andr_execute_fn,
-    common::encode_binary,
+    common::{encode_binary, schedule::Schedule},
     error::ContractError,
 };
 
@@ -60,7 +60,11 @@ pub fn instantiate(
                 None => info.sender,
                 Some(owner) => Addr::unchecked(owner),
             },
-            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+            Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )),
         )?;
     }
 

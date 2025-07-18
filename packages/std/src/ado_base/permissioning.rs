@@ -5,7 +5,7 @@ use cosmwasm_std::{Deps, Env};
 
 use crate::{
     amp::AndrAddr,
-    common::{expiration::Expiry, Milliseconds, MillisecondsExpiration},
+    common::{schedule::Schedule, Milliseconds, MillisecondsExpiration},
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
@@ -57,19 +57,16 @@ pub struct PermissionedActorsResponse {
 pub enum LocalPermission {
     Blacklisted {
         #[serde(default)]
-        start: Option<Expiry>,
-        expiration: Option<Expiry>,
+        schedule: Schedule,
     },
     Limited {
         #[serde(default)]
-        start: Option<Expiry>,
-        expiration: Option<Expiry>,
+        schedule: Schedule,
         uses: u32,
     },
     Whitelisted {
         #[serde(default)]
-        start: Option<Expiry>,
-        expiration: Option<Expiry>,
+        schedule: Schedule,
         frequency: Option<Milliseconds>,
         last_used: Option<Milliseconds>,
     },
@@ -78,8 +75,7 @@ pub enum LocalPermission {
 impl std::default::Default for LocalPermission {
     fn default() -> Self {
         Self::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             frequency: None,
             last_used: None,
         }
@@ -87,59 +83,49 @@ impl std::default::Default for LocalPermission {
 }
 
 impl LocalPermission {
-    pub fn blacklisted(start: Option<Expiry>, expiration: Option<Expiry>) -> Self {
-        Self::Blacklisted { start, expiration }
+    pub fn blacklisted(schedule: Schedule) -> Self {
+        Self::Blacklisted { schedule }
     }
 
     pub fn whitelisted(
-        start: Option<Expiry>,
-        expiration: Option<Expiry>,
+        schedule: Schedule,
         frequency: Option<Milliseconds>,
         last_used: Option<Milliseconds>,
     ) -> Self {
         Self::Whitelisted {
-            start,
-            expiration,
+            schedule,
             frequency,
             last_used,
         }
     }
 
-    pub fn limited(start: Option<Expiry>, expiration: Option<Expiry>, uses: u32) -> Self {
-        Self::Limited {
-            start,
-            expiration,
-            uses,
-        }
+    pub fn limited(schedule: Schedule, uses: u32) -> Self {
+        Self::Limited { schedule, uses }
     }
 
     pub fn is_permissioned(&self, env: &Env, strict: bool) -> bool {
         match self {
-            Self::Blacklisted { start, expiration } => {
+            Self::Blacklisted { schedule } => {
                 // If start time hasn't started yet, then it should return true
-                if let Some(start) = start {
+                if let Some(start) = &schedule.start {
                     if !start.get_time(&env.block).is_expired(&env.block) {
                         return true;
                     }
                 }
-                if let Some(expiration) = expiration {
+                if let Some(expiration) = &schedule.end {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
                     }
                 }
                 false
             }
-            Self::Limited {
-                start,
-                expiration,
-                uses,
-            } => {
-                if let Some(start) = start {
+            Self::Limited { schedule, uses } => {
+                if let Some(start) = &schedule.start {
                     if !start.get_time(&env.block).is_expired(&env.block) {
                         return true;
                     }
                 }
-                if let Some(expiration) = expiration {
+                if let Some(expiration) = &schedule.end {
                     if expiration.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
                     }
@@ -150,11 +136,12 @@ impl LocalPermission {
                 true
             }
             Self::Whitelisted {
-                start,
-                expiration,
+                schedule,
                 frequency,
                 last_used,
             } => {
+                let start = &schedule.start;
+                let expiration = &schedule.end;
                 if let Some(start) = start {
                     if !start.get_time(&env.block).is_expired(&env.block) {
                         return !strict;
@@ -184,27 +171,41 @@ impl LocalPermission {
 
     pub fn get_expiration(&self, env: Env) -> MillisecondsExpiration {
         match self {
-            Self::Blacklisted { expiration, .. } => {
-                expiration.clone().unwrap_or_default().get_time(&env.block)
-            }
-            Self::Limited { expiration, .. } => {
-                expiration.clone().unwrap_or_default().get_time(&env.block)
-            }
-            Self::Whitelisted { expiration, .. } => {
-                expiration.clone().unwrap_or_default().get_time(&env.block)
-            }
+            Self::Blacklisted { schedule } => schedule
+                .end
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block),
+            Self::Limited { schedule, .. } => schedule
+                .end
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block),
+            Self::Whitelisted { schedule, .. } => schedule
+                .end
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block),
         }
     }
 
     pub fn get_start_time(&self, env: Env) -> MillisecondsExpiration {
         match self {
-            Self::Blacklisted { start, .. } => {
-                start.clone().unwrap_or_default().get_time(&env.block)
-            }
-            Self::Limited { start, .. } => start.clone().unwrap_or_default().get_time(&env.block),
-            Self::Whitelisted { start, .. } => {
-                start.clone().unwrap_or_default().get_time(&env.block)
-            }
+            Self::Blacklisted { schedule } => schedule
+                .start
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block),
+            Self::Limited { schedule, .. } => schedule
+                .start
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block),
+            Self::Whitelisted { schedule, .. } => schedule
+                .start
+                .clone()
+                .unwrap_or_default()
+                .get_time(&env.block),
         }
     }
 
@@ -216,67 +217,75 @@ impl LocalPermission {
         Ok(())
     }
 
-    pub fn validate_times(&self, env: &Env) -> Result<(), ContractError> {
+    pub fn validate_times(
+        &self,
+        env: &Env,
+    ) -> Result<(Milliseconds, Option<Milliseconds>), ContractError> {
         let (start, expiration) = match self {
-            Self::Blacklisted { start, expiration }
-            | Self::Limited {
-                start, expiration, ..
-            }
-            | Self::Whitelisted {
-                start, expiration, ..
-            } => (start, expiration),
+            Self::Blacklisted { schedule } => (schedule.start.clone(), schedule.end.clone()),
+            Self::Limited { schedule, .. } => (schedule.start.clone(), schedule.end.clone()),
+            Self::Whitelisted { schedule, .. } => (schedule.start.clone(), schedule.end.clone()),
         };
 
-        if let (Some(start), Some(expiration)) = (start, expiration) {
-            let start_time = start.get_time(&env.block);
-            let exp_time = expiration.get_time(&env.block);
-            // Check if start time is after current time
-            if start_time.is_expired(&env.block) {
-                return Err(ContractError::StartTimeInThePast {
-                    current_time: env.block.time.seconds(),
-                    current_block: env.block.height,
-                });
-            }
+        let start = start
+            .map(|s| s.get_time(&env.block))
+            .unwrap_or(Milliseconds::from_nanos(env.block.time.nanos())); // Defaults to current time
+        let end = expiration.map(|e| e.get_time(&env.block));
 
+        // Check if start time is after current time
+        if start.is_in_past(&env.block) {
+            return Err(ContractError::StartTimeInThePast {
+                current_time: env.block.time.seconds(),
+                current_block: env.block.height,
+            });
+        }
+
+        if let Some(end) = end {
             // Check if expiration time is after current time
-            if exp_time.is_expired(&env.block) {
+            if end.is_expired(&env.block) {
                 return Err(ContractError::ExpirationInPast {});
             }
-
             // Check if start time is before expiration time
-            if start_time > exp_time {
+            if start > end {
                 return Err(ContractError::StartTimeAfterEndTime {});
             }
         }
-        Ok(())
+
+        Ok((start, end))
     }
 }
 
 impl fmt::Display for LocalPermission {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let self_as_string = match self {
-            Self::Blacklisted { start, expiration } => match (start, expiration) {
-                (Some(s), Some(e)) => format!("blacklisted starting from:{s} until:{e}"),
-                (Some(s), None) => format!("blacklisted starting from:{s}"),
-                (None, Some(e)) => format!("blacklisted until:{e}"),
-                (None, None) => "blacklisted".to_string(),
-            },
-            Self::Limited {
-                start,
-                expiration,
-                uses,
-            } => match (start, expiration) {
-                (Some(s), Some(e)) => format!("limited starting from:{s} until:{e} uses:{uses}"),
-                (Some(s), None) => format!("limited starting from:{s} uses:{uses}"),
-                (None, Some(e)) => format!("limited until:{e} uses:{uses}"),
-                (None, None) => format!("limited uses:{uses}"),
-            },
+            Self::Blacklisted { schedule } => {
+                match (schedule.start.clone(), schedule.end.clone()) {
+                    (Some(s), Some(e)) => format!("blacklisted starting from:{s} until:{e}"),
+                    (Some(s), None) => format!("blacklisted starting from:{s}"),
+                    (None, Some(e)) => format!("blacklisted until:{e}"),
+                    (None, None) => "blacklisted".to_string(),
+                }
+            }
+            Self::Limited { schedule, uses } => {
+                match (schedule.start.clone(), schedule.end.clone()) {
+                    (Some(s), Some(e)) => {
+                        format!("limited starting from:{s} until:{e} uses:{uses}")
+                    }
+                    (Some(s), None) => format!("limited starting from:{s} uses:{uses}"),
+                    (None, Some(e)) => format!("limited until:{e} uses:{uses}"),
+                    (None, None) => format!("limited uses:{uses}"),
+                }
+            }
             Self::Whitelisted {
-                start,
-                expiration,
+                schedule,
                 frequency,
                 last_used,
-            } => match (start, expiration, frequency, last_used) {
+            } => match (
+                schedule.start.clone(),
+                schedule.end.clone(),
+                frequency,
+                last_used,
+            ) {
                 (Some(s), Some(e), Some(f), Some(l)) => {
                     format!("whitelisted starting from:{s} until:{e} frequency:{f} last_used:{l}")
                 }
@@ -350,10 +359,14 @@ impl Permission {
             }
         }
     }
-    pub fn validate_times(&self, env: &Env) -> Result<(), ContractError> {
+    pub fn validate_times(
+        &self,
+        env: &Env,
+    ) -> Result<(Milliseconds, Option<Milliseconds>), ContractError> {
         match self {
             Self::Local(local_permission) => local_permission.validate_times(env),
-            Self::Contract(_) => Ok(()),
+            //TODO these are default values
+            Self::Contract(_) => Ok((Milliseconds::from_nanos(env.block.time.nanos()), None)),
         }
     }
 }
@@ -371,6 +384,7 @@ impl fmt::Display for Permission {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::expiration::Expiry;
     use crate::common::Milliseconds;
 
     use cosmwasm_std::testing::mock_env;
@@ -384,12 +398,14 @@ mod tests {
         let current_time = env.block.time.seconds();
 
         let permission = LocalPermission::Whitelisted {
-            start: Some(Expiry::AtTime(
-                Milliseconds(start_offset).plus_seconds(current_time),
-            )),
-            expiration: Some(Expiry::AtTime(
-                Milliseconds(exp_offset).plus_seconds(current_time),
-            )),
+            schedule: Schedule::new(
+                Some(Expiry::AtTime(
+                    Milliseconds(start_offset).plus_seconds(current_time),
+                )),
+                Some(Expiry::AtTime(
+                    Milliseconds(exp_offset).plus_seconds(current_time),
+                )),
+            ),
             frequency: None,
             last_used: None,
         };
@@ -424,12 +440,14 @@ mod tests {
         let current_time = env.block.time.seconds();
 
         let permission = LocalPermission::Whitelisted {
-            start: Some(Expiry::AtTime(
-                Milliseconds(start_offset).plus_seconds(current_time),
-            )),
-            expiration: Some(Expiry::AtTime(
-                Milliseconds(exp_offset).plus_seconds(current_time),
-            )),
+            schedule: Schedule::new(
+                Some(Expiry::AtTime(
+                    Milliseconds(start_offset).plus_seconds(current_time),
+                )),
+                Some(Expiry::AtTime(
+                    Milliseconds(exp_offset).plus_seconds(current_time),
+                )),
+            ),
             frequency: None,
             last_used: None,
         };
@@ -444,8 +462,7 @@ mod tests {
         let env = mock_env();
 
         let permission = LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             frequency: None,
             last_used: None,
         };
@@ -457,33 +474,39 @@ mod tests {
     #[rstest]
     fn test_only_start_time() {
         let env = mock_env();
-        let current_time = env.block.time.seconds();
+        let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
         let permission = LocalPermission::Whitelisted {
-            start: Some(Expiry::AtTime(Milliseconds(current_time + 100))),
-            expiration: None,
+            schedule: Schedule::new(
+                Some(Expiry::AtTime(
+                    current_time.plus_milliseconds(Milliseconds(100000)),
+                )),
+                None,
+            ),
             frequency: None,
             last_used: None,
         };
 
-        let result = permission.validate_times(&env);
-        assert!(result.is_ok());
+        permission.validate_times(&env).unwrap();
     }
 
     #[rstest]
     fn test_only_expiration_time() {
         let env = mock_env();
-        let current_time = env.block.time.seconds();
+        let current_time = Milliseconds::from_seconds(env.block.time.seconds());
 
         let permission = LocalPermission::Whitelisted {
-            start: None,
-            expiration: Some(Expiry::AtTime(Milliseconds(current_time + 100))),
+            schedule: Schedule::new(
+                None,
+                Some(Expiry::AtTime(
+                    current_time.plus_milliseconds(Milliseconds(100000)),
+                )),
+            ),
             frequency: None,
             last_used: None,
         };
 
-        let result = permission.validate_times(&env);
-        assert!(result.is_ok());
+        permission.validate_times(&env).unwrap();
     }
 
     #[rstest]
@@ -536,10 +559,12 @@ mod tests {
 
         // Create permission with provided parameters
         let permission = LocalPermission::Whitelisted {
-            start: start_offset
-                .map(|offset| Expiry::AtTime(Milliseconds(offset).plus_seconds(current_time))),
-            expiration: exp_offset
-                .map(|offset| Expiry::AtTime(Milliseconds(offset).plus_seconds(current_time))),
+            schedule: Schedule::new(
+                start_offset
+                    .map(|offset| Expiry::AtTime(Milliseconds(offset).plus_seconds(current_time))),
+                exp_offset
+                    .map(|offset| Expiry::AtTime(Milliseconds(offset).plus_seconds(current_time))),
+            ),
             frequency: frequency_ms.map(Milliseconds),
             last_used: if frequency_ms.is_some() {
                 Some(Milliseconds::from_seconds(current_time - 200)) // Set last used to 200ms ago
@@ -573,8 +598,7 @@ mod tests {
         let env = mock_env();
 
         let permission = LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             frequency: Some(Milliseconds(frequency_ms)),
             last_used: Some(Milliseconds::from_seconds(last_used)),
         };
@@ -609,12 +633,14 @@ mod tests {
         let current_time = env.block.time.seconds();
 
         let permission = LocalPermission::Whitelisted {
-            start: Some(Expiry::AtTime(
-                Milliseconds(start_offset).plus_seconds(current_time),
-            )),
-            expiration: Some(Expiry::AtTime(
-                Milliseconds(exp_offset).plus_seconds(current_time),
-            )),
+            schedule: Schedule::new(
+                Some(Expiry::AtTime(
+                    Milliseconds(start_offset).plus_seconds(current_time),
+                )),
+                Some(Expiry::AtTime(
+                    Milliseconds(exp_offset).plus_seconds(current_time),
+                )),
+            ),
             frequency: None,
             last_used: None,
         };

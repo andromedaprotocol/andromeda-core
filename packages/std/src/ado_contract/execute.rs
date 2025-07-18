@@ -542,7 +542,10 @@ mod tests {
 
     mod permissions_migration {
         use super::*;
-        use crate::ado_base::permissioning::{LocalPermission, Permission};
+        use crate::{
+            ado_base::permissioning::{LocalPermission, Permission},
+            common::schedule::Schedule,
+        };
 
         #[test]
         fn test_permissions_migration() {
@@ -571,8 +574,7 @@ mod tests {
 
             // Set up a test permission
             let permission = Permission::Local(LocalPermission::Whitelisted {
-                start: None,
-                expiration: None,
+                schedule: Schedule::new(None, None),
                 frequency: None,
                 last_used: None,
             });

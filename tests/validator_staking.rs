@@ -1,7 +1,7 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::{amp::AndrAddr, common::schedule::Schedule};
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
 use andromeda_validator_staking::mock::{
@@ -271,7 +271,9 @@ fn test_restake() {
             "restake".to_string(),
             andromeda_std::ado_base::permissioning::Permission::Local(
                 andromeda_std::ado_base::permissioning::LocalPermission::whitelisted(
-                    None, None, None, None,
+                    Schedule::new(None, None),
+                    None,
+                    None,
                 ),
             ),
         )

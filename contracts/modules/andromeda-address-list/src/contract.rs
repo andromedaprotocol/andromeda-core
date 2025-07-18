@@ -11,7 +11,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::AndrAddr,
     andr_execute_fn,
-    common::{context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, encode_binary, expiration::Expiry, schedule::Schedule},
     error::ContractError,
 };
 
@@ -42,15 +42,13 @@ pub fn instantiate(
 
         // If the permission is a whitelist, make sure to set last used time as none
         actor_permission.permission = if let LocalPermission::Whitelisted {
-            start,
-            expiration,
+            schedule,
             frequency,
             ..
         } = actor_permission.permission
         {
             LocalPermission::Whitelisted {
-                start,
-                expiration,
+                schedule,
                 frequency,
                 last_used: None,
             }
@@ -69,7 +67,11 @@ pub fn instantiate(
         deps.storage,
         PERMISSION_ACTORS_ACTION.to_string(),
         info.sender.clone(),
-        Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+        Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )),
     )?;
 
     let inst_resp = ADOContract::default().instantiate(
@@ -117,7 +119,11 @@ fn execute_authorize_permission_actors(
             deps.storage,
             PERMISSION_ACTORS_ACTION.to_string(),
             verified_actor,
-            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+            Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )),
         )
     })?;
 
@@ -127,14 +133,30 @@ fn execute_authorize_permission_actors(
 fn execute_permission_actors(
     ctx: ExecuteContext,
     actors: Vec<AndrAddr>,
-    permission: LocalPermission,
+    mut permission: LocalPermission,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
 
     ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
-    permission.validate_times(&env)?;
+    let (start, end) = permission.validate_times(&env)?;
+    let verified_schedule = Schedule::new(Some(Expiry::AtTime(start)), end.map(Expiry::AtTime));
+
     for actor in actors.clone() {
         let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+        permission = match permission {
+            LocalPermission::Whitelisted {
+                frequency,
+                last_used,
+                ..
+            } => LocalPermission::whitelisted(verified_schedule.clone(), frequency, last_used),
+            LocalPermission::Blacklisted { .. } => {
+                LocalPermission::blacklisted(verified_schedule.clone())
+            }
+            LocalPermission::Limited { uses, .. } => {
+                LocalPermission::limited(verified_schedule.clone(), uses)
+            }
+        };
+
         add_actors_permission(deps.storage, verified_actor, &permission)?;
     }
     let actors_str = actors

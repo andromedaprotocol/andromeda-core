@@ -12,7 +12,9 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     andr_execute_fn,
-    common::{encode_binary, expiration::get_and_validate_start_time, Milliseconds},
+    common::{
+        encode_binary, expiration::get_and_validate_start_time, schedule::Schedule, Milliseconds,
+    },
     error::ContractError,
 };
 
@@ -113,7 +115,11 @@ pub fn instantiate(
                 deps.storage,
                 SUBMIT_FORM_ACTION,
                 addr,
-                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             )?;
         }
     }

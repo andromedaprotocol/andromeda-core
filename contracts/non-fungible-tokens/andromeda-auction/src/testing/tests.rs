@@ -1231,7 +1231,7 @@ fn execute_claim_permission() {
         andromeda_std::ado_base::permissioning::PermissioningMessage::SetPermission {
             actors: vec![AndrAddr::from_string(owner.to_string())],
             action: "Claim".to_string(),
-            permission: Permission::Local(LocalPermission::blacklisted(None, None)),
+            permission: Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None))),
         },
     );
 

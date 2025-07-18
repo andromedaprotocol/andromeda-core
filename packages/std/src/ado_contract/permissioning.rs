@@ -4,7 +4,7 @@ use crate::os::aos_querier::AOSQuerier;
 use crate::{
     ado_base::permissioning::{Permission, PermissionInfo, PermissioningMessage},
     amp::{messages::AMPPkt, AndrAddr},
-    common::{context::ExecuteContext, OrderBy},
+    common::{context::ExecuteContext, expiration::Expiry, schedule::Schedule, OrderBy},
     error::ContractError,
 };
 use cosmwasm_schema::cw_serde;
@@ -356,17 +356,35 @@ impl ADOContract {
         // Last used should always be set at None in the beginning
         permission = match permission {
             Permission::Local(LocalPermission::Whitelisted {
-                start,
-                expiration,
+                schedule,
                 frequency,
                 ..
-            }) => Permission::Local(LocalPermission::whitelisted(
-                start, expiration, frequency, None,
-            )),
+            }) => Permission::Local(LocalPermission::whitelisted(schedule, frequency, None)),
             _ => permission,
         };
 
-        permission.validate_times(&ctx.env)?;
+        let (start, end) = permission.validate_times(&ctx.env)?;
+        let verified_schedule = Schedule::new(Some(Expiry::AtTime(start)), end.map(Expiry::AtTime));
+
+        match permission {
+            Permission::Local(LocalPermission::Whitelisted {
+                frequency,
+                last_used,
+                ..
+            }) => Permission::Local(LocalPermission::whitelisted(
+                verified_schedule,
+                frequency,
+                last_used,
+            )),
+            Permission::Local(LocalPermission::Blacklisted { .. }) => {
+                Permission::Local(LocalPermission::blacklisted(verified_schedule))
+            }
+            Permission::Local(LocalPermission::Limited { uses, .. }) => {
+                Permission::Local(LocalPermission::limited(verified_schedule, uses))
+            }
+            Permission::Contract(ref andr_addr) => Permission::Contract(andr_addr.clone()),
+        };
+
         for actor_addr in actor_addrs.clone() {
             Self::set_permission(
                 ctx.deps.storage,
@@ -655,7 +673,7 @@ pub mod migrate {
     use cosmwasm_schema::cw_serde;
     use cw_storage_plus::Map;
 
-    use crate::common::expiration::Expiry;
+    use crate::common::{expiration::Expiry, schedule::Schedule};
 
     use super::*;
 
@@ -721,11 +739,13 @@ pub mod migrate {
         /// Converts a v1 permission to a modern permission
         fn try_from(value: PermissionV1) -> Result<Self, Self::Error> {
             match value {
-                PermissionV1::Whitelisted(exp) => Ok(Self::whitelisted(None, exp, None, None)),
-                PermissionV1::Limited { expiration, uses } => {
-                    Ok(Self::limited(None, expiration, uses))
+                PermissionV1::Whitelisted(exp) => {
+                    Ok(Self::whitelisted(Schedule::new(None, exp), None, None))
                 }
-                PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(None, exp)),
+                PermissionV1::Limited { expiration, uses } => {
+                    Ok(Self::limited(Schedule::new(None, expiration), uses))
+                }
+                PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(Schedule::new(None, exp))),
             }
         }
     }
@@ -796,8 +816,7 @@ pub mod migrate {
                 actor: "actor4".to_string(),
                 action: "action".to_string(),
                 permission: Permission::Local(LocalPermission::Whitelisted {
-                    start: None,
-                    expiration: None,
+                    schedule: Schedule::new(None, None),
                     frequency: None,
                     last_used: None,
                 }),
@@ -848,7 +867,7 @@ mod tests {
     use crate::{
         ado_base::AndromedaMsg,
         amp::messages::AMPPkt,
-        common::{expiration::Expiry, MillisecondsExpiration},
+        common::{expiration::Expiry, schedule::Schedule, MillisecondsExpiration},
     };
 
     use super::*;
@@ -875,8 +894,7 @@ mod tests {
 
         assert!(res.is_err());
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             frequency: None,
             last_used: None,
         });
@@ -893,8 +911,7 @@ mod tests {
 
         assert!(res.is_err());
         let permission = Permission::Local(LocalPermission::Limited {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             uses: 1,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
@@ -920,8 +937,7 @@ mod tests {
             .unwrap();
         // Test Blacklisted
         let permission = Permission::Local(LocalPermission::Blacklisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -948,8 +964,7 @@ mod tests {
 
         // Test Blacklisted
         let permission = Permission::Local(LocalPermission::Blacklisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -974,8 +989,7 @@ mod tests {
         assert!(res.is_err());
 
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             frequency: None,
             last_used: None,
         });
@@ -1017,8 +1031,7 @@ mod tests {
             actors: vec![AndrAddr::from_string("actor")],
             action: "action".to_string(),
             permission: Permission::Local(LocalPermission::Whitelisted {
-                start: None,
-                expiration: None,
+                schedule: Schedule::new(None, None),
                 frequency: None,
                 last_used: None,
             }),
@@ -1119,8 +1132,7 @@ mod tests {
 
         // Test Whitelist
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: Some(expiration.clone()),
+            schedule: Schedule::new(None, Some(expiration.clone())),
             frequency: None,
             last_used: None,
         });
@@ -1137,8 +1149,7 @@ mod tests {
         env.block.time = MillisecondsExpiration::from_seconds(0).into();
         // Test Blacklist
         let permission = Permission::Local(LocalPermission::Blacklisted {
-            start: None,
-            expiration: Some(expiration.clone()),
+            schedule: Schedule::new(None, Some(expiration.clone())),
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -1202,15 +1213,13 @@ mod tests {
 
         let permission = if is_whitelisted {
             Permission::Local(LocalPermission::Whitelisted {
-                start,
-                expiration: None,
+                schedule: Schedule::new(start, None),
                 frequency: None,
                 last_used: None,
             })
         } else {
             Permission::Local(LocalPermission::Blacklisted {
-                start,
-                expiration: None,
+                schedule: Schedule::new(start, None),
             })
         };
 
@@ -1288,8 +1297,7 @@ mod tests {
 
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             frequency: None,
             last_used: None,
         });
@@ -1407,8 +1415,7 @@ mod tests {
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone())
             .with_ctx(AMPPkt::new(info.sender, previous_sender.clone(), vec![]));
         let permission = Permission::Local(LocalPermission::Limited {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             uses: 1,
         });
         ADOContract::set_permission(context.deps.storage, action, &actor, permission.clone())
@@ -1440,7 +1447,10 @@ mod tests {
         assert_eq!(previous_sender_permission, Some(permission));
         assert_eq!(
             actor_permission,
-            Some(Permission::Local(LocalPermission::limited(None, None, 0)))
+            Some(Permission::Local(LocalPermission::limited(
+                Schedule::new(None, None),
+                0,
+            )))
         );
     }
 
@@ -1470,7 +1480,11 @@ mod tests {
         .unwrap());
 
         let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
-        let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None));
+        let permission = Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        ));
         ADOContract::set_permission(context.deps.storage, action, actor.clone(), permission)
             .unwrap();
 
@@ -1546,7 +1560,11 @@ mod tests {
 
         assert!(permissions.is_empty());
 
-        let permission = Permission::Local(LocalPermission::whitelisted(None, None, None, None));
+        let permission = Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        ));
         let action = "action";
 
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
@@ -1563,19 +1581,27 @@ mod tests {
         let multi_permissions = vec![
             (
                 "action2".to_string(),
-                Permission::Local(LocalPermission::blacklisted(None, None)),
+                Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None))),
             ),
             (
                 "action3".to_string(),
-                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             ),
             (
                 "action4".to_string(),
-                Permission::Local(LocalPermission::blacklisted(None, None)),
+                Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None))),
             ),
             (
                 "action5".to_string(),
-                Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             ),
         ];
 

@@ -1,5 +1,6 @@
 use crate::state::REGISTRY;
 use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
+use andromeda_std::common::schedule::Schedule;
 use andromeda_std::os::ibc_registry::{
     verify_denom, AllDenomInfoResponse, DenomInfo, DenomInfoResponse, ExecuteMsg, IBCDenomInfo,
     InstantiateMsg, QueryMsg,
@@ -56,7 +57,11 @@ pub fn instantiate(
         deps.storage,
         STORE_DENOM_INFO,
         service_address.clone(),
-        Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+        Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )),
     )?;
 
     Ok(resp.add_attribute("service_address", service_address))

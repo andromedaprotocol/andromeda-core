@@ -154,7 +154,7 @@ fn test_permission_frequency() {
             &mut router,
             owner.clone(),
             vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::blacklisted(None, None),
+            LocalPermission::blacklisted(Schedule::new(None, None)),
         )
         .unwrap();
 
@@ -196,8 +196,7 @@ fn test_permission_frequency() {
             owner.clone(),
             vec![AndrAddr::from_string(buyer.clone())],
             LocalPermission::whitelisted(
-                None,
-                None,
+                Schedule::new(None, None),
                 // 1 hour cooldown for each action
                 Some(Milliseconds::from_seconds(3600)),
                 // Last used 1 minute ago
@@ -222,8 +221,7 @@ fn test_permission_frequency() {
 
     // Set valid frequency and last used
     let valid_permission = LocalPermission::whitelisted(
-        None,
-        None,
+        Schedule::new(None, None),
         // 1 hour cooldown for each action
         Some(Milliseconds::from_seconds(3600)),
         // Last used 2 hours ago
@@ -244,7 +242,19 @@ fn test_permission_frequency() {
     let query_msg = mock_query_permission_msg(buyer.clone());
 
     let query: ActorPermissionResponse = address_list.query(&router, query_msg);
-    assert_eq!(query.permission, valid_permission);
+    let expected_permission = LocalPermission::Whitelisted {
+        schedule: Schedule::new(
+            Some(andromeda_std::common::expiration::Expiry::AtTime(
+                Milliseconds(1571797479879),
+            )),
+            None,
+        ),
+        frequency: Some(Milliseconds::from_seconds(3600)),
+        last_used: Some(Milliseconds::from_seconds(
+            current_time.minus_hours(2).seconds(),
+        )),
+    };
+    assert_eq!(query.permission, expected_permission);
 
     // Permission the marketplace contract for it to be able to call the address list
     address_list
@@ -253,7 +263,11 @@ fn test_permission_frequency() {
             owner.clone(),
             vec![AndrAddr::from_string("./marketplace")],
             PERMISSION_ACTORS_ACTION.to_string(),
-            Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
+            Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )),
         )
         .unwrap();
 
@@ -273,18 +287,19 @@ fn test_permission_frequency() {
     let balance = router.wrap().query_balance(owner, "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::new(100u128));
 
-    let updated_permission = LocalPermission::whitelisted(
-        None,
-        None,
-        // 1 hour cooldown for each action
-        Some(Milliseconds::from_seconds(3600)),
-        // Last used now
-        Some(Milliseconds::from_seconds(current_time.seconds())),
-    );
-
     // Query the permission
     let query_msg = mock_query_permission_msg(buyer.clone());
 
     let query: ActorPermissionResponse = address_list.query(&router, query_msg);
-    assert_eq!(query.permission, updated_permission);
+    let expected_permission = LocalPermission::Whitelisted {
+        schedule: Schedule::new(
+            Some(andromeda_std::common::expiration::Expiry::AtTime(
+                Milliseconds(1571797479879),
+            )),
+            None,
+        ),
+        frequency: Some(Milliseconds::from_seconds(3600)),
+        last_used: Some(Milliseconds::from_seconds(current_time.seconds())),
+    };
+    assert_eq!(query.permission, expected_permission);
 }
