@@ -225,7 +225,11 @@ fn test_instantiate_with_multiple_authorized_cw20_addresses() {
             ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, raw_addr).unwrap();
         assert_eq!(
             permission,
-            Some(Permission::Local(LocalPermission::whitelisted(None, None)))
+            Some(Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )))
         );
     }
 
@@ -1027,7 +1031,11 @@ fn test_execute_authorize_cw20_contract() {
     .unwrap();
     assert_eq!(
         permission,
-        Some(Permission::Local(LocalPermission::whitelisted(None, None)))
+        Some(Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )))
     );
 
     // Test successful authorization with expiration
@@ -1061,8 +1069,9 @@ fn test_execute_authorize_cw20_contract() {
     assert_eq!(
         permission,
         Some(Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, Some(expiration)),
             None,
-            Some(expiration),
+            None,
         )))
     );
 }
@@ -1091,7 +1100,11 @@ fn test_execute_deauthorize_cw20_contract() {
     .unwrap();
     assert_eq!(
         permission,
-        Some(Permission::Local(LocalPermission::whitelisted(None, None)))
+        Some(Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )))
     );
 
     // Now deauthorize the CW20 contract

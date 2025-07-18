@@ -5,6 +5,8 @@ use andromeda_std::{
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Addr;
 
+pub const PERMISSION_ACTORS_ACTION: &str = "PermissionActors";
+
 #[andr_instantiate]
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -20,8 +22,10 @@ pub struct ActorPermission {
 #[andr_exec]
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Adds an actor key and a permission value
     #[attrs(restricted, nonpayable)]
+    AuthorizePermissionActorsAction { actors: Vec<AndrAddr> },
+    /// Adds an actor key and a permission value
+    #[attrs(nonpayable)]
     PermissionActors {
         actors: Vec<AndrAddr>,
         permission: LocalPermission,

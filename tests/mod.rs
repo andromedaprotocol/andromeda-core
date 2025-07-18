@@ -15,6 +15,8 @@ mod kernel;
 mod cw20_staking;
 
 #[cfg(test)]
+mod address_list;
+#[cfg(test)]
 mod lockdrop;
 
 #[cfg(test)]
