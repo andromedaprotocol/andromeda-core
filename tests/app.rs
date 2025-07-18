@@ -1,7 +1,7 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
-use andromeda_std::os::vfs::convert_component_name;
+use andromeda_std::{amp::AndrAddr, os::vfs::convert_component_name};
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
 use cosmwasm_std::{coin, to_json_binary};
 
@@ -19,14 +19,13 @@ fn test_app() {
         ])
         .build(&mut router);
     let owner = andr.get_wallet("owner");
-
     let app_name = "Simple App";
 
     // Generate App Components
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -53,7 +52,6 @@ fn test_app() {
         andr.kernel.addr(),
         None,
     );
-
     let components = app.query_components(&router);
     assert_eq!(components, app_components);
 

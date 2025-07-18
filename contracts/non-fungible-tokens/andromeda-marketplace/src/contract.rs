@@ -1,11 +1,9 @@
-use crate::state::{
-    read_sale_infos, sale_infos, SaleInfo, TokenSaleState, NEXT_SALE_ID, TOKEN_SALE_STATE,
-};
+use crate::state::{read_sale_infos, sale_infos, TokenSaleState, NEXT_SALE_ID, TOKEN_SALE_STATE};
 use std::vec;
 
 use andromeda_non_fungible_tokens::marketplace::{
     Cw20HookMsg, Cw721HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, SaleIdsResponse,
-    SaleStateResponse, Status,
+    SaleStateResponse, SalesInfoForAddressResponse, Status,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -19,15 +17,18 @@ use andromeda_std::{
             AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
         },
         encode_binary,
-        expiration::{expiration_from_milliseconds, get_and_validate_start_time, Expiry},
         rates::{get_tax_amount, get_tax_amount_cw20},
-        Funds, Milliseconds, MillisecondsDuration, OrderBy,
+        schedule::Schedule,
+        Funds, Milliseconds, OrderBy,
     },
     error::ContractError,
 };
 
 use cw20::{Cw20Coin, Cw20ReceiveMsg};
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, Cw721ReceiveMsg, OwnerOfResponse};
+use cw721::{
+    msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse},
+    receiver::Cw721ReceiveMsg,
+};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -36,8 +37,6 @@ use cosmwasm_std::{
     QuerierWrapper, QueryRequest, Reply, Response, StdError, Storage, SubMsg, Uint128, WasmMsg,
     WasmQuery,
 };
-
-use cw_utils::Expiration;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -124,8 +123,7 @@ fn handle_receive_cw721(
         Cw721HookMsg::StartSale {
             price,
             coin_denom,
-            start_time,
-            duration,
+            schedule,
             recipient,
         } => execute_start_sale(
             ctx.deps,
@@ -134,9 +132,8 @@ fn handle_receive_cw721(
             msg.token_id,
             ctx.info.sender.to_string(),
             price,
-            start_time,
+            schedule,
             coin_denom,
-            duration,
             recipient,
         ),
     }?;
@@ -150,7 +147,7 @@ pub fn handle_receive_cw20(
     mut ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ADOContract::default().is_permissioned(
+    ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_CW20_ACTION,
@@ -193,9 +190,8 @@ fn execute_start_sale(
     token_id: String,
     token_address: String,
     price: Uint128,
-    start_time: Option<Expiry>,
+    schedule: Schedule,
     coin_denom: Asset,
-    duration: Option<MillisecondsDuration>,
     recipient: Option<Recipient>,
 ) -> Result<Response, ContractError> {
     let (coin_denom, uses_cw20) = coin_denom.get_verified_asset(deps.branch(), env.clone())?;
@@ -203,22 +199,7 @@ fn execute_start_sale(
     // Price can't be zero
     ensure!(price > Uint128::zero(), ContractError::InvalidZeroAmount {});
 
-    // If start time wasn't provided, it will be set as the current_time
-    let (start_expiration, _current_time) = get_and_validate_start_time(&env, start_time.clone())?;
-
-    let end_expiration = if let Some(duration) = duration {
-        ensure!(!duration.is_zero(), ContractError::InvalidExpiration {});
-        expiration_from_milliseconds(
-            start_time
-                // If start time isn't provided, it is set one second in advance from the current time
-                .unwrap_or(Expiry::FromNow(Milliseconds::from_seconds(1)))
-                .get_time(&env.block)
-                .plus_milliseconds(duration),
-        )?
-    } else {
-        // If no duration is provided, the exipration will be set as Never
-        Expiration::Never {}
-    };
+    let (start_time, end_time) = schedule.validate(&env.block)?;
 
     let sale_id = get_and_increment_next_sale_id(deps.storage, &token_id, &token_address)?;
 
@@ -233,8 +214,8 @@ fn execute_start_sale(
             token_address: token_address.clone(),
             price,
             status: Status::Open,
-            start_time: start_expiration,
-            end_time: end_expiration,
+            start_time,
+            end_time,
             uses_cw20,
             recipient,
         },
@@ -247,8 +228,11 @@ fn execute_start_sale(
         attr("sale_id", sale_id.to_string()),
         attr("token_id", token_id),
         attr("token_address", token_address),
-        attr("start_time", start_expiration.to_string()),
-        attr("end_time", end_expiration.to_string()),
+        attr("start_time", start_time.to_string()),
+        attr(
+            "end_time",
+            end_time.unwrap_or(Milliseconds::zero()).to_string(),
+        ),
         attr("uses_cw20", uses_cw20.to_string()),
     ]))
 }
@@ -275,7 +259,7 @@ fn execute_update_sale(
 
     // Only token owner is authorized to update the sale
     ensure!(
-        info.sender == token_sale_state.owner,
+        info.sender.as_str() == token_sale_state.owner,
         ContractError::Unauthorized {}
     );
 
@@ -320,10 +304,12 @@ fn execute_buy(
     match token_sale_state.status {
         Status::Open => {
             // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
-            ensure!(
-                !token_sale_state.end_time.is_expired(&env.block),
-                ContractError::SaleExpired {}
-            );
+            if let Some(end_time) = token_sale_state.end_time {
+                ensure!(
+                    !end_time.is_expired(&env.block),
+                    ContractError::SaleExpired {}
+                );
+            }
 
             // If start time hasn't expired, it means that the sale hasn't started yet.
             ensure!(
@@ -338,7 +324,7 @@ fn execute_buy(
 
     // The owner can't buy his own NFT
     ensure!(
-        token_sale_state.owner != info.sender,
+        token_sale_state.owner != info.sender.as_str(),
         ContractError::TokenOwnerCannotBuy {}
     );
 
@@ -359,7 +345,7 @@ fn execute_buy(
     ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
-        token_owner == env.contract.address,
+        token_owner == env.contract.address.as_str(),
         ContractError::SaleAlreadyConducted {}
     );
 
@@ -461,11 +447,13 @@ fn execute_buy_cw20(
 
     match token_sale_state.status {
         Status::Open => {
-            // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
-            ensure!(
-                !token_sale_state.end_time.is_expired(&env.block),
-                ContractError::SaleExpired {}
-            );
+            if let Some(end_time) = token_sale_state.end_time {
+                // Make sure the end time isn't expired, if it is we'll return an error and change the Status to expired in case if it's set as Open or Pending
+                ensure!(
+                    !end_time.is_expired(&env.block),
+                    ContractError::SaleExpired {}
+                );
+            }
 
             // If start time hasn't expired, it means that the sale hasn't started yet.
             ensure!(
@@ -493,7 +481,7 @@ fn execute_buy_cw20(
     ensure!(
         // If this is false then the token is no longer held by the contract so the token has been
         // claimed.
-        token_owner == env.contract.address,
+        token_owner == env.contract.address.as_str(),
         ContractError::SaleAlreadyConducted {}
     );
 
@@ -588,7 +576,7 @@ fn execute_cancel(
         get_existing_token_sale_state(deps.storage, &token_id, &token_address)?;
 
     ensure!(
-        info.sender == token_sale_state.owner,
+        info.sender.as_str() == token_sale_state.owner,
         ContractError::Unauthorized {}
     );
 
@@ -727,7 +715,7 @@ fn get_existing_token_sale_state(
     token_address: &str,
 ) -> Result<TokenSaleState, ContractError> {
     let key = token_id.to_owned() + token_address;
-    let latest_sale_id: Uint128 = match sale_infos().may_load(storage, &key)? {
+    let latest_sale_id: Uint128 = match sale_infos().may_load(storage, key)? {
         None => return Err(ContractError::SaleDoesNotExist {}),
         Some(sale_info) => *sale_info.last().unwrap(),
     };
@@ -747,13 +735,13 @@ fn get_and_increment_next_sale_id(
 
     let key = token_id.to_owned() + token_address;
 
-    let mut sale_info = sale_infos().load(storage, &key).unwrap_or_default();
+    let mut sale_info = sale_infos().load(storage, key.clone()).unwrap_or_default();
     sale_info.push(next_sale_id);
     if sale_info.token_address.is_empty() {
         token_address.clone_into(&mut sale_info.token_address);
         token_id.clone_into(&mut sale_info.token_id);
     }
-    sale_infos().save(storage, &key, &sale_info)?;
+    sale_infos().save(storage, key, &sale_info)?;
     Ok(next_sale_id)
 }
 
@@ -801,7 +789,7 @@ fn query_sale_ids(
     token_address: String,
 ) -> Result<SaleIdsResponse, ContractError> {
     let key = token_id + &token_address;
-    let sale_info = sale_infos().may_load(deps.storage, &key)?;
+    let sale_info = sale_infos().may_load(deps.storage, key)?;
     if let Some(sale_info) = sale_info {
         return Ok(SaleIdsResponse {
             sale_ids: sale_info.sale_ids,
@@ -815,8 +803,9 @@ pub fn query_sale_infos_for_address(
     token_address: String,
     start_after: Option<String>,
     limit: Option<u64>,
-) -> Result<Vec<SaleInfo>, ContractError> {
-    read_sale_infos(deps.storage, token_address, start_after, limit)
+) -> Result<SalesInfoForAddressResponse, ContractError> {
+    let sales_info = read_sale_infos(deps.storage, token_address, start_after, limit)?;
+    Ok(SalesInfoForAddressResponse { sales_info })
 }
 
 fn query_latest_sale_state(

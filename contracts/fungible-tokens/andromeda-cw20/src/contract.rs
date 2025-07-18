@@ -143,7 +143,9 @@ fn handle_transfer(
             let cw20_msg = if is_transfer_from {
                 Cw20ExecuteMsg::TransferFrom {
                     recipient,
-                    owner: owner.expect("Owner should be provided for TransferFrom"),
+                    owner: owner.ok_or(ContractError::new(
+                        "Owner should be provided for TransferFrom",
+                    ))?,
                     amount: remaining_amount,
                 }
             } else {
@@ -165,7 +167,9 @@ fn handle_transfer(
             let cw20_msg = if is_transfer_from {
                 Cw20ExecuteMsg::TransferFrom {
                     recipient,
-                    owner: owner.expect("Owner should be provided for TransferFrom"),
+                    owner: owner.ok_or(ContractError::new(
+                        "Owner should be provided for TransferFrom",
+                    ))?,
                     amount,
                 }
             } else {
@@ -275,7 +279,8 @@ fn handle_send(
                     contract,
                     amount: remaining_amount,
                     msg,
-                    owner: owner.expect("Owner should be provided for SendFrom"),
+                    owner: owner
+                        .ok_or(ContractError::new("Owner should be provided for SendFrom"))?,
                 }
             } else {
                 Cw20ExecuteMsg::Send {
@@ -300,7 +305,8 @@ fn handle_send(
                     contract,
                     amount,
                     msg,
-                    owner: owner.expect("Owner should be provided for SendFrom"),
+                    owner: owner
+                        .ok_or(ContractError::new("Owner should be provided for SendFrom"))?,
                 }
             } else {
                 Cw20ExecuteMsg::Send {

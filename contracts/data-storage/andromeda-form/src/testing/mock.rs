@@ -6,9 +6,10 @@ use andromeda_data_storage::form::{
 use andromeda_std::{
     amp::AndrAddr, error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
+use cosmwasm_std::Addr;
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockStorage},
+    testing::{message_info, mock_env, MockApi, MockStorage},
     Deps, DepsMut, MessageInfo, OwnedDeps, Response, Timestamp,
 };
 
@@ -25,11 +26,13 @@ pub fn valid_initialization(
     timestamp_nanos: u64,
 ) -> (MockDeps, MessageInfo, Response) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let schema_ado_address = deps.api.addr_make(schema_ado_address.as_str());
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
-        schema_ado_address,
+        schema_ado_address: AndrAddr::from_string(schema_ado_address.to_string()),
         authorized_addresses_for_submission,
         form_config,
         custom_key_for_notifications,
@@ -49,7 +52,8 @@ pub fn invalid_initialization(
     timestamp_nanos: u64,
 ) -> (MockDeps, MessageInfo, ContractError) {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let msg = InstantiateMsg {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -72,7 +76,7 @@ pub fn submit_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::SubmitForm { data };
-    let info = mock_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)
@@ -88,7 +92,8 @@ pub fn delete_submission(
         submission_id,
         wallet_address,
     };
-    let info = mock_info(sender, &[]);
+
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let env = mock_env();
     execute(deps, env, info, msg)
 }
@@ -105,7 +110,7 @@ pub fn edit_submission(
         wallet_address,
         data,
     };
-    let info = mock_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let env = mock_env();
     execute(deps, env, info, msg)
 }
@@ -116,7 +121,7 @@ pub fn open_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::OpenForm {};
-    let info = mock_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)
@@ -128,7 +133,7 @@ pub fn close_form(
     timestamp_nanos: u64,
 ) -> Result<Response, ContractError> {
     let msg = ExecuteMsg::CloseForm {};
-    let info = mock_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let mut env = mock_env();
     env.block.time = Timestamp::from_nanos(timestamp_nanos);
     execute(deps, env, info, msg)

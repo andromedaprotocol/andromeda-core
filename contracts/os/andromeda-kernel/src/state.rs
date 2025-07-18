@@ -1,6 +1,6 @@
 use andromeda_std::os::kernel::{ChannelInfo, Ics20PacketInfo, RefundData};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin};
+use cosmwasm_std::{Addr, Coin, Uint128};
 use cw_storage_plus::{Item, Map};
 
 pub const TRIGGER_KEY: &str = "trigger_key";
@@ -33,8 +33,6 @@ pub const CHANNEL_TO_CHAIN: Map<&str, String> = Map::new("kernel_channel_name");
 /// Used to store the most recent outgoing IBC hooks packet
 ///
 /// Removed when a reply is received for the packet
-pub const OUTGOING_IBC_HOOKS_PACKETS: Item<Vec<IBCHooksPacketSendState>> =
-    Item::new("OUTGOING_IBC_HOOKS_PACKETS");
 pub const OUTGOING_IBC_PACKETS: Map<(&String, u64), OutgoingPacket> =
     Map::new("outgoing_ibc_packets");
 pub const IBC_FUND_RECOVERY: Map<&Addr, Vec<Coin>> = Map::new("ibc_fund_recovery");
@@ -49,3 +47,6 @@ pub const CHANNEL_TO_EXECUTE_MSG: Map<(String, u64), Ics20PacketInfo> =
 
 /// Used to temporarily store the most recent ExecuteMsg with the corresponding Coin to be sent in a reply for ICS20 transfer
 pub const REFUND_DATA: Item<RefundData> = Item::new("refund_data");
+
+/// Used to differentiate between packets
+pub const TX_INDEX: Item<Uint128> = Item::new("tx_index");

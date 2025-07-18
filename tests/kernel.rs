@@ -4,25 +4,25 @@ use andromeda_finance::splitter::AddressPercent;
 use andromeda_fixed_amount_splitter::{
     fixed_amount_splitter_instantiate, FixedAmountSplitterContract,
 };
-use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg, MockSplitter,
-};
+use andromeda_std::amp::messages::AMPMsgConfig;
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     error::ContractError,
 };
-use andromeda_testing::{
-    mock::mock_app,
-    mock_builder::MockAndromedaBuilder,
-    mock_contract::{MockADO, MockContract},
-};
-use cosmwasm_std::{coin, Addr, Binary, Decimal};
-
-use andromeda_std::os::kernel::Cw20HookMsg;
-use andromeda_std::{amp::messages::AMPMsg, os};
-use andromeda_testing::{ado_deployer, InterchainTestEnv};
-use cosmwasm_std::{to_json_binary, Coin, Uint128};
+use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
+use andromeda_vfs::mock::mock_add_path;
+use cosmwasm_std::{coin, to_json_binary, Addr, ReplyOn, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
+
+use andromeda_splitter::mock::{
+    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg, MockSplitter,
+};
+use andromeda_std::{
+    amp::messages::AMPMsg,
+    os::{self, kernel::Cw20HookMsg},
+};
+use andromeda_testing::{ado_deployer, mock_contract::MockADO, InterchainTestEnv};
+use cosmwasm_std::{Binary, Coin, Decimal};
 use cw_orch::prelude::*;
 use rstest::*;
 use std::vec;
@@ -142,7 +142,7 @@ fn test_fixed_amount_splitter_local(#[case] with_message: bool) {
         .instantiate(
             fixed_amount_splitter_instantiate!(env.juno.aos, recipient, env.juno.denom),
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -172,10 +172,10 @@ fn test_fixed_amount_splitter_local(#[case] with_message: bool) {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(100000000),
                 denom: env.juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -214,7 +214,7 @@ fn test_fixed_amount_splitter_local_funds_mismatch() {
         .instantiate(
             fixed_amount_splitter_instantiate!(env.juno.aos, recipient, env.juno.denom),
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -237,10 +237,10 @@ fn test_fixed_amount_splitter_local_funds_mismatch() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(2), // Less than required
                 denom: env.juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap_err()
         .downcast()
@@ -284,7 +284,7 @@ fn test_fixed_amount_splitter_cw20(#[case] with_message: bool) {
                 owner: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -301,7 +301,7 @@ fn test_fixed_amount_splitter_cw20(#[case] with_message: bool) {
                     cw20_token.address().unwrap().to_string()
                 ),
                 None,
-                None,
+                &[],
             )
             .unwrap();
 
@@ -350,7 +350,7 @@ fn test_fixed_amount_splitter_cw20(#[case] with_message: bool) {
                 amount: Uint128::new(100000000),
                 msg: to_json_binary(&Cw20HookMsg::Send { message }).unwrap(),
             },
-            None,
+            &[],
         )
         .unwrap();
 
@@ -395,7 +395,7 @@ fn test_fixed_amount_splitter_cw20_funds_mismatch() {
                 owner: None,
             },
             None,
-            None,
+            &[],
         )
         .unwrap();
 
@@ -420,7 +420,7 @@ fn test_fixed_amount_splitter_cw20_funds_mismatch() {
                 amount: Uint128::new(2), // Less than required
                 msg: to_json_binary(&Cw20HookMsg::Send { message }).unwrap(),
             },
-            None,
+            &[],
         )
         .unwrap_err()
         .downcast()
@@ -457,7 +457,7 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
                 .instantiate(
                     fixed_amount_splitter_instantiate!(env.juno.aos, recipients[0], env.juno.denom),
                     None,
-                    None,
+                    &[],
                 )
                 .unwrap();
         }
@@ -480,7 +480,7 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
                         ]
                     ),
                     None,
-                    None,
+                    &[],
                 )
                 .unwrap();
         }
@@ -511,10 +511,10 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::Send { message },
-            Some(&[Coin {
+            &[Coin {
                 amount: Uint128::new(1000000),
                 denom: env.juno.denom.clone(),
-            }]),
+            }],
         )
         .unwrap();
 
@@ -532,4 +532,54 @@ fn test_fixed_amount_splitter_multiple_recipients(#[case] num_recipients: usize)
         let expected_amount = if i == 0 { 100u128 } else { 200u128 };
         assert_eq!(balances[0].amount.u128(), expected_amount);
     }
+}
+
+#[test]
+// Written to address the security issue where users were able to bypass OS contract authorization checks through the kernel's send msg
+fn test_kernel_send_to_vfs() {
+    let mut router = mock_app(None);
+    let andr = MockAndromedaBuilder::new(&mut router, "admin")
+        .with_wallets(vec![
+            ("owner", vec![coin(10000, "uandr"), coin(10000, "uusd")]),
+            ("user1", vec![coin(1000, "uandr")]),
+            ("user2", vec![]),
+        ])
+        .build(&mut router);
+
+    let owner = andr.get_wallet("owner");
+    let user2 = andr.get_wallet("user2");
+    // get kernel and vfs addresses
+    let vfs_addr = andr.vfs.addr().clone();
+
+    // send 10000 uandr to vfs
+    let err: ContractError = andr
+        .kernel
+        .execute_send(
+            &mut router,
+            owner.clone(),
+            vfs_addr,
+            mock_add_path(
+                "testing-wallet".to_string(),
+                user2.clone(),
+                Some(AndrAddr::from_string("/lib/localdev".to_string())),
+            ),
+            vec![],
+            Some(AMPMsgConfig {
+                reply_on: ReplyOn::Error,
+                exit_at_error: true,
+                gas_limit: None,
+                direct: true,
+                ibc_config: None,
+            }),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(
+        err,
+        ContractError::InvalidRecipientType {
+            msg: "Recipient is an OS contract".to_string(),
+        }
+    );
 }

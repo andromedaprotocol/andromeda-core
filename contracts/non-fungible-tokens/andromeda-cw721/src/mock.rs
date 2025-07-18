@@ -2,7 +2,7 @@
 
 use crate::contract::{execute, instantiate, query};
 use andromeda_non_fungible_tokens::cw721::{
-    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TokenExtension, TransferAgreement,
+    BatchSendMsg, ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg, TransferAgreement,
 };
 use andromeda_std::amp::addresses::AndrAddr;
 use andromeda_testing::{
@@ -12,7 +12,7 @@ use andromeda_testing::{
 };
 use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, Empty};
-use cw721::OwnerOfResponse;
+use cw721::msg::OwnerOfResponse;
 use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockCW721(Addr);
@@ -26,14 +26,14 @@ impl MockCW721 {
         app: &mut MockApp,
         name: impl Into<String>,
         symbol: impl Into<String>,
-        minter: impl Into<String>,
+        minter: AndrAddr,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockCW721 {
         let msg = mock_cw721_instantiate_msg(
             name.into(),
             symbol.into(),
-            minter.into(),
+            minter,
             kernel_address.into(),
             owner,
         );
@@ -55,10 +55,29 @@ impl MockCW721 {
         app: &mut MockApp,
         sender: Addr,
         amount: u32,
-        owner: impl Into<String>,
+        owner: AndrAddr,
     ) -> ExecuteResult {
-        let msg = mock_quick_mint_msg(amount, owner.into());
+        let msg = mock_quick_mint_msg(amount, owner);
         self.execute(app, &msg, sender, &[])
+    }
+
+    pub fn execute_mint(
+        &self,
+        app: &mut MockApp,
+        sender: Addr,
+        token_id: String,
+        owner: AndrAddr,
+    ) -> ExecuteResult {
+        self.execute(
+            app,
+            &ExecuteMsg::Mint(MintMsg {
+                token_id,
+                owner,
+                token_uri: None,
+            }),
+            sender,
+            &[],
+        )
     }
 
     pub fn execute_send_nft(
@@ -111,14 +130,14 @@ pub fn mock_andromeda_cw721() -> Box<dyn Contract<Empty>> {
 pub fn mock_cw721_instantiate_msg(
     name: String,
     symbol: String,
-    minter: impl Into<String>,
+    minter: AndrAddr,
     kernel_address: String,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
         name,
         symbol,
-        minter: AndrAddr::from_string(minter.into()),
+        minter,
         kernel_address,
         owner,
     }
@@ -131,30 +150,20 @@ pub fn mock_cw721_owner_of(token_id: String, include_expired: Option<bool>) -> Q
     }
 }
 
-pub fn mock_mint_msg(
-    token_id: String,
-    extension: TokenExtension,
-    token_uri: Option<String>,
-    owner: String,
-) -> MintMsg {
+pub fn mock_mint_msg(token_id: String, token_uri: Option<String>, owner: AndrAddr) -> MintMsg {
     MintMsg {
         token_id,
         owner,
         token_uri,
-        extension,
     }
 }
 
 /// Creates a batch mint message that mints the specified amount of tokens.
 /// Uses 1-based indexing for token IDs (i.e., tokens will be numbered 1, 2, 3, etc.)
-pub fn mock_quick_mint_msg(amount: u32, owner: String) -> ExecuteMsg {
+pub fn mock_quick_mint_msg(amount: u32, owner: AndrAddr) -> ExecuteMsg {
     let mut mint_msgs: Vec<MintMsg> = Vec::new();
     for i in 1..=amount {
-        let extension = TokenExtension {
-            publisher: owner.clone(),
-        };
-
-        let msg = mock_mint_msg(i.to_string(), extension, None, owner.clone());
+        let msg = mock_mint_msg(i.to_string(), None, owner.clone());
         mint_msgs.push(msg);
     }
 

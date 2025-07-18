@@ -73,9 +73,9 @@ pub enum AndromedaQuery {
         limit: Option<u32>,
         start_after: Option<String>,
     },
-    #[returns(Vec<self::permissioning::PermissionedActionsResponse>)]
+    #[returns(self::permissioning::PermissionedActionsResponse)]
     PermissionedActions {},
-    #[returns(Vec<self::permissioning::PermissionedActorsResponse>)]
+    #[returns(self::permissioning::PermissionedActorsResponse)]
     PermissionedActors {
         action: String,
         limit: Option<u32>,

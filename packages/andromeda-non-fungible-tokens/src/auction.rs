@@ -1,14 +1,14 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::denom::{Asset, PermissionAction};
 use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::{MillisecondsExpiration, OrderBy};
+use andromeda_std::common::{schedule::Schedule, Milliseconds, MillisecondsExpiration, OrderBy};
 use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{ensure, Addr, BlockInfo, MessageInfo, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw721::{Cw721ReceiveMsg, Expiration};
+use cw721::receiver::Cw721ReceiveMsg;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -44,8 +44,7 @@ pub enum ExecuteMsg {
     UpdateAuction {
         token_id: String,
         token_address: String,
-        start_time: Option<Expiry>,
-        end_time: Expiry,
+        schedule: Option<Schedule>,
         coin_denom: Asset,
         whitelist: Option<Vec<Addr>>,
         min_bid: Option<Uint128>,
@@ -76,10 +75,7 @@ pub enum Cw721HookMsg {
     /// Starts a new auction with the given parameters. The auction info can be modified before it
     /// has started but is immutable after that.
     StartAuction {
-        /// Start time in milliseconds since epoch
-        start_time: Option<Expiry>,
-        /// Duration in milliseconds
-        end_time: Expiry,
+        schedule: Schedule,
         coin_denom: Asset,
         buy_now_price: Option<Uint128>,
         min_bid: Option<Uint128>,
@@ -205,8 +201,8 @@ impl From<TokenAuctionState> for AuctionStateResponse {
 
 #[cw_serde]
 pub struct TokenAuctionState {
-    pub start_time: Expiration,
-    pub end_time: Expiration,
+    pub start_time: Milliseconds,
+    pub end_time: Milliseconds,
     pub high_bidder_addr: Addr,
     pub high_bidder_amount: Uint128,
     pub buy_now_price: Option<Uint128>,
@@ -276,8 +272,8 @@ pub fn validate_auction(
 
 #[cw_serde]
 pub struct AuctionStateResponse {
-    pub start_time: Expiration,
-    pub end_time: Expiration,
+    pub start_time: Milliseconds,
+    pub end_time: Milliseconds,
     pub high_bidder_addr: String,
     pub high_bidder_amount: Uint128,
     pub auction_id: Uint128,

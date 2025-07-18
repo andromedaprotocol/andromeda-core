@@ -28,6 +28,14 @@ impl Default for ChannelInfo {
     }
 }
 
+pub fn is_os_contract(ado_type: &str) -> bool {
+    ado_type.contains("vfs")
+        || ado_type.contains("ibc_registry")
+        || ado_type.contains("economics")
+        || ado_type.contains("adodb")
+        || ado_type.contains("kernel")
+}
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
@@ -124,6 +132,11 @@ pub struct ChainNameResponse {
 }
 
 #[cw_serde]
+pub struct RecoveriesResponse {
+    pub recoveries: Vec<Coin>,
+}
+
+#[cw_serde]
 pub struct PendingPacketResponse {
     pub packets: Vec<PacketInfoAndSequence>,
 }
@@ -151,7 +164,7 @@ pub enum QueryMsg {
     ChannelInfo { chain: String },
     #[returns(Option<String>)]
     ChainNameByChannel { channel: String },
-    #[returns(Vec<::cosmwasm_std::Coin>)]
+    #[returns(RecoveriesResponse)]
     Recoveries { addr: Addr },
     #[returns(ChainNameResponse)]
     ChainName {},

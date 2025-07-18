@@ -11,12 +11,10 @@ use andromeda_std::ado_base::rates::Rate;
 use andromeda_std::ado_base::rates::RatesMessage;
 use andromeda_std::ado_base::version::VersionResponse;
 use andromeda_std::amp::messages::AMPPkt;
-
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
-use andromeda_std::common::expiration::Expiry;
-use andromeda_std::common::MillisecondsDuration;
+use andromeda_std::common::schedule::Schedule;
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
 };
@@ -147,15 +145,13 @@ pub fn mock_marketplace_instantiate_msg(
 pub fn mock_start_sale(
     price: Uint128,
     coin_denom: Asset,
-    duration: Option<MillisecondsDuration>,
-    start_time: Option<Expiry>,
+    schedule: Schedule,
     recipient: Option<Recipient>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartSale {
         price,
         coin_denom,
-        start_time,
-        duration,
+        schedule,
         recipient,
     }
 }

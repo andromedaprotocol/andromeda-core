@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-primitive"
-version = "2.1.0"
+version = "2.1.1-b.1"
 authors = [
   "Connor Barr <crnbarr@gmail.com>",
   "Anshudhar Kumar Singh <anshudhar2001@gmail.com>",
@@ -20,8 +20,7 @@ exclude = [
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+
 # use library feature to disable all instantiate/execute/query exports
 library = []
 testing = ["cw-multi-test", "andromeda-testing"]

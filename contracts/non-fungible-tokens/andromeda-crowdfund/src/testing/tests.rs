@@ -3,16 +3,15 @@ use andromeda_non_fungible_tokens::{
         CampaignConfig, CampaignStage, ExecuteMsg, InstantiateMsg, SimpleTierOrder, Tier,
         TierMetaData,
     },
-    cw721::{ExecuteMsg as Cw721ExecuteMsg, TokenExtension},
+    cw721::ExecuteMsg as Cw721ExecuteMsg,
 };
 use andromeda_std::common::expiration::Expiry;
 use andromeda_std::{
-    common::MillisecondsExpiration,
-    error::ContractError,
-    testing::mock_querier::{MOCK_ADO_PUBLISHER, MOCK_KERNEL_CONTRACT},
+    common::MillisecondsExpiration, error::ContractError,
+    testing::mock_querier::MOCK_KERNEL_CONTRACT,
 };
 use cosmwasm_std::{
-    testing::{mock_env, mock_info},
+    testing::{message_info, mock_env},
     to_json_binary, Addr, CosmosMsg, DepsMut, Env, Order, Response, Storage, Uint128, Uint64,
     WasmMsg,
 };
@@ -36,7 +35,7 @@ fn init(deps: DepsMut, config: CampaignConfig, tiers: Vec<Tier>) -> Response {
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
     };
 
-    let info = mock_info(MOCK_DEFAULT_OWNER, &[]);
+    let info = message_info(&Addr::unchecked(MOCK_DEFAULT_OWNER), &[]);
     instantiate(deps, mock_env(), info, msg).unwrap()
 }
 
@@ -93,12 +92,13 @@ fn get_user_orders(
 }
 #[cfg(test)]
 mod test {
-    use andromeda_non_fungible_tokens::crowdfund::{
-        Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder,
+    use andromeda_non_fungible_tokens::{
+        crowdfund::{Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder},
+        cw721::MintMsg,
     };
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
-        common::{denom::Asset, encode_binary, Milliseconds},
+        common::{denom::Asset, encode_binary, schedule::Schedule, Milliseconds},
         testing::mock_querier::MOCK_CW20_CONTRACT,
     };
     use cosmwasm_std::{coin, coins, testing::MOCK_CONTRACT_ADDR, wasm_execute, BankMsg, Coin};
@@ -106,7 +106,9 @@ mod test {
 
     use crate::{
         state::{get_current_capital, set_current_stage, set_tier_orders, TIER_SALES},
-        testing::mock_querier::{MOCK_DEFAULT_OWNER, MOCK_WITHDRAWAL_ADDRESS},
+        testing::mock_querier::{
+            MOCK_DEFAULT_OWNER, MOCK_TIER_CONTRACT, MOCK_WITHDRAWAL_ADDRESS, ORDERER, RANDOM_USER,
+        },
     };
 
     use super::*;
@@ -131,7 +133,7 @@ mod test {
                     .add_attribute("method", "instantiate")
                     .add_attribute("type", "crowdfund")
                     .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-                    .add_attribute(MOCK_DEFAULT_OWNER, MOCK_DEFAULT_OWNER)),
+                    .add_attribute("owner", MOCK_DEFAULT_OWNER)),
             },
             InstantiateTestCase {
                 name: "instantiate with invalid native token".to_string(),
@@ -151,18 +153,17 @@ mod test {
                     .add_attribute("method", "instantiate")
                     .add_attribute("type", "crowdfund")
                     .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-                    .add_attribute(MOCK_DEFAULT_OWNER, MOCK_DEFAULT_OWNER)),
+                    .add_attribute("owner", MOCK_DEFAULT_OWNER)),
             },
             InstantiateTestCase {
                 name: "instantiate with invalid cw20".to_string(),
                 config: mock_campaign_config(Asset::Cw20Token(AndrAddr::from_string(
-                    "cw20_contract1".to_string(),
+                    "non_existent_address".to_string(),
                 ))),
                 tiers: mock_campaign_tiers(),
-                expected_res: Err(ContractError::InvalidAsset {
-                    asset: Asset::Cw20Token(AndrAddr::from_string("cw20_contract1".to_string()))
-                        .to_string(),
-                }),
+                expected_res: Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Error decoding bech32",
+                ))),
             },
             InstantiateTestCase {
                 name: "instantiate with invalid tiers including zero price tier".to_string(),
@@ -177,15 +178,14 @@ mod test {
 
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
-            let info = mock_info(MOCK_DEFAULT_OWNER, &[]);
+            let info = message_info(&Addr::unchecked(MOCK_DEFAULT_OWNER), &[]);
             let msg = InstantiateMsg {
                 campaign_config: test.config.clone(),
                 tiers: test.tiers.clone(),
                 owner: None,
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             };
-            let res = instantiate(deps.as_mut(), mock_env(), info, msg);
-
+            let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone());
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
@@ -219,24 +219,14 @@ mod test {
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let duplicated_tier = Tier {
             level: Uint64::new(0u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -284,7 +274,7 @@ mod test {
                 mock_campaign_tiers(),
             );
 
-            let info = mock_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::AddTier {
                 tier: test.tier.clone(),
@@ -312,24 +302,14 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -348,7 +328,7 @@ mod test {
                 name: "update_tier with unauthorized sender".to_string(),
                 tier: valid_tier.clone(),
                 expected_res: Err(ContractError::Unauthorized {}),
-                payee: "owner1".to_string(),
+                payee: RANDOM_USER.to_string(),
             },
             TierTestCase {
                 name: "update_tier with zero price tier".to_string(),
@@ -377,7 +357,7 @@ mod test {
                 mock_campaign_tiers(),
             );
 
-            let info = mock_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::UpdateTier {
                 tier: test.tier.clone(),
@@ -405,24 +385,14 @@ mod test {
             label: "Tier 0".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
         let non_existing_tier = Tier {
             level: Uint64::new(2u64),
             label: "Tier 2".to_string(),
             limit: Some(Uint128::new(100)),
             price: Uint128::new(100),
-            metadata: TierMetaData {
-                extension: TokenExtension {
-                    publisher: MOCK_ADO_PUBLISHER.to_string(),
-                },
-                token_uri: None,
-            },
+            metadata: TierMetaData { token_uri: None },
         };
 
         let test_cases: Vec<TierTestCase> = vec![
@@ -458,7 +428,7 @@ mod test {
                 mock_campaign_tiers(),
             );
 
-            let info = mock_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::RemoveTier {
                 level: test.tier.level,
@@ -480,8 +450,7 @@ mod test {
         name: String,
         tiers: Vec<Tier>,
         presale: Option<Vec<PresaleTierOrder>>,
-        start_time: Option<Expiry>,
-        end_time: Expiry,
+        schedule: Schedule,
         expected_res: Result<Response, ContractError>,
         payee: String,
     }
@@ -507,22 +476,27 @@ mod test {
                 name: "standard start_campaign".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "start_campaign")
+                    .add_attribute("start_time", "1571797419879")
                     .add_attribute(
                         "end_time",
-                        Expiry::FromNow(Milliseconds::from_seconds(100)).to_string(),
+                        Expiry::FromNow(Milliseconds::from_seconds(100)).get_time(&env.block),
                     )),
             },
             StartCampaignTestCase {
                 name: "start_campaign with unauthorized sender".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: "owner1".to_string(),
                 expected_res: Err(ContractError::Unauthorized {}),
             },
@@ -530,8 +504,10 @@ mod test {
                 name: "start_campaign with invalid presales".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(invalid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(100)),
+                schedule: Schedule::new(
+                    None,
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(100))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
                 expected_res: Err(ContractError::InvalidTier {
                     operation: "set_tier_orders".to_string(),
@@ -542,19 +518,25 @@ mod test {
                 name: "start_campaign with invalid end_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: None,
-                end_time: Expiry::AtTime(Milliseconds::from_seconds(0)),
+                schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds::from_seconds(0)))),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
-                expected_res: Err(ContractError::InvalidExpiration {}),
+                expected_res: Err(ContractError::InvalidSchedule {
+                    msg: "Duration is required in campaign".to_string(),
+                }),
             },
             StartCampaignTestCase {
                 name: "start_campaign with invalid start_time".to_string(),
                 tiers: mock_campaign_tiers(),
                 presale: Some(valid_presale.clone()),
-                start_time: Some(Expiry::FromNow(Milliseconds::from_seconds(10000000))),
-                end_time: Expiry::FromNow(Milliseconds::from_seconds(500)),
+                schedule: Schedule::new(
+                    Some(Expiry::AtTime(Milliseconds::from_seconds(1))),
+                    Some(Expiry::FromNow(Milliseconds::from_seconds(500))),
+                ),
                 payee: MOCK_DEFAULT_OWNER.to_string(),
-                expected_res: Err(ContractError::StartTimeAfterEndTime {}),
+                expected_res: Err(ContractError::StartTimeInThePast {
+                    current_time: 1571797419879,
+                    current_block: 12345,
+                }),
             },
         ];
         for test in test_cases {
@@ -565,25 +547,39 @@ mod test {
                 mock_campaign_config(Asset::NativeToken(MOCK_NATIVE_DENOM.to_string())),
                 test.tiers.clone(),
             );
-            let info = mock_info(&test.payee, &[]);
+            let info = message_info(&Addr::unchecked(test.payee), &[]);
 
             let msg = ExecuteMsg::StartCampaign {
-                start_time: test.start_time.clone(),
-                end_time: test.end_time.clone(),
+                schedule: test.schedule.clone(),
                 presale: test.presale.clone(),
             };
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);
 
+            // let (start_time, end_time) = test.schedule.validate(&env.block);
+
             if res.is_ok() {
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().start_time,
-                    test.start_time.map(|exp| exp.get_time(&env.block))
+                    test.schedule
+                        .start
+                        .map(|exp| exp.get_time(&env.block))
+                        .unwrap_or(Milliseconds(1571797419879)),
                 );
                 assert_eq!(
                     CAMPAIGN_DURATION.load(&deps.storage).unwrap().end_time,
-                    test.end_time.get_time(&env.block)
+                    test.schedule
+                        .end
+                        .map(|limit| {
+                            match limit {
+                                Expiry::FromNow(duration) => {
+                                    duration.plus_milliseconds(Milliseconds(1571797419879))
+                                }
+                                Expiry::AtTime(end_time) => end_time,
+                            }
+                        })
+                        .unwrap_or(Milliseconds(1571797419879))
                 );
                 assert_eq!(
                     CAMPAIGN_STAGE.load(&deps.storage).unwrap(),
@@ -760,7 +756,7 @@ mod test {
         ];
         for test in test_cases {
             let mut deps = mock_dependencies_custom(&test.funds);
-            let info = mock_info(&test.payee, &test.funds);
+            let info = message_info(&Addr::unchecked(test.payee), &test.funds);
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
@@ -769,7 +765,7 @@ mod test {
 
             let mock_config: CampaignConfig = mock_campaign_config(test.denom);
             let duration = Duration {
-                start_time: test.start_time,
+                start_time: test.start_time.unwrap_or(Milliseconds(1571797419879)),
                 end_time: test.end_time,
             };
             set_campaign_config(deps.as_mut().storage, &mock_config);
@@ -823,7 +819,7 @@ mod test {
     fn test_execute_purchase_tiers_cw20() {
         // fixed total cost to 100 for valid purchase
         let env = mock_env();
-        let buyer = "buyer";
+        let buyer = Addr::unchecked(RANDOM_USER);
         let valid_denom = Asset::Cw20Token(AndrAddr::from_string(MOCK_CW20_CONTRACT.to_string()));
         let test_cases: Vec<PurchaseTierTestCase> = vec![
             PurchaseTierTestCase {
@@ -831,7 +827,7 @@ mod test {
                 stage: CampaignStage::ONGOING,
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "purchase_tiers")
-                    .add_attribute("payment", "1000cw20:cw20_contract")
+                    .add_attribute("payment", format!("1000cw20:{}", MOCK_CW20_CONTRACT))
                     .add_attribute("total_cost", "100")
                     .add_attribute("refunded", "900")
                     .add_message(
@@ -943,7 +939,7 @@ mod test {
             let Asset::Cw20Token(ref cw20) = test.denom else {
                 todo!();
             };
-            let info = mock_info(cw20.as_ref(), &[]);
+            let info = message_info(&Addr::unchecked(cw20.as_ref()), &[]);
 
             // Mock necessary storage setup
             set_campaign_stage(deps.as_mut().storage, &test.stage);
@@ -954,7 +950,7 @@ mod test {
             set_campaign_config(deps.as_mut().storage, &mock_config);
 
             let duration = Duration {
-                start_time: test.start_time,
+                start_time: test.start_time.unwrap_or(Milliseconds(1571797419879)),
                 end_time: test.end_time,
             };
             set_campaign_duration(deps.as_mut().storage, &duration);
@@ -963,7 +959,7 @@ mod test {
                 orders: test.orders.clone(),
             };
             let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-                sender: buyer.to_owned(),
+                sender: buyer.to_string(),
                 amount: Uint128::new(1000u128),
                 msg: encode_binary(&hook_msg).unwrap(),
             });
@@ -982,7 +978,7 @@ mod test {
                     let stored_order_info = TIER_ORDERS
                         .load(
                             deps.as_ref().storage,
-                            (Addr::unchecked(buyer), order.level.into()),
+                            (Addr::unchecked(buyer.to_string()), order.level.into()),
                         )
                         .unwrap();
                     assert_eq!(
@@ -1147,13 +1143,13 @@ mod test {
             let mut mock_config = mock_campaign_config(test.denom.clone());
             let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
 
-            let info = mock_info(&test.sender, &[]);
+            let info = message_info(&Addr::unchecked(test.sender), &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
             set_current_capital(deps.as_mut().storage, &test.current_capital);
 
             mock_config.soft_cap = test.soft_cap;
             let duration = Duration {
-                start_time: None,
+                start_time: Milliseconds(1571797419879),
                 end_time: test.end_time,
             };
 
@@ -1252,13 +1248,13 @@ mod test {
             let mut mock_config = mock_campaign_config(test.denom.clone());
             let _ = init(deps.as_mut(), mock_config.clone(), vec![]);
 
-            let info = mock_info(&test.sender, &[]);
+            let info = message_info(&Addr::unchecked(test.sender), &[]);
             set_campaign_stage(deps.as_mut().storage, &test.stage);
             set_current_capital(deps.as_mut().storage, &test.current_capital);
 
             mock_config.soft_cap = test.soft_cap;
             let duration = Duration {
-                start_time: None,
+                start_time: Milliseconds(1571797419879),
                 end_time: test.end_time,
             };
 
@@ -1291,7 +1287,7 @@ mod test {
 
     #[test]
     fn test_execute_claim() {
-        let orderer = Addr::unchecked("orderer");
+        let orderer = Addr::unchecked(ORDERER);
 
         let test_cases = vec![
             ClaimTestCase {
@@ -1315,28 +1311,22 @@ mod test {
                 expected_res: Ok(Response::new()
                     .add_attribute("action", "claim")
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: "tier_contract".to_string(),
-                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                        contract_addr: MOCK_TIER_CONTRACT.to_string(),
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint(MintMsg {
                             token_id: "0".to_string(),
-                            owner: orderer.to_string(),
-                            extension: TokenExtension {
-                                publisher: MOCK_ADO_PUBLISHER.to_string(),
-                            },
+                            owner: orderer.clone().into(),
                             token_uri: None,
-                        })
+                        }))
                         .unwrap(),
                         funds: vec![],
                     }))
                     .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                        contract_addr: "tier_contract".to_string(),
-                        msg: to_json_binary(&Cw721ExecuteMsg::Mint {
+                        contract_addr: MOCK_TIER_CONTRACT.to_string(),
+                        msg: to_json_binary(&Cw721ExecuteMsg::Mint(MintMsg {
                             token_id: "1".to_string(),
-                            owner: orderer.to_string(),
-                            extension: TokenExtension {
-                                publisher: MOCK_ADO_PUBLISHER.to_string(),
-                            },
+                            owner: orderer.clone().into(),
                             token_uri: None,
-                        })
+                        }))
                         .unwrap(),
                         funds: vec![],
                     }))),
@@ -1433,7 +1423,7 @@ mod test {
             set_tier_orders(deps.as_mut().storage, test.orders).unwrap();
             let msg = ExecuteMsg::Claim {};
 
-            let info = mock_info(orderer.as_ref(), &[]);
+            let info = message_info(&Addr::unchecked(orderer.clone()), &[]);
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
             assert_eq!(res, test.expected_res, "Test case: {}", test.name);

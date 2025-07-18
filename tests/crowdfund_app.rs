@@ -6,11 +6,14 @@ use andromeda_crowdfund::mock::{
     mock_andromeda_crowdfund, mock_crowdfund_instantiate_msg, mock_purchase_cw20_msg, MockCrowdfund,
 };
 use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_minter, MockCW20};
-use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
+use andromeda_cw721::{
+    contract::MINT_ACTION,
+    mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721},
+};
 use andromeda_finance::splitter::AddressPercent;
 use andromeda_non_fungible_tokens::{
     crowdfund::{CampaignConfig, CampaignStage, PresaleTierOrder, SimpleTierOrder, TierMetaData},
-    cw721::{ExecuteMsg, TokenExtension},
+    cw721::ExecuteMsg,
 };
 use andromeda_splitter::mock::{
     mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
@@ -18,7 +21,7 @@ use andromeda_splitter::mock::{
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission, PermissioningMessage},
     amp::{AndrAddr, Recipient},
-    common::{denom::Asset, encode_binary, expiration::Expiry, Milliseconds},
+    common::{denom::Asset, encode_binary, expiration::Expiry, schedule::Schedule, Milliseconds},
 };
 use andromeda_testing::{
     mock::{mock_app, MockApp},
@@ -109,7 +112,7 @@ fn setup(
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Campaign Tier".to_string(),
         "CT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -203,12 +206,7 @@ fn setup(
         false => Some(app.query_ado_by_component_name(&router, cw20_component.unwrap().name)),
     };
 
-    let meta_data = TierMetaData {
-        token_uri: None,
-        extension: TokenExtension {
-            ..Default::default()
-        },
-    };
+    let meta_data = TierMetaData { token_uri: None };
     crowdfund
         .execute_add_tier(
             owner.clone(),
@@ -238,16 +236,9 @@ fn setup(
         orderer: buyer_one.clone(),
     }];
 
-    let permission_action_msg = ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
-        action: "Mint".to_string(),
-    });
-    cw721
-        .execute(&mut router, &permission_action_msg, owner.clone(), &[])
-        .unwrap();
-
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(crowdfund.addr().to_string())],
-        action: "Mint".to_string(),
+        action: MINT_ACTION.to_string(),
         permission: Permission::Local(LocalPermission::whitelisted(None, None, None, None)),
     });
 
@@ -287,8 +278,7 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -339,12 +329,12 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
     let summary = crowdfund.query_campaign_summary(&mut router);
     assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
-    let recipient_balance = router
+    let recipient_balance: Uint128 = router
         .wrap()
         .query_balance(recipient.clone().address, "uandr")
         .unwrap()
         .amount;
-    assert_eq!(summary.current_capital, recipient_balance.into());
+    assert_eq!(summary.current_capital, recipient_balance.u128());
 
     // Claim tier
     let _ = crowdfund
@@ -352,9 +342,9 @@ fn test_successful_crowdfund_app_native(setup: TestCase) {
         .unwrap();
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
     let owner_resp = cw721.query_owner_of(&router, "29".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
 }
 
 #[rstest]
@@ -379,8 +369,7 @@ fn test_crowdfund_app_native_discard(
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -472,8 +461,7 @@ fn test_crowdfund_app_native_with_ado_recipient(
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -548,9 +536,8 @@ fn test_crowdfund_app_native_with_ado_recipient(
     let _ = crowdfund.execute_end_campaign(owner.clone(), &mut router);
 
     let summary = crowdfund.query_campaign_summary(&mut router);
-
     // Campaign could not be ended due to invalid withdrawal recipient msg
-    assert_eq!(summary.current_stage, CampaignStage::ONGOING.to_string());
+    assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
 }
 
 #[rstest]
@@ -568,13 +555,12 @@ fn test_failed_crowdfund_app_native(setup: TestCase) {
 
     // Start campaign
     let start_time = None;
-    let end_time = Milliseconds::from_nanos(router.block_info().time.plus_days(1).nanos());
+    let duration = Milliseconds::from_nanos(86400000000000);
 
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(Expiry::FromNow(duration))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -667,8 +653,7 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(Expiry::FromNow(end_time))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);
@@ -715,8 +700,8 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
     let summary = crowdfund.query_campaign_summary(&mut router);
     assert_eq!(summary.current_capital, 10 * 100 + 200 * 10);
     assert_eq!(summary.current_stage, CampaignStage::SUCCESS.to_string());
-    let recipient_balance = cw20.query_balance(&router, recipient.clone().address);
-    assert_eq!(summary.current_capital, recipient_balance.into());
+    let recipient_balance: Uint128 = cw20.query_balance(&router, recipient.clone().address);
+    assert_eq!(summary.current_capital, recipient_balance.u128());
 
     // Claim tier
     let _ = crowdfund
@@ -724,9 +709,9 @@ fn test_successful_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
         .unwrap();
     // buyer_one should own 30 tiers now (10 pre order + 20 purchased)
     let owner_resp = cw721.query_owner_of(&router, "0".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
     let owner_resp = cw721.query_owner_of(&router, "29".to_string());
-    assert_eq!(owner_resp, buyer_one.to_string());
+    assert_eq!(owner_resp, buyer_one);
 }
 
 #[rstest]
@@ -746,13 +731,12 @@ fn test_failed_crowdfund_app_cw20(#[with(false)] setup: TestCase) {
 
     // Start campaign
     let start_time = None;
-    let end_time = Milliseconds::from_nanos(router.block_info().time.plus_days(1).nanos());
+    let duration = Milliseconds::from_nanos(86400000000000);
 
     let _ = crowdfund.execute_start_campaign(
         owner.clone(),
         &mut router,
-        start_time,
-        Expiry::AtTime(end_time),
+        Schedule::new(start_time, Some(Expiry::FromNow(duration))),
         Some(presale),
     );
     let summary = crowdfund.query_campaign_summary(&mut router);

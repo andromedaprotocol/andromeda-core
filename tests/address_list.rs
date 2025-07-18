@@ -10,6 +10,7 @@ use andromeda_marketplace::mock::{
     mock_receive_packet, mock_start_sale, MockMarketplace,
 };
 use andromeda_modules::address_list::{ActorPermissionResponse, PERMISSION_ACTORS_ACTION};
+use andromeda_std::common::schedule::Schedule;
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission},
     amp::{
@@ -48,7 +49,7 @@ fn test_permission_frequency() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -104,7 +105,12 @@ fn test_permission_frequency() {
 
     // Mint Tokens
     cw721
-        .execute_quick_mint(&mut router, owner.clone(), 1, owner.to_string())
+        .execute_quick_mint(
+            &mut router,
+            owner.clone(),
+            1,
+            AndrAddr::from_string(owner.to_string()),
+        )
         .unwrap();
     let token_id = "1";
 
@@ -118,8 +124,7 @@ fn test_permission_frequency() {
             &mock_start_sale(
                 Uint128::from(100u128),
                 Asset::NativeToken("uandr".to_string()),
-                None,
-                None,
+                Schedule::new(None, None),
                 None,
             ),
         )
@@ -263,7 +268,7 @@ fn test_permission_frequency() {
 
     // Check final state
     let owner_of_token = cw721.query_owner_of(&router, token_id);
-    assert_eq!(owner_of_token, buyer.to_string());
+    assert_eq!(owner_of_token.to_string(), buyer.to_string());
 
     let balance = router.wrap().query_balance(owner, "uandr").unwrap();
     assert_eq!(balance.amount, Uint128::new(100u128));

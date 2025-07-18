@@ -1,10 +1,9 @@
-use andromeda_non_fungible_tokens::marketplace::{SaleStateResponse, Status};
-use andromeda_std::{amp::Recipient, error::ContractError};
+use andromeda_non_fungible_tokens::marketplace::{SaleInfo, SaleStateResponse, Status};
+use andromeda_std::{amp::Recipient, common::Milliseconds, error::ContractError};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Order, Storage, SubMsg, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
-use cw_utils::Expiration;
 
 const MAX_LIMIT: u64 = 30;
 const DEFAULT_LIMIT: u64 = 10;
@@ -18,8 +17,8 @@ pub struct TokenSaleState {
     pub token_address: String,
     pub price: Uint128,
     pub status: Status,
-    pub start_time: Expiration,
-    pub end_time: Expiration,
+    pub start_time: Milliseconds,
+    pub end_time: Option<Milliseconds>,
     pub uses_cw20: bool,
     pub recipient: Option<Recipient>,
 }
@@ -34,24 +33,6 @@ pub struct Purchase {
     pub msgs: Vec<SubMsg>,
     /// The purchaser of the token.
     pub purchaser: String,
-}
-
-#[cw_serde]
-#[derive(Default)]
-pub struct SaleInfo {
-    pub sale_ids: Vec<Uint128>,
-    pub token_address: String,
-    pub token_id: String,
-}
-
-impl SaleInfo {
-    pub fn last(&self) -> Option<&Uint128> {
-        self.sale_ids.last()
-    }
-
-    pub fn push(&mut self, e: Uint128) {
-        self.sale_ids.push(e)
-    }
 }
 
 impl From<TokenSaleState> for SaleStateResponse {
@@ -85,7 +66,7 @@ impl IndexList<SaleInfo> for SaleIdIndices<'_> {
     }
 }
 
-pub fn sale_infos<'a>() -> IndexedMap<'a, &'a str, SaleInfo, SaleIdIndices<'a>> {
+pub fn sale_infos() -> IndexedMap<String, SaleInfo, SaleIdIndices<'static>> {
     let indexes = SaleIdIndices {
         token: MultiIndex::new(
             |_pk: &[u8], r| r.token_address.clone(),
@@ -115,7 +96,7 @@ pub fn read_sale_infos(
 
     let mut res: Vec<SaleInfo> = vec![];
     for key in keys.iter() {
-        res.push(sale_infos().load(storage, key)?);
+        res.push(sale_infos().load(storage, key.to_string())?);
     }
     Ok(res)
 }

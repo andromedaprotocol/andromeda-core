@@ -148,6 +148,7 @@ impl AMPMsg {
                 msg,
                 funds: self.funds.to_vec(),
             }),
+            payload: Binary::default(),
         })
     }
 
@@ -163,6 +164,7 @@ impl AMPMsg {
             reply_on: self.config.reply_on.clone(),
             gas_limit: self.config.gas_limit,
             msg: CosmosMsg::Wasm(message),
+            payload: Binary::default(),
         }
     }
 
@@ -275,7 +277,7 @@ impl AMPCtx {
     ) -> Option<String> {
         let origin = Addr::unchecked(self.get_origin());
         if let Ok(Some(username)) = AOSQuerier::get_username(querier, vfs_address, &origin) {
-            if username != origin {
+            if username != origin.as_str() {
                 self.add_username(AndrAddr::from_string(username.clone()));
                 return Some(username);
             }
@@ -393,7 +395,8 @@ impl AMPPkt {
     pub fn verify_origin(&self, info: &MessageInfo, deps: &Deps) -> Result<(), ContractError> {
         let kernel_address = ADOContract::default().get_kernel_address(deps.storage)?;
 
-        if (info.sender == self.ctx.origin && info.sender == self.ctx.previous_sender)
+        if (info.sender == deps.api.addr_validate(&self.ctx.origin)?
+            && info.sender == deps.api.addr_validate(&self.ctx.previous_sender)?)
             || info.sender == kernel_address
         {
             Ok(())
@@ -524,25 +527,42 @@ impl AMPPkt {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies};
 
     use crate::testing::mock_querier::{mock_dependencies_custom, INVALID_CONTRACT};
+    pub const ORIGIN: &str = "cosmwasm1rq0a63huffeydw057846xy5m5htjgqg67hcsygantzv4t5wlzz9qpdp0pz";
+    pub const PREVIOUS_SENDER: &str =
+        "cosmwasm1n006e54tz4ln667t8p8j9mzk0v7jvlg7hwm568ultag7c94z3n2se70nmk";
+    pub const KERNEL: &str = "cosmwasm1dy3a6x7qgcqg93w4t2p3jzxzfg5zsc9h78xkc2meeudu3ptuvwwq3qjqxw";
 
     use super::*;
 
     #[test]
     fn test_generate_amp_pkt() {
         let deps = mock_dependencies();
-        let msg = AMPMsg::new("test", Binary::default(), None);
+        let test = deps.api.addr_make("test");
+        let test2 = deps.api.addr_make("test2");
+        println!("test: {}", test);
+        println!("test2: {}", test2);
+        let msg = AMPMsg::new(test.to_string(), Binary::default(), None);
 
+        let origin = deps.api.addr_make("origin");
+        let previous_sender = deps.api.addr_make("previoussender");
+        let kernel = deps.api.addr_make("kernel");
+        println!("kernel: {}", kernel);
         let sub_msg = msg
-            .generate_amp_pkt(&deps.as_ref(), "origin", "previoussender", 1)
+            .generate_amp_pkt(
+                &deps.as_ref(),
+                origin.to_string(),
+                previous_sender.to_string(),
+                1,
+            )
             .unwrap();
 
         let expected_msg = ExecuteMsg::AMPReceive(AMPPkt::new(
-            "origin",
-            "previoussender",
-            vec![AMPMsg::new("test", Binary::default(), None)],
+            origin.to_string(),
+            previous_sender.to_string(),
+            vec![AMPMsg::new(test.to_string(), Binary::default(), None)],
         ));
         assert_eq!(sub_msg.id, 1);
         assert_eq!(sub_msg.reply_on, ReplyOn::Always);
@@ -550,7 +570,7 @@ mod tests {
         assert_eq!(
             sub_msg.msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "test".to_string(),
+                contract_addr: test.to_string(),
                 msg: to_json_binary(&expected_msg).unwrap(),
                 funds: vec![],
             })
@@ -559,57 +579,98 @@ mod tests {
 
     #[test]
     fn test_get_unique_recipients() {
-        let msg = AMPMsg::new("test", Binary::default(), None);
+        let msg = AMPMsg::new(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme",
+            Binary::default(),
+            None,
+        );
         let msg2 = AMPMsg::new("test2", Binary::default(), None);
 
         let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2]);
 
         let recipients = pkt.get_unique_recipients();
         assert_eq!(recipients.len(), 2);
-        assert_eq!(recipients[0], "test".to_string());
+        assert_eq!(
+            recipients[0],
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme".to_string()
+        );
         assert_eq!(recipients[1], "test2".to_string());
 
-        pkt = pkt.add_message(AMPMsg::new("test", Binary::default(), None));
+        pkt = pkt.add_message(AMPMsg::new(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme",
+            Binary::default(),
+            None,
+        ));
         let recipients = pkt.get_unique_recipients();
         assert_eq!(recipients.len(), 2);
-        assert_eq!(recipients[0], "test".to_string());
+        assert_eq!(
+            recipients[0],
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme".to_string()
+        );
         assert_eq!(recipients[1], "test2".to_string());
     }
 
     #[test]
     fn test_get_messages_for_recipient() {
-        let msg = AMPMsg::new("test", Binary::default(), None);
+        let msg = AMPMsg::new(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme",
+            Binary::default(),
+            None,
+        );
         let msg2 = AMPMsg::new("test2", Binary::default(), None);
 
         let mut pkt = AMPPkt::new("origin", "previoussender", vec![msg, msg2]);
 
-        let messages = pkt.get_messages_for_recipient("test".to_string());
+        let messages = pkt.get_messages_for_recipient(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme".to_string(),
+        );
         assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].recipient.to_string(), "test".to_string());
+        assert_eq!(
+            messages[0].recipient.to_string(),
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme".to_string()
+        );
 
         let messages = pkt.get_messages_for_recipient("test2".to_string());
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].recipient.to_string(), "test2".to_string());
 
-        pkt = pkt.add_message(AMPMsg::new("test", Binary::default(), None));
-        let messages = pkt.get_messages_for_recipient("test".to_string());
+        pkt = pkt.add_message(AMPMsg::new(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme",
+            Binary::default(),
+            None,
+        ));
+        let messages = pkt.get_messages_for_recipient(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme".to_string(),
+        );
         assert_eq!(messages.len(), 2);
-        assert_eq!(messages[0].recipient.to_string(), "test".to_string());
-        assert_eq!(messages[1].recipient.to_string(), "test".to_string());
+        assert_eq!(
+            messages[0].recipient.to_string(),
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme".to_string()
+        );
+        assert_eq!(
+            messages[1].recipient.to_string(),
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme".to_string()
+        );
     }
 
     #[test]
     fn test_verify_origin() {
         let deps = mock_dependencies_custom(&[]);
-        let msg = AMPMsg::new("test", Binary::default(), None);
+        let msg = AMPMsg::new(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme",
+            Binary::default(),
+            None,
+        );
 
-        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
+        let pkt = AMPPkt::new(ORIGIN, PREVIOUS_SENDER, vec![msg.clone()]);
 
-        let info = mock_info("validaddress", &[]);
+        let valid_address = deps.api.addr_make("validaddress");
+        let info = message_info(&valid_address, &[]);
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_ok());
 
-        let info = mock_info(INVALID_CONTRACT, &[]);
+        let invalid_address = Addr::unchecked(INVALID_CONTRACT);
+        let info = message_info(&invalid_address, &[]);
         let res = pkt.verify_origin(&info, &deps.as_ref());
         assert!(res.is_err());
 
@@ -626,21 +687,24 @@ mod tests {
 
     #[test]
     fn test_to_sub_msg() {
-        let msg = AMPMsg::new("test", Binary::default(), None);
+        let msg = AMPMsg::new(
+            "cosmwasm1n7rdpqvgf37ktx30a2sv2kkszk3m7ncm9v9cytx3t4kptv8spgyqguyhme",
+            Binary::default(),
+            None,
+        );
 
-        let pkt = AMPPkt::new("origin", "previoussender", vec![msg.clone()]);
+        let pkt = AMPPkt::new(ORIGIN, PREVIOUS_SENDER, vec![msg.clone()]);
 
-        let sub_msg = pkt.to_sub_msg(Addr::unchecked("kernel"), None, 1).unwrap();
+        let sub_msg = pkt.to_sub_msg(Addr::unchecked(KERNEL), None, 1).unwrap();
 
-        let expected_msg =
-            ExecuteMsg::AMPReceive(AMPPkt::new("origin", "previoussender", vec![msg]));
+        let expected_msg = ExecuteMsg::AMPReceive(AMPPkt::new(ORIGIN, PREVIOUS_SENDER, vec![msg]));
         assert_eq!(sub_msg.id, 1);
         assert_eq!(sub_msg.reply_on, ReplyOn::Always);
         assert_eq!(sub_msg.gas_limit, None);
         assert_eq!(
             sub_msg.msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: "kernel".to_string(),
+                contract_addr: KERNEL.to_string(),
                 msg: to_json_binary(&expected_msg).unwrap(),
                 funds: vec![],
             })
@@ -648,17 +712,17 @@ mod tests {
     }
     #[test]
     fn test_to_json() {
-        let msg = AMPPkt::new("origin", "previoussender", vec![]);
+        let msg = AMPPkt::new(ORIGIN, PREVIOUS_SENDER, vec![]);
 
         let memo = msg.to_json();
-        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":null,\"previous_hops\":[]}}".to_string());
+        assert_eq!(memo, "{\"messages\":[],\"ctx\":{\"origin\":\"cosmwasm1rq0a63huffeydw057846xy5m5htjgqg67hcsygantzv4t5wlzz9qpdp0pz\",\"origin_username\":null,\"previous_sender\":\"cosmwasm1n006e54tz4ln667t8p8j9mzk0v7jvlg7hwm568ultag7c94z3n2se70nmk\",\"id\":null,\"previous_hops\":[]}}".to_string());
     }
 
     #[test]
     fn test_to_ibc_hooks_memo() {
-        let msg = AMPPkt::new("origin", "previoussender", vec![]);
+        let msg = AMPPkt::new(ORIGIN, PREVIOUS_SENDER, vec![]);
         let contract_addr = "contractaddr";
         let memo = msg.to_ibc_hooks_memo(contract_addr.to_string(), "callback".to_string());
-        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"origin\",\"origin_username\":null,\"previous_sender\":\"previoussender\",\"id\":null,\"previous_hops\":[]}}}},\"ibc_callback\":\"callback\"}".to_string());
+        assert_eq!(memo, "{\"wasm\":{\"contract\":\"contractaddr\",\"msg\":{\"amp_receive\":{\"messages\":[],\"ctx\":{\"origin\":\"cosmwasm1rq0a63huffeydw057846xy5m5htjgqg67hcsygantzv4t5wlzz9qpdp0pz\",\"origin_username\":null,\"previous_sender\":\"cosmwasm1n006e54tz4ln667t8p8j9mzk0v7jvlg7hwm568ultag7c94z3n2se70nmk\",\"id\":null,\"previous_hops\":[]}}}},\"ibc_callback\":\"callback\"}".to_string());
     }
 }

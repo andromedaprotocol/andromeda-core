@@ -3,6 +3,7 @@ use crate::query;
 use crate::state::{
     ADO_OWNER, CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN,
     ENV_VARIABLES, IBC_FUND_RECOVERY, KERNEL_ADDRESSES, PENDING_MSG_AND_FUNDS, TRIGGER_KEY,
+    TX_INDEX,
 };
 use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::addresses::AndrAddr;
@@ -20,13 +21,16 @@ use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
 use andromeda_std::os::kernel::{
-    ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo, InternalMsg,
+    is_os_contract, ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo,
+    InternalMsg,
 };
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, DepsMut, Env,
-    IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, WasmMsg,
+    IbcMsg, MessageInfo, Response, StdAck, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
+#[cfg(not(target_arch = "wasm32"))]
+use cw_orch::mock::cw_multi_test::ibc::types::keccak256;
 
 pub fn send(ctx: ExecuteContext, message: AMPMsg) -> Result<Response, ContractError> {
     ensure!(
@@ -96,10 +100,20 @@ pub fn handle_local(
     // Verify recipient is a contract
     let code_id = get_code_id(&deps, recipient)?;
     // Check if the recipient is an ADO
-    let is_ado = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?.is_some();
+    let ado_type = AOSQuerier::ado_type_getter(&deps.querier, &adodb_addr, code_id)?;
+
+    // Ensure that the recipient addr is not an OS contract
+    if let Some(ado_type) = &ado_type {
+        ensure!(
+            !is_os_contract(ado_type),
+            ContractError::InvalidRecipientType {
+                msg: "Recipient is an OS contract".to_string(),
+            }
+        );
+    }
 
     // Generate submessage based on whether recipient is an ADO or if the message is direct
-    let sub_msg = if config.direct || !is_ado {
+    let sub_msg = if config.direct || ado_type.is_none() {
         amp_message.generate_sub_msg_direct(recipient_addr, ReplyId::AMPMsg.repr())
     } else {
         let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
@@ -136,7 +150,7 @@ pub fn handle_receive_cw20(
         Cw20HookMsg::Send { message } => {
             ensure!(
                 has_coins_merged(
-                    vec![Coin::new(amount_sent.into(), &asset_sent)].as_slice(),
+                    vec![Coin::new(amount_sent.u128(), &asset_sent)].as_slice(),
                     message.funds.as_slice()
                 ),
                 ContractError::InsufficientFunds {}
@@ -154,7 +168,7 @@ pub fn handle_receive_cw20(
             info,
             env,
             packet,
-            vec![Coin::new(amount_sent.into(), &asset_sent)],
+            vec![Coin::new(amount_sent.u128(), &asset_sent)],
         ),
     }
 }
@@ -240,14 +254,15 @@ pub fn trigger_relay(
     channel_id: String,
     packet_ack_msg: Binary,
 ) -> Result<Response, ContractError> {
-    //TODO Only the authorized address to handle replies can call this function
     ensure!(
         ctx.info.sender == KERNEL_ADDRESSES.load(ctx.deps.storage, TRIGGER_KEY)?,
         ContractError::Unauthorized {}
     );
     let ics20_packet_info = CHANNEL_TO_EXECUTE_MSG
-        .load(ctx.deps.storage, (channel_id.clone(), packet_sequence))
-        .expect("No packet found for channel_id and sequence");
+        .may_load(ctx.deps.storage, (channel_id.clone(), packet_sequence))?
+        .ok_or(ContractError::InvalidPacket {
+            error: Some("No packet found for channel_id and sequence".to_string()),
+        })?;
 
     let chain = ics20_packet_info
         .recipient
@@ -320,7 +335,11 @@ fn handle_ibc_transfer_funds_reply(
     );
 
     ics20_packet_info.pending = true;
-    CHANNEL_TO_EXECUTE_MSG.save(deps.storage, (channel_id, sequence), &ics20_packet_info)?;
+    CHANNEL_TO_EXECUTE_MSG.save(
+        deps.storage,
+        (channel_id.clone(), sequence),
+        &ics20_packet_info,
+    )?;
 
     let channel = channel_info
         .direct_channel_id
@@ -329,21 +348,18 @@ fn handle_ibc_transfer_funds_reply(
         })?;
 
     // TODO: We should send denom info to the counterparty chain with amp message
-    let (counterparty_denom, _counterparty_denom_info) = get_counterparty_denom(
+    let (counterparty_denom, counterparty_denom_info) = get_counterparty_denom(
         &deps.as_ref(),
         &ics20_packet_info.funds.denom,
         &ics20_packet_info.channel,
     )?;
     #[allow(unused_assignments, unused_mut)]
-    let mut adjusted_funds = Coin::new(
-        ics20_packet_info.funds.amount.u128(),
-        counterparty_denom.clone(),
-    );
+    let mut adjusted_funds = Coin::new(ics20_packet_info.funds.amount.u128(), &counterparty_denom);
 
     // Funds are not correctly hashed when using cw-orchestrator so instead we construct the denom manually
     #[cfg(not(target_arch = "wasm32"))]
     if counterparty_denom.starts_with("ibc/") {
-        let hops = path_to_hops(_counterparty_denom_info.path)?;
+        let hops = path_to_hops(counterparty_denom_info.path)?;
         // cw-orch doesn't correctly hash the denom so we need to manually construct it
         let adjusted_path = hops
             .iter()
@@ -351,13 +367,11 @@ fn handle_ibc_transfer_funds_reply(
             .collect::<Vec<String>>()
             .join("/");
 
-        adjusted_funds = Coin::new(
-            ics20_packet_info.funds.amount.u128(),
-            format!(
-                "ibc/{}/{}",
-                adjusted_path, _counterparty_denom_info.base_denom
-            ),
-        );
+        let denom_path = format!("{}/{}", adjusted_path, &ics20_packet_info.funds.denom);
+
+        let new_denom = format!("ibc/{}", hex::encode(keccak256(denom_path.as_bytes())));
+
+        adjusted_funds = Coin::new(ics20_packet_info.funds.amount.u128(), new_denom);
     }
 
     let mut ctx = AMPCtx::new(ics20_packet_info.sender.clone(), env.contract.address, None);
@@ -440,7 +454,11 @@ pub fn amp_receive(
     res.events.extend_from_slice(&msg_res.events);
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
-    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(
+        deps,
+        &env,
+        packet.ctx.id.clone(),
+    )?);
 
     for (idx, message) in packet.messages.iter().enumerate() {
         if idx == 0 {
@@ -503,7 +521,11 @@ pub fn amp_receive_cw20(
 
     let mut new_pkt = AMPPkt::from_ctx(Some(packet.clone()), env.contract.address.to_string());
 
-    new_pkt.ctx.id = Some(generate_or_validate_packet_id(packet.ctx.id.clone(), &env)?);
+    new_pkt.ctx.id = Some(generate_or_validate_packet_id(
+        deps,
+        &env,
+        packet.ctx.id.clone(),
+    )?);
 
     let mut res = Response::default();
     ensure!(
@@ -885,26 +907,28 @@ pub fn unset_env(execute_ctx: ExecuteContext, variable: String) -> Result<Respon
 }
 
 /// Generates or validates a packet ID using chain ID, block height and transaction index
-fn generate_or_validate_packet_id(
-    existing_id: Option<String>,
+pub(super) fn generate_or_validate_packet_id(
+    deps: &mut DepsMut,
     env: &Env,
+    existing_id: Option<String>,
 ) -> Result<String, ContractError> {
-    let tx_index =
-        env.transaction
-            .as_ref()
-            .map(|tx| tx.index)
-            .ok_or(ContractError::InvalidPacket {
-                error: Some("Transaction index not available".to_string()),
-            })?;
+    let current_tx_index = TX_INDEX.may_load(deps.storage)?.unwrap_or(Uint128::zero());
 
     match existing_id {
+        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, current_tx_index),
         // Generate unique ID if the packet doesn't already have one
-        Some(id) => validate_id(&id, &env.block.chain_id, env.block.height, tx_index),
-        // Not using "-" as a separator since chain id can contain it
-        None => Ok(format!(
-            "{}.{}.{}",
-            env.block.chain_id, env.block.height, tx_index
-        )),
+        None => {
+            let new_tx_index = current_tx_index
+                .checked_add(Uint128::one())
+                .unwrap_or(Uint128::zero());
+
+            TX_INDEX.save(deps.storage, &new_tx_index)?;
+            // Not using "-" as a separator since chain id can contain it
+            Ok(format!(
+                "{}.{}.{}",
+                env.block.chain_id, env.block.height, current_tx_index
+            ))
+        }
     }
 }
 
@@ -913,7 +937,7 @@ pub fn validate_id(
     id: &str,
     current_chain_id: &str,
     current_block_height: u64,
-    current_index: u32,
+    current_index: Uint128,
 ) -> Result<String, ContractError> {
     // Split the ID into chain_id, block_height, and index parts
     let parts: Vec<&str> = id.split('.').collect();
@@ -926,7 +950,6 @@ pub fn validate_id(
     }
 
     let [chain_id, block_height_str, index_str] = [parts[0], parts[1], parts[2]];
-
     // Validate chain_id
     if chain_id.is_empty() {
         return Err(ContractError::InvalidPacket {
@@ -943,14 +966,15 @@ pub fn validate_id(
             })?;
 
     let index = index_str
-        .parse::<u32>()
+        .parse::<Uint128>()
         .map_err(|_| ContractError::InvalidPacket {
             error: Some("Invalid transaction index format".to_string()),
         })?;
 
+    let incremented_index = index.checked_add(Uint128::one()).unwrap_or(Uint128::zero());
     //TODO discuss validation for cross chain packets
     if chain_id == current_chain_id
-        && (block_height != current_block_height || index != current_index)
+        && (block_height != current_block_height || incremented_index != current_index)
     {
         return Err(ContractError::InvalidPacket {
             error: Some(
@@ -1236,6 +1260,8 @@ pub(crate) fn handle_ibc_transfer_funds(
         to_address: channel_info.kernel_address.clone(),
         amount: coin.clone(),
         timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
+        // TODO allow optional memo
+        memo: None,
     };
     let mut resp = Response::default();
 
@@ -1256,6 +1282,7 @@ pub(crate) fn handle_ibc_transfer_funds(
         msg: CosmosMsg::Ibc(msg),
         gas_limit: None,
         reply_on: cosmwasm_std::ReplyOn::Always,
+        payload: Binary::default(),
     });
 
     Ok(resp

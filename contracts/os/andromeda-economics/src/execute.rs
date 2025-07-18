@@ -200,7 +200,6 @@ pub fn pay_fee(
                     )?;
                     deps.api.addr_validate(&publisher)?
                 };
-
                 let receiver_balance = BALANCES
                     .load(
                         deps.as_ref().storage,

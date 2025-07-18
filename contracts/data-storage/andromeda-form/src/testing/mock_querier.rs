@@ -8,7 +8,7 @@ use andromeda_std::{
 use cosmwasm_std::QuerierWrapper;
 use cosmwasm_std::{
     from_json,
-    testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
+    testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR},
     Coin, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, WasmQuery,
 };
 use cosmwasm_std::{to_json_binary, Binary, ContractResult};
@@ -30,13 +30,14 @@ pub fn mock_dependencies_custom(
         querier: custom_querier,
         custom_query_type: std::marker::PhantomData,
     };
+    let sender = deps.api.addr_make("sender");
     ADOContract::default()
         .instantiate(
             &mut deps.storage,
             mock_env(),
             &deps.api,
             &QuerierWrapper::new(&deps.querier),
-            mock_info("sender", &[]),
+            message_info(&sender, &[]),
             InstantiateMsg {
                 ado_type: "form".to_string(),
                 ado_version: "test".to_string(),
@@ -73,6 +74,9 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 match contract_addr.as_str() {
                     MOCK_SCHEMA_ADO => self.handle_schema_smart_query(msg),
+                    "cosmwasm1vrvzfjg5qx7apcsjtc7z49f5qvx3k8j7hvjnlnv7pndyffq0x3nsh44s8w" => {
+                        self.handle_schema_smart_query(msg)
+                    }
                     _ => MockAndromedaQuerier::default().handle_query(&self.base, request),
                 }
             }

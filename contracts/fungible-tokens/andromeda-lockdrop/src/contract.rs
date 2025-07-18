@@ -262,7 +262,9 @@ pub fn execute_withdraw_native(
     // Check :: Amount should be within the allowed withdrawal limit bounds
     // let max_withdrawal_percent = allowed_withdrawal_percent(env.block.time.seconds(), &config);
     let max_withdrawal_percent = Decimal::one();
-    let max_withdrawal_allowed = user_info.total_native_locked * max_withdrawal_percent;
+    let max_withdrawal_allowed = user_info
+        .total_native_locked
+        .checked_mul_floor(max_withdrawal_percent)?;
     let withdraw_amount = withdraw_amount.unwrap_or(max_withdrawal_allowed);
     ensure!(
         withdraw_amount <= max_withdrawal_allowed,
@@ -404,7 +406,7 @@ pub fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractEr
 //     let state = STATE.load(deps.storage)?;
 //     // CHECK :: Only Owner can call this function
 //     ensure!(
-//         ADOContract::default().is_contract_owner(deps.storage, info.sender.as_str())?,
+//         ctx.contract.is_contract_owner(deps.storage, info.sender.as_str())?,
 //         ContractError::Unauthorized {}
 //     );
 

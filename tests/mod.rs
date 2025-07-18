@@ -21,11 +21,18 @@ mod lockdrop;
 
 #[cfg(test)]
 mod cw721;
+
 #[cfg(test)]
 mod validator_staking;
 
 #[cfg(test)]
+mod timelock;
+
+#[cfg(test)]
 mod cw20_app;
+
+#[cfg(test)]
+mod exchange;
 
 #[cfg(test)]
 mod fixed_amount_splitter;
@@ -41,3 +48,6 @@ mod macro_tests;
 
 #[cfg(test)]
 mod curve_app;
+
+#[cfg(test)]
+mod cw721;

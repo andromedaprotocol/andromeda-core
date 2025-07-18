@@ -1,5 +1,9 @@
 use super::{addresses::AndrAddr, messages::AMPMsg};
-use crate::{ado_contract::ADOContract, common::encode_binary, error::ContractError};
+use crate::{
+    ado_contract::ADOContract,
+    common::{context::ExecuteContext, encode_binary},
+    error::ContractError,
+};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, SubMsg, WasmMsg};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
@@ -39,6 +43,25 @@ impl Recipient {
         }
 
         Ok(())
+    }
+
+    /// Resolves a recipient with fallback logic
+    /// 1. If recipient is provided, validate and return it
+    /// 2. If no recipient, use AMP context origin if available
+    /// 3. Otherwise fallback to sender
+    pub fn validate_or_default(
+        recipient: Option<Recipient>,
+        execute_ctx: &ExecuteContext,
+        sender: &str,
+    ) -> Result<Recipient, ContractError> {
+        if let Some(recipient) = recipient {
+            recipient.validate(&execute_ctx.deps.as_ref())?;
+            Ok(recipient)
+        } else if let Some(ref amp_ctx) = execute_ctx.amp_ctx {
+            Ok(Recipient::from_string(amp_ctx.ctx.get_origin()))
+        } else {
+            Ok(Recipient::from_string(sender))
+        }
     }
 
     /// Creates a Recipient from the given string with no attached message
@@ -157,13 +180,13 @@ mod test {
     use cosmwasm_std::{from_json, testing::mock_dependencies, Addr, Uint128};
 
     use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_APP_CONTRACT};
-
+    const RECIPIENT: &str = "cosmwasm1vewsdxxmeraett7ztsaym88jsrv85kzm0xvjg09xqz8aqvjcja0syapxq9";
     use super::*;
 
     #[test]
     fn test_generate_direct_msg() {
         let deps = mock_dependencies();
-        let recipient = Recipient::from_string("test");
+        let recipient = Recipient::from_string(RECIPIENT);
         let funds = vec![Coin {
             denom: "test".to_string(),
             amount: Uint128::from(100u128),
@@ -173,13 +196,13 @@ mod test {
             .unwrap();
         match msg.msg {
             CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
-                assert_eq!(to_address, "test");
+                assert_eq!(to_address, RECIPIENT);
                 assert_eq!(amount, funds);
             }
             _ => panic!("Unexpected message type"),
         }
 
-        let recipient = Recipient::new("test", Some(Binary::from(b"test".to_vec())));
+        let recipient = Recipient::new(RECIPIENT, Some(Binary::from(b"test".to_vec())));
         let msg = recipient
             .generate_direct_msg(&deps.as_ref(), funds.clone())
             .unwrap();
@@ -189,7 +212,7 @@ mod test {
                 msg,
                 funds: msg_funds,
             }) => {
-                assert_eq!(contract_addr, "test");
+                assert_eq!(contract_addr, RECIPIENT);
                 assert_eq!(msg, Binary::from(b"test".to_vec()));
                 assert_eq!(msg_funds, funds);
             }
@@ -200,7 +223,7 @@ mod test {
     #[test]
     fn test_generate_msg_cw20() {
         let deps = mock_dependencies();
-        let recipient = Recipient::from_string("test");
+        let recipient = Recipient::from_string(RECIPIENT);
         let cw20_coin = Cw20Coin {
             address: "test".to_string(),
             amount: Uint128::from(100u128),
@@ -218,7 +241,7 @@ mod test {
                 assert_eq!(funds, vec![] as Vec<Coin>);
                 match from_json(msg).unwrap() {
                     Cw20ExecuteMsg::Transfer { recipient, amount } => {
-                        assert_eq!(recipient, "test");
+                        assert_eq!(recipient, RECIPIENT);
                         assert_eq!(amount, cw20_coin.amount);
                     }
                     _ => panic!("Unexpected message type"),
@@ -227,7 +250,7 @@ mod test {
             _ => panic!("Unexpected message type"),
         }
 
-        let recipient = Recipient::new("test", Some(Binary::from(b"test".to_vec())));
+        let recipient = Recipient::new(RECIPIENT, Some(Binary::from(b"test".to_vec())));
         let msg = recipient
             .generate_msg_cw20(&deps.as_ref(), cw20_coin.clone())
             .unwrap();
@@ -245,7 +268,7 @@ mod test {
                         amount,
                         msg: send_msg,
                     } => {
-                        assert_eq!(contract, "test");
+                        assert_eq!(contract, RECIPIENT);
                         assert_eq!(amount, cw20_coin.amount);
                         assert_eq!(send_msg, Binary::from(b"test".to_vec()));
                     }
@@ -258,16 +281,16 @@ mod test {
 
     #[test]
     fn test_generate_amp_msg() {
-        let recipient = Recipient::from_string("test");
+        let recipient = Recipient::from_string(RECIPIENT);
         let mut deps = mock_dependencies_custom(&[]);
         let msg = recipient.generate_amp_msg(&deps.as_ref(), None).unwrap();
-        assert_eq!(msg.recipient, "test");
+        assert_eq!(msg.recipient, RECIPIENT);
         assert_eq!(msg.message, Binary::default());
         assert_eq!(msg.funds, vec![] as Vec<Coin>);
 
-        let recipient = Recipient::new("test", Some(Binary::from(b"test".to_vec())));
+        let recipient = Recipient::new(RECIPIENT, Some(Binary::from(b"test".to_vec())));
         let msg = recipient.generate_amp_msg(&deps.as_ref(), None).unwrap();
-        assert_eq!(msg.recipient, "test");
+        assert_eq!(msg.recipient, RECIPIENT);
         assert_eq!(msg.message, Binary::from(b"test".to_vec()));
         assert_eq!(msg.funds, vec![] as Vec<Coin>);
 
@@ -275,11 +298,11 @@ mod test {
             denom: "test".to_string(),
             amount: Uint128::from(100u128),
         }];
-        let recipient = Recipient::from_string("test");
+        let recipient = Recipient::from_string(RECIPIENT);
         let msg = recipient
             .generate_amp_msg(&deps.as_ref(), Some(funds.clone()))
             .unwrap();
-        assert_eq!(msg.recipient, "test");
+        assert_eq!(msg.recipient, RECIPIENT);
         assert_eq!(msg.message, Binary::default());
         assert_eq!(msg.funds, funds);
 

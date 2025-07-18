@@ -1,4 +1,4 @@
-use andromeda_std::os::vfs::{validate_path_name, PathInfo, SubDirBound};
+use andromeda_std::os::vfs::{validate_path_name, SubDirBound, SubDirResponse};
 use andromeda_std::{amp::AndrAddr, error::ContractError};
 use cosmwasm_std::{Addr, Deps};
 
@@ -16,9 +16,10 @@ pub fn subdir(
     min: Option<SubDirBound>,
     max: Option<SubDirBound>,
     limit: Option<u32>,
-) -> Result<Vec<PathInfo>, ContractError> {
+) -> Result<SubDirResponse, ContractError> {
     validate_path_name(deps.api, path.to_string())?;
-    get_subdir(deps.storage, deps.api, path, min, max, limit)
+    let subdirs = get_subdir(deps.storage, deps.api, path, min, max, limit)?;
+    Ok(SubDirResponse { subdirs })
 }
 
 pub fn paths(deps: Deps, addr: Addr) -> Result<Vec<String>, ContractError> {

@@ -28,7 +28,7 @@ use crate::{
 
 use andromeda_fungible_tokens::cw20_staking::{
     Config, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RewardToken, RewardTokenUnchecked,
-    RewardType, StakerResponse, State,
+    RewardType, StakerResponse, StakersResponse, State,
 };
 
 // Version info, for migration info
@@ -366,7 +366,7 @@ fn execute_stake_tokens(
 
     let staking_token_address = config.staking_token.get_raw_address(&deps.as_ref())?;
     ensure!(
-        token_address == staking_token_address,
+        token_address == staking_token_address.as_str(),
         ContractError::InvalidFunds {
             msg: "Deposited cw20 token is not the staking token".to_string(),
         }
@@ -508,7 +508,7 @@ fn execute_claim_rewards(ctx: ExecuteContext) -> Result<Response, ContractError>
                 STAKER_REWARD_INFOS.load(deps.storage, (sender, &token_string))?;
             let rewards: Uint128 =
                 Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
-                    * Uint128::from(1u128);
+                    .to_uint_floor();
 
             let decimals: Decimal256 =
                 staker_reward_info.pending_rewards - Decimal256::from_ratio(rewards, 1u128);
@@ -699,7 +699,7 @@ fn update_staker_rewards(
         let mut staker_reward_info = STAKER_REWARD_INFOS
             .may_load(storage, (staker_address, &token_string))?
             .unwrap_or_default();
-        update_staker_reward_info(staker, &mut staker_reward_info, token);
+        update_staker_reward_info(staker, &mut staker_reward_info, token)?;
         STAKER_REWARD_INFOS.save(
             storage,
             (staker_address, &token_string),
@@ -723,12 +723,15 @@ fn update_staker_reward_info(
     staker: &Staker,
     staker_reward_info: &mut StakerRewardInfo,
     reward_token: RewardToken,
-) {
+) -> Result<(), ContractError> {
     let staker_share = Uint256::from(staker.share);
-    let rewards = (reward_token.index - staker_reward_info.index) * staker_share;
+    let rewards = staker_share.checked_mul_floor(reward_token.index - staker_reward_info.index)?;
 
     staker_reward_info.index = reward_token.index;
-    staker_reward_info.pending_rewards += Decimal256::from_ratio(rewards, 1u128);
+    staker_reward_info.pending_rewards = staker_reward_info
+        .pending_rewards
+        .checked_add(Decimal256::from_ratio(rewards, 1u128))?;
+    Ok(())
 }
 
 pub(crate) fn get_staking_token(deps: Deps) -> Result<AssetInfo, ContractError> {
@@ -808,11 +811,11 @@ pub(crate) fn get_pending_rewards(
             &state,
             &mut token,
         )?;
-        update_staker_reward_info(staker, &mut staker_reward_info, token);
+        update_staker_reward_info(staker, &mut staker_reward_info, token)?;
         pending_rewards.push((
             token_string,
             Decimal::from_str(staker_reward_info.pending_rewards.to_string().as_str())?
-                * Uint128::from(1u128),
+                .to_uint_floor(),
         ))
     }
     Ok(pending_rewards)
@@ -823,7 +826,7 @@ fn query_stakers(
     env: Env,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> Result<Vec<StakerResponse>, ContractError> {
+) -> Result<StakersResponse, ContractError> {
     let start = start_after.as_deref();
     get_stakers(deps, &deps.querier, deps.api, &env, start, limit)
 }

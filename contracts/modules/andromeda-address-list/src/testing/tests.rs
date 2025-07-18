@@ -12,20 +12,23 @@ use andromeda_std::{
 };
 use cosmwasm_std::{
     attr, from_json,
-    testing::{mock_env, mock_info},
-    Addr, DepsMut, MessageInfo, Response,
+    testing::{message_info, mock_env},
+    MessageInfo, Response,
 };
 
-fn init(deps: DepsMut, info: MessageInfo) {
+use super::mock_querier::TestDeps;
+
+fn init(deps: &mut TestDeps, info: MessageInfo) {
+    let actor = deps.api.addr_make("actor");
     instantiate(
-        deps,
+        deps.as_mut(),
         mock_env(),
         info,
         InstantiateMsg {
             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             owner: None,
             actor_permission: Some(ActorPermission {
-                actors: vec![AndrAddr::from_string("actor")],
+                actors: vec![AndrAddr::from_string(actor.clone())],
                 permission: LocalPermission::whitelisted(None, None, None, None),
             }),
         },
@@ -36,10 +39,39 @@ fn init(deps: DepsMut, info: MessageInfo) {
 #[test]
 fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
 
-    init(deps.as_mut(), info);
+    init(&mut deps, info);
 }
+
+// #[test]
+// fn test_instantiate_contract_permission() {
+//     let mut deps = mock_dependencies_custom(&[]);
+//     let creator = deps.api.addr_make("creator");
+// let info = message_info(&creator, &[]);
+
+//     let err = instantiate(
+//         deps.as_mut(),
+//         mock_env(),
+//         info,
+//         InstantiateMsg {
+//             kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+//             owner: None,
+//             actor_permission: Some(ActorPermission {
+//                 actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
+//                 permission: Permission::Whitelisted(None),
+//             }),
+//         },
+//     )
+//     .unwrap_err();
+//     assert_eq!(
+//         err,
+//         ContractError::InvalidPermission {
+//             msg: "Contract permissions aren't allowed in the address list contract".to_string()
+//         }
+//     )
+// }
 
 #[test]
 fn test_add_remove_actor() {
@@ -47,12 +79,13 @@ fn test_add_remove_actor() {
     let env = mock_env();
 
     let operator = "creator";
-    let info = mock_info(operator, &[]);
+    let operator = deps.api.addr_make(operator);
+    let info = message_info(&operator, &[]);
 
-    let actor = Addr::unchecked("actor");
+    let actor = deps.api.addr_make("actor");
     let permission = LocalPermission::default();
 
-    init(deps.as_mut(), info.clone());
+    init(&mut deps, info.clone());
 
     let msg = ExecuteMsg::PermissionActors {
         actors: vec![AndrAddr::from_string(actor.clone())],
@@ -72,7 +105,8 @@ fn test_add_remove_actor() {
     assert_eq!(new_permission, permission);
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let anyone = deps.api.addr_make("anyone");
+    let unauth_info = message_info(&anyone, &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
@@ -85,12 +119,12 @@ fn test_add_remove_actor() {
     assert!(permission.is_none());
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let unauth_info = message_info(&anyone, &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
     // Try removing an actor that isn't included in permissions
-    let random_actor = Addr::unchecked("random_actor");
+    let random_actor = deps.api.addr_make("random_actor");
     let msg = ExecuteMsg::RemovePermissions {
         actors: vec![AndrAddr::from_string(random_actor)],
     };
@@ -103,16 +137,17 @@ fn test_add_remove_multiple_actors() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let operator = "creator";
-    let info = mock_info(operator, &[]);
-
+    let operator = deps.api.addr_make("creator");
+    let info = message_info(&operator, &[]);
+    let actor1 = deps.api.addr_make("actor1");
+    let actor2 = deps.api.addr_make("actor2");
     let actors = vec![
-        AndrAddr::from_string("actor1"),
-        AndrAddr::from_string("actor2"),
+        AndrAddr::from_string(actor1.clone()),
+        AndrAddr::from_string(actor2.clone()),
     ];
     let permission = LocalPermission::default();
 
-    init(deps.as_mut(), info.clone());
+    init(&mut deps, info.clone());
 
     let msg = ExecuteMsg::PermissionActors {
         actors: actors.clone(),
@@ -122,7 +157,7 @@ fn test_add_remove_multiple_actors() {
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     let expected = Response::default().add_attributes(vec![
         attr("action", "add_actor_permission"),
-        attr("actor", "actor1, actor2"),
+        attr("actor", format!("{}, {}", actor1, actor2)),
         attr("permission", permission.to_string()),
     ]);
     assert_eq!(expected, res);
@@ -144,7 +179,8 @@ fn test_add_remove_multiple_actors() {
     assert_eq!(new_permission, permission);
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let anyone = deps.api.addr_make("anyone");
+    let unauth_info = message_info(&anyone, &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
@@ -169,12 +205,12 @@ fn test_add_remove_multiple_actors() {
     assert!(permission.is_none());
 
     // Try with unauthorized address
-    let unauth_info = mock_info("anyone", &[]);
+    let unauth_info = message_info(&anyone, &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
 
     // Try removing an actor that isn't included in permissions
-    let random_actor = Addr::unchecked("random_actor");
+    let random_actor = deps.api.addr_make("random_actor");
     let msg = ExecuteMsg::RemovePermissions {
         actors: vec![AndrAddr::from_string(random_actor)],
     };
@@ -186,8 +222,8 @@ fn test_add_remove_multiple_actors() {
 fn test_includes_actor_query() {
     let mut deps = mock_dependencies_custom(&[]);
 
-    let actor = Addr::unchecked("actor");
-    let random_actor = Addr::unchecked("random_actor");
+    let actor = deps.api.addr_make("actor");
+    let random_actor = deps.api.addr_make("random_actor");
 
     let permission = LocalPermission::default();
 
@@ -216,8 +252,8 @@ fn test_includes_actor_query() {
 fn test_actor_permission_query() {
     let mut deps = mock_dependencies_custom(&[]);
 
-    let actor = Addr::unchecked("actor");
-    let random_actor = Addr::unchecked("random_actor");
+    let actor = deps.api.addr_make("actor");
+    let random_actor = deps.api.addr_make("random_actor");
 
     let permission = LocalPermission::default();
 

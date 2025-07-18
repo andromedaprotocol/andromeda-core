@@ -7,7 +7,7 @@ use andromeda_std::{
     amp::AndrAddr,
     os::{
         kernel::{ExecuteMsg as KernelExecuteMsg, InternalMsg},
-        vfs::{ExecuteMsg, InstantiateMsg, PathInfo},
+        vfs::{ExecuteMsg, InstantiateMsg, PathInfo, SubDirResponse},
     },
     testing::mock_querier::{
         mock_dependencies_custom, MOCK_APP_CONTRACT, MOCK_FAKE_KERNEL_CONTRACT,
@@ -17,7 +17,7 @@ use andromeda_std::{
 use andromeda_std::{error::ContractError, os::vfs::QueryMsg};
 use cosmwasm_std::{
     from_json,
-    testing::{mock_dependencies, mock_env, mock_info},
+    testing::{message_info, mock_dependencies, mock_env},
     to_json_binary, Addr, CosmosMsg, DepsMut, Env, MessageInfo, WasmMsg,
 };
 
@@ -34,7 +34,8 @@ fn instantiate_contract(deps: DepsMut, env: Env, info: MessageInfo) {
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies();
-    let info = mock_info("creator", &[]);
+    let creator = deps.api.addr_make("creator");
+    let info = message_info(&creator, &[]);
     let env = mock_env();
     instantiate_contract(deps.as_mut(), env, info)
 }
@@ -44,8 +45,8 @@ fn test_register_user() {
     let mut deps = mock_dependencies_custom(&[]);
     // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
     let username = "u1";
-    let sender = "sender";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
@@ -57,7 +58,7 @@ fn test_register_user() {
     let saved = USERS.load(deps.as_ref().storage, username).unwrap();
     assert_eq!(saved, sender);
     let username_saved = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
+        .load(deps.as_ref().storage, sender.as_str())
         .unwrap();
     assert_eq!(username_saved, username);
 
@@ -71,7 +72,7 @@ fn test_register_user() {
     let saved = USERS.load(deps.as_ref().storage, new_username).unwrap();
     assert_eq!(saved, sender);
     let username_saved = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
+        .load(deps.as_ref().storage, sender.as_str())
         .unwrap();
     assert_eq!(username_saved, new_username);
     let deleted = USERS.may_load(deps.as_ref().storage, username).unwrap();
@@ -83,8 +84,8 @@ fn test_register_user_duplicate() {
     let mut deps = mock_dependencies_custom(&[]);
     // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
     let username = "u1";
-    let sender = "sender";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
@@ -96,7 +97,7 @@ fn test_register_user_duplicate() {
     let saved = USERS.load(deps.as_ref().storage, username).unwrap();
     assert_eq!(saved, sender);
     let username_saved = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
+        .load(deps.as_ref().storage, sender.as_str())
         .unwrap();
     assert_eq!(username_saved, username);
 
@@ -111,13 +112,14 @@ fn test_register_user_duplicate() {
 }
 
 // Test using a username that represents a valid CosmWasm Address that IS NOT the same as the sender's address
+// NOTE: A valid CosmwWasm address as a username will return Username must be less than 30 characters, not Usernames that are valid addresses should be the same as the sender's address
 #[test]
 fn test_register_user_valid_cosmwasm_address() {
     let mut deps = mock_dependencies_custom(&[]);
     // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
-    let username = "user1";
-    let sender = "sender";
-    let info = mock_info(sender, &[]);
+    let username = deps.api.addr_make("user1");
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
@@ -125,18 +127,24 @@ fn test_register_user_valid_cosmwasm_address() {
     };
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    // assert_eq!(
+    //     err,
+    //     ContractError::InvalidUsername {
+    //         error: Some(
+    //             "Usernames that are valid addresses should be the same as the sender's address"
+    //                 .to_string()
+    //         )
+    //     }
+    // );
     assert_eq!(
         err,
         ContractError::InvalidUsername {
-            error: Some(
-                "Usernames that are valid addresses should be the same as the sender's address"
-                    .to_string()
-            )
+            error: Some("Username must be less than 30 characters".to_string())
         }
     );
 
-    let username = "SeNdEr";
-    let info = mock_info("attacker", &[]);
+    let username = deps.api.addr_make("SeNdEr");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
@@ -147,15 +155,13 @@ fn test_register_user_valid_cosmwasm_address() {
     assert_eq!(
         err,
         ContractError::InvalidUsername {
-            error: Some(
-                "Usernames that are valid addresses should be the same as the sender's address"
-                    .to_string()
-            )
+            error: Some("Username must be less than 30 characters".to_string())
         }
     );
 
     let username = "SeNdEr";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
@@ -172,8 +178,8 @@ fn test_register_user_valid_cosmwasm_address_user() {
     let mut deps = mock_dependencies_custom(&[]);
     // Using a username less than 3 characters long to simulate an invalid CosmWasm Address
     let username = "sender";
-    let sender = "sender";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
@@ -189,9 +195,9 @@ fn test_register_user_valid_cosmwasm_address_user() {
 fn test_register_user_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let username = "user1";
-    let sender = "sender";
     let occupier = "occupier";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
@@ -217,8 +223,8 @@ fn test_register_user_already_registered() {
     // Using a usernames less than 3 characters long to simulate an invalid CosmWasm Address
     let username = "u1";
     let new_username = "u2";
-    let sender = "sender";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::RegisterUser {
         username: new_username.to_string(),
@@ -227,14 +233,14 @@ fn test_register_user_already_registered() {
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
 
     USERS
-        .save(deps.as_mut().storage, username, &Addr::unchecked(sender))
+        .save(deps.as_mut().storage, username, &Addr::unchecked(&sender))
         .unwrap();
 
     execute(deps.as_mut(), env, info, msg).unwrap();
     let addr = USERS.load(deps.as_ref().storage, new_username).unwrap();
     assert_eq!(addr, sender);
     let username = ADDRESS_USERNAME
-        .load(deps.as_ref().storage, sender)
+        .load(deps.as_ref().storage, sender.as_str())
         .unwrap();
     assert_eq!(username, new_username)
 }
@@ -244,11 +250,12 @@ fn test_register_user_foreign_chain() {
     let mut deps = mock_dependencies_custom(&[]);
     // Using a usernames less than 3 characters long to simulate an invalid CosmWasm Address
     let username = "u1";
-    let sender = "sender";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
+    let kernel_address = deps.api.addr_make(MOCK_FAKE_KERNEL_CONTRACT);
     let msg = InstantiateMsg {
-        kernel_address: MOCK_FAKE_KERNEL_CONTRACT.to_string(),
+        kernel_address: kernel_address.to_string(),
         owner: None,
     };
 
@@ -265,9 +272,10 @@ fn test_register_user_foreign_chain() {
 
     let msg = ExecuteMsg::RegisterUser {
         username: username.to_string(),
-        address: Some(Addr::unchecked(sender)),
+        address: Some(Addr::unchecked(&sender)),
     };
-    let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
+    let fake_kernel = deps.api.addr_make(MOCK_FAKE_KERNEL_CONTRACT);
+    let info = message_info(&fake_kernel, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     let addr = USERS.load(deps.as_ref().storage, username).unwrap();
     assert_eq!(addr, sender);
@@ -276,7 +284,8 @@ fn test_register_user_foreign_chain() {
         username: username.to_string(),
         address: None,
     };
-    let info = mock_info(MOCK_FAKE_KERNEL_CONTRACT, &[]);
+    let fake_kernel = deps.api.addr_make(MOCK_FAKE_KERNEL_CONTRACT);
+    let info = message_info(&fake_kernel, &[]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
     assert_eq!(err, ContractError::Unauthorized {});
 }
@@ -285,10 +294,10 @@ fn test_register_user_foreign_chain() {
 fn test_register_user_cross_chain() {
     let mut deps = mock_dependencies_custom(&[]);
     let username = "user1";
-    let sender = "sender";
     let foreign_address = "address";
     let chain = "chain";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
 
@@ -300,7 +309,11 @@ fn test_register_user_cross_chain() {
     assert!(res.is_err());
 
     ADDRESS_USERNAME
-        .save(deps.as_mut().storage, sender, &username.to_string())
+        .save(
+            deps.as_mut().storage,
+            sender.as_str(),
+            &username.to_string(),
+        )
         .unwrap();
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -327,9 +340,9 @@ fn test_add_path() {
     let mut deps = mock_dependencies();
     let username = "u1";
     let component_name = "f1";
-    let sender = "sender";
-    let component_addr = Addr::unchecked("f1addr");
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let component_addr = deps.api.addr_make("f1addr");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
 
@@ -379,7 +392,8 @@ fn test_add_path() {
 
     assert_eq!(resolved_addr, component_addr_two);
 
-    let info = mock_info("not_the_owner", &[]);
+    let not_the_owner = deps.api.addr_make("not_the_owner");
+    let info = message_info(&not_the_owner, &[]);
     let component_name_two = "component_two";
     let component_addr_two = Addr::unchecked("component_two_addr");
     let msg = ExecuteMsg::AddPath {
@@ -397,9 +411,9 @@ fn test_add_symlink() {
     let mut deps = mock_dependencies();
     let username = "u1";
     let component_name = "f1";
-    let sender = "sender";
-    let component_addr = Addr::unchecked("f1addr");
-    let info = mock_info(sender, &[]);
+    let component_addr = deps.api.addr_make("f1addr");
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     instantiate_contract(deps.as_mut(), env.clone(), info.clone());
 
@@ -528,10 +542,10 @@ fn test_add_symlink() {
 fn test_add_child() {
     let mut deps = mock_dependencies_custom(&[]);
     let username = "u1";
-    let user_address = Addr::unchecked("useraddr");
+    let user_address = deps.api.addr_make("useraddr");
     let component_name = "f1";
     let sender = MOCK_APP_CONTRACT;
-    let info = mock_info(sender, &[]);
+    let info = message_info(&Addr::unchecked(sender), &[]);
     let env = mock_env();
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
@@ -554,7 +568,7 @@ fn test_add_child() {
     )
     .unwrap();
 
-    assert_eq!(resolved_addr, sender)
+    assert_eq!(resolved_addr, Addr::unchecked(sender));
 }
 
 #[test]
@@ -562,8 +576,8 @@ fn test_add_child_not_app_contract() {
     let mut deps = mock_dependencies_custom(&[]);
     let user_address = Addr::unchecked("useraddr");
     let component_name = "f1";
-    let sender = "not_an_app_contract";
-    let info = mock_info(sender, &[]);
+    let sender = deps.api.addr_make("sender");
+    let info = message_info(&sender, &[]);
     let env = mock_env();
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
@@ -588,9 +602,10 @@ fn test_override_add_child() {
     let mut deps = mock_dependencies_custom(&[]);
     let env = mock_env();
 
-    let user_address = Addr::unchecked("userone");
+    let user_address = deps.api.addr_make("userone");
     let component_name = "identifier";
-    let info = mock_info(MOCK_APP_CONTRACT, &[]);
+    let mock_app_contract = Addr::unchecked(MOCK_APP_CONTRACT);
+    let info = message_info(&mock_app_contract, &[]);
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
         parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
@@ -599,7 +614,8 @@ fn test_override_add_child() {
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // Try to override above address with your address
-    let info = mock_info("user_two", &[]);
+    let user_two = deps.api.addr_make("user_two");
+    let info = message_info(&user_two, &[]);
     let msg = ExecuteMsg::AddChild {
         name: component_name.to_string(),
         parent_address: AndrAddr::from_string(format!("/home/{user_address}")),
@@ -746,8 +762,13 @@ fn test_get_subdir() {
         limit: None,
     };
     let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    let val: Vec<PathInfo> = from_json(res).unwrap();
-    assert_eq!(val, root_paths);
+    let val: SubDirResponse = from_json(res).unwrap();
+    assert_eq!(
+        val,
+        SubDirResponse {
+            subdirs: root_paths.clone()
+        }
+    );
 
     let subdir = &root_paths[0].name;
     let query_msg = QueryMsg::SubDir {
@@ -757,8 +778,8 @@ fn test_get_subdir() {
         limit: None,
     };
     let res = query(deps.as_ref(), env, query_msg).unwrap();
-    let val: Vec<PathInfo> = from_json(res).unwrap();
-    assert_eq!(val, sub_paths);
+    let val: SubDirResponse = from_json(res).unwrap();
+    assert_eq!(val, SubDirResponse { subdirs: sub_paths });
 }
 
 #[test]

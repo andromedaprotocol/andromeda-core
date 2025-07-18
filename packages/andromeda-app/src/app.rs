@@ -140,7 +140,8 @@ impl AppComponent {
 
         let salt = self.get_salt(parent_addr.clone());
         let creator = api.addr_canonicalize(parent_addr.as_str())?;
-        let new_addr = instantiate2_address(&checksum, &creator, &salt).unwrap();
+
+        let new_addr = instantiate2_address(checksum.as_slice(), &creator, &salt).unwrap();
 
         // Instantiate 2 impl uses default cannonical address of 32 bytes (SHA 256). But as mentioned here -
         // https://github.com/cosmos/cosmos-sdk/blob/v0.45.8/docs/architecture/adr-028-public-key-addresses.md
@@ -337,11 +338,11 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(String)]
     GetAddress { name: String },
-    #[returns(AppComponent)]
+    #[returns(GetComponentsResponse)]
     GetComponents {},
     #[returns(ComponentExistsResponse)]
     ComponentExists { name: String },
-    #[returns(Vec<AppComponent>)]
+    #[returns(GetAddressesWithNamesResponse)]
     GetAddressesWithNames {},
     #[returns(ConfigResponse)]
     Config {},
@@ -362,4 +363,14 @@ pub struct ComponentExistsResponse {
 pub struct ComponentAddress {
     pub name: String,
     pub address: String,
+}
+
+#[cw_serde]
+pub struct GetAddressesWithNamesResponse {
+    pub addresses: Vec<ComponentAddress>,
+}
+
+#[cw_serde]
+pub struct GetComponentsResponse {
+    pub components: Vec<AppComponent>,
 }

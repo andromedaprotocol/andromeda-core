@@ -1,12 +1,13 @@
-use cosmwasm_std::{Addr, OverflowError, StdError};
+use cosmwasm_std::{Addr, CheckedMultiplyFractionError, OverflowError, StdError};
 use cw20_base::ContractError as Cw20ContractError;
-use cw721_base::ContractError as Cw721ContractError;
+use cw721_base::error::ContractError as Cw721ContractError;
 use cw_asset::AssetError;
 pub use cw_utils::{ParseReplyError, PaymentError, ThresholdError};
 use hex::FromHexError;
 use std::convert::From;
 use std::str::{ParseBoolError, Utf8Error};
 use std::string::FromUtf8Error;
+
 use thiserror::Error;
 
 use crate::common::Milliseconds;
@@ -27,6 +28,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     Threshold(#[from] ThresholdError),
+
+    #[error("{0}")]
+    CheckedMultiplyFractionError(#[from] CheckedMultiplyFractionError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -84,6 +88,9 @@ pub enum ContractError {
 
     #[error("InvalidSender")]
     InvalidSender {},
+
+    #[error("InvalidSigner")]
+    InvalidSigner { signer: String },
 
     #[error("InvalidValidator")]
     InvalidValidator {},
@@ -166,6 +173,12 @@ pub enum ContractError {
     #[error("UnsupportedNFT")]
     UnsupportedNFT {},
 
+    #[error("UnsupportedQuery")]
+    UnsupportedQuery {},
+
+    #[error("UnsupportedExecuteMsg")]
+    UnsupportedExecuteMsg {},
+
     #[error("UnsupportedReturnType")]
     UnsupportedReturnType {},
 
@@ -183,6 +196,9 @@ pub enum ContractError {
 
     #[error("InvalidPrimitive")]
     InvalidPrimitive {},
+
+    #[error("InvalidPublickey")]
+    InvalidPublickey {},
 
     #[error("StillBonded")]
     StillBonded {},
@@ -354,6 +370,9 @@ pub enum ContractError {
 
     #[error("SaleEnded")]
     SaleEnded {},
+
+    #[error("RedeemEnded")]
+    RedeemEnded {},
 
     #[error("SaleNotOpen")]
     SaleNotOpen {},
@@ -585,11 +604,23 @@ pub enum ContractError {
     #[error("No Ongoing Sale")]
     NoOngoingSale {},
 
+    #[error("No Ongoing Redeem")]
+    NoOngoingRedeem {},
+
     #[error("Purchase limit reached")]
     PurchaseLimitReached {},
 
     #[error("Sale not ended")]
     SaleNotEnded {},
+
+    #[error("Redeem not ended")]
+    RedeemNotEnded {},
+
+    #[error("Redeem not started")]
+    RedeemNotStarted {},
+
+    #[error("Redemption condition already exists")]
+    RedemptionConditionAlreadyExists {},
 
     #[error("Min sales exceeded")]
     MinSalesExceeded {},
@@ -692,6 +723,9 @@ pub enum ContractError {
 
     #[error("Invalid expiration")]
     InvalidExpiration {},
+
+    #[error("Invalid schedule: {msg}")]
+    InvalidSchedule { msg: String },
 
     #[error("Invalid start time")]
     InvalidStartTime {},
@@ -807,6 +841,25 @@ impl From<Cw721ContractError> for ContractError {
                 ContractError::ApprovalNotFound { spender }
             }
             Cw721ContractError::Version(_) => ContractError::InvalidADOVersion { msg: None },
+            _ => panic!("Unsupported cw721 error: {err:?}"),
+            // Cw721ContractError::ParseError(parse_error) => todo!(),
+            // Cw721ContractError::ParseIntError(parse_int_error) => todo!(),
+            // Cw721ContractError::ParseBoolError(parse_bool_error) => todo!(),
+            // Cw721ContractError::UnsupportedCustomAttributeType { key, value } => todo!(),
+            // Cw721ContractError::AttributeMissing(_) => todo!(),
+            // Cw721ContractError::NotCreator {} => todo!(),
+            // Cw721ContractError::NotMinter {} => todo!(),
+            // Cw721ContractError::NotMinterOrCreator {} => todo!(),
+            // Cw721ContractError::NoWithdrawAddress {} => todo!(),
+            // Cw721ContractError::CollectionNameEmpty {} => todo!(),
+            // Cw721ContractError::CollectionSymbolEmpty {} => todo!(),
+            // Cw721ContractError::CollectionDescriptionEmpty {} => todo!(),
+            // Cw721ContractError::CollectionDescriptionTooLong { max_length } => todo!(),
+            // Cw721ContractError::InvalidRoyalties(_) => todo!(),
+            // Cw721ContractError::TraitTypeEmpty {} => todo!(),
+            // Cw721ContractError::TraitValueEmpty {} => todo!(),
+            // Cw721ContractError::TraitDisplayTypeEmpty {} => todo!(),
+            // Cw721ContractError::NoInfo => todo!(),
         }
     }
 }
