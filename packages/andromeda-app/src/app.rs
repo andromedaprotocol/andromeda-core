@@ -37,7 +37,6 @@ pub struct CrossChainComponent {
 pub enum ComponentType {
     New(Binary),
     Symlink(AndrAddr),
-    #[serde(skip)]
     CrossChain(CrossChainComponent),
 }
 
