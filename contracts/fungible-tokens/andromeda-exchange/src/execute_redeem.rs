@@ -123,8 +123,7 @@ pub fn execute_replenish_redeem(
 
     // Adjust the rate and type only if a a new one was provided by the user
     if let Some(exchange_rate_type) = exchange_rate_type {
-        let exchange_rate_amount =
-            exchange_rate_type.get_exchange_rate(redeem.amount.checked_add(amount)?)?;
+        let exchange_rate_amount = exchange_rate_type.get_exchange_rate(redeem.amount)?;
         redeem.exchange_rate = exchange_rate_amount;
         redeem.exchange_type = exchange_rate_type;
     }
