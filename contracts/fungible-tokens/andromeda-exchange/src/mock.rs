@@ -150,16 +150,28 @@ pub fn mock_redeem_cw20_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
     Cw20HookMsg::Redeem { recipient }
 }
 
-pub fn mock_replenish_redeem_cw20_msg(redeem_asset: Asset) -> Cw20HookMsg {
-    Cw20HookMsg::ReplenishRedeem { redeem_asset }
+pub fn mock_replenish_redeem_cw20_msg(
+    redeem_asset: Asset,
+    exchange_rate_type: ExchangeRate,
+) -> Cw20HookMsg {
+    Cw20HookMsg::ReplenishRedeem {
+        redeem_asset,
+        exchange_rate_type,
+    }
 }
 
 pub fn mock_redeem_native_msg(recipient: Option<Recipient>) -> ExecuteMsg {
     ExecuteMsg::Redeem { recipient }
 }
 
-pub fn mock_replenish_redeem_native_msg(redeem_asset: Asset) -> ExecuteMsg {
-    ExecuteMsg::ReplenishRedeem { redeem_asset }
+pub fn mock_replenish_redeem_native_msg(
+    redeem_asset: Asset,
+    exchange_rate_type: ExchangeRate,
+) -> ExecuteMsg {
+    ExecuteMsg::ReplenishRedeem {
+        redeem_asset,
+        exchange_rate_type,
+    }
 }
 
 pub fn mock_start_redeem_cw20_msg(

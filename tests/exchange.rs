@@ -407,11 +407,13 @@ fn test_exchange_app_cw20_to_cw20() {
     let balance = query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
     assert_eq!(balance, Uint128::new(1000 + 5u128));
 
+    let exchange_rate =
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)));
     // Now the owner will setup a redeem condition for 2 cw20 per cw20addr
     let start_redeem_msg = mock_start_redeem_cw20_msg(
         None,
         cw20_addr_2_asset.clone(),
-        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
+        exchange_rate.clone(),
         Schedule::default(),
     );
 
@@ -518,7 +520,7 @@ fn test_exchange_app_cw20_to_cw20() {
     );
 
     // Replenish the redeem
-    let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone());
+    let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone(), exchange_rate);
     let cw20_send_msg = mock_cw20_send(
         exchange_addr.clone(),
         Uint128::new(10u128),
@@ -639,10 +641,12 @@ fn test_exchange_app_redeem_native_to_native() {
     let exchange_addr = addresses.exchange;
     let uandr_asset = Asset::NativeToken("uandr".to_string());
 
+    let exchange_rate =
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)));
     // Now the owner will setup a redeem condition for 2 uandr per uusd
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
-        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
+        exchange_rate.clone(),
         Some(Recipient::from_string(owner.to_string())),
         Schedule::default(),
     );
@@ -763,7 +767,7 @@ fn test_exchange_app_redeem_native_to_native() {
     );
 
     // Replenish the redeem
-    let replenish_msg = mock_replenish_redeem_native_msg(uandr_asset.clone());
+    let replenish_msg = mock_replenish_redeem_native_msg(uandr_asset.clone(), exchange_rate);
     router
         .execute_contract(
             owner.clone(),

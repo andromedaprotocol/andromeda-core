@@ -96,6 +96,7 @@ pub fn execute_replenish_redeem(
     amount: Uint128,
     asset: Asset,
     redeem_asset: Asset,
+    exchange_rate_type: ExchangeRate,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
     let redeem_asset_str = redeem_asset.inner(&deps.as_ref())?;
@@ -117,8 +118,9 @@ pub fn execute_replenish_redeem(
             ContractError::RedeemEnded {}
         );
     }
-    let exchange_rate = redeem.exchange_type.get_exchange_rate(amount)?;
+    let exchange_rate = exchange_rate_type.get_exchange_rate(amount)?;
     redeem.exchange_rate = exchange_rate;
+    redeem.exchange_type = exchange_rate_type.clone();
     redeem.amount = redeem.amount.checked_add(amount)?;
 
     REDEEM.save(deps.storage, &redeem_asset_str, &redeem)?;
@@ -282,6 +284,7 @@ pub fn execute_start_redeem_native(
 pub fn execute_replenish_redeem_native(
     ctx: ExecuteContext,
     redeem_asset: Asset,
+    exchange_rate_type: ExchangeRate,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
 
@@ -289,7 +292,13 @@ pub fn execute_replenish_redeem_native(
     let amount_sent = native_funds_sent.amount;
     let asset_sent = Asset::NativeToken(native_funds_sent.denom.to_string());
 
-    execute_replenish_redeem(ctx, amount_sent, asset_sent, redeem_asset)
+    execute_replenish_redeem(
+        ctx,
+        amount_sent,
+        asset_sent,
+        redeem_asset,
+        exchange_rate_type,
+    )
 }
 
 pub fn execute_redeem_native(

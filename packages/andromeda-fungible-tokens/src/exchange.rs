@@ -72,6 +72,8 @@ pub enum ExecuteMsg {
     ReplenishRedeem {
         /// The accepted asset for redemption
         redeem_asset: Asset,
+        /// The type of exchange rate whether it was fixed or variable
+        exchange_rate_type: ExchangeRate,
     },
 
     Redeem {
@@ -152,6 +154,8 @@ pub enum Cw20HookMsg {
     ReplenishRedeem {
         /// The accepted asset for redemption
         redeem_asset: Asset,
+        /// The type of exchange rate whether it was fixed or variable
+        exchange_rate_type: ExchangeRate,
     },
     /// Redeems tokens
     Redeem {
