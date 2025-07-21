@@ -14,6 +14,7 @@ use andromeda_std::amp::messages::AMPPkt;
 use andromeda_std::amp::AndrAddr;
 use andromeda_std::amp::Recipient;
 use andromeda_std::common::denom::Asset;
+use andromeda_std::common::expiration::Expiry;
 use andromeda_std::common::schedule::Schedule;
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
@@ -103,8 +104,14 @@ impl MockMarketplace {
         app: &mut MockApp,
         sender: Addr,
         action: impl Into<String>,
+        expiration: Option<Expiry>,
     ) -> ExecuteResult {
-        self.execute(app, &mock_permission_action(action), sender, &[])
+        self.execute(
+            app,
+            &mock_permission_action(action, expiration),
+            sender,
+            &[],
+        )
     }
 
     pub fn query_rates(&self, app: &mut MockApp, action: String) -> Option<Rate> {
@@ -172,9 +179,10 @@ pub fn mock_update_sale(
     }
 }
 
-pub fn mock_permission_action(action: impl Into<String>) -> ExecuteMsg {
+pub fn mock_permission_action(action: impl Into<String>, expiration: Option<Expiry>) -> ExecuteMsg {
     ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
         action: action.into(),
+        expiration,
     })
 }
 

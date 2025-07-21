@@ -184,7 +184,7 @@ fn test_permission_frequency() {
 
     // Permission action for it to become strict
     marketplace
-        .execute_permission_action(&mut router, owner.clone(), "Buy")
+        .execute_permission_action(&mut router, owner.clone(), "Buy", None)
         .unwrap();
 
     let current_time = router.block_info().time;

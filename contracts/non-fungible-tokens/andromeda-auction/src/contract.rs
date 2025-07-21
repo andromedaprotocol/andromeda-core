@@ -20,6 +20,7 @@ use andromeda_std::{
             SEND_CW20_ACTION,
         },
         encode_binary,
+        expiration::Expiry,
         schedule::Schedule,
         Funds, Milliseconds, OrderBy,
     },
@@ -93,6 +94,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             min_raise,
             buy_now_price,
             recipient,
+            permissioned_action_expiration,
         } => execute_update_auction(
             ctx,
             token_id,
@@ -104,6 +106,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             min_raise,
             buy_now_price,
             recipient,
+            permissioned_action_expiration,
         ),
         ExecuteMsg::PlaceBid {
             token_id,
@@ -152,6 +155,7 @@ fn handle_receive_cw721(
             min_bid,
             min_raise,
             recipient,
+            permissioned_action_expiration,
         } => execute_start_auction(
             ctx,
             msg.sender,
@@ -163,6 +167,7 @@ fn handle_receive_cw721(
             min_bid,
             min_raise,
             recipient,
+            permissioned_action_expiration,
         ),
     }
 }
@@ -239,6 +244,7 @@ fn execute_start_auction(
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
     recipient: Option<Recipient>,
+    permissioned_action_expiration: Option<Expiry>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         mut deps,
@@ -267,7 +273,12 @@ fn execute_start_auction(
     BIDS.save(deps.storage, auction_id.u128(), &vec![])?;
 
     if let Some(ref whitelist) = whitelist {
-        ADOContract::default().permission_action(deps.storage, auction_id.to_string())?;
+        let expiration = permissioned_action_expiration.map(|expiry| expiry.get_time(&env.block));
+        ADOContract::default().permission_action(
+            deps.storage,
+            auction_id.to_string(),
+            expiration,
+        )?;
 
         for whitelisted_address in whitelist {
             ADOContract::set_permission(
@@ -330,6 +341,7 @@ fn execute_update_auction(
     min_raise: Option<Uint128>,
     buy_now_price: Option<Uint128>,
     recipient: Option<Recipient>,
+    permissioned_action_expiration: Option<Expiry>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         mut deps,
@@ -385,8 +397,12 @@ fn execute_update_auction(
     }
 
     if let Some(ref whitelist) = whitelist {
-        ADOContract::default()
-            .permission_action(deps.storage, token_auction_state.auction_id.to_string())?;
+        let expiration = permissioned_action_expiration.map(|expiry| expiry.get_time(&env.block));
+        ADOContract::default().permission_action(
+            deps.storage,
+            token_auction_state.auction_id.to_string(),
+            expiration,
+        )?;
 
         for whitelisted_address in whitelist {
             ADOContract::set_permission(

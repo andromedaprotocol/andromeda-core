@@ -93,6 +93,7 @@ fn start_auction(
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
     buy_now_price: Option<Uint128>,
+    permissioned_action_expiration: Option<Expiry>,
 ) {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds(20_000_000)))),
@@ -102,6 +103,7 @@ fn start_auction(
         min_raise,
         recipient: None,
         buy_now_price,
+        permissioned_action_expiration,
     };
 
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -123,6 +125,7 @@ fn start_auction_cw20(
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
     buy_now_price: Option<Uint128>,
+    permissioned_action_expiration: Option<Expiry>,
 ) {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds(20_000_000)))),
@@ -132,6 +135,7 @@ fn start_auction_cw20(
         min_raise,
         recipient: None,
         buy_now_price,
+        permissioned_action_expiration,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -278,7 +282,7 @@ fn execute_place_bid_auction_not_started() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
@@ -302,7 +306,7 @@ fn execute_place_bid_auction_ended() {
 
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
@@ -323,7 +327,7 @@ fn execute_place_bid_token_owner_cannot_bid() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let mock_unclaimed_token = MOCK_UNCLAIMED_TOKEN.to_owned();
@@ -345,7 +349,7 @@ fn execute_place_bid_min_raise() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, Some(Uint128::new(10)), None);
+    start_auction(&mut deps, None, None, Some(Uint128::new(10)), None, None);
     assert_auction_created(&mut deps, None, None, Some(Uint128::new(10)), None);
 
     let msg = ExecuteMsg::PlaceBid {
@@ -388,6 +392,7 @@ fn execute_min_bid_greater_than_buy_now() {
         min_raise: None,
         recipient: None,
         buy_now_price: Some(Uint128::one()),
+        permissioned_action_expiration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -411,7 +416,14 @@ fn execute_place_bid_whitelist() {
     let mut env = mock_env();
     let _res = init(&mut deps);
     let sender = deps.api.addr_make("sender1");
-    start_auction(&mut deps, Some(vec![sender.clone()]), None, None, None);
+    start_auction(
+        &mut deps,
+        Some(vec![sender.clone()]),
+        None,
+        None,
+        None,
+        None,
+    );
     assert_auction_created(&mut deps, Some(vec![sender.clone()]), None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
@@ -436,7 +448,14 @@ fn execute_place_bid_whitelist_cw20() {
     let _res = init_cw20(&mut deps, None);
 
     let sender = deps.api.addr_make("sender1");
-    start_auction_cw20(&mut deps, Some(vec![sender.clone()]), None, None, None);
+    start_auction_cw20(
+        &mut deps,
+        Some(vec![sender.clone()]),
+        None,
+        None,
+        None,
+        None,
+    );
     assert_auction_created_cw20(deps.as_ref(), Some(vec![sender.clone()]), None, None);
 
     let hook_msg = Cw20HookMsg::PlaceBid {
@@ -470,7 +489,7 @@ fn execute_place_bid_highest_bidder_cannot_outbid() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
@@ -498,7 +517,7 @@ fn execute_place_bid_bid_smaller_than_highest_bid() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
@@ -523,7 +542,7 @@ fn execute_place_bid_invalid_coins_sent() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let error = ContractError::InvalidFunds {
@@ -571,7 +590,7 @@ fn execute_place_bid_multiple_bids() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
@@ -666,7 +685,7 @@ fn execute_place_bid_auction_cancelled() {
     let env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 
     let msg = ExecuteMsg::CancelAuction {
@@ -692,7 +711,7 @@ fn execute_place_bid_auction_cancelled() {
 fn test_execute_start_auction() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(&mut deps);
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
     assert_auction_created(&mut deps, None, None, None, None);
 }
 
@@ -700,7 +719,7 @@ fn test_execute_start_auction() {
 fn test_execute_start_auction_cw20() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init_cw20(&mut deps, None);
-    start_auction_cw20(&mut deps, None, None, None, None);
+    start_auction_cw20(&mut deps, None, None, None, None, None);
     assert_auction_created_cw20(deps.as_ref(), None, None, None);
 }
 
@@ -791,6 +810,7 @@ fn execute_start_auction_start_time_in_past() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
+        permissioned_action_expiration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -828,6 +848,7 @@ fn execute_start_auction_zero_start_time() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
+        permissioned_action_expiration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -866,6 +887,7 @@ fn execute_start_auction_start_time_not_provided() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
+        permissioned_action_expiration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -895,6 +917,7 @@ fn execute_start_auction_zero_duration() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
+        permissioned_action_expiration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -950,7 +973,7 @@ fn execute_update_auction_zero_start() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -965,6 +988,7 @@ fn execute_update_auction_zero_start() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
+        permissioned_action_expiration: None,
     };
     let mut env = mock_env();
     env.block.time = env.block.time.minus_days(1);
@@ -986,7 +1010,7 @@ fn execute_update_auction_zero_duration() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1001,6 +1025,7 @@ fn execute_update_auction_zero_duration() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
+        permissioned_action_expiration: None,
     };
     let mut env = mock_env();
     env.block.time = Timestamp::from_seconds(0);
@@ -1021,7 +1046,7 @@ fn execute_update_auction_unauthorized() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1036,6 +1061,7 @@ fn execute_update_auction_unauthorized() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
+        permissioned_action_expiration: None,
     };
     let env = mock_env();
 
@@ -1049,7 +1075,7 @@ fn execute_update_auction_auction_started() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1064,6 +1090,7 @@ fn execute_update_auction_auction_started() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
+        permissioned_action_expiration: None,
     };
     let mut env = mock_env();
 
@@ -1079,7 +1106,7 @@ fn execute_update_auction() {
     let mut deps = mock_dependencies_custom(&[]);
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::UpdateAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1094,6 +1121,7 @@ fn execute_update_auction() {
         min_raise: None,
         buy_now_price: Some(Uint128::from(100u128)),
         recipient: None,
+        permissioned_action_expiration: None,
     };
     let mut env = mock_env();
 
@@ -1133,7 +1161,7 @@ fn execute_start_auction_after_previous_finished() {
     let _res = init(&mut deps);
 
     // There was a previous auction.
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(
@@ -1148,6 +1176,7 @@ fn execute_start_auction_after_previous_finished() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
+        permissioned_action_expiration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1180,7 +1209,7 @@ fn execute_claim_no_bids() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     // Auction ended by that time
     env.block.time = env.block.time.plus_days(1);
@@ -1220,7 +1249,7 @@ fn execute_claim_permission() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     // Auction ended by that time
     env.block.time = env.block.time.plus_days(1);
@@ -1274,7 +1303,7 @@ fn execute_claim_no_bids_cw20() {
     let mut env = mock_env();
     let _res = init_cw20(&mut deps, None);
 
-    start_auction_cw20(&mut deps, None, None, None, None);
+    start_auction_cw20(&mut deps, None, None, None, None, None);
 
     // Auction ended by that time
     env.block.time = env.block.time.plus_days(1);
@@ -1331,7 +1360,7 @@ fn execute_claim_with_tax() {
         .set_rates(deps.as_mut().storage, "Claim", rate)
         .unwrap();
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1390,7 +1419,7 @@ fn execute_buy_now() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, Some(Uint128::new(500)));
+    start_auction(&mut deps, None, None, None, Some(Uint128::new(500)), None);
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1487,7 +1516,7 @@ fn execute_claim_with_royalty() {
         .set_rates(deps.as_mut().storage, "Claim", rate)
         .unwrap();
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1546,7 +1575,7 @@ fn execute_claim_cw20() {
     let mut env = mock_env();
     let _res = init_cw20(&mut deps, None);
 
-    start_auction_cw20(&mut deps, None, None, None, None);
+    start_auction_cw20(&mut deps, None, None, None, None, None);
 
     let hook_msg = Cw20HookMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1629,7 +1658,7 @@ fn execute_claim_cw20_with_tax() {
         .set_rates(deps.as_mut().storage, "Claim", rate)
         .unwrap();
 
-    start_auction_cw20(&mut deps, None, None, None, None);
+    start_auction_cw20(&mut deps, None, None, None, None, None);
 
     let hook_msg = Cw20HookMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1703,7 +1732,7 @@ fn execute_claim_auction_not_ended() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1745,6 +1774,7 @@ fn execute_claim_auction_already_claimed() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
+        permissioned_action_expiration: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1777,7 +1807,7 @@ fn execute_cancel_no_bids() {
     let env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::CancelAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1814,7 +1844,7 @@ fn execute_cancel_no_bids_cw20() {
     let env = mock_env();
     let _res = init_cw20(&mut deps, None);
 
-    start_auction_cw20(&mut deps, None, None, None, None);
+    start_auction_cw20(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::CancelAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1851,7 +1881,7 @@ fn execute_cancel_with_bids() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1904,7 +1934,7 @@ fn execute_cancel_with_bids_cw20() {
     let mut env = mock_env();
     let _res = init_cw20(&mut deps, None);
 
-    start_auction_cw20(&mut deps, None, None, None, None);
+    start_auction_cw20(&mut deps, None, None, None, None, None);
 
     // let msg = ExecuteMsg::PlaceBid {
     //     token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1972,7 +2002,7 @@ fn execute_cancel_not_token_owner() {
     let env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::CancelAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1990,7 +2020,7 @@ fn execute_cancel_auction_ended() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, None, None, None);
+    start_auction(&mut deps, None, None, None, None, None);
 
     let msg = ExecuteMsg::CancelAuction {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -2010,7 +2040,14 @@ fn execute_bid_below_min_price() {
     let mut env = mock_env();
     let _res = init(&mut deps);
 
-    start_auction(&mut deps, None, Some(Uint128::from(100u128)), None, None);
+    start_auction(
+        &mut deps,
+        None,
+        Some(Uint128::from(100u128)),
+        None,
+        None,
+        None,
+    );
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),

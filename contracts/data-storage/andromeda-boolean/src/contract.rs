@@ -51,7 +51,7 @@ pub fn instantiate(
     RESTRICTION.save(deps.storage, &msg.restriction)?;
 
     if msg.restriction == BooleanRestriction::Private {
-        ADOContract::default().permission_action(deps.storage, SET_DELETE_VALUE_ACTION)?;
+        ADOContract::default().permission_action(deps.storage, SET_DELETE_VALUE_ACTION, None)?;
 
         ADOContract::set_permission(
             deps.storage,

@@ -1386,6 +1386,7 @@ fn test_kernel_ibc_funds_only() {
         None,
         None,
         None,
+        None,
     );
     cw721_juno
         .execute(

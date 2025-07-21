@@ -261,7 +261,7 @@ fn test_restake() {
     let permissioned_actor = andr.get_wallet("permissioned_actor");
     let random_actor = andr.get_wallet("random_actor");
     validator_staking
-        .execute_permission_action(&mut router, owner.clone(), "restake".to_string())
+        .execute_permission_action(&mut router, owner.clone(), "restake".to_string(), None)
         .unwrap();
     validator_staking
         .execute_set_permission(

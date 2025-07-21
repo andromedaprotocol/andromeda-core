@@ -50,8 +50,12 @@ pub fn instantiate(
 
     if let Some(authorized_operator_addresses) = msg.authorized_operator_addresses {
         if !authorized_operator_addresses.is_empty() {
-            ADOContract::default().permission_action(deps.storage, UPDATE_CURVE_CONFIG_ACTION)?;
-            ADOContract::default().permission_action(deps.storage, RESET_ACTION)?;
+            ADOContract::default().permission_action(
+                deps.storage,
+                UPDATE_CURVE_CONFIG_ACTION,
+                None,
+            )?;
+            ADOContract::default().permission_action(deps.storage, RESET_ACTION, None)?;
         }
 
         for address in authorized_operator_addresses {

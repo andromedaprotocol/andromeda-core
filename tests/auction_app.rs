@@ -179,6 +179,7 @@ fn test_auction_app_modules() {
         None,
         None,
         None,
+        None,
     );
     cw721
         .execute_send_nft(
@@ -388,6 +389,7 @@ fn test_auction_app_recipient() {
         None,
         None,
         Some(Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg(None))),
+        None,
     );
     cw721
         .execute_send_nft(
@@ -650,6 +652,7 @@ fn test_auction_app_cw20_restricted() {
                 None,
                 None,
                 None,
+                None,
             ),
         )
         .unwrap();
@@ -836,6 +839,7 @@ fn test_auction_app_cw20_restricted() {
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
                 Some(Recipient::from_string(buyer_one)),
+                None,
             ),
         )
         .unwrap();
@@ -857,6 +861,7 @@ fn test_auction_app_cw20_restricted() {
         None,
         Some(vec![buyer_one.clone(), buyer_two.clone()]),
         Some(Recipient::from_string(buyer_one)),
+        None,
     );
 
     let err: ContractError = router
@@ -1147,6 +1152,7 @@ fn test_auction_app_cw20_unrestricted() {
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
                 None,
+                None,
             ),
         )
         .unwrap();
@@ -1274,6 +1280,7 @@ fn test_auction_app_cw20_unrestricted() {
                 None,
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
+                None,
                 None,
             ),
         )

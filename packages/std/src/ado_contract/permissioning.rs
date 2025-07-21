@@ -74,8 +74,8 @@ impl ADOContract {
             PermissioningMessage::RemovePermission { action, actors } => {
                 self.execute_remove_permission(ctx, actors, action)
             }
-            PermissioningMessage::PermissionAction { action } => {
-                self.execute_permission_action(ctx, action)
+            PermissioningMessage::PermissionAction { action, expiration } => {
+                self.execute_permission_action(ctx, action, expiration)
             }
             PermissioningMessage::DisableActionPermissioning { action } => {
                 self.execute_disable_action_permission(ctx, action)
@@ -107,8 +107,19 @@ impl ADOContract {
         )?;
         let permissioned_action = self
             .permissioned_actions
-            .may_load(deps.storage, action_string.clone())?
-            .unwrap_or(false);
+            .may_load(deps.storage, action_string.clone())?;
+
+        let permissioned_action = match permissioned_action {
+            Some(expiry) => match expiry {
+                // If the time is expired, it means that the permission is expired and that the action is not longer permissioned
+                Some(expiry) => !expiry.is_expired(&env.block),
+                // If no expiry is provided by the user, that means that the permission will never expire
+                None => true,
+            },
+            // If there's no entry at all for the permissioned action, that means that the action is not permissioned
+            None => false,
+        };
+
         match permission {
             Some(mut some_permission) => {
                 match some_permission {
@@ -462,9 +473,10 @@ impl ADOContract {
         &self,
         store: &mut dyn Storage,
         action: impl Into<String>,
+        expiration: Option<Milliseconds>,
     ) -> Result<(), ContractError> {
         self.permissioned_actions
-            .save(store, action.into(), &true)?;
+            .save(store, action.into(), &expiration)?;
         Ok(())
     }
 
@@ -477,13 +489,15 @@ impl ADOContract {
         &self,
         ctx: ExecuteContext,
         action: impl Into<String>,
+        expiration: Option<Expiry>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-        self.permission_action(ctx.deps.storage, action_string.clone())?;
+        let expiration = expiration.map(|expiry| expiry.get_time(&ctx.env.block));
+        self.permission_action(ctx.deps.storage, action_string.clone(), expiration)?;
         Ok(Response::default().add_attributes(vec![
             ("action", "permission_action"),
             ("action", action_string.as_str()),
@@ -886,7 +900,7 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         // Test Whitelisting
@@ -933,15 +947,14 @@ mod tests {
         ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
         // Test Blacklisted
         let permission = Permission::Local(LocalPermission::Blacklisted {
             schedule: Schedule::new(None, None),
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-        let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
 
         assert!(res.is_err());
     }
@@ -959,7 +972,7 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         // Test Blacklisted
@@ -1055,6 +1068,7 @@ mod tests {
             .unwrap();
         let msg = AndromedaMsg::Permissioning(PermissioningMessage::PermissionAction {
             action: "action".to_string(),
+            expiration: None,
         });
         let attacker = deps.api.addr_make("attacker");
         let ctx = ExecuteContext::new(deps.as_mut(), message_info(&attacker, &[]), env);
@@ -1123,7 +1137,7 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
@@ -1208,7 +1222,7 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         let permission = if is_whitelisted {
@@ -1280,7 +1294,7 @@ mod tests {
 
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         ADOContract::default()
-            .permission_action(context.deps.storage, action)
+            .permission_action(context.deps.storage, action, None)
             .unwrap();
 
         assert!(
@@ -1635,7 +1649,7 @@ mod tests {
         assert!(actions.is_empty());
 
         ADOContract::default()
-            .execute_permission_action(ctx, "action")
+            .execute_permission_action(ctx, "action", None)
             .unwrap();
 
         let actions = ADOContract::default()
@@ -1662,7 +1676,7 @@ mod tests {
         let actor2 = "actor2";
         let action = "action";
         ADOContract::default()
-            .execute_permission_action(ctx, action)
+            .execute_permission_action(ctx, action, None)
             .unwrap();
 
         ADOContract::set_permission(

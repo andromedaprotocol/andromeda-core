@@ -5,7 +5,7 @@ use cosmwasm_std::{Deps, Env};
 
 use crate::{
     amp::AndrAddr,
-    common::{schedule::Schedule, Milliseconds, MillisecondsExpiration},
+    common::{expiration::Expiry, schedule::Schedule, Milliseconds, MillisecondsExpiration},
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
@@ -23,6 +23,7 @@ pub enum PermissioningMessage {
     },
     PermissionAction {
         action: String,
+        expiration: Option<Expiry>,
     },
     DisableActionPermissioning {
         action: String,

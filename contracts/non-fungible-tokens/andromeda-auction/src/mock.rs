@@ -60,6 +60,7 @@ impl MockAuction {
         min_raise: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
+        permissioned_action_expiration: Option<Expiry>,
     ) -> AppResponse {
         let msg = mock_start_auction(
             schedule,
@@ -69,6 +70,7 @@ impl MockAuction {
             min_raise,
             whitelist,
             recipient,
+            permissioned_action_expiration,
         );
         app.execute_contract(sender, self.addr().clone(), &msg, &[])
             .unwrap()
@@ -186,6 +188,7 @@ pub fn mock_start_auction(
     min_raise: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
+    permissioned_action_expiration: Option<Expiry>,
 ) -> Cw721HookMsg {
     Cw721HookMsg::StartAuction {
         schedule,
@@ -195,6 +198,7 @@ pub fn mock_start_auction(
         min_raise,
         whitelist,
         recipient,
+        permissioned_action_expiration,
     }
 }
 
@@ -224,6 +228,7 @@ pub fn mock_update_auction(
     buy_now_price: Option<Uint128>,
     whitelist: Option<Vec<Addr>>,
     recipient: Option<Recipient>,
+    permissioned_action_expiration: Option<Expiry>,
 ) -> ExecuteMsg {
     ExecuteMsg::UpdateAuction {
         token_id,
@@ -235,6 +240,7 @@ pub fn mock_update_auction(
         min_raise,
         buy_now_price,
         recipient,
+        permissioned_action_expiration,
     }
 }
 

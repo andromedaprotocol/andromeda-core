@@ -70,7 +70,7 @@ pub fn instantiate(
     };
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
-    contract.permission_action(deps.storage, MINT_ACTION)?;
+    contract.permission_action(deps.storage, MINT_ACTION, None)?;
 
     let res = cw721_instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 

@@ -5,6 +5,7 @@ use andromeda_modules::address_list::{ActorPermission, ExecuteMsg, InstantiateMs
 use andromeda_std::{
     ado_base::permissioning::{LocalPermission, Permission, PermissioningMessage},
     amp::AndrAddr,
+    common::expiration::Expiry,
 };
 use andromeda_testing::{
     mock::MockApp, mock_ado, mock_contract::ExecuteResult, MockADO, MockContract,
@@ -101,8 +102,8 @@ pub fn mock_address_list_instantiate_msg(
     }
 }
 
-pub fn mock_permission_action_msg(action: String) -> ExecuteMsg {
-    ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction { action })
+pub fn mock_permission_action_msg(action: String, expiration: Option<Expiry>) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction { action, expiration })
 }
 
 pub fn mock_add_actor_permission_msg(

@@ -62,7 +62,7 @@ pub fn instantiate(
         }
     }
 
-    ADOContract::default().permission_action(deps.storage, PERMISSION_ACTORS_ACTION)?;
+    ADOContract::default().permission_action(deps.storage, PERMISSION_ACTORS_ACTION, None)?;
     ADOContract::set_permission(
         deps.storage,
         PERMISSION_ACTORS_ACTION.to_string(),
