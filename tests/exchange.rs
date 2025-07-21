@@ -520,7 +520,7 @@ fn test_exchange_app_cw20_to_cw20() {
     );
 
     // Replenish the redeem
-    let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone(), exchange_rate);
+    let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone(), None);
     let cw20_send_msg = mock_cw20_send(
         exchange_addr.clone(),
         Uint128::new(10u128),
@@ -767,7 +767,7 @@ fn test_exchange_app_redeem_native_to_native() {
     );
 
     // Replenish the redeem
-    let replenish_msg = mock_replenish_redeem_native_msg(uandr_asset.clone(), exchange_rate);
+    let replenish_msg = mock_replenish_redeem_native_msg(uandr_asset.clone(), Some(exchange_rate));
     router
         .execute_contract(
             owner.clone(),

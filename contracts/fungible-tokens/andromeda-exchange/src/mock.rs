@@ -152,7 +152,7 @@ pub fn mock_redeem_cw20_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
 
 pub fn mock_replenish_redeem_cw20_msg(
     redeem_asset: Asset,
-    exchange_rate_type: ExchangeRate,
+    exchange_rate_type: Option<ExchangeRate>,
 ) -> Cw20HookMsg {
     Cw20HookMsg::ReplenishRedeem {
         redeem_asset,
@@ -166,7 +166,7 @@ pub fn mock_redeem_native_msg(recipient: Option<Recipient>) -> ExecuteMsg {
 
 pub fn mock_replenish_redeem_native_msg(
     redeem_asset: Asset,
-    exchange_rate_type: ExchangeRate,
+    exchange_rate_type: Option<ExchangeRate>,
 ) -> ExecuteMsg {
     ExecuteMsg::ReplenishRedeem {
         redeem_asset,

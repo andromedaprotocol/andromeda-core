@@ -73,7 +73,7 @@ pub enum ExecuteMsg {
         /// The accepted asset for redemption
         redeem_asset: Asset,
         /// The type of exchange rate whether it was fixed or variable
-        exchange_rate_type: ExchangeRate,
+        exchange_rate_type: Option<ExchangeRate>,
     },
 
     Redeem {
@@ -155,7 +155,7 @@ pub enum Cw20HookMsg {
         /// The accepted asset for redemption
         redeem_asset: Asset,
         /// The type of exchange rate whether it was fixed or variable
-        exchange_rate_type: ExchangeRate,
+        exchange_rate_type: Option<ExchangeRate>,
     },
     /// Redeems tokens
     Redeem {
