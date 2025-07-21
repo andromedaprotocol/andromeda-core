@@ -1680,7 +1680,7 @@ checksum = "43d193de1f7487df1914d3a568b772458861d33f9c54249612cc2893d6915054"
 dependencies = [
  "bitcoin_hashes 0.13.0",
  "rand",
- "rand_core 0.5.1",
+ "rand_core 0.6.4",
  "serde",
  "unicode-normalization",
 ]
@@ -2497,9 +2497,9 @@ dependencies = [
 
 [[package]]
 name = "cw-multi-test"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dbb5533fff9a5c3d78c963f4f97a01f485062af5f00458fd4ec97bc4669a32a"
+checksum = "a2c39f3cfa02de3fe1c97f11c034308e5f9aae4e97e0588ac73d0d238388e2f5"
 dependencies = [
  "anyhow",
  "bech32 0.11.0",
@@ -2508,7 +2508,7 @@ dependencies = [
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
  "itertools 0.14.0",
- "prost 0.13.5",
+ "prost 0.14.1",
  "schemars 0.8.22",
  "serde",
  "sha2 0.10.9",
@@ -5190,6 +5190,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7231bd9b3d3d33c86b58adbac74b5ec0ad9f496b19d22801d773636feaa95f3d"
+dependencies = [
+ "bytes",
+ "prost-derive 0.14.1",
+]
+
+[[package]]
 name = "prost-derive"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5220,6 +5230,19 @@ name = "prost-derive"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
+dependencies = [
+ "anyhow",
+ "itertools 0.14.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9120690fafc389a67ba3803df527d0ec9cbbc9cc45e4cc20b332996dfb672425"
 dependencies = [
  "anyhow",
  "itertools 0.14.0",
