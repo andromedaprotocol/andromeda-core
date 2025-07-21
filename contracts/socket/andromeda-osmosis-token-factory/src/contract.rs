@@ -169,12 +169,10 @@ fn execute_unlock(
     )?;
 
     // 4. Update LOCKED state (before preparing burn message)
-    LOCKED.update(
+    LOCKED.save(
         ctx.deps.storage,
         (user_addr.clone(), cw20_addr.clone()),
-        |existing| -> Result<Uint128, ContractError> {
-            Ok(existing.unwrap_or_default() - amount) // Safe since we checked above
-        },
+        &locked_amount.checked_sub(amount)?,
     )?;
 
     // 5. Prepare burn message (burns factory tokens from caller's address)
