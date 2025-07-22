@@ -247,38 +247,6 @@ fn test_cross_chain_init_app() {
         .unwrap();
 
     ensure_packet_success(packet_lifetime);
-
-    // let kernel_juno_send_request = juno
-    //     .aos
-    //     .kernel
-    //     .execute(
-    //         &os::kernel::ExecuteMsg::Send {
-    //             message: AMPMsg {
-    //                 recipient: AndrAddr::from_string(format!(
-    //                     "ibc://osmosis/{}",
-    //                     counter_osmosis.address().unwrap()
-    //                 )),
-    //                 message: to_json_binary(&andromeda_counter::mock::mock_execute_increment_msg())
-    //                     .unwrap(),
-    //                 funds: vec![],
-    //                 config: AMPMsgConfig {
-    //                     reply_on: cosmwasm_std::ReplyOn::Always,
-    //                     exit_at_error: false,
-    //                     gas_limit: None,
-    //                     direct: true,
-    //                     ibc_config: None,
-    //                 },
-    //             },
-    //         },
-    //         &[],
-    //     )
-    //     .unwrap();
-
-    // let packet_lifetime = interchain
-    //     .await_packets(&juno.chain_id, kernel_juno_send_request)
-    //     .unwrap();
-
-    // ensure_packet_success(packet_lifetime);
 }
 
 #[test]
