@@ -61,8 +61,13 @@ fn test_app() {
         "cw721",
         format!("~{owner_str}/{0}/cw721", convert_component_name(app_name)),
     );
-    app.execute_add_app_component(&mut router, owner.clone(), cw721_component_with_symlink)
-        .unwrap();
+    app.execute_add_app_component(
+        &mut router,
+        owner.clone(),
+        cw721_component_with_symlink,
+        None,
+    )
+    .unwrap();
 
     let component_addresses = app.query_components(&router);
     assert_eq!(component_addresses.len(), components.len() + 1);
@@ -72,7 +77,7 @@ fn test_app() {
         "cw721".to_string(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
-    app.execute_add_app_component(&mut router, owner.clone(), cw721_component2)
+    app.execute_add_app_component(&mut router, owner.clone(), cw721_component2, None)
         .unwrap();
 
     let component_addresses = app.query_components(&router);

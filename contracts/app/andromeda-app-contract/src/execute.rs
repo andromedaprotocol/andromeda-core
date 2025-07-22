@@ -1,8 +1,8 @@
 use crate::state::{
-    add_app_component, generate_assign_app_message, generate_ownership_message,
-    load_component_addresses, ADO_ADDRESSES, APP_NAME,
+    add_app_component, create_cross_chain_message, generate_assign_app_message,
+    generate_ownership_message, load_component_addresses, ADO_ADDRESSES, APP_NAME,
 };
-use andromeda_app::app::{AppComponent, ComponentType};
+use andromeda_app::app::{AppComponent, ChainInfo, ComponentType};
 use andromeda_std::common::{context::ExecuteContext, reply::ReplyId};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
@@ -17,10 +17,13 @@ use cosmwasm_std::{
 pub fn handle_add_app_component(
     ctx: ExecuteContext,
     component: AppComponent,
+    chain_info: Option<Vec<ChainInfo>>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, env, .. } = ctx;
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
     let querier = &deps.querier;
-    let sender = ctx.info.sender.as_str();
+    let sender = info.sender.as_str();
 
     let maybe_app_component = ADO_ADDRESSES.may_load(deps.storage, &component.name)?;
     ensure!(
@@ -64,7 +67,7 @@ pub fn handle_add_app_component(
         &env.contract.address,
         &app_name,
         // TODO: Fix this in future for x-chain components
-        None,
+        chain_info.clone(),
         &adodb_addr,
         &vfs_addr,
     )?;
@@ -96,6 +99,20 @@ pub fn handle_add_app_component(
             }
         );
         ADO_ADDRESSES.save(deps.storage, &component.name, &new_addr.clone().unwrap())?;
+    } else if let ComponentType::CrossChain(_) = component.component_type {
+        if let Some(chain_info) = chain_info {
+            for chain in chain_info.clone() {
+                let sub_msg = create_cross_chain_message(
+                    &deps,
+                    app_name.clone(),
+                    info.sender.to_string(),
+                    vec![component.clone()],
+                    chain,
+                    chain_info.clone(),
+                )?;
+                resp = resp.add_submessage(sub_msg);
+            }
+        }
     }
 
     let event = component.generate_event(new_addr);
