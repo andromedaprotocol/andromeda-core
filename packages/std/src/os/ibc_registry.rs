@@ -7,6 +7,8 @@ use cosmwasm_std::{ensure, Addr};
 use sha2::{Digest, Sha256};
 use strum_macros::AsRefStr;
 
+pub const CROSS_CHAIN_ENABLED: &str = "cross_chain_enabled";
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub kernel_address: Addr,

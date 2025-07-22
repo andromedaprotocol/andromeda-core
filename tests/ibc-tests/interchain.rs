@@ -10,6 +10,7 @@ use andromeda_math::counter::{
     CounterRestriction, GetCurrentAmountResponse, InstantiateMsg as CounterInstantiateMsg, State,
 };
 use andromeda_splitter::SplitterContract;
+use andromeda_std::os::ibc_registry::CROSS_CHAIN_ENABLED;
 use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPMsgConfig},
@@ -177,7 +178,7 @@ fn test_cross_chain_init_app() {
         .kernel
         .execute(
             &os::kernel::ExecuteMsg::SetEnv {
-                variable: "cross_chain_enabled".to_string(),
+                variable: CROSS_CHAIN_ENABLED.to_string(),
                 value: "true".to_string(),
             },
             &[],

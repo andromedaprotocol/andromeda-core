@@ -20,6 +20,7 @@ use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
+use andromeda_std::os::ibc_registry::CROSS_CHAIN_ENABLED;
 use andromeda_std::os::kernel::{
     is_os_contract, ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo,
     InternalMsg,
@@ -609,7 +610,7 @@ pub fn create(
         let is_cross_chain_enabled = AOSQuerier::get_env_variable::<String>(
             &deps.querier,
             &env.contract.address,
-            "cross_chain_enabled",
+            CROSS_CHAIN_ENABLED,
         )?
         .unwrap_or("false".to_string())
         .parse::<bool>()

@@ -6,6 +6,7 @@ use andromeda_app::app::{AppComponent, ChainInfo, ComponentType};
 use andromeda_std::common::{context::ExecuteContext, reply::ReplyId};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::ibc_registry::CROSS_CHAIN_ENABLED;
 use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
@@ -36,7 +37,7 @@ pub fn handle_add_app_component(
     let kernel_addr = ctx.contract.get_kernel_address(deps.storage)?;
 
     let is_cross_chain_enabled =
-        AOSQuerier::get_env_variable::<String>(querier, &kernel_addr, "cross_chain_enabled")?
+        AOSQuerier::get_env_variable::<String>(querier, &kernel_addr, CROSS_CHAIN_ENABLED)?
             .unwrap_or("false".to_string())
             .parse::<bool>()
             .unwrap_or(false);
