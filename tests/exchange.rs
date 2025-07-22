@@ -10,7 +10,7 @@ use andromeda_exchange::mock::{
     mock_redeem_query_msg, mock_replenish_redeem_cw20_msg, mock_replenish_redeem_native_msg,
     mock_set_redeem_condition_native_msg, mock_start_redeem_cw20_msg, MockExchange,
 };
-use andromeda_fungible_tokens::exchange::{RedeemResponse, SaleResponse};
+use andromeda_fungible_tokens::exchange::{ExchangeRate, RedeemResponse, SaleResponse};
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
     common::{denom::Asset, schedule::Schedule},
@@ -21,8 +21,11 @@ use andromeda_testing::{
     mock_builder::MockAndromedaBuilder,
     MockContract,
 };
-use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal256, Timestamp, Uint128};
+use cosmwasm_std::{
+    coin, to_json_binary, Addr, BlockInfo, Decimal256, Timestamp, Uint128, Uint256,
+};
 use cw20::{BalanceResponse, Cw20Coin};
+use rstest::rstest;
 
 use cw_multi_test::Executor;
 
@@ -245,7 +248,7 @@ fn test_exchange_app_cw20_to_native() {
     // Now the owner will setup a redeem condition for 2 uandr per cw20addr
     let redeem_msg = mock_set_redeem_condition_native_msg(
         cw20_addr_2_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
         Some(Recipient::from_string(owner.to_string())),
         Schedule::default(),
     );
@@ -404,11 +407,13 @@ fn test_exchange_app_cw20_to_cw20() {
     let balance = query_cw20_balance(&mut router, cw20_addr_2.to_string(), user1.to_string());
     assert_eq!(balance, Uint128::new(1000 + 5u128));
 
+    let exchange_rate =
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)));
     // Now the owner will setup a redeem condition for 2 cw20 per cw20addr
     let start_redeem_msg = mock_start_redeem_cw20_msg(
         None,
         cw20_addr_2_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        exchange_rate.clone(),
         Schedule::default(),
     );
 
@@ -515,7 +520,7 @@ fn test_exchange_app_cw20_to_cw20() {
     );
 
     // Replenish the redeem
-    let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone());
+    let replenish_msg = mock_replenish_redeem_cw20_msg(cw20_addr_2_asset.clone(), None);
     let cw20_send_msg = mock_cw20_send(
         exchange_addr.clone(),
         Uint128::new(10u128),
@@ -596,7 +601,8 @@ fn test_exchange_app_cancel_redeem() {
     let exchange: MockExchange = app.query_ado_by_component_name(&router, "exchange");
 
     // Now the owner will setup a redeem condition for 2 cw20 per cw20addr
-    let exchange_rate = Decimal256::from_ratio(Uint128::new(2), Uint128::new(1));
+    let exchange_rate =
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)));
     exchange.execute_cw20_start_redeem(
         &mut router,
         owner.clone(),
@@ -635,10 +641,12 @@ fn test_exchange_app_redeem_native_to_native() {
     let exchange_addr = addresses.exchange;
     let uandr_asset = Asset::NativeToken("uandr".to_string());
 
+    let exchange_rate =
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)));
     // Now the owner will setup a redeem condition for 2 uandr per uusd
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        exchange_rate.clone(),
         Some(Recipient::from_string(owner.to_string())),
         Schedule::default(),
     );
@@ -759,7 +767,7 @@ fn test_exchange_app_redeem_native_to_native() {
     );
 
     // Replenish the redeem
-    let replenish_msg = mock_replenish_redeem_native_msg(uandr_asset.clone());
+    let replenish_msg = mock_replenish_redeem_native_msg(uandr_asset.clone(), Some(exchange_rate));
     router
         .execute_contract(
             owner.clone(),
@@ -798,7 +806,7 @@ fn test_exchange_app_redeem_native_to_cw20() {
     let start_redeem_msg = mock_start_redeem_cw20_msg(
         None,
         uandr_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(2), Uint128::new(1)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))),
         Schedule::default(),
     );
 
@@ -933,7 +941,7 @@ fn test_exchange_app_redeem_native_fractional() {
 
     let redeem_msg = mock_set_redeem_condition_native_msg(
         uandr_asset.clone(),
-        Decimal256::from_ratio(Uint128::new(1), Uint128::new(2)),
+        ExchangeRate::Fixed(Decimal256::from_ratio(Uint128::new(1), Uint128::new(2))),
         Some(Recipient::from_string(owner.to_string())),
         Schedule::default(),
     );
@@ -1051,5 +1059,157 @@ fn test_exchange_app_redeem_native_fractional() {
     assert_eq!(
         err,
         ContractError::Payment(cw_utils::PaymentError::NoFunds {})
+    );
+}
+
+#[rstest]
+#[case::variable_rate_200(
+    Uint256::from(200u128),
+    100u128,
+    Decimal256::from_ratio(Uint128::new(1), Uint128::new(2))
+)]
+#[case::variable_rate_100(Uint256::from(100u128), 100u128, Decimal256::one())]
+#[case::variable_rate_50(
+    Uint256::from(50u128),
+    100u128,
+    Decimal256::from_ratio(Uint128::new(2), Uint128::new(1))
+)]
+
+fn test_exchange_app_redeem_native_to_native_dynamic_exchange_rate(
+    #[case] variable_rate: Uint256,
+    #[case] amount_sent: u128,
+    #[case] expected_exchange_rate: Decimal256,
+) {
+    let mut router = mock_app(None);
+
+    let andr = setup_andr(&mut router);
+    let app = setup_app(&andr, &mut router);
+    let owner = andr.get_wallet("owner");
+
+    let addresses = get_addresses(&mut router, &andr, &app);
+
+    let exchange_addr = addresses.exchange;
+    let uandr_asset = Asset::NativeToken("uandr".to_string());
+
+    // Setup redeem condition with variable exchange rate
+    let redeem_msg = mock_set_redeem_condition_native_msg(
+        uandr_asset.clone(),
+        ExchangeRate::Variable(variable_rate),
+        Some(Recipient::from_string(owner.to_string())),
+        Schedule::default(),
+    );
+    router
+        .execute_contract(
+            owner.clone(),
+            exchange_addr.clone(),
+            &redeem_msg,
+            &[coin(amount_sent, "uusd")],
+        )
+        .unwrap();
+
+    let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().asset,
+        Asset::NativeToken("uusd".to_string())
+    );
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().amount,
+        Uint128::new(amount_sent)
+    );
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().amount_paid_out,
+        Uint128::zero()
+    );
+    assert_eq!(
+        redeem_query_resp.redeem.clone().unwrap().exchange_rate,
+        expected_exchange_rate
+    );
+}
+
+#[rstest]
+#[case::none_exchange_rate(
+    None, // replenish_exchange_rate
+    1000u128, // replenish_amount
+    Decimal256::percent(100), // expected_decimal
+    "None exchange rate" // description
+)]
+#[case::fixed_exchange_rate(
+    Some(ExchangeRate::Fixed(Decimal256::percent(150))),
+    1000u128,
+    Decimal256::percent(150), // Same as the replenish exchange rate
+    "Fixed exchange rate"
+)]
+#[case::variable_exchange_rate(
+    Some(ExchangeRate::Variable(Uint256::from(2000u128))),
+    1000u128,
+    Decimal256::from_ratio(Uint128::new(1), Uint128::new(1)), // New exchange will be 1000 + 1000 / 2000 = 1
+    "Variable exchange rate should change"
+)]
+fn test_replenish_redeem_native_with_various_exchange_rates(
+    #[case] replenish_exchange_rate: Option<ExchangeRate>,
+    #[case] replenish_amount: u128,
+    #[case] expected_decimal: Decimal256,
+    #[case] description: &str,
+) {
+    let mut router = mock_app(None);
+    let andr = setup_andr(&mut router);
+    let app = setup_app(&andr, &mut router);
+    let owner = andr.get_wallet("owner");
+    let addresses = get_addresses(&mut router, &andr, &app);
+    let exchange_addr = addresses.exchange;
+    let uandr_asset = Asset::NativeToken("uandr".to_string());
+
+    // Initial setup for redeem condition with Fixed(100%)
+    let initial_amount_sent = 1000u128;
+    let initial_exchange_rate = ExchangeRate::Fixed(Decimal256::percent(100));
+    let redeem_msg = mock_set_redeem_condition_native_msg(
+        uandr_asset.clone(),
+        initial_exchange_rate.clone(),
+        Some(Recipient::from_string(owner.to_string())),
+        Schedule::default(),
+    );
+    router
+        .execute_contract(
+            owner.clone(),
+            exchange_addr.clone(),
+            &redeem_msg,
+            &[coin(initial_amount_sent, "uusd")],
+        )
+        .unwrap();
+
+    // Replenish with the parameterized exchange rate
+    let replenish_msg =
+        mock_replenish_redeem_native_msg(uandr_asset.clone(), replenish_exchange_rate.clone());
+    router
+        .execute_contract(
+            owner.clone(),
+            exchange_addr.clone(),
+            &replenish_msg,
+            &[coin(replenish_amount, "uusd")],
+        )
+        .unwrap();
+
+    // Query to verify replenish and exchange rate
+    let redeem_query_msg = mock_redeem_query_msg(uandr_asset.clone());
+    let redeem_query_resp: RedeemResponse = router
+        .wrap()
+        .query_wasm_smart(exchange_addr.clone(), &redeem_query_msg)
+        .unwrap();
+    let new_redeem = redeem_query_resp.redeem.unwrap();
+    assert_eq!(
+        new_redeem.amount,
+        Uint128::new(initial_amount_sent + replenish_amount),
+        "Total amount should be the sum of the initial amount and the replenish amount {} {}",
+        initial_amount_sent,
+        replenish_amount,
+    );
+    assert_eq!(
+        new_redeem.exchange_rate, expected_decimal,
+        "{}",
+        description
     );
 }

@@ -467,7 +467,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-exchange"
-version = "3.0.0-b.3"
+version = "3.0.0-b.4"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",

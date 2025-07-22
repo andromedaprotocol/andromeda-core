@@ -1,4 +1,4 @@
-use andromeda_fungible_tokens::exchange::Redeem;
+use andromeda_fungible_tokens::exchange::{ExchangeRate, Redeem};
 use andromeda_std::{
     amp::Recipient,
     common::{
@@ -22,7 +22,7 @@ pub fn execute_start_redeem(
     asset: Asset,
     // The accepted asset to be redeemed for the asset sent
     redeem_asset: Asset,
-    exchange_rate: Decimal256,
+    exchange_rate: ExchangeRate,
     // The original sender of the CW20::Send message
     sender: String,
     // The recipient of the redeem proceeds
@@ -41,8 +41,9 @@ pub fn execute_start_redeem(
             )
         }
     );
+    let derived_exchange_rate = exchange_rate.get_exchange_rate(amount)?;
     ensure!(
-        !exchange_rate.is_zero(),
+        !derived_exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
     ensure!(
@@ -70,7 +71,8 @@ pub fn execute_start_redeem(
         asset: asset.clone(),
         amount,
         amount_paid_out: Uint128::zero(),
-        exchange_rate,
+        exchange_rate: derived_exchange_rate,
+        exchange_type: exchange_rate.clone(),
         recipient,
         start_time,
         end_time,
@@ -81,7 +83,8 @@ pub fn execute_start_redeem(
         attr("action", "start_redeem"),
         attr("redeem_asset", redeem_asset.to_string()),
         attr("asset", asset.to_string()),
-        attr("rate", exchange_rate.to_string()),
+        attr("rate", derived_exchange_rate.to_string()),
+        attr("exchange_type", exchange_rate.to_string()),
         attr("amount", amount),
         attr("start_time", start_time.to_string()),
         attr("end_time", end_time.unwrap_or_default().to_string()),
@@ -93,6 +96,7 @@ pub fn execute_replenish_redeem(
     amount: Uint128,
     asset: Asset,
     redeem_asset: Asset,
+    exchange_rate_type: Option<ExchangeRate>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
     let redeem_asset_str = redeem_asset.inner(&deps.as_ref())?;
@@ -114,8 +118,15 @@ pub fn execute_replenish_redeem(
             ContractError::RedeemEnded {}
         );
     }
-
+    // Add the replenishing amount to the redeem
     redeem.amount = redeem.amount.checked_add(amount)?;
+
+    // Adjust the rate and type only if a a new one was provided by the user
+    if let Some(exchange_rate_type) = exchange_rate_type {
+        let exchange_rate_amount = exchange_rate_type.get_exchange_rate(redeem.amount)?;
+        redeem.exchange_rate = exchange_rate_amount;
+        redeem.exchange_type = exchange_rate_type;
+    }
 
     REDEEM.save(deps.storage, &redeem_asset_str, &redeem)?;
 
@@ -123,7 +134,7 @@ pub fn execute_replenish_redeem(
         attr("action", "replenish_redeem"),
         attr("redeem_asset", redeem_asset.to_string()),
         attr("asset", asset.to_string()),
-        attr("amount", amount),
+        attr("amount_added", amount),
     ]))
 }
 
@@ -252,7 +263,7 @@ pub fn execute_redeem(
 pub fn execute_start_redeem_native(
     ctx: ExecuteContext,
     redeem_asset: Asset,
-    exchange_rate: Decimal256,
+    exchange_rate: ExchangeRate,
     recipient: Option<Recipient>,
     schedule: Schedule,
 ) -> Result<Response, ContractError> {
@@ -278,6 +289,7 @@ pub fn execute_start_redeem_native(
 pub fn execute_replenish_redeem_native(
     ctx: ExecuteContext,
     redeem_asset: Asset,
+    exchange_rate_type: Option<ExchangeRate>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { ref info, .. } = ctx;
 
@@ -285,7 +297,13 @@ pub fn execute_replenish_redeem_native(
     let amount_sent = native_funds_sent.amount;
     let asset_sent = Asset::NativeToken(native_funds_sent.denom.to_string());
 
-    execute_replenish_redeem(ctx, amount_sent, asset_sent, redeem_asset)
+    execute_replenish_redeem(
+        ctx,
+        amount_sent,
+        asset_sent,
+        redeem_asset,
+        exchange_rate_type,
+    )
 }
 
 pub fn execute_redeem_native(
