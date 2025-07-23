@@ -139,16 +139,16 @@ fn execute_lock(
     let factory_denom = FACTORY_DENOMS.may_load(ctx.deps.storage, cw20_addr.clone())?;
     match factory_denom {
         Some(denom) => {
-            // let authorized_cw20_address = DENOMS_TO_OWNER.load(ctx.deps.storage, denom.clone())?;
-            // ensure!(
-            //     authorized_cw20_address == cw20_addr,
-            //     ContractError::InvalidFunds {
-            //         msg: format!(
-            //             "Invalid cw20, the authorized one is {}",
-            //             authorized_cw20_address
-            //         )
-            //     }
-            // );
+            let authorized_cw20_address = DENOMS_TO_OWNER.load(ctx.deps.storage, denom.clone())?;
+            ensure!(
+                authorized_cw20_address == cw20_addr,
+                ContractError::InvalidFunds {
+                    msg: format!(
+                        "Invalid cw20, the authorized one is {}",
+                        authorized_cw20_address
+                    )
+                }
+            );
             // Denom exists, mint directly
             execute_mint(
                 ctx,
