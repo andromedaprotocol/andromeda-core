@@ -4,7 +4,7 @@ use andromeda_osmosis_token_factory::OsmosisTokenFactoryContract;
 // };
 use andromeda_socket::osmosis_token_factory::ExecuteMsgFns;
 use andromeda_std::amp::AndrAddr;
-use cosmwasm_std::Uint128;
+// use cosmwasm_std::Uint128;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
@@ -65,39 +65,36 @@ fn test_create_denom(setup: TestCase) {
     println!("socket_osmosis_addr: {}", socket_osmosis_addr);
 
     let subdenom = "test".to_string();
-    let amount = Uint128::from(10u128);
 
     let res = osmosis_token_factory_contract
-        .create_denom(amount, subdenom, None, &[])
+        .create_denom(subdenom, &[])
         .unwrap();
     println!("res: {:?}", res);
 }
 
-// #[rstest]
-// fn test_unlock(setup: TestCase) {
-//     let TestCase {
-//         osmosis_token_factory_contract,
-//         ..
-//     } = setup;
+#[rstest]
+fn test_burn(setup: TestCase) {
+    let TestCase {
+        osmosis_token_factory_contract,
+        ..
+    } = setup;
 
-//     let socket_osmosis_addr: String = osmosis_token_factory_contract.addr_str().unwrap();
-//     println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+    let socket_osmosis_addr: String = osmosis_token_factory_contract.addr_str().unwrap();
+    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
 
-//     let subdenom = "test".to_string();
-//     let amount = Uint128::from(1u128);
-//     let denom = format!("factory/{}/{}", socket_osmosis_addr, subdenom);
-//     println!("denom: {}", denom);
+    let subdenom = "test".to_string();
+    // let amount = Uint128::from(1u128);
+    let denom = format!("factory/{}/{}", socket_osmosis_addr, subdenom);
+    println!("denom: {}", denom);
 
-//     let coin = OsmosisCoin {
-//         denom: denom.clone(),
-//         amount: amount.to_string(),
-//     };
+    // let coin = OsmosisCoin {
+    //     denom: denom.clone(),
+    //     amount: amount.to_string(),
+    // };
 
-//     let res = osmosis_token_factory_contract
-//         .unlock(denom, denom, None, &[coin])
-//         .unwrap();
-//     println!("res: {:?}", res);
-// }
+    let res = osmosis_token_factory_contract.burn(&[]).unwrap(); // TODO send funds
+    println!("res: {:?}", res);
+}
 
 // #[rstest]
 // fn test_mint(setup: TestCase) {

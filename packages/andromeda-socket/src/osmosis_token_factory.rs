@@ -18,21 +18,19 @@ pub struct InstantiateMsg {
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    CreateDenom {
-        subdenom: String,
-        amount: Uint128,
-        recipient: Option<AndrAddr>,
-    },
+    CreateDenom { subdenom: String },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Mint { recipient: Option<AndrAddr> },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    Burn {},
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Receive { msg: Cw20ReceiveMsg },
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Unlock {
-        cw20_addr: Addr,
-        factory_denom: String,
-        recipient: Option<Recipient>,
-    },
+    Unlock { recipient: Option<Recipient> },
 }
 
 #[cw_serde]
