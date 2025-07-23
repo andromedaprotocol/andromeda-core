@@ -1,7 +1,7 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Env, Uint128};
 use cw20::Cw20ReceiveMsg;
 use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams;
 use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
@@ -99,4 +99,9 @@ pub struct LockedInfo {
 #[cw_serde]
 pub struct AllLockedResponse {
     pub locked: Vec<LockedInfo>,
+}
+
+/// The structure of the newly created denom is: “factory/{osmosis_socket_addr}/{subdenom}}”
+pub fn get_factory_denom(env: &Env, subdenom: &str) -> String {
+    format!("factory/{}/{}", env.contract.address, subdenom)
 }

@@ -1,7 +1,7 @@
 use crate::state::{DENOMS_TO_OWNER, FACTORY_DENOMS, LOCKED, OSMOSIS_MSG_BURN_ID};
 use andromeda_socket::osmosis_token_factory::{
-    AllLockedResponse, ExecuteMsg, FactoryDenomResponse, InstantiateMsg, LockedInfo,
-    LockedResponse, QueryMsg, ReceiveHook,
+    get_factory_denom, AllLockedResponse, ExecuteMsg, FactoryDenomResponse, InstantiateMsg,
+    LockedInfo, LockedResponse, QueryMsg, ReceiveHook,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -64,10 +64,9 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::Mint { recipient } => {
             let funds = one_coin(&ctx.info)?;
 
-            let authorized_cw20_address =
-                DENOMS_TO_OWNER.load(ctx.deps.storage, funds.denom.clone())?;
+            let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, funds.denom.clone())?;
             ensure!(
-                authorized_cw20_address == ctx.info.sender,
+                denom_owner == ctx.info.sender,
                 ContractError::InvalidFunds {
                     msg: "Invalid cw20, the authorized one is {}".to_string(),
                 }
@@ -128,7 +127,7 @@ fn execute_lock(
     cw20_addr: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // Update locked amount for this (user, cw20_token) pair
+    // Update locked amount for this cw20 address
     LOCKED.update(
         ctx.deps.storage,
         cw20_addr.clone(),
@@ -139,14 +138,11 @@ fn execute_lock(
     let factory_denom = FACTORY_DENOMS.may_load(ctx.deps.storage, cw20_addr.clone())?;
     match factory_denom {
         Some(denom) => {
-            let authorized_cw20_address = DENOMS_TO_OWNER.load(ctx.deps.storage, denom.clone())?;
+            let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, denom.clone())?;
             ensure!(
-                authorized_cw20_address == cw20_addr,
+                denom_owner == cw20_addr,
                 ContractError::InvalidFunds {
-                    msg: format!(
-                        "Invalid cw20, the authorized one is {}",
-                        authorized_cw20_address
-                    )
+                    msg: format!("Invalid cw20, the authorized one is {}", denom_owner)
                 }
             );
             // Denom exists, mint directly
@@ -167,9 +163,9 @@ fn execute_lock(
                         contract_addr: cw20_addr.to_string(),
                         msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
                     }))?;
-            // The structure of the newly created denom is: “factory/{osmosis_socket_addr}/{subdenom}}”
-            let subdenom = token_info.name.to_lowercase();
-            let new_denom = format!("factory/{}/{}", ctx.env.contract.address, subdenom);
+
+            let subdenom = token_info.symbol.to_lowercase();
+            let new_denom = get_factory_denom(&ctx.env, &subdenom);
             // If the create denom function fails due duplicate denom, the state will revert
             DENOMS_TO_OWNER.save(ctx.deps.storage, new_denom, &cw20_addr)?;
 
@@ -187,7 +183,7 @@ fn execute_unlock(
     let funds = one_coin(&ctx.info)?;
     let factory_denom = funds.denom;
 
-    let authorized_cw20_address = DENOMS_TO_OWNER.load(ctx.deps.storage, factory_denom.clone())?;
+    let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, factory_denom.clone())?;
 
     // 1. Validate factory denom matches the CW20
     // let expected_denom = FACTORY_DENOMS.load(ctx.deps.storage, cw20_addr.clone())?;
@@ -199,7 +195,7 @@ fn execute_unlock(
     // );
 
     // 2. Check that there are enough locked tokens (only original locker can unlock)
-    let locked_amount = LOCKED.load(ctx.deps.storage, authorized_cw20_address.clone())?;
+    let locked_amount = LOCKED.load(ctx.deps.storage, denom_owner.clone())?;
     ensure!(
         locked_amount >= funds.amount,
         ContractError::InsufficientFunds {}
@@ -210,7 +206,7 @@ fn execute_unlock(
         recipient.generate_msg_cw20(
             &ctx.deps.as_ref(),
             Cw20Coin {
-                address: authorized_cw20_address.to_string(),
+                address: denom_owner.to_string(),
                 amount: funds.amount,
             },
         )?
@@ -220,7 +216,7 @@ fn execute_unlock(
             amount: funds.amount,
         };
         SubMsg::new(wasm_execute(
-            authorized_cw20_address.to_string(),
+            denom_owner.to_string(),
             &to_json_binary(&transfer_msg)?,
             vec![],
         )?)
@@ -229,7 +225,7 @@ fn execute_unlock(
     // 4. Update LOCKED state (before preparing burn message)
     LOCKED.save(
         ctx.deps.storage,
-        authorized_cw20_address.clone(),
+        denom_owner.clone(),
         &locked_amount.checked_sub(funds.amount)?,
     )?;
 
@@ -248,7 +244,7 @@ fn execute_unlock(
         .add_attributes(burn_msg.attributes)
         .add_attribute("action", "unlock")
         .add_attribute("user", user_addr.to_string())
-        .add_attribute("cw20_addr", authorized_cw20_address.to_string())
+        .add_attribute("cw20_addr", denom_owner.to_string())
         .add_attribute("factory_denom", factory_denom)
         .add_attribute("amount", funds.amount.to_string()))
 }
@@ -262,10 +258,10 @@ fn execute_create_denom_direct(
         deps, env, info, ..
     } = ctx;
 
-    let new_denom = format!("factory/{}/{}", env.contract.address, subdenom);
-    let authorized_cw20_address = DENOMS_TO_OWNER.may_load(deps.storage, new_denom.clone())?;
+    let new_denom = get_factory_denom(&env, &subdenom);
+    let denom_owner = DENOMS_TO_OWNER.may_load(deps.storage, new_denom.clone())?;
     ensure!(
-        authorized_cw20_address.is_none(),
+        denom_owner.is_none(),
         ContractError::InvalidFunds {
             msg: "Denom already exists".to_string(),
         }
@@ -300,8 +296,7 @@ fn execute_create_denom_and_mint(
         subdenom: subdenom.clone(),
     });
 
-    // The structure of the newly created denom is: “factory/{osmosis_socket_addr}/{subdenom}}”
-    let new_denom = format!("factory/{}/{}", env.contract.address, subdenom);
+    let new_denom = get_factory_denom(&env, &subdenom);
     let recipient = get_raw_address_or_default(&deps.as_ref(), &recipient, &new_denom)?;
 
     let mint_msg = SubMsg::new(MsgMint {
