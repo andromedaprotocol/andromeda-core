@@ -9,7 +9,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
 
 use e2e::constants::OSMO_5;
-use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
+// use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 use rstest::{fixture, rstest};
 
 struct TestCase {
@@ -73,29 +73,31 @@ fn test_create_denom(setup: TestCase) {
     println!("res: {:?}", res);
 }
 
-#[rstest]
-fn test_burn(setup: TestCase) {
-    let TestCase {
-        osmosis_token_factory_contract,
-        ..
-    } = setup;
+// #[rstest]
+// fn test_unlock(setup: TestCase) {
+//     let TestCase {
+//         osmosis_token_factory_contract,
+//         ..
+//     } = setup;
 
-    let socket_osmosis_addr: String = osmosis_token_factory_contract.addr_str().unwrap();
-    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+//     let socket_osmosis_addr: String = osmosis_token_factory_contract.addr_str().unwrap();
+//     println!("socket_osmosis_addr: {}", socket_osmosis_addr);
 
-    let subdenom = "test".to_string();
-    let amount = Uint128::from(1u128);
-    let denom = format!("factory/{}/{}", socket_osmosis_addr, subdenom);
-    println!("denom: {}", denom);
+//     let subdenom = "test".to_string();
+//     let amount = Uint128::from(1u128);
+//     let denom = format!("factory/{}/{}", socket_osmosis_addr, subdenom);
+//     println!("denom: {}", denom);
 
-    let coin = OsmosisCoin {
-        denom: denom.clone(),
-        amount: amount.to_string(),
-    };
+//     let coin = OsmosisCoin {
+//         denom: denom.clone(),
+//         amount: amount.to_string(),
+//     };
 
-    let res = osmosis_token_factory_contract.burn(coin, &[]).unwrap();
-    println!("res: {:?}", res);
-}
+//     let res = osmosis_token_factory_contract
+//         .unlock(denom, denom, None, &[coin])
+//         .unwrap();
+//     println!("res: {:?}", res);
+// }
 
 // #[rstest]
 // fn test_mint(setup: TestCase) {
