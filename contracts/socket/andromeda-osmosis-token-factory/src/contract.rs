@@ -68,7 +68,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             ensure!(
                 denom_owner == ctx.info.sender,
                 ContractError::InvalidFunds {
-                    msg: "Invalid cw20, the authorized one is {}".to_string(),
+                    msg: format!("Invalid cw20, the authorized one is {}", denom_owner),
                 }
             );
 
@@ -302,7 +302,6 @@ fn execute_create_denom_and_mint(
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
 
-    // Initiates minting of the denom in the Reply
     let create_denom_msg = SubMsg::new(MsgCreateDenom {
         sender: env.contract.address.to_string(),
         subdenom: subdenom.clone(),
