@@ -1,8 +1,9 @@
 use andromeda_std::amp::{AndrAddr, Recipient};
+use andromeda_std::error::ContractError;
 use andromeda_std::{andr_exec, andr_instantiate, andr_query};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Env, Uint128};
-use cw20::Cw20ReceiveMsg;
+use cosmwasm_std::{to_json_binary, Addr, Env, QuerierWrapper, QueryRequest, Uint128, WasmQuery};
+use cw20::{Cw20QueryMsg, Cw20ReceiveMsg, TokenInfoResponse};
 use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams;
 use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse;
@@ -104,4 +105,14 @@ pub struct AllLockedResponse {
 /// The structure of the newly created denom is: “factory/{osmosis_socket_addr}/{subdenom}}”
 pub fn get_factory_denom(env: &Env, subdenom: &str) -> String {
     format!("factory/{}/{}", env.contract.address, subdenom)
+}
+
+/// Checks if an address is a cw20 contract by querying the TokenInfo which is guaranteed to error if the address is a wallet
+pub fn is_cw20_contract(querier: &QuerierWrapper, address: &str) -> Result<bool, ContractError> {
+    Ok(querier
+        .query::<TokenInfoResponse>(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: address.to_string(),
+            msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
+        }))
+        .is_ok())
 }

@@ -1,7 +1,7 @@
 use crate::state::{DENOMS_TO_OWNER, FACTORY_DENOMS, LOCKED, OSMOSIS_MSG_BURN_ID};
 use andromeda_socket::osmosis_token_factory::{
-    get_factory_denom, AllLockedResponse, ExecuteMsg, FactoryDenomResponse, InstantiateMsg,
-    LockedInfo, LockedResponse, QueryMsg, ReceiveHook,
+    get_factory_denom, is_cw20_contract, AllLockedResponse, ExecuteMsg, FactoryDenomResponse,
+    InstantiateMsg, LockedInfo, LockedResponse, QueryMsg, ReceiveHook,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -72,6 +72,16 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
                 }
             );
 
+            // Check if the denom owner is a cw20 contract
+            let is_cw20 = is_cw20_contract(&ctx.deps.querier, denom_owner.as_str())?;
+            ensure!(
+                !is_cw20,
+                ContractError::InvalidFunds {
+                    msg: "Denoms created from cw20 should be minted using the `Lock` message"
+                        .to_string(),
+                }
+            );
+
             execute_mint(
                 ctx,
                 OsmosisCoin {
@@ -83,16 +93,16 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         }
         ExecuteMsg::Burn {} => {
             let funds = one_coin(&ctx.info)?;
+            let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, funds.denom.clone())?;
+            // Check if the denom owner is a cw20 contract
+            let is_cw20 = is_cw20_contract(&ctx.deps.querier, denom_owner.as_str())?;
             ensure!(
-                DENOMS_TO_OWNER
-                    .may_load(ctx.deps.storage, funds.denom.clone())?
-                    .is_none(),
+                !is_cw20,
                 ContractError::InvalidFunds {
                     msg: "Tokens created from cw20 should be burned using the `Unlock` message"
                         .to_string(),
                 }
             );
-
             execute_burn(
                 ctx,
                 OsmosisCoin {
@@ -167,7 +177,9 @@ fn execute_lock(
             let subdenom = token_info.symbol.to_lowercase();
             let new_denom = get_factory_denom(&ctx.env, &subdenom);
             // If the create denom function fails due duplicate denom, the state will revert
-            DENOMS_TO_OWNER.save(ctx.deps.storage, new_denom, &cw20_addr)?;
+            DENOMS_TO_OWNER.save(ctx.deps.storage, new_denom.clone(), &cw20_addr)?;
+
+            FACTORY_DENOMS.save(ctx.deps.storage, cw20_addr.clone(), &new_denom)?;
 
             // Create new denom first and then mints the tokens
             execute_create_denom_and_mint(ctx, subdenom, amount, Some(user_addr.into()))
@@ -186,13 +198,13 @@ fn execute_unlock(
     let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, factory_denom.clone())?;
 
     // 1. Validate factory denom matches the CW20
-    // let expected_denom = FACTORY_DENOMS.load(ctx.deps.storage, cw20_addr.clone())?;
-    // ensure!(
-    //     expected_denom == factory_denom,
-    //     ContractError::Std(StdError::generic_err(
-    //         "Invalid factory denom for this CW20 token"
-    //     ))
-    // );
+    let expected_denom = FACTORY_DENOMS.load(ctx.deps.storage, denom_owner.clone())?;
+    ensure!(
+        expected_denom == factory_denom,
+        ContractError::Std(StdError::generic_err(
+            "Invalid factory denom for this CW20 token"
+        ))
+    );
 
     // 2. Check that there are enough locked tokens (only original locker can unlock)
     let locked_amount = LOCKED.load(ctx.deps.storage, denom_owner.clone())?;
