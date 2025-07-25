@@ -10,9 +10,7 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetad
 
 #[andr_instantiate]
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub authorized_address: AndrAddr,
-}
+pub struct InstantiateMsg {}
 
 #[andr_exec]
 #[cw_serde]
@@ -22,7 +20,10 @@ pub enum ExecuteMsg {
     CreateDenom { subdenom: String },
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Mint { recipient: Option<AndrAddr> },
+    Mint {
+        recipient: Option<AndrAddr>,
+        subdenom: String,
+    },
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Burn {},
@@ -37,7 +38,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum ReceiveHook {
     /// Lock the received CW20 tokens and mint factory tokens
-    Lock {},
+    Lock { recipient: Option<AndrAddr> },
 }
 #[cw_serde]
 pub enum Pool {

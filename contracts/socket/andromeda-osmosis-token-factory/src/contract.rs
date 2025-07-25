@@ -61,10 +61,13 @@ pub fn instantiate(
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::CreateDenom { subdenom } => execute_create_denom_direct(ctx, subdenom),
-        ExecuteMsg::Mint { recipient } => {
+        ExecuteMsg::Mint {
+            recipient,
+            subdenom,
+        } => {
             let funds = one_coin(&ctx.info)?;
-
-            let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, funds.denom.clone())?;
+            let factory_denom = get_factory_denom(&ctx.env, &subdenom);
+            let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, factory_denom.clone())?;
             ensure!(
                 denom_owner == ctx.info.sender,
                 ContractError::InvalidFunds {
@@ -111,12 +114,16 @@ fn execute_receive(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response,
     let hook: ReceiveHook = from_json(&msg.msg)?;
 
     match hook {
-        ReceiveHook::Lock {} => {
+        ReceiveHook::Lock { recipient } => {
             let cw20_addr = ctx.info.sender.clone();
             let user_addr = ctx.deps.api.addr_validate(&msg.sender)?;
             let amount = msg.amount;
+            let recipient = recipient
+                .map(|r| r.get_raw_address(&ctx.deps.as_ref()))
+                .transpose()?
+                .unwrap_or(user_addr);
 
-            execute_lock(ctx, user_addr, cw20_addr, amount)
+            execute_lock(ctx, recipient.into(), cw20_addr, amount)
         }
     }
 }
