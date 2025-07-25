@@ -72,16 +72,6 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
                 }
             );
 
-            // Check if the denom owner is a cw20 contract
-            let is_cw20 = is_cw20_contract(&ctx.deps.querier, denom_owner.as_str())?;
-            ensure!(
-                !is_cw20,
-                ContractError::InvalidFunds {
-                    msg: "Denoms created from cw20 should be minted using the `Lock` message"
-                        .to_string(),
-                }
-            );
-
             execute_mint(
                 ctx,
                 OsmosisCoin {
