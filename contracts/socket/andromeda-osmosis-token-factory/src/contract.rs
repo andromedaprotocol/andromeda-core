@@ -1,7 +1,7 @@
 use crate::state::{DENOMS_TO_OWNER, FACTORY_DENOMS, LOCKED, OSMOSIS_MSG_BURN_ID};
 use andromeda_socket::osmosis_token_factory::{
-    get_factory_denom, is_cw20_contract, AllLockedResponse, ExecuteMsg, FactoryDenomResponse,
-    InstantiateMsg, LockedInfo, LockedResponse, QueryMsg, ReceiveHook,
+    get_factory_denom, is_cw20_contract, AllLockedResponse, Cw20HookMsg, ExecuteMsg,
+    FactoryDenomResponse, InstantiateMsg, LockedInfo, LockedResponse, QueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -111,10 +111,10 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 }
 
 fn execute_receive(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
-    let hook: ReceiveHook = from_json(&msg.msg)?;
+    let hook: Cw20HookMsg = from_json(&msg.msg)?;
 
     match hook {
-        ReceiveHook::Lock { recipient } => {
+        Cw20HookMsg::Lock { recipient } => {
             let cw20_addr = ctx.info.sender.clone();
             let user_addr = ctx.deps.api.addr_validate(&msg.sender)?;
             let amount = msg.amount;

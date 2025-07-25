@@ -36,7 +36,7 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub enum ReceiveHook {
+pub enum Cw20HookMsg {
     /// Lock the received CW20 tokens and mint factory tokens
     Lock { recipient: Option<AndrAddr> },
 }
