@@ -23,6 +23,7 @@ pub enum ExecuteMsg {
     Mint {
         recipient: Option<AndrAddr>,
         subdenom: String,
+        amount: Uint128,
     },
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]

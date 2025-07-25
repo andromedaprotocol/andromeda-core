@@ -64,8 +64,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ExecuteMsg::Mint {
             recipient,
             subdenom,
+            amount,
         } => {
-            let funds = one_coin(&ctx.info)?;
             let factory_denom = get_factory_denom(&ctx.env, &subdenom);
             let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, factory_denom.clone())?;
             ensure!(
@@ -78,8 +78,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             execute_mint(
                 ctx,
                 OsmosisCoin {
-                    denom: funds.denom,
-                    amount: funds.amount.to_string(),
+                    denom: factory_denom,
+                    amount: amount.to_string(),
                 },
                 recipient,
             )
