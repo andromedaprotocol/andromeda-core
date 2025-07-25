@@ -123,7 +123,7 @@ fn execute_receive(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response,
                 .transpose()?
                 .unwrap_or(user_addr);
 
-            execute_lock(ctx, recipient.into(), cw20_addr, amount)
+            execute_lock(ctx, recipient, cw20_addr, amount)
         }
     }
 }
