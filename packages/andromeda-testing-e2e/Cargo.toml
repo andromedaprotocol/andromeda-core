@@ -2,7 +2,7 @@
 name = "andromeda-testing-e2e"
 version = "1.0.0"
 authors = ["Albert Hu <web3pirate@outlook.com>"]
-edition = "2018"
+edition = "2021"
 description = "E2E Testing utilities for Andromeda Digital Object Contracts"
 license = "MIT"
 

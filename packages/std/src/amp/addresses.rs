@@ -323,6 +323,19 @@ impl From<&AndrAddr> for String {
     }
 }
 
+/// Gets the raw address for an AndrAddr, if the address is `None` then the default is checked for validity, then returned
+pub fn get_raw_address_or_default(
+    deps: &Deps,
+    addr: &Option<AndrAddr>,
+    default: &str,
+) -> Result<Addr, ContractError> {
+    let res = match addr {
+        Some(addr) => addr.get_raw_address(deps)?,
+        None => deps.api.addr_validate(default)?,
+    };
+    Ok(res)
+}
+
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::mock_dependencies;

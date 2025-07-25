@@ -2,7 +2,7 @@
 name = "e2e"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 publish = false
 
 # [[test]]
@@ -54,6 +54,10 @@ andromeda-validator-staking = { path = "../../contracts/finance/andromeda-valida
 ] }
 
 andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osmosis", features = [
+    "testing",
+] }
+
+andromeda-osmosis-token-factory = { path = "../../contracts/socket/andromeda-osmosis-token-factory", features = [
     "testing",
 ] }
 
