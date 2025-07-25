@@ -48,10 +48,10 @@ fn kernel() {
     let user1 = andr.get_wallet("user1");
 
     let splitter_msg = mock_splitter_instantiate_msg(
-        vec![AddressPercent::new(
+        Some(vec![AddressPercent::new(
             Recipient::from_string(user1.to_string()).with_ibc_recovery(owner.clone()),
             Decimal::one(),
-        )],
+        )]),
         andr.kernel.addr().clone(),
         None,
         None,
