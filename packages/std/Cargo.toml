@@ -46,5 +46,5 @@ prost = { version = "0.13.5", default-features = false, features = [
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true }
-rstest = "0.25.0"
+rstest = "0.26.1"
 cw-orch = { workspace = true }
