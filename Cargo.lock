@@ -750,6 +750,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-osmosis-token-factory"
+version = "0.1.1-b.1"
+dependencies = [
+ "andromeda-socket",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-orch-daemon 0.24.6",
+ "cw-storage-plus 2.0.0",
+ "cw-utils 2.0.0",
+ "cw2 2.0.0",
+ "cw20 2.0.0",
+ "osmosis-std",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "andromeda-point"
 version = "0.1.1-b.2"
 dependencies = [
@@ -3312,6 +3334,7 @@ dependencies = [
  "andromeda-fungible-tokens",
  "andromeda-kernel",
  "andromeda-non-fungible-tokens",
+ "andromeda-osmosis-token-factory",
  "andromeda-socket",
  "andromeda-socket-astroport",
  "andromeda-socket-osmosis",
@@ -5578,21 +5601,20 @@ dependencies = [
 
 [[package]]
 name = "rstest"
-version = "0.25.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fc39292f8613e913f7df8fa892b8944ceb47c247b78e1b1ae2f09e019be789d"
+checksum = "f5a3193c063baaa2a95a33f03035c8a72b83d97a54916055ba22d35ed3839d49"
 dependencies = [
  "futures-timer",
  "futures-util",
  "rstest_macros",
- "rustc_version",
 ]
 
 [[package]]
 name = "rstest_macros"
-version = "0.25.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f168d99749d307be9de54d23fd226628d99768225ef08f6ffb52e0182a27746"
+checksum = "9c845311f0ff7951c5506121a9ad75aec44d083c31583b2ea5a30bcb0b0abba0"
 dependencies = [
  "cfg-if",
  "glob",

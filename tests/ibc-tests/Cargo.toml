@@ -2,7 +2,7 @@
 name = "ibc-tests"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 publish = false
 
 
@@ -51,6 +51,6 @@ cosmwasm-std = { workspace = true, features = ["staking"] }
 cw-multi-test = { workspace = true, features = ["cosmwasm_1_2", "staking"]}
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.8.1"
-rstest = "0.25.0"
+rstest = "0.26.1"
 hex = "0.4"
 
