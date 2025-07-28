@@ -37,6 +37,7 @@ ENDPOINTS=(
   "https://evmos.test.api.coldyvalidator.net"
   "https://api-challenge.blockchain.ki"
   "https://dydx-testnet-api.polkachu.com"
+  "https://lcd.testnet.osmosis.zone"
 )
 
 for URL in "${ENDPOINTS[@]}"; do
