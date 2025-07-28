@@ -751,7 +751,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-osmosis-token-factory"
-version = "0.1.0"
+version = "0.1.1-b.1"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",

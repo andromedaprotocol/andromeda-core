@@ -3,7 +3,6 @@ use andromeda_osmosis_token_factory::OsmosisTokenFactoryContract;
 //     AllLockedResponse, ExecuteMsgFns, FactoryDenomResponse, LockedResponse, QueryMsgFns,
 // };
 use andromeda_socket::osmosis_token_factory::ExecuteMsgFns;
-use andromeda_std::amp::AndrAddr;
 // use cosmwasm_std::Uint128;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
@@ -35,9 +34,6 @@ fn setup() -> TestCase {
             &andromeda_socket::osmosis_token_factory::InstantiateMsg {
                 kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
                     .to_string(),
-                authorized_address: AndrAddr::from_string(
-                    "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6",
-                ),
                 owner: None,
             },
             None,

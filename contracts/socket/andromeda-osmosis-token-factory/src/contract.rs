@@ -1,7 +1,7 @@
 use crate::state::{DENOMS_TO_OWNER, FACTORY_DENOMS, LOCKED, OSMOSIS_MSG_BURN_ID};
 use andromeda_socket::osmosis_token_factory::{
-    get_factory_denom, is_cw20_contract, AllLockedResponse, ExecuteMsg, FactoryDenomResponse,
-    InstantiateMsg, LockedInfo, LockedResponse, QueryMsg, ReceiveHook,
+    get_factory_denom, is_cw20_contract, AllLockedResponse, Cw20HookMsg, ExecuteMsg,
+    FactoryDenomResponse, InstantiateMsg, LockedInfo, LockedResponse, QueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -61,10 +61,13 @@ pub fn instantiate(
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::CreateDenom { subdenom } => execute_create_denom_direct(ctx, subdenom),
-        ExecuteMsg::Mint { recipient } => {
-            let funds = one_coin(&ctx.info)?;
-
-            let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, funds.denom.clone())?;
+        ExecuteMsg::Mint {
+            recipient,
+            subdenom,
+            amount,
+        } => {
+            let factory_denom = get_factory_denom(&ctx.env, &subdenom);
+            let denom_owner = DENOMS_TO_OWNER.load(ctx.deps.storage, factory_denom.clone())?;
             ensure!(
                 denom_owner == ctx.info.sender,
                 ContractError::InvalidFunds {
@@ -75,8 +78,8 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             execute_mint(
                 ctx,
                 OsmosisCoin {
-                    denom: funds.denom,
-                    amount: funds.amount.to_string(),
+                    denom: factory_denom,
+                    amount: amount.to_string(),
                 },
                 recipient,
             )
@@ -108,15 +111,19 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
 }
 
 fn execute_receive(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
-    let hook: ReceiveHook = from_json(&msg.msg)?;
+    let hook: Cw20HookMsg = from_json(&msg.msg)?;
 
     match hook {
-        ReceiveHook::Lock {} => {
+        Cw20HookMsg::Lock { recipient } => {
             let cw20_addr = ctx.info.sender.clone();
             let user_addr = ctx.deps.api.addr_validate(&msg.sender)?;
             let amount = msg.amount;
+            let recipient = recipient
+                .map(|r| r.get_raw_address(&ctx.deps.as_ref()))
+                .transpose()?
+                .unwrap_or(user_addr);
 
-            execute_lock(ctx, user_addr, cw20_addr, amount)
+            execute_lock(ctx, recipient, cw20_addr, amount)
         }
     }
 }
