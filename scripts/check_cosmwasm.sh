@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ENDPOINTS=(
+TESTNET_ENDPOINTS=(
   "https://pisco-lcd.terra.dev"
   "https://juno-testnet-api.polkachu.com"
   "https://rest.elgafar-1.stargaze-apis.com"
@@ -40,6 +40,36 @@ ENDPOINTS=(
   "https://lcd.testnet.osmosis.zone"
 )
 
+MAINNET_ENDPOINTS=(
+  "https://api.andromedaprotocol.io/rest/mainnet"
+  "https://lcd-phoenix.keplr.app"
+  "https://api.mainnet.archway.io"
+  "https://sentry.lcd.injective.network"
+  "https://neutron-lcd.publicnode.com"
+  "https://lcd-stargaze.keplr.app"
+  "https://lcd.aura.network"
+  "https://rest-coreum.ecostake.com"
+  "https://rest.core.persistence.one"
+  "https://migaloo-api.polkachu.com"
+  "https://lcd.nibiru.fi"
+  "https://nym-api.polkachu.com"
+  "https://umee-api.polkachu.com"
+  "https://titan-lcd.titanlab.io"
+  "https://juno-rest.publicnode.com"
+  "https://api.mainnet.desmos.network"
+  "https://api.chihuahua.wtf"
+  "https://rest.omniflix.network"
+)
+
+if [ "$1" == "mainnet" ]; then
+  ENDPOINTS=("${MAINNET_ENDPOINTS[@]}")
+elif [ "$1" == "testnet" ]; then
+  ENDPOINTS=("${TESTNET_ENDPOINTS[@]}")
+else
+  echo "Usage: $0 [mainnet|testnet]"
+  exit 1
+fi
+
 for URL in "${ENDPOINTS[@]}"; do
   echo -n "$URL => "
   RESPONSE=$(curl -s "$URL/cosmos/base/tendermint/v1beta1/node_info")
@@ -52,6 +82,7 @@ for URL in "${ENDPOINTS[@]}"; do
     echo "❌ Error: HTTP Status $STATUS_CODE"
   fi
 done
+
 
 
 #  "https://sei-chain-incentivized.com/sei-chain-app"
