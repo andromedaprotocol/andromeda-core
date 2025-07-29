@@ -27,7 +27,7 @@ fn setup() -> TestCase {
         // Clear the poisoned state and continue
         poisoned.into_inner()
     });
-    
+
     let daemon = Daemon::builder(OSMO_5)
         .mnemonic(TEST_MNEMONIC)
         .build()
@@ -70,9 +70,11 @@ fn test_create_denom(setup: TestCase) {
         .create_denom(subdenom.clone(), &[])
         .unwrap();
 
-    println!("Created denom: factory/{}/{}", 
-             osmosis_token_factory_contract.addr_str().unwrap(), 
-             subdenom);
+    println!(
+        "Created denom: factory/{}/{}",
+        osmosis_token_factory_contract.addr_str().unwrap(),
+        subdenom
+    );
     println!("Create denom result: {:?}", res);
 }
 
@@ -126,10 +128,10 @@ fn test_query_token_authority(setup: TestCase) {
         .unwrap();
 
     println!("Authority for {}: {:?}", denom, authority_res);
-    
+
     // The contract should be the authority
     assert_eq!(
-        authority_res.authority_metadata.unwrap().admin, 
+        authority_res.authority_metadata.unwrap().admin,
         contract_addr
     );
 }
@@ -181,9 +183,7 @@ fn test_query_all_locked_empty(setup: TestCase) {
     } = setup;
 
     // Query all locked tokens across all CW20s
-    let all_locked_res: AllLockedResponse = osmosis_token_factory_contract
-        .all_locked()
-        .unwrap();
+    let all_locked_res: AllLockedResponse = osmosis_token_factory_contract.all_locked().unwrap();
 
     println!("All locked tokens: {:?}", all_locked_res.locked);
     assert_eq!(all_locked_res.locked.len(), 0);
@@ -223,7 +223,10 @@ fn test_unlock_without_tokens(setup: TestCase) {
     match unlock_result {
         Ok(_) => panic!("Expected unlock to fail without factory tokens"),
         Err(e) => {
-            println!("Expected error when unlocking without factory tokens: {:?}", e);
+            println!(
+                "Expected error when unlocking without factory tokens: {:?}",
+                e
+            );
             // This is expected - can't unlock without factory tokens
         }
     }
@@ -241,8 +244,7 @@ fn test_mint_nonexistent_denom(setup: TestCase) {
     let amount = Uint128::from(100u128);
 
     // Try to mint tokens for a denom that doesn't exist
-    let mint_result = osmosis_token_factory_contract
-        .mint(amount, nonexistent_subdenom, None, &[]);
+    let mint_result = osmosis_token_factory_contract.mint(amount, nonexistent_subdenom, None, &[]);
 
     match mint_result {
         Ok(_) => panic!("Expected mint to fail for non-existent denom"),
