@@ -1,5 +1,5 @@
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
+use andromeda_app_contract::mock::{mock_andromeda_app, mock_app_instantiate_msg, MockAppContract};
 use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg};
 use andromeda_std::{amp::AndrAddr, os::vfs::convert_component_name};
 use andromeda_testing::{mock::mock_app, mock_builder::MockAndromedaBuilder, MockContract};
@@ -56,11 +56,11 @@ fn test_app() {
     assert_eq!(components, app_components);
 
     let owner_str = owner.to_string();
-    let cw721_component_with_symlink = AppComponent::symlink(
-        "cw721-ref-2",
-        "cw721",
-        format!("~{owner_str}/{0}/cw721", convert_component_name(app_name)),
-    );
+    let cw721_parent_app_symlink =
+        format!("~{owner_str}/{0}/cw721", convert_component_name(app_name));
+
+    let cw721_component_with_symlink =
+        AppComponent::symlink("cw721-ref-2", "cw721", cw721_parent_app_symlink.clone());
     app.execute_add_app_component(&mut router, owner.clone(), cw721_component_with_symlink)
         .unwrap();
 
@@ -77,4 +77,62 @@ fn test_app() {
 
     let component_addresses = app.query_components(&router);
     assert_eq!(component_addresses.len(), components.len() + 2);
+
+    let app_address = app.query_app_address(&router);
+    assert_eq!(app_address, Some(app.addr()).cloned());
+
+    // Inner App testing starts here
+
+    let cw721_inner_init_msg = mock_cw721_instantiate_msg(
+        "Test Tokens".to_string(),
+        "TT".to_string(),
+        AndrAddr::from_string(format!(
+            "~{owner_str}/{0}/cw721-ref",
+            convert_component_name(app_name)
+        )),
+        andr.kernel.addr().to_string(),
+        None,
+    );
+
+    let cw721_inner_component = AppComponent::new(
+        "cw721-inner".to_string(),
+        "cw721".to_string(),
+        to_json_binary(&cw721_inner_init_msg).unwrap(),
+    );
+
+    let cw721_inner_init_msg_2 = mock_cw721_instantiate_msg(
+        "Test Tokens 2".to_string(),
+        "TT2".to_string(),
+        AndrAddr::from_string("./cw721-inner".to_string()),
+        andr.kernel.addr().to_string(),
+        None,
+    );
+
+    let cw721_inner_component_2 = AppComponent::new(
+        "cw721-inner2".to_string(),
+        "cw721".to_string(),
+        to_json_binary(&cw721_inner_init_msg_2).unwrap(),
+    );
+
+    let inner_app_init_msg = mock_app_instantiate_msg(
+        app_name,
+        vec![
+            cw721_inner_component.clone(),
+            cw721_inner_component_2.clone(),
+        ],
+        andr.kernel.addr().to_string(),
+        None,
+    );
+    let inner_app_component = AppComponent::new(
+        "inner-app".to_string(),
+        "app-contract".to_string(),
+        to_json_binary(&inner_app_init_msg).unwrap(),
+    );
+
+    app.execute_add_app_component(&mut router, owner.clone(), inner_app_component)
+        .unwrap();
+
+    let inner_app_ado: MockAppContract = app.query_ado_by_component_name(&router, "inner-app");
+    let inner_app_address = inner_app_ado.query_app_address(&router);
+    assert_eq!(inner_app_address, Some(app.addr()).cloned());
 }
