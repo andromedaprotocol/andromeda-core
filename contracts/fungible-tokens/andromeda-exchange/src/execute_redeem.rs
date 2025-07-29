@@ -46,10 +46,6 @@ pub fn execute_start_redeem(
         !derived_exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
-    ensure!(
-        ctx.contract.is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
 
     let (start_time, end_time) = schedule.validate(&env.block)?;
     // Do not allow duplicate redeems
