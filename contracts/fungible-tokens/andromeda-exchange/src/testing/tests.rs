@@ -20,6 +20,7 @@ use cosmwasm_std::{
     SubMsg, Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use rstest::*;
 
 pub const MOCK_TOKEN_ADDRESS: &str = "cw20";
 
@@ -1593,4 +1594,32 @@ fn test_cancel_redeem_unauthorized() {
         .unwrap();
     let res = execute(deps.as_mut(), env.clone(), info.clone(), redeem_msg);
     assert!(res.is_ok());
+}
+
+// There was an auth check that only allowed the contract owner to start a redeem
+// That was removed in #942, and this tests ensures that anyone can start a redeem
+#[rstest]
+#[case("owner")]
+#[case("not_owner")]
+fn test_start_redeem_authorization(#[case] sender: &str) {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let sender_addr = deps.api.addr_make(sender);
+    let redeem_asset = Asset::NativeToken("uandr".to_string());
+
+    // Init sets the "owner" address as the contract owner
+    init(&mut deps).unwrap();
+
+    let msg = ExecuteMsg::StartRedeem {
+        redeem_asset: redeem_asset.clone(),
+        exchange_rate: ExchangeRate::Fixed(Decimal256::percent(200)),
+        recipient: None,
+        schedule: Schedule::new(None, None),
+    };
+
+    let info = message_info(&sender_addr, &[coin(100u128, "uusd")]);
+    let result = execute(deps.as_mut(), env, info, msg);
+
+    assert!(result.is_ok(), "{} should be able to start redeem", sender);
 }
