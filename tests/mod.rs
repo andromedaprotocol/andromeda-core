@@ -49,3 +49,6 @@ mod curve_app;
 
 #[cfg(test)]
 mod cw721;
+
+#[cfg(test)]
+mod osmosis_token_factory_app;

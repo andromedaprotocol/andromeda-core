@@ -102,7 +102,13 @@ andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", 
     "testing",
 ] }
 
-# #OS
+# Socket
+andromeda-socket = { workspace = true }
+andromeda-osmosis-token-factory = { path = "../contracts/socket/andromeda-osmosis-token-factory", features = [
+    "testing",
+] }
+
+# OS
 
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",
@@ -239,3 +245,7 @@ path = "set_amount_splitter.rs"
 [[test]]
 name = "cw721"
 path = "cw721.rs"
+
+[[test]]
+name = "osmosis_token_factory"
+path = "osmosis_token_factory_app.rs"

@@ -11,7 +11,6 @@ use andromeda_std::{
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-#[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, from_json, to_json_binary, wasm_execute, Addr, Binary, Deps, DepsMut, Env,
@@ -59,6 +58,7 @@ pub fn instantiate(
 
 #[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    println!("reached here1");
     match msg {
         ExecuteMsg::CreateDenom { subdenom } => execute_create_denom_direct(ctx, subdenom),
         ExecuteMsg::Mint {
@@ -105,19 +105,22 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             )
         }
         ExecuteMsg::Unlock { recipient } => execute_unlock(ctx, recipient),
-        ExecuteMsg::Receive { msg } => execute_receive(ctx, msg),
+        ExecuteMsg::Receive(msg) => execute_receive(ctx, msg),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
 
-fn execute_receive(ctx: ExecuteContext, msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
-    let hook: Cw20HookMsg = from_json(&msg.msg)?;
+fn execute_receive(
+    ctx: ExecuteContext,
+    receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    println!("reached here2");
 
-    match hook {
+    match from_json(&receive_msg.msg)? {
         Cw20HookMsg::Lock { recipient } => {
             let cw20_addr = ctx.info.sender.clone();
-            let user_addr = ctx.deps.api.addr_validate(&msg.sender)?;
-            let amount = msg.amount;
+            let user_addr = ctx.deps.api.addr_validate(&receive_msg.sender)?;
+            let amount = receive_msg.amount;
             let recipient = recipient
                 .map(|r| r.get_raw_address(&ctx.deps.as_ref()))
                 .transpose()?
@@ -277,7 +280,7 @@ fn execute_create_denom_direct(
     );
 
     DENOMS_TO_OWNER.save(deps.storage, new_denom.clone(), &info.sender)?;
-
+    println!("create denom direct");
     let create_denom_msg = SubMsg::new(MsgCreateDenom {
         sender: env.contract.address.to_string(),
         subdenom: subdenom.clone(),
