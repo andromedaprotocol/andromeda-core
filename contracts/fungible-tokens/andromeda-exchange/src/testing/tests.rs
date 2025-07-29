@@ -3,6 +3,7 @@ use andromeda_fungible_tokens::exchange::{
     SaleAssetsResponse, SaleResponse, TokenAddressResponse,
 };
 use andromeda_std::{
+    ado_base::permissioning::PermissioningMessage,
     amp::{AndrAddr, Recipient},
     common::{
         denom::Asset,
@@ -20,6 +21,7 @@ use cosmwasm_std::{
     SubMsg, Timestamp, Uint128,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use rstest::*;
 
 pub const MOCK_TOKEN_ADDRESS: &str = "cw20";
 
@@ -97,11 +99,19 @@ pub fn test_start_sale_unauthorised() {
     let env = mock_env();
     let mut deps = mock_dependencies_custom(&[]);
     let owner = deps.api.addr_make("owner");
+    let not_owner = deps.api.addr_make("not_owner");
     let info = message_info(&owner, &[]);
     let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
     let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
 
     init(&mut deps).unwrap();
+
+    // Set permission for start sale
+
+    let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
+        action: "Receive".to_string(),
+    });
+    execute(deps.as_mut(), env.clone(), info.clone(), permission_msg).unwrap();
 
     let hook = Cw20HookMsg::StartSale {
         asset: exchange_asset,
@@ -110,11 +120,12 @@ pub fn test_start_sale_unauthorised() {
         schedule: Schedule::new(None, None),
     };
     let receive_msg = Cw20ReceiveMsg {
-        sender: "not_owner".to_string(),
+        sender: not_owner.to_string(),
         msg: to_json_binary(&hook).unwrap(),
         amount: Uint128::from(100u128),
     };
     let msg = ExecuteMsg::Receive(receive_msg);
+    let info = message_info(&not_owner, &[]);
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
 
     assert_eq!(err, ContractError::Unauthorized {})
@@ -1593,4 +1604,68 @@ fn test_cancel_redeem_unauthorized() {
         .unwrap();
     let res = execute(deps.as_mut(), env.clone(), info.clone(), redeem_msg);
     assert!(res.is_ok());
+}
+
+// There was an auth check that only allowed the contract owner to start a redeem
+// That was removed in #942, and this tests ensures that anyone can start a redeem
+#[rstest]
+#[case("owner")]
+#[case("not_owner")]
+fn test_start_redeem_authorization(#[case] sender: &str) {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let sender_addr = deps.api.addr_make(sender);
+    let redeem_asset = Asset::NativeToken("uandr".to_string());
+
+    // Init sets the "owner" address as the contract owner
+    init(&mut deps).unwrap();
+
+    let msg = ExecuteMsg::StartRedeem {
+        redeem_asset: redeem_asset.clone(),
+        exchange_rate: ExchangeRate::Fixed(Decimal256::percent(200)),
+        recipient: None,
+        schedule: Schedule::new(None, None),
+    };
+
+    let info = message_info(&sender_addr, &[coin(100u128, "uusd")]);
+    let result = execute(deps.as_mut(), env, info, msg);
+
+    assert!(result.is_ok(), "{} should be able to start redeem", sender);
+}
+
+// There was an auth check that only allowed the contract owner to start a sale
+// That was removed, and this test ensures that anyone can start a sale via CW20 hook
+#[rstest]
+#[case("owner")]
+#[case("not_owner")]
+fn test_start_sale_authorization(#[case] sender: &str) {
+    let env = mock_env();
+    let mut deps = mock_dependencies_custom(&[]);
+
+    let sender_addr = deps.api.addr_make(sender);
+    let exchange_asset_addr = deps.api.addr_make("exchanged_asset");
+    let exchange_asset = Asset::Cw20Token(AndrAddr::from_string(exchange_asset_addr.to_string()));
+    let mock_cw20_addr = deps.api.addr_make(MOCK_TOKEN_ADDRESS);
+    let token_info = message_info(&mock_cw20_addr, &[]);
+
+    // Init sets the "owner" address as the contract owner
+    init(&mut deps).unwrap();
+
+    let hook = Cw20HookMsg::StartSale {
+        asset: exchange_asset.clone(),
+        exchange_rate: Uint128::from(10u128),
+        recipient: None,
+        schedule: Schedule::new(None, None),
+    };
+    let receive_msg = Cw20ReceiveMsg {
+        sender: sender_addr.to_string(),
+        msg: to_json_binary(&hook).unwrap(),
+        amount: Uint128::from(100u128),
+    };
+    let msg = ExecuteMsg::Receive(receive_msg);
+
+    let result = execute(deps.as_mut(), env, token_info, msg);
+
+    assert!(result.is_ok(), "{} should be able to start sale", sender);
 }
