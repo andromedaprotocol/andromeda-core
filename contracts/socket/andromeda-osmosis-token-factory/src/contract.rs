@@ -58,7 +58,6 @@ pub fn instantiate(
 
 #[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
-    println!("reached here1");
     match msg {
         ExecuteMsg::CreateDenom { subdenom } => execute_create_denom_direct(ctx, subdenom),
         ExecuteMsg::Mint {
@@ -114,8 +113,6 @@ fn execute_receive(
     ctx: ExecuteContext,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    println!("reached here2");
-
     match from_json(&receive_msg.msg)? {
         Cw20HookMsg::Lock { recipient } => {
             let cw20_addr = ctx.info.sender.clone();
@@ -280,7 +277,6 @@ fn execute_create_denom_direct(
     );
 
     DENOMS_TO_OWNER.save(deps.storage, new_denom.clone(), &info.sender)?;
-    println!("create denom direct");
     let create_denom_msg = SubMsg::new(MsgCreateDenom {
         sender: env.contract.address.to_string(),
         subdenom: subdenom.clone(),
