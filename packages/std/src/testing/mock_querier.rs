@@ -548,6 +548,9 @@ impl MockAndromedaQuerier {
                     "ANDROMEDA_DISTRIBUTION" => SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&(!fake).to_string()).unwrap(),
                     )),
+                    "CROSS_CHAIN_ENABLED" => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&(!fake).to_string()).unwrap(),
+                    )),
                     _ => panic!("Invalid Kernel Address Key"),
                 }
             } else {

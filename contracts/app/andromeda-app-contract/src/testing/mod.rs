@@ -135,6 +135,7 @@ fn test_add_app_component_unauthorized() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let err = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
@@ -175,6 +176,7 @@ fn test_add_app_component_duplicate_name() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -204,6 +206,7 @@ fn test_add_app_component() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -635,6 +638,7 @@ fn test_add_app_component_limit() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();

@@ -170,9 +170,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 #[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddAppComponent { component } => {
-            execute::handle_add_app_component(ctx, component)
-        }
+        ExecuteMsg::AddAppComponent {
+            component,
+            chain_info,
+        } => execute::handle_add_app_component(ctx, component, chain_info),
         ExecuteMsg::ClaimOwnership { name, new_owner } => {
             execute::claim_ownership(ctx, name, new_owner)
         }
