@@ -102,7 +102,13 @@ andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", 
     "testing",
 ] }
 
-# #OS
+# Socket
+andromeda-socket = { workspace = true }
+andromeda-osmosis-token-factory = { path = "../contracts/socket/andromeda-osmosis-token-factory", features = [
+    "testing",
+] }
+
+# OS
 
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",

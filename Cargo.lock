@@ -751,7 +751,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-osmosis-token-factory"
-version = "0.1.1-b.1"
+version = "0.1.1-b.2"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
@@ -6737,10 +6737,12 @@ dependencies = [
  "andromeda-math",
  "andromeda-modules",
  "andromeda-non-fungible-tokens",
+ "andromeda-osmosis-token-factory",
  "andromeda-primitive",
  "andromeda-rate-limiting-withdrawals",
  "andromeda-rates",
  "andromeda-shunting",
+ "andromeda-socket",
  "andromeda-socket-osmosis",
  "andromeda-splitter",
  "andromeda-std",
