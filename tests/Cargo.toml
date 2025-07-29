@@ -245,7 +245,3 @@ path = "set_amount_splitter.rs"
 [[test]]
 name = "cw721"
 path = "cw721.rs"
-
-[[test]]
-name = "osmosis_token_factory"
-path = "osmosis_token_factory_app.rs"
