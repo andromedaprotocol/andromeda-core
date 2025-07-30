@@ -2,7 +2,7 @@
 name = "tests"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 publish = false
 
 [dev-dependencies]
@@ -11,7 +11,7 @@ andromeda-app = { workspace = true }
 andromeda-app-contract = { path = "../contracts/app/andromeda-app-contract", features = [
     "testing",
 ] }
-rstest = "0.25.0"
+rstest = "0.26.1"
 hex="0.4"
 
 #Non-Fungible Tokens
@@ -102,7 +102,13 @@ andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", 
     "testing",
 ] }
 
-# #OS
+# Socket
+andromeda-socket = { workspace = true }
+andromeda-osmosis-token-factory = { path = "../contracts/socket/andromeda-osmosis-token-factory", features = [
+    "testing",
+] }
+
+# OS
 
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",

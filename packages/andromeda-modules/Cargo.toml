@@ -2,7 +2,7 @@
 name = "andromeda-modules"
 version = "2.0.0"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 description = "Utility methods and message definitions for the Andromeda Module Contracts"
 license = "MIT"
 

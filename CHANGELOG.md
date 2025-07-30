@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: CW20 Exchange V2, delete CW20 Redeem [(#874)](https://github.com/andromedaprotocol/andromeda-core/pull/874)
 - feat: Added Astroport socket with LP and swap functionality [(#885)](https://github.com/andromedaprotocol/andromeda-core/pull/885)
 - feat: Create pool with funds and withdraw from pool in osmosis socket [(#886)](https://github.com/andromedaprotocol/andromeda-core/pull/886)
+- feat: Osmosis Token Factory ADO [(#929)](https://github.com/andromedaprotocol/andromeda-core/pull/929)
 
 ### Changed
 

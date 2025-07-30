@@ -8,6 +8,7 @@ use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
 use osmosis_std::types::osmosis::gamm::{
     poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams, v1beta1::MsgExitPool,
 };
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -36,6 +37,7 @@ pub enum ExecuteMsg {
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     WithdrawPool { withdraw_msg: MsgExitPool },
+
     /// Update swap router
     #[attrs(restricted)]
     UpdateSwapRouter { swap_router: AndrAddr },
@@ -88,6 +90,8 @@ pub enum QueryMsg {
         from_denom: String,
         to_denom: String,
     },
+    #[returns(QueryDenomAuthorityMetadataResponse)]
+    TokenAuthority { denom: String },
 }
 
 #[cw_serde]

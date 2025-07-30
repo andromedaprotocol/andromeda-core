@@ -2,7 +2,7 @@
 name = "andromeda-testing-e2e"
 version = "1.0.0"
 authors = ["Albert Hu <web3pirate@outlook.com>"]
-edition = "2018"
+edition = "2021"
 description = "E2E Testing utilities for Andromeda Digital Object Contracts"
 license = "MIT"
 
@@ -43,5 +43,5 @@ serde = { workspace = true }
 cw-multi-test = { workspace = true }
 cw-orch-daemon = "0.29.1"
 anyhow = "1.0.98"
-tokio = "1.45.1"
+tokio = "1.47.0"
 cw-orch = { workspace = true }
