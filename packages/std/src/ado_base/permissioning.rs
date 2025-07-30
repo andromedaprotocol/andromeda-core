@@ -68,7 +68,7 @@ pub enum LocalPermission {
     Whitelisted {
         #[serde(default)]
         schedule: Schedule,
-        frequency: Option<Milliseconds>,
+        window: Option<Milliseconds>,
         last_used: Option<Milliseconds>,
     },
 }
@@ -77,7 +77,7 @@ impl std::default::Default for LocalPermission {
     fn default() -> Self {
         Self::Whitelisted {
             schedule: Schedule::new(None, None),
-            frequency: None,
+            window: None,
             last_used: None,
         }
     }
@@ -90,12 +90,12 @@ impl LocalPermission {
 
     pub fn whitelisted(
         schedule: Schedule,
-        frequency: Option<Milliseconds>,
+        window: Option<Milliseconds>,
         last_used: Option<Milliseconds>,
     ) -> Self {
         Self::Whitelisted {
             schedule,
-            frequency,
+            window,
             last_used,
         }
     }
@@ -138,7 +138,7 @@ impl LocalPermission {
             }
             Self::Whitelisted {
                 schedule,
-                frequency,
+                window,
                 last_used,
             } => {
                 let start = &schedule.start;
@@ -153,14 +153,14 @@ impl LocalPermission {
                         return !strict;
                     }
                 }
-                if let Some(frequency) = frequency {
+                if let Some(window) = window {
                     // Check if last used is set
                     if let Some(last_used) = last_used {
                         // Get current time
                         let current_time = env.block.time.seconds();
                         let time_elapsed_since_last_use = current_time - last_used.seconds();
 
-                        if time_elapsed_since_last_use < frequency.seconds() {
+                        if time_elapsed_since_last_use < window.seconds() {
                             return !strict;
                         }
                     }
@@ -279,19 +279,19 @@ impl fmt::Display for LocalPermission {
             }
             Self::Whitelisted {
                 schedule,
-                frequency,
+                window,
                 last_used,
             } => match (
                 schedule.start.clone(),
                 schedule.end.clone(),
-                frequency,
+                window,
                 last_used,
             ) {
                 (Some(s), Some(e), Some(f), Some(l)) => {
-                    format!("whitelisted starting from:{s} until:{e} frequency:{f} last_used:{l}")
+                    format!("whitelisted starting from:{s} until:{e} window:{f} last_used:{l}")
                 }
                 (Some(s), Some(e), Some(f), None) => {
-                    format!("whitelisted starting from:{s} until:{e} frequency:{f}")
+                    format!("whitelisted starting from:{s} until:{e} window:{f}")
                 }
                 (Some(s), Some(e), None, Some(l)) => {
                     format!("whitelisted starting from:{s} until:{e} last_used:{l}")
@@ -300,10 +300,10 @@ impl fmt::Display for LocalPermission {
                     format!("whitelisted starting from:{s} until:{e}")
                 }
                 (Some(s), None, Some(f), Some(l)) => {
-                    format!("whitelisted starting from:{s} frequency:{f} last_used:{l}")
+                    format!("whitelisted starting from:{s} window:{f} last_used:{l}")
                 }
                 (Some(s), None, Some(f), None) => {
-                    format!("whitelisted starting from:{s} frequency:{f}")
+                    format!("whitelisted starting from:{s} window:{f}")
                 }
                 (Some(s), None, None, Some(l)) => {
                     format!("whitelisted starting from:{s} last_used:{l}")
@@ -312,10 +312,10 @@ impl fmt::Display for LocalPermission {
                     format!("whitelisted starting from:{s}")
                 }
                 (None, Some(e), Some(f), Some(l)) => {
-                    format!("whitelisted until:{e} frequency:{f} last_used:{l}")
+                    format!("whitelisted until:{e} window:{f} last_used:{l}")
                 }
                 (None, Some(e), Some(f), None) => {
-                    format!("whitelisted until:{e} frequency:{f}")
+                    format!("whitelisted until:{e} window:{f}")
                 }
                 (None, Some(e), None, Some(l)) => {
                     format!("whitelisted until:{e} last_used:{l}")
@@ -324,10 +324,10 @@ impl fmt::Display for LocalPermission {
                     format!("whitelisted until:{e}")
                 }
                 (None, None, Some(f), Some(l)) => {
-                    format!("whitelisted frequency:{f} last_used:{l}")
+                    format!("whitelisted window:{f} last_used:{l}")
                 }
                 (None, None, Some(f), None) => {
-                    format!("whitelisted frequency:{f}")
+                    format!("whitelisted window:{f}")
                 }
                 (None, None, None, Some(l)) => {
                     format!("whitelisted last_used:{l}")
@@ -407,7 +407,7 @@ mod tests {
                     Milliseconds(exp_offset).plus_seconds(current_time),
                 )),
             ),
-            frequency: None,
+            window: None,
             last_used: None,
         };
 
@@ -449,7 +449,7 @@ mod tests {
                     Milliseconds(exp_offset).plus_seconds(current_time),
                 )),
             ),
-            frequency: None,
+            window: None,
             last_used: None,
         };
 
@@ -464,7 +464,7 @@ mod tests {
 
         let permission = LocalPermission::Whitelisted {
             schedule: Schedule::new(None, None),
-            frequency: None,
+            window: None,
             last_used: None,
         };
 
@@ -484,7 +484,7 @@ mod tests {
                 )),
                 None,
             ),
-            frequency: None,
+            window: None,
             last_used: None,
         };
 
@@ -503,7 +503,7 @@ mod tests {
                     current_time.plus_milliseconds(Milliseconds(100000)),
                 )),
             ),
-            frequency: None,
+            window: None,
             last_used: None,
         };
 
@@ -515,7 +515,7 @@ mod tests {
     #[case::no_times_authorized(
         None, // start
         None, // expiration
-        None, // frequency
+        None, // window
         true  // expected authorized
     )]
     #[case::future_start_unauthorized(
@@ -542,17 +542,17 @@ mod tests {
         None,
         true
     )]
-    #[case::frequency_not_met_unauthorized(None, None, Some(1571797419), false)]
-    #[case::frequency_met_authorized(
+    #[case::window_not_met_unauthorized(None, None, Some(1571797419), false)]
+    #[case::window_met_authorized(
         None,
         None,
-        Some(100), // frequency (0.1 seconds)
+        Some(100), // window (0.1 seconds)
         true
     )]
     fn test_whitelisted_permission(
         #[case] start_offset: Option<u64>,
         #[case] exp_offset: Option<u64>,
-        #[case] frequency_ms: Option<u64>,
+        #[case] window_ms: Option<u64>,
         #[case] expected_authorized: bool,
     ) {
         let env = mock_env();
@@ -566,8 +566,8 @@ mod tests {
                 exp_offset
                     .map(|offset| Expiry::AtTime(Milliseconds(offset).plus_seconds(current_time))),
             ),
-            frequency: frequency_ms.map(Milliseconds),
-            last_used: if frequency_ms.is_some() {
+            window: window_ms.map(Milliseconds),
+            last_used: if window_ms.is_some() {
                 Some(Milliseconds::from_seconds(current_time - 200)) // Set last used to 200ms ago
             } else {
                 None
@@ -579,20 +579,20 @@ mod tests {
         assert_eq!(is_authorized, expected_authorized);
     }
 
-    // Test cases for frequency-based permissions
+    // Test cases for window-based permissions
     #[rstest]
-    #[case::frequency_not_met(
-        1000, // frequency (1 second)
+    #[case::window_not_met(
+        1000, // window (1 second)
         1571797419,  // time since last use (0.5 seconds)
         false // should not be authorized
     )]
-    #[case::frequency_met(
-        1000, // frequency (1 second)
+    #[case::window_met(
+        1000, // window (1 second)
         1571797419 - 10000000, // time since last use (1.5 seconds)
         true  // should be authorized
     )]
-    fn test_frequency_based_permission(
-        #[case] frequency_ms: u64,
+    fn test_window_based_permission(
+        #[case] window_ms: u64,
         #[case] last_used: u64,
         #[case] expected_authorized: bool,
     ) {
@@ -600,7 +600,7 @@ mod tests {
 
         let permission = LocalPermission::Whitelisted {
             schedule: Schedule::new(None, None),
-            frequency: Some(Milliseconds(frequency_ms)),
+            window: Some(Milliseconds(window_ms)),
             last_used: Some(Milliseconds::from_seconds(last_used)),
         };
 
@@ -642,7 +642,7 @@ mod tests {
                     Milliseconds(exp_offset).plus_seconds(current_time),
                 )),
             ),
-            frequency: None,
+            window: None,
             last_used: None,
         };
 

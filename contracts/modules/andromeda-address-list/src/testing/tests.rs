@@ -115,7 +115,7 @@ fn test_add_remove_actor() {
             )),
             None,
         ),
-        frequency: None,
+        window: None,
         last_used: None,
     };
     assert_eq!(new_permission, expected_permission);
@@ -187,7 +187,7 @@ fn test_add_remove_multiple_actors() {
             )),
             None,
         ),
-        frequency: None,
+        window: None,
         last_used: None,
     };
     // Check that the actor and permission have been saved.

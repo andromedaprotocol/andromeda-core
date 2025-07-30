@@ -27,7 +27,7 @@ use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Uint128};
 use cw_multi_test::Executor;
 
 #[test]
-fn test_permission_frequency() {
+fn test_permission_window() {
     let mut router = mock_app(None);
     let andr = MockAndromedaBuilder::new(&mut router, "admin")
         .with_wallets(vec![
@@ -189,7 +189,7 @@ fn test_permission_frequency() {
 
     let current_time = router.block_info().time;
 
-    // Whitelist buyer with frequency
+    // Whitelist buyer with window
     address_list
         .execute_actor_permission(
             &mut router,
@@ -219,7 +219,7 @@ fn test_permission_frequency() {
         .unwrap();
     assert_eq!(err, ContractError::Unauthorized {});
 
-    // Set valid frequency and last used
+    // Set valid window and last used
     let valid_permission = LocalPermission::whitelisted(
         Schedule::new(None, None),
         // 1 hour cooldown for each action
@@ -249,7 +249,7 @@ fn test_permission_frequency() {
             )),
             None,
         ),
-        frequency: Some(Milliseconds::from_seconds(3600)),
+        window: Some(Milliseconds::from_seconds(3600)),
         last_used: Some(Milliseconds::from_seconds(
             current_time.minus_hours(2).seconds(),
         )),
@@ -298,7 +298,7 @@ fn test_permission_frequency() {
             )),
             None,
         ),
-        frequency: Some(Milliseconds::from_seconds(3600)),
+        window: Some(Milliseconds::from_seconds(3600)),
         last_used: Some(Milliseconds::from_seconds(current_time.seconds())),
     };
     assert_eq!(query.permission, expected_permission);

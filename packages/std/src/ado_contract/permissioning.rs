@@ -367,10 +367,8 @@ impl ADOContract {
         // Last used should always be set at None in the beginning
         permission = match permission {
             Permission::Local(LocalPermission::Whitelisted {
-                schedule,
-                frequency,
-                ..
-            }) => Permission::Local(LocalPermission::whitelisted(schedule, frequency, None)),
+                schedule, window, ..
+            }) => Permission::Local(LocalPermission::whitelisted(schedule, window, None)),
             _ => permission,
         };
 
@@ -379,12 +377,10 @@ impl ADOContract {
 
         match permission {
             Permission::Local(LocalPermission::Whitelisted {
-                frequency,
-                last_used,
-                ..
+                window, last_used, ..
             }) => Permission::Local(LocalPermission::whitelisted(
                 verified_schedule,
-                frequency,
+                window,
                 last_used,
             )),
             Permission::Local(LocalPermission::Blacklisted { .. }) => {
@@ -831,7 +827,7 @@ pub mod migrate {
                 action: "action".to_string(),
                 permission: Permission::Local(LocalPermission::Whitelisted {
                     schedule: Schedule::new(None, None),
-                    frequency: None,
+                    window: None,
                     last_used: None,
                 }),
             };
@@ -909,7 +905,7 @@ mod tests {
         assert!(res.is_err());
         let permission = Permission::Local(LocalPermission::Whitelisted {
             schedule: Schedule::new(None, None),
-            frequency: None,
+            window: None,
             last_used: None,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
@@ -1003,7 +999,7 @@ mod tests {
 
         let permission = Permission::Local(LocalPermission::Whitelisted {
             schedule: Schedule::new(None, None),
-            frequency: None,
+            window: None,
             last_used: None,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
@@ -1045,7 +1041,7 @@ mod tests {
             action: "action".to_string(),
             permission: Permission::Local(LocalPermission::Whitelisted {
                 schedule: Schedule::new(None, None),
-                frequency: None,
+                window: None,
                 last_used: None,
             }),
         });
@@ -1147,7 +1143,7 @@ mod tests {
         // Test Whitelist
         let permission = Permission::Local(LocalPermission::Whitelisted {
             schedule: Schedule::new(None, Some(expiration.clone())),
-            frequency: None,
+            window: None,
             last_used: None,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
@@ -1228,7 +1224,7 @@ mod tests {
         let permission = if is_whitelisted {
             Permission::Local(LocalPermission::Whitelisted {
                 schedule: Schedule::new(start, None),
-                frequency: None,
+                window: None,
                 last_used: None,
             })
         } else {
@@ -1312,7 +1308,7 @@ mod tests {
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         let permission = Permission::Local(LocalPermission::Whitelisted {
             schedule: Schedule::new(None, None),
-            frequency: None,
+            window: None,
             last_used: None,
         });
         ADOContract::set_permission(context.deps.storage, action, &actor, permission).unwrap();

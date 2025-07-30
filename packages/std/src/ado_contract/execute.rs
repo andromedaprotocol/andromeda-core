@@ -575,7 +575,7 @@ mod tests {
             // Set up a test permission
             let permission = Permission::Local(LocalPermission::Whitelisted {
                 schedule: Schedule::new(None, None),
-                frequency: None,
+                window: None,
                 last_used: None,
             });
 

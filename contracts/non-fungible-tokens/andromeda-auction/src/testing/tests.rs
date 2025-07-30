@@ -93,7 +93,7 @@ fn start_auction(
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
     buy_now_price: Option<Uint128>,
-    permissioned_action_expiration: Option<Expiry>,
+    whitelist_expiry: Option<Expiry>,
 ) {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds(20_000_000)))),
@@ -103,7 +103,7 @@ fn start_auction(
         min_raise,
         recipient: None,
         buy_now_price,
-        permissioned_action_expiration,
+        whitelist_expiry,
     };
 
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
@@ -125,7 +125,7 @@ fn start_auction_cw20(
     min_bid: Option<Uint128>,
     min_raise: Option<Uint128>,
     buy_now_price: Option<Uint128>,
-    permissioned_action_expiration: Option<Expiry>,
+    whitelist_expiry: Option<Expiry>,
 ) {
     let hook_msg = Cw721HookMsg::StartAuction {
         schedule: Schedule::new(None, Some(Expiry::FromNow(Milliseconds(20_000_000)))),
@@ -135,7 +135,7 @@ fn start_auction_cw20(
         min_raise,
         recipient: None,
         buy_now_price,
-        permissioned_action_expiration,
+        whitelist_expiry,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -392,7 +392,7 @@ fn execute_min_bid_greater_than_buy_now() {
         min_raise: None,
         recipient: None,
         buy_now_price: Some(Uint128::one()),
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -810,7 +810,7 @@ fn execute_start_auction_start_time_in_past() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -848,7 +848,7 @@ fn execute_start_auction_zero_start_time() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -887,7 +887,7 @@ fn execute_start_auction_start_time_not_provided() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -917,7 +917,7 @@ fn execute_start_auction_zero_duration() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -988,7 +988,7 @@ fn execute_update_auction_zero_start() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let mut env = mock_env();
     env.block.time = env.block.time.minus_days(1);
@@ -1025,7 +1025,7 @@ fn execute_update_auction_zero_duration() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let mut env = mock_env();
     env.block.time = Timestamp::from_seconds(0);
@@ -1061,7 +1061,7 @@ fn execute_update_auction_unauthorized() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let env = mock_env();
 
@@ -1090,7 +1090,7 @@ fn execute_update_auction_auction_started() {
         min_raise: None,
         buy_now_price: None,
         recipient: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let mut env = mock_env();
 
@@ -1121,7 +1121,7 @@ fn execute_update_auction() {
         min_raise: None,
         buy_now_price: Some(Uint128::from(100u128)),
         recipient: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let mut env = mock_env();
 
@@ -1176,7 +1176,7 @@ fn execute_start_auction_after_previous_finished() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),
@@ -1774,7 +1774,7 @@ fn execute_claim_auction_already_claimed() {
         min_raise: None,
         recipient: None,
         buy_now_price: None,
-        permissioned_action_expiration: None,
+        whitelist_expiry: None,
     };
     let msg = ExecuteMsg::ReceiveNft(Cw721ReceiveMsg {
         sender: MOCK_TOKEN_OWNER.to_owned(),

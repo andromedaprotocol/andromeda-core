@@ -42,14 +42,12 @@ pub fn instantiate(
 
         // If the permission is a whitelist, make sure to set last used time as none
         actor_permission.permission = if let LocalPermission::Whitelisted {
-            schedule,
-            frequency,
-            ..
+            schedule, window, ..
         } = actor_permission.permission
         {
             LocalPermission::Whitelisted {
                 schedule,
-                frequency,
+                window,
                 last_used: None,
             }
         } else {
@@ -145,10 +143,8 @@ fn execute_permission_actors(
         let verified_actor = actor.get_raw_address(&deps.as_ref())?;
         permission = match permission {
             LocalPermission::Whitelisted {
-                frequency,
-                last_used,
-                ..
-            } => LocalPermission::whitelisted(verified_schedule.clone(), frequency, last_used),
+                window, last_used, ..
+            } => LocalPermission::whitelisted(verified_schedule.clone(), window, last_used),
             LocalPermission::Blacklisted { .. } => {
                 LocalPermission::blacklisted(verified_schedule.clone())
             }
