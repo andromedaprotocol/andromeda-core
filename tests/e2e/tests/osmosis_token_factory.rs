@@ -64,18 +64,31 @@ fn test_create_denom(setup: TestCase) {
         ..
     } = setup;
 
+    let contract_addr = osmosis_token_factory_contract.addr_str().unwrap();
     let subdenom = "test_token".to_string();
+    let expected_denom = format!("factory/{}/{}", contract_addr, subdenom);
 
+    // Create the denom
     let res = osmosis_token_factory_contract
         .create_denom(subdenom.clone(), &[])
         .unwrap();
 
-    println!(
-        "Created denom: factory/{}/{}",
-        osmosis_token_factory_contract.addr_str().unwrap(),
-        subdenom
+    // Verify the response is successful (transaction succeeded)
+    assert_eq!(res.code, 0, "Transaction should succeed");
+    
+    // Query the token authority to verify the contract is the admin
+    let authority_res = osmosis_token_factory_contract
+        .token_authority(expected_denom.clone())
+        .unwrap();
+    
+    // Assert that our contract is the authority for this denom
+    assert_eq!(
+        authority_res.authority_metadata.unwrap().admin,
+        contract_addr
     );
-    println!("Create denom result: {:?}", res);
+
+    println!("✅ Created denom: {}", expected_denom);
+    println!("✅ Verified contract {} is the denom authority", contract_addr);
 }
 
 // Test 2: Mint tokens for an existing denom
@@ -86,23 +99,42 @@ fn test_mint_tokens(setup: TestCase) {
         ..
     } = setup;
 
+    let contract_addr = osmosis_token_factory_contract.addr_str().unwrap();
     let subdenom = "mint_test".to_string();
     let amount = Uint128::from(1000u128);
+    let expected_denom = format!("factory/{}/{}", contract_addr, subdenom);
     // Use None to mint to sender (avoids address validation)
     let recipient = None;
 
     // First create the denom
-    osmosis_token_factory_contract
+    let create_res = osmosis_token_factory_contract
         .create_denom(subdenom.clone(), &[])
         .unwrap();
+    
+    // Verify denom creation was successful
+    assert_eq!(create_res.code, 0, "Denom creation should succeed");
 
     // Then mint tokens to sender (None recipient)
     let mint_res = osmosis_token_factory_contract
         .mint(amount, subdenom.clone(), recipient, &[])
         .unwrap();
+    
+    // Verify minting was successful
+    assert_eq!(mint_res.code, 0, "Token minting should succeed");
 
-    println!("Minted {} tokens of subdenom: {}", amount, subdenom);
-    println!("Mint result: {:?}", mint_res);
+    // Verify that our contract is still the authority
+    let authority_res = osmosis_token_factory_contract
+        .token_authority(expected_denom.clone())
+        .unwrap();
+    
+    assert_eq!(
+        authority_res.authority_metadata.unwrap().admin,
+        contract_addr
+    );
+
+    println!("✅ Created denom: {}", expected_denom);
+    println!("✅ Minted {} tokens of subdenom: {}", amount, subdenom);
+    println!("✅ Verified contract {} remains the denom authority", contract_addr);
 }
 
 // Test 3: Query token authority (should be our contract)
@@ -118,22 +150,25 @@ fn test_query_token_authority(setup: TestCase) {
     let denom = format!("factory/{}/{}", contract_addr, subdenom);
 
     // Create denom first
-    osmosis_token_factory_contract
-        .create_denom(subdenom, &[])
+    let create_res = osmosis_token_factory_contract
+        .create_denom(subdenom.clone(), &[])
         .unwrap();
+    assert_eq!(create_res.code, 0, "Denom creation should succeed");
 
     // Query who has authority over this denom
     let authority_res = osmosis_token_factory_contract
         .token_authority(denom.clone())
         .unwrap();
 
-    println!("Authority for {}: {:?}", denom, authority_res);
-
     // The contract should be the authority
-    assert_eq!(
-        authority_res.authority_metadata.unwrap().admin,
-        contract_addr
-    );
+    let authority_metadata = authority_res.authority_metadata.expect("Authority metadata should exist");
+    assert_eq!(authority_metadata.admin, contract_addr);
+    
+    // Verify the denom format matches our expectation
+    assert_eq!(denom, format!("factory/{}/{}", contract_addr, subdenom));
+    
+    println!("✅ Authority for {}: {}", denom, authority_metadata.admin);
+    println!("✅ Verified denom format and authority ownership");
 }
 
 // Test 4: Query locked amount for CW20 (should be zero initially)
@@ -203,8 +238,13 @@ fn test_burn_without_tokens(setup: TestCase) {
     match burn_result {
         Ok(_) => panic!("Expected burn to fail without tokens"),
         Err(e) => {
-            println!("Expected error when burning without tokens: {:?}", e);
-            // This is expected - can't burn without tokens
+            println!("✅ Expected error when burning without tokens: {:?}", e);
+            // Verify it's the right kind of error (should be related to no funds)
+            let error_msg = format!("{:?}", e);
+            assert!(
+                error_msg.contains("funds") || error_msg.contains("amount") || error_msg.contains("coin"),
+                "Error should be related to missing funds/tokens"
+            );
         }
     }
 }
@@ -224,10 +264,15 @@ fn test_unlock_without_tokens(setup: TestCase) {
         Ok(_) => panic!("Expected unlock to fail without factory tokens"),
         Err(e) => {
             println!(
-                "Expected error when unlocking without factory tokens: {:?}",
+                "✅ Expected error when unlocking without factory tokens: {:?}",
                 e
             );
-            // This is expected - can't unlock without factory tokens
+            // Verify it's the right kind of error (should be related to no funds)
+            let error_msg = format!("{:?}", e);
+            assert!(
+                error_msg.contains("funds") || error_msg.contains("amount") || error_msg.contains("coin") || error_msg.contains("factory"),
+                "Error should be related to missing funds/factory tokens"
+            );
         }
     }
 }
@@ -249,8 +294,13 @@ fn test_mint_nonexistent_denom(setup: TestCase) {
     match mint_result {
         Ok(_) => panic!("Expected mint to fail for non-existent denom"),
         Err(e) => {
-            println!("Expected error when minting non-existent denom: {:?}", e);
-            // This is expected - can't mint tokens for denom that doesn't exist
+            println!("✅ Expected error when minting non-existent denom: {:?}", e);
+            // Verify it's the right kind of error (should be related to denom not existing)
+            let error_msg = format!("{:?}", e);
+            assert!(
+                error_msg.contains("denom") || error_msg.contains("not found") || error_msg.contains("exist"),
+                "Error should be related to non-existent denom"
+            );
         }
     }
 }
@@ -269,15 +319,17 @@ fn test_full_workflow(setup: TestCase) {
     let denom = format!("factory/{}/{}", contract_addr, subdenom);
 
     // Step 1: Create denom
-    osmosis_token_factory_contract
+    let create_res = osmosis_token_factory_contract
         .create_denom(subdenom.clone(), &[])
         .unwrap();
+    assert_eq!(create_res.code, 0, "Denom creation should succeed");
     println!("✅ Created denom: {}", denom);
 
     // Step 2: Mint some tokens
-    osmosis_token_factory_contract
+    let mint_res = osmosis_token_factory_contract
         .mint(amount, subdenom.clone(), None, &[])
         .unwrap();
+    assert_eq!(mint_res.code, 0, "Token minting should succeed");
     println!("✅ Minted {} tokens", amount);
 
     // Step 3: Verify authority
@@ -286,6 +338,11 @@ fn test_full_workflow(setup: TestCase) {
         .unwrap();
     assert_eq!(authority.authority_metadata.unwrap().admin, contract_addr);
     println!("✅ Verified contract is denom authority");
+    
+    // Step 4: Verify denom format is correct
+    assert!(denom.starts_with(&format!("factory/{}/", contract_addr)));
+    assert!(denom.ends_with(&subdenom));
+    println!("✅ Verified denom format is correct: {}", denom);
 
     println!("🎉 Full workflow completed successfully!");
 }
