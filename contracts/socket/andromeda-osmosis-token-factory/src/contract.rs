@@ -226,7 +226,7 @@ fn execute_unlock(
         };
         SubMsg::new(wasm_execute(
             denom_owner.to_string(),
-            &to_json_binary(&transfer_msg)?,
+            &transfer_msg,
             vec![],
         )?)
     };
