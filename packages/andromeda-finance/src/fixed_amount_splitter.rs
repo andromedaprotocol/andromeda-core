@@ -38,7 +38,7 @@ pub struct Splitter {
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned amount.
-    pub recipients: Vec<AddressAmount>,
+    pub recipients: Option<Vec<AddressAmount>>,
     pub lock_time: Option<Expiry>,
     /// The address that will receive any surplus funds, defaults to the message sender.
     pub default_recipient: Option<Recipient>,
@@ -61,7 +61,9 @@ pub enum Cw20HookMsg {
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     #[attrs(restricted, nonpayable, direct)]
-    UpdateRecipients { recipients: Vec<AddressAmount> },
+    UpdateRecipients {
+        recipients: Option<Vec<AddressAmount>>,
+    },
     /// Used to lock/unlock the contract allowing the config to be updated.
     #[attrs(restricted, nonpayable, direct)]
     UpdateLock {
@@ -101,48 +103,49 @@ pub struct GetSplitterConfigResponse {
 /// * No duplicate coins
 pub fn validate_recipient_list(
     deps: Deps,
-    recipients: Vec<AddressAmount>,
+    recipients: Option<Vec<AddressAmount>>,
 ) -> Result<(), ContractError> {
-    ensure!(
-        !recipients.is_empty(),
-        ContractError::EmptyRecipientsList {}
-    );
-
-    ensure!(
-        recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {}
-    );
-
-    let mut recipient_address_set = HashSet::new();
-
-    for rec in recipients {
+    if let Some(recipients) = recipients {
         ensure!(
-            rec.coins.len() == 1 || rec.coins.len() == 2,
-            ContractError::InvalidFunds {
-                msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
-            }
+            !recipients.is_empty(),
+            ContractError::EmptyRecipientsList {}
         );
 
-        let mut denom_set = HashSet::new();
-        for coin in rec.coins {
-            ensure!(!coin.amount.is_zero(), ContractError::InvalidZeroAmount {});
+        ensure!(
+            recipients.len() <= 100,
+            ContractError::ReachedRecipientLimit {}
+        );
+
+        let mut recipient_address_set = HashSet::new();
+
+        for rec in recipients {
             ensure!(
-                !denom_set.contains(&coin.denom),
-                ContractError::DuplicateCoinDenoms {}
+                rec.coins.len() == 1 || rec.coins.len() == 2,
+                ContractError::InvalidFunds {
+                    msg: "A minimim of 1 and a maximum of 2 coins are allowed".to_string(),
+                }
             );
-            denom_set.insert(coin.denom);
+
+            let mut denom_set = HashSet::new();
+            for coin in rec.coins {
+                ensure!(!coin.amount.is_zero(), ContractError::InvalidZeroAmount {});
+                ensure!(
+                    !denom_set.contains(&coin.denom),
+                    ContractError::DuplicateCoinDenoms {}
+                );
+                denom_set.insert(coin.denom);
+            }
+
+            rec.recipient.validate(&deps)?;
+
+            let recipient_address = rec.recipient.address.get_raw_address(&deps)?;
+            ensure!(
+                !recipient_address_set.contains(&recipient_address),
+                ContractError::DuplicateRecipient {}
+            );
+            recipient_address_set.insert(recipient_address);
         }
-
-        rec.recipient.validate(&deps)?;
-
-        let recipient_address = rec.recipient.address.get_raw_address(&deps)?;
-        ensure!(
-            !recipient_address_set.contains(&recipient_address),
-            ContractError::DuplicateRecipient {}
-        );
-        recipient_address_set.insert(recipient_address);
     }
-
     Ok(())
 }
 
@@ -156,7 +159,7 @@ mod tests {
     #[test]
     fn test_validate_recipient_list() {
         let deps = mock_dependencies();
-        let empty_recipients = vec![];
+        let empty_recipients = Some(vec![]);
         let err = validate_recipient_list(deps.as_ref(), empty_recipients).unwrap_err();
         assert_eq!(err, ContractError::EmptyRecipientsList {});
 
@@ -170,7 +173,7 @@ mod tests {
                 coins: coins(0_u128, "usdc"),
             },
         ];
-        let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
+        let err = validate_recipient_list(deps.as_ref(), Some(recipients_zero_amount)).unwrap_err();
         assert_eq!(err, ContractError::InvalidZeroAmount {});
 
         let recipients_zero_amount = vec![
@@ -187,7 +190,7 @@ mod tests {
                 ],
             },
         ];
-        let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
+        let err = validate_recipient_list(deps.as_ref(), Some(recipients_zero_amount)).unwrap_err();
         assert_eq!(
             err,
             ContractError::InvalidFunds {
@@ -208,7 +211,7 @@ mod tests {
                 ],
             },
         ];
-        let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
+        let err = validate_recipient_list(deps.as_ref(), Some(recipients_zero_amount)).unwrap_err();
         assert_eq!(
             err,
             ContractError::InvalidFunds {
@@ -226,7 +229,7 @@ mod tests {
                 coins: vec![coin(1_u128, "uandr"), coin(12_u128, "uandr")],
             },
         ];
-        let err = validate_recipient_list(deps.as_ref(), recipients_zero_amount).unwrap_err();
+        let err = validate_recipient_list(deps.as_ref(), Some(recipients_zero_amount)).unwrap_err();
         assert_eq!(err, ContractError::DuplicateCoinDenoms {});
 
         let duplicate_recipients = vec![
@@ -240,7 +243,7 @@ mod tests {
             },
         ];
 
-        let err = validate_recipient_list(deps.as_ref(), duplicate_recipients).unwrap_err();
+        let err = validate_recipient_list(deps.as_ref(), Some(duplicate_recipients)).unwrap_err();
         assert_eq!(err, ContractError::DuplicateRecipient {});
 
         let valid_recipients = vec![
@@ -254,7 +257,7 @@ mod tests {
             },
         ];
 
-        let res = validate_recipient_list(deps.as_ref(), valid_recipients);
+        let res = validate_recipient_list(deps.as_ref(), Some(valid_recipients));
         assert!(res.is_ok());
 
         let one_valid_recipient = vec![AddressAmount {
@@ -262,7 +265,7 @@ mod tests {
             coins: coins(1_u128, "denom"),
         }];
 
-        let res = validate_recipient_list(deps.as_ref(), one_valid_recipient);
+        let res = validate_recipient_list(deps.as_ref(), Some(one_valid_recipient));
         assert!(res.is_ok());
     }
 }

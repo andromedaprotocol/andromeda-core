@@ -2049,14 +2049,14 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     splitter_osmosis
         .instantiate(
             &SplitterInstantiateMsg {
-                recipients: vec![AddressPercent {
+                recipients: Some(vec![AddressPercent {
                     recipient: Recipient {
                         address: AndrAddr::from_string(recipient),
                         msg: None,
                         ibc_recovery_address: None,
                     },
                     percent: Decimal::one(),
-                }],
+                }]),
                 lock_time: None,
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
                 owner: None,
@@ -2659,14 +2659,14 @@ fn test_kernel_ibc_funds_and_execute_msg_unhappy() {
     splitter_osmosis
         .instantiate(
             &SplitterInstantiateMsg {
-                recipients: vec![AddressPercent {
+                recipients: Some(vec![AddressPercent {
                     recipient: Recipient {
                         address: AndrAddr::from_string(recipient),
                         msg: None,
                         ibc_recovery_address: None,
                     },
                     percent: Decimal::one(),
-                }],
+                }]),
                 lock_time: None,
                 kernel_address: kernel_osmosis.address().unwrap().into_string(),
                 owner: None,

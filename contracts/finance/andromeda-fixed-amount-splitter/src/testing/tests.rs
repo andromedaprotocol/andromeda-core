@@ -34,7 +34,7 @@ fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        recipients: mock_recipient,
+        recipients: Some(mock_recipient),
         lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(100_000))),
         default_recipient: None,
     };
@@ -121,7 +121,7 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: duplicate_recipients,
+        recipients: Some(duplicate_recipients),
     };
 
     let owner = deps.api.addr_make(OWNER);
@@ -141,7 +141,7 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipients.clone(),
+        recipients: Some(recipients.clone()),
     };
     let incorrect_owner = deps.api.addr_make("incorrect_owner");
     let info = message_info(&incorrect_owner, &[]);

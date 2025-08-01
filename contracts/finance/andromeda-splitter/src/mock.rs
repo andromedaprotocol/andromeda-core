@@ -18,7 +18,7 @@ impl MockSplitter {
         app: &mut MockApp,
         code_id: u64,
         sender: Addr,
-        recipients: Vec<AddressPercent>,
+        recipients: Option<Vec<AddressPercent>>,
         kernel_address: impl Into<String>,
         lock_time: Option<Expiry>,
         owner: Option<String>,
@@ -53,7 +53,7 @@ impl MockSplitter {
         app: &mut MockApp,
         sender: Addr,
         funds: &[Coin],
-        recipients: Vec<AddressPercent>,
+        recipients: Option<Vec<AddressPercent>>,
     ) -> ExecuteResult {
         let msg = mock_splitter_update_recipients_msg(recipients);
 
@@ -67,7 +67,7 @@ pub fn mock_andromeda_splitter() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_splitter_instantiate_msg(
-    recipients: Vec<AddressPercent>,
+    recipients: Option<Vec<AddressPercent>>,
     kernel_address: impl Into<String>,
     lock_time: Option<Expiry>,
     owner: Option<String>,
@@ -86,6 +86,6 @@ pub fn mock_splitter_send_msg(config: Option<Vec<AddressPercent>>) -> ExecuteMsg
     ExecuteMsg::Send { config }
 }
 
-pub fn mock_splitter_update_recipients_msg(recipients: Vec<AddressPercent>) -> ExecuteMsg {
+pub fn mock_splitter_update_recipients_msg(recipients: Option<Vec<AddressPercent>>) -> ExecuteMsg {
     ExecuteMsg::UpdateRecipients { recipients }
 }

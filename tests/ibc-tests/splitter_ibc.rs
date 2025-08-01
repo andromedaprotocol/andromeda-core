@@ -60,7 +60,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
     let deployed_contract = deploy_splitter!(
         contract,
         &InstantiateMsg {
-            recipients: vec![
+            recipients: Some(vec![
                 AddressPercent {
                     recipient: Recipient {
                         address: AndrAddr::from_string(recipient1.clone()),
@@ -77,7 +77,7 @@ fn run_splitter_test_on_multiple_combos(#[case] chain1_name: &str, #[case] chain
                     },
                     percent: Decimal::percent(40),
                 },
-            ],
+            ]),
             kernel_address: chain1.aos.kernel.address().unwrap().into_string(),
             owner: None,
             lock_time: None,
@@ -200,7 +200,7 @@ fn test_splitter_ibc_update_recipients() {
     splitter_osmosis
         .instantiate(
             &InstantiateMsg {
-                recipients: vec![
+                recipients: Some(vec![
                     AddressPercent {
                         recipient: Recipient {
                             address: AndrAddr::from_string(&recipient1),
@@ -217,7 +217,7 @@ fn test_splitter_ibc_update_recipients() {
                         },
                         percent: Decimal::percent(40),
                     },
-                ],
+                ]),
                 kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
                 owner: None,
                 lock_time: None,
@@ -273,7 +273,9 @@ fn test_splitter_ibc_update_recipients() {
                         splitter_osmosis.address().unwrap()
                     )),
                     message: to_json_binary(
-                        &andromeda_splitter::mock::mock_splitter_update_recipients_msg(recipients),
+                        &andromeda_splitter::mock::mock_splitter_update_recipients_msg(Some(
+                            recipients,
+                        )),
                     )
                     .unwrap(),
                     funds: vec![],

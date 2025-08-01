@@ -84,7 +84,7 @@ fn setup(
         },
     ];
     let splitter_init_msg = mock_splitter_instantiate_msg(
-        splitter_recipients,
+        Some(splitter_recipients),
         andr.kernel.addr().clone(),
         None,
         None,
@@ -204,7 +204,7 @@ fn test_successful_fixed_amount_splitter_with_remainder_native(setup: TestCase) 
     ];
 
     splitter
-        .execute_update_recipients(&mut router, owner.clone(), &[], splitter_recipients)
+        .execute_update_recipients(&mut router, owner.clone(), &[], Some(splitter_recipients))
         .unwrap();
 
     splitter
@@ -290,7 +290,7 @@ fn test_successful_fixed_amount_splitter_cw20_with_remainder(setup: TestCase) {
     ];
 
     splitter
-        .execute_update_recipients(&mut router, owner.clone(), &[], splitter_recipients)
+        .execute_update_recipients(&mut router, owner.clone(), &[], Some(splitter_recipients))
         .unwrap();
 
     let hook_msg = Cw20HookMsg::Send { config: None };
@@ -348,7 +348,7 @@ fn test_splitter_cross_chain_recipient() {
     splitter_juno
         .instantiate(
             &andromeda_finance::splitter::InstantiateMsg {
-                recipients: vec![
+                recipients: Some(vec![
                     andromeda_finance::splitter::AddressPercent {
                         recipient: Recipient {
                             address: AndrAddr::from_string(format!("ibc://osmosis/{}", recipient)),
@@ -368,7 +368,7 @@ fn test_splitter_cross_chain_recipient() {
                         },
                         percent: Decimal::from_ratio(Uint128::from(1u128), Uint128::from(2u128)),
                     },
-                ],
+                ]),
                 lock_time: None,
                 kernel_address: juno.aos.kernel.address().unwrap().into_string(),
                 owner: None,

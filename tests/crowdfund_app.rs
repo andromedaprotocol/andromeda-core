@@ -97,7 +97,7 @@ fn setup(
         },
     ];
     let splitter_init_msg = mock_splitter_instantiate_msg(
-        splitter_recipients,
+        Some(splitter_recipients),
         andr.kernel.addr().clone(),
         None,
         None,

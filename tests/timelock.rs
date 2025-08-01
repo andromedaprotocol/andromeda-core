@@ -43,10 +43,10 @@ fn test_timelock() {
     );
 
     let splitter_init_msg = mock_splitter_instantiate_msg(
-        vec![AddressPercent {
+        Some(vec![AddressPercent {
             recipient: Recipient::new(recipient, None),
             percent: Decimal::percent(100),
-        }],
+        }]),
         andr.kernel.addr().to_string(),
         None,
         None,

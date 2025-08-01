@@ -29,7 +29,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let splitter = Splitter {
-        recipients: msg.recipients.clone(),
+        recipients: msg.recipients.clone().unwrap_or_default(),
         lock: msg
             .clone()
             .lock_time
@@ -139,10 +139,14 @@ fn execute_send(
                 msg: Some("Config isn't allowed while the splitter is locked".to_string())
             }
         );
-        validate_recipient_list(deps.as_ref(), config.clone())?;
+        validate_recipient_list(deps.as_ref(), Some(config.clone()))?;
         config
     } else {
-        splitter.recipients
+        ensure!(
+            !splitter.recipients.is_empty(),
+            ContractError::EmptyRecipientsList {}
+        );
+        splitter.recipients.clone()
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -223,10 +227,14 @@ fn execute_send_cw20(
                 msg: Some("Config isn't allowed while the splitter is locked".to_string())
             }
         );
-        validate_recipient_list(deps.as_ref(), config.clone())?;
+        validate_recipient_list(deps.as_ref(), Some(config.clone()))?;
         config
     } else {
-        splitter.recipients
+        ensure!(
+            !splitter.recipients.is_empty(),
+            ContractError::EmptyRecipientsList {}
+        );
+        splitter.recipients.clone()
     };
 
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -280,7 +288,7 @@ fn execute_send_cw20(
 
 fn execute_update_recipients(
     ctx: ExecuteContext,
-    recipients: Vec<AddressPercent>,
+    recipients: Option<Vec<AddressPercent>>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
 
@@ -293,13 +301,8 @@ fn execute_update_recipients(
         splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked { msg: None }
     );
-    // Max 100 recipients
-    ensure!(
-        recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {}
-    );
 
-    splitter.recipients = recipients;
+    splitter.recipients = recipients.unwrap_or_default();
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))

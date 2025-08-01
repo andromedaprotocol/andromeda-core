@@ -30,11 +30,17 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // Max 100 recipients
-    ensure!(
-        msg.recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {}
-    );
+    if let Some(ref recipients) = msg.recipients {
+        // Max 100 recipients
+        ensure!(
+            recipients.len() <= 100,
+            ContractError::ReachedRecipientLimit {}
+        );
+        // A recipient's weight has to be greater than zero
+        let zero_weight = recipients.iter().any(|x| x.weight == Uint128::zero());
+
+        ensure!(!zero_weight, ContractError::InvalidWeight {});
+    }
 
     let lock = msg
         .lock_time
@@ -43,7 +49,7 @@ pub fn instantiate(
         .unwrap_or_default();
 
     let splitter = Splitter {
-        recipients: msg.recipients,
+        recipients: msg.recipients.unwrap_or_default(),
         lock,
         default_recipient: msg.default_recipient,
     };
@@ -233,6 +239,10 @@ fn execute_send(
         ensure!(config.len() <= 100, ContractError::ReachedRecipientLimit {});
         config
     } else {
+        ensure!(
+            !splitter.recipients.is_empty(),
+            ContractError::EmptyRecipientsList {}
+        );
         splitter.recipients
     };
     let mut msgs: Vec<SubMsg> = Vec::new();
@@ -308,15 +318,9 @@ fn execute_send(
 
 fn execute_update_recipients(
     ctx: ExecuteContext,
-    recipients: Vec<AddressWeight>,
+    recipients: Option<Vec<AddressWeight>>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
-
-    // Recipient list can't be empty
-    ensure!(
-        !recipients.is_empty(),
-        ContractError::EmptyRecipientsList {}
-    );
 
     let mut splitter = SPLITTER.load(deps.storage)?;
 
@@ -325,19 +329,19 @@ fn execute_update_recipients(
         splitter.lock.is_expired(&env.block),
         ContractError::ContractLocked { msg: None }
     );
+    if let Some(ref recipients) = recipients {
+        // Maximum number of recipients is 100
+        ensure!(
+            recipients.len() <= 100,
+            ContractError::ReachedRecipientLimit {}
+        );
+        // A recipient's weight has to be greater than zero
+        let zero_weight = recipients.iter().any(|x| x.weight == Uint128::zero());
 
-    // Maximum number of recipients is 100
-    ensure!(
-        recipients.len() <= 100,
-        ContractError::ReachedRecipientLimit {}
-    );
+        ensure!(!zero_weight, ContractError::InvalidWeight {});
+    }
 
-    // A recipient's weight has to be greater than zero
-    let zero_weight = recipients.iter().any(|x| x.weight == Uint128::zero());
-
-    ensure!(!zero_weight, ContractError::InvalidWeight {});
-
-    splitter.recipients = recipients;
+    splitter.recipients = recipients.unwrap_or_default();
     SPLITTER.save(deps.storage, &splitter)?;
 
     Ok(Response::default().add_attributes(vec![attr("action", "update_recipients")]))

@@ -20,7 +20,7 @@ impl MockFixedAmountSplitter {
         app: &mut MockApp,
         code_id: u64,
         sender: Addr,
-        recipients: Vec<AddressAmount>,
+        recipients: Option<Vec<AddressAmount>>,
         kernel_address: impl Into<String>,
         lock_time: Option<Expiry>,
         owner: Option<String>,
@@ -55,7 +55,7 @@ impl MockFixedAmountSplitter {
         app: &mut MockApp,
         sender: Addr,
         funds: &[Coin],
-        recipients: Vec<AddressAmount>,
+        recipients: Option<Vec<AddressAmount>>,
     ) -> ExecuteResult {
         let msg = mock_fixed_amount_splitter_update_recipients_msg(recipients);
 
@@ -69,7 +69,7 @@ pub fn mock_andromeda_fixed_amount_splitter() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_fixed_amount_splitter_instantiate_msg(
-    recipients: Vec<AddressAmount>,
+    recipients: Option<Vec<AddressAmount>>,
     kernel_address: impl Into<String>,
     lock_time: Option<Expiry>,
     owner: Option<String>,
@@ -89,7 +89,7 @@ pub fn mock_fixed_amount_splitter_send_msg(config: Option<Vec<AddressAmount>>) -
 }
 
 pub fn mock_fixed_amount_splitter_update_recipients_msg(
-    recipients: Vec<AddressAmount>,
+    recipients: Option<Vec<AddressAmount>>,
 ) -> ExecuteMsg {
     ExecuteMsg::UpdateRecipients { recipients }
 }

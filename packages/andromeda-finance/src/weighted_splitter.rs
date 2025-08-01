@@ -28,7 +28,7 @@ pub struct Splitter {
 pub struct InstantiateMsg {
     /// The vector of recipients for the contract. Anytime a `Send` execute message is
     /// sent the amount sent will be divided amongst these recipients depending on their assigned weight.
-    pub recipients: Vec<AddressWeight>,
+    pub recipients: Option<Vec<AddressWeight>>,
     pub lock_time: Option<Expiry>,
     pub default_recipient: Option<Recipient>,
 }
@@ -38,7 +38,9 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Update the recipients list. Only executable by the contract owner when the contract is not locked.
     #[attrs(restricted, nonpayable, direct)]
-    UpdateRecipients { recipients: Vec<AddressWeight> },
+    UpdateRecipients {
+        recipients: Option<Vec<AddressWeight>>,
+    },
     /// Update a specific recipient's weight. Only executable by the contract owner when the contract is not locked.
     #[attrs(restricted, nonpayable, direct)]
     UpdateRecipientWeight { recipient: AddressWeight },

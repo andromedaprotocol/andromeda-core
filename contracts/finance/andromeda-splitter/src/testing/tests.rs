@@ -34,7 +34,7 @@ fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_string()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        recipients: mock_recipient,
+        recipients: Some(mock_recipient),
         lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
         default_recipient: None,
     };
@@ -69,7 +69,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -86,7 +86,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -102,10 +102,10 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![AddressPercent {
+        recipients: Some(vec![AddressPercent {
             recipient: Recipient::from_string(some_address.to_string()),
             percent: Decimal::percent(100),
-        }],
+        }]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -121,7 +121,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -136,7 +136,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -151,10 +151,10 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![AddressPercent {
+        recipients: Some(vec![AddressPercent {
             recipient: Recipient::from_string(some_address),
             percent: Decimal::percent(100),
-        }],
+        }]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -234,7 +234,7 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: duplicate_recipients,
+        recipients: Some(duplicate_recipients),
     };
 
     let info = message_info(&Addr::unchecked(OWNER), &[]);
@@ -254,7 +254,7 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipients.clone(),
+        recipients: Some(recipients.clone()),
     };
 
     let incorrect_owner = deps.api.addr_make("incorrect_owner");

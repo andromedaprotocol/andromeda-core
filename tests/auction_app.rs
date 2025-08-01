@@ -81,7 +81,7 @@ fn test_auction_app_modules() {
     );
 
     let splitter_init_msg = mock_splitter_instantiate_msg(
-        vec![
+        Some(vec![
             AddressPercent {
                 recipient: Recipient::new(recipient_one, None),
                 percent: Decimal::percent(50),
@@ -90,7 +90,7 @@ fn test_auction_app_modules() {
                 recipient: Recipient::new(recipient_two, None),
                 percent: Decimal::percent(50),
             },
-        ],
+        ]),
         andr.kernel.addr().to_string(),
         None,
         None,
@@ -306,7 +306,7 @@ fn test_auction_app_recipient() {
     );
 
     let splitter_init_msg = mock_splitter_instantiate_msg(
-        vec![
+        Some(vec![
             AddressPercent::new(
                 Recipient::from_string(format!("{recipient_one}")),
                 Decimal::from_ratio(1u8, 2u8),
@@ -315,7 +315,7 @@ fn test_auction_app_recipient() {
                 Recipient::from_string(format!("{recipient_two}")),
                 Decimal::from_ratio(1u8, 2u8),
             ),
-        ],
+        ]),
         andr.kernel.addr(),
         None,
         None,

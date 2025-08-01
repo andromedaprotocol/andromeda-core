@@ -41,17 +41,19 @@ fn test_fixed_amount_splitter_ibc() {
     splitter_osmosis
         .instantiate(
             &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
-                recipients: vec![andromeda_finance::fixed_amount_splitter::AddressAmount {
-                    recipient: Recipient {
-                        address: AndrAddr::from_string(recipient.clone()),
-                        msg: None,
-                        ibc_recovery_address: None,
+                recipients: Some(vec![
+                    andromeda_finance::fixed_amount_splitter::AddressAmount {
+                        recipient: Recipient {
+                            address: AndrAddr::from_string(recipient.clone()),
+                            msg: None,
+                            ibc_recovery_address: None,
+                        },
+                        coins: vec![Coin {
+                            denom: expected_denom.clone(),
+                            amount: Uint128::new(100),
+                        }],
                     },
-                    coins: vec![Coin {
-                        denom: expected_denom.clone(),
-                        amount: Uint128::new(100),
-                    }],
-                }],
+                ]),
                 default_recipient: None,
                 lock_time: None,
                 kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
