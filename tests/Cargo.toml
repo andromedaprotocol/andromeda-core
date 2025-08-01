@@ -183,6 +183,10 @@ name = "auction_app"
 path = "auction_app.rs"
 
 [[test]]
+name = "address_list"
+path = "address_list.rs"
+
+[[test]]
 name = "marketplace_app"
 path = "marketplace_app.rs"
 

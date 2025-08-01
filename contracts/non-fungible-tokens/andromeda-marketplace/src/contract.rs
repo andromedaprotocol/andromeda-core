@@ -113,14 +113,13 @@ fn handle_receive_cw721(
     mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ctx.contract.is_permissioned(
+    let sub_msg = ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
         ctx.info.sender.clone(),
     )?;
-
-    match from_json(&msg.msg)? {
+    let mut res = match from_json(&msg.msg)? {
         Cw721HookMsg::StartSale {
             price,
             coin_denom,
@@ -137,7 +136,11 @@ fn handle_receive_cw721(
             coin_denom,
             recipient,
         ),
+    }?;
+    if let Some(sub_msg) = sub_msg {
+        res = res.add_submessage(sub_msg);
     }
+    Ok(res)
 }
 
 pub fn handle_receive_cw20(

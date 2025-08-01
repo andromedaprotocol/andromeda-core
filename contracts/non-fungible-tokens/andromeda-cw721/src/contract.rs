@@ -70,7 +70,7 @@ pub fn instantiate(
     };
     ANDR_MINTER.save(deps.storage, &msg.minter)?;
 
-    contract.permission_action(deps.storage, MINT_ACTION)?;
+    contract.permission_action(deps.storage, MINT_ACTION, None)?;
 
     let res = cw721_instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
@@ -151,7 +151,8 @@ macro_rules! ensure_can_mint {
                 &$ctx.env,
                 &$ctx.amp_ctx,
                 MINT_ACTION,
-            )?;
+            )?
+            .0;
 
         ensure!(has_mint_permission, ContractError::Unauthorized {});
     };
@@ -269,7 +270,6 @@ fn execute_transfer(
     } else {
         Uint128::zero()
     };
-
     let approvals = query_approvals(deps.as_ref(), &env, token_id.clone(), true)?;
     let operators = query_operators(deps.as_ref(), &env, owner.clone(), true, None, None)?;
     check_can_send(
@@ -282,7 +282,6 @@ fn execute_transfer(
         approvals.approvals,
         operators.operators,
     )?;
-
     // If we reach here we can assume the sender is authorised to transfer the NFT
     // We mock message info to have the owner of the NFT be the sender to authorise send.
     let mut transfer_info = info.clone();
