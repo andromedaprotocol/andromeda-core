@@ -320,44 +320,64 @@ fn test_mint_nonexistent_denom(setup: TestCase) {
     }
 }
 
-// Test 10: Full workflow - create, mint, query authority
+// Test 10: Simple full workflow - create, mint, burn
 #[rstest]
-fn test_full_workflow(setup: TestCase) {
+fn test_simple_full_workflow(setup: TestCase) {
     let TestCase {
         osmosis_token_factory_contract,
         ..
     } = setup;
 
     let contract_addr = osmosis_token_factory_contract.addr_str().unwrap();
-    let subdenom = "workflow_test".to_string();
-    let amount = Uint128::from(500u128);
+    let subdenom = "simple_test".to_string();
+    let mint_amount = Uint128::from(1000u128);
+    let burn_amount = Uint128::from(300u128);
     let denom = format!("factory/{}/{}", contract_addr, subdenom);
 
+    println!("🚀 Starting simple token factory workflow...");
+
     // Step 1: Create denom
+    println!("📝 Step 1: Creating factory denom...");
     let create_res = osmosis_token_factory_contract
         .create_denom(subdenom.clone(), &[])
         .unwrap();
     assert_eq!(create_res.code, 0, "Denom creation should succeed");
     println!("✅ Created denom: {}", denom);
 
-    // Step 2: Mint some tokens
+    // Step 2: Mint tokens
+    println!("🪙 Step 2: Minting tokens...");
     let mint_res = osmosis_token_factory_contract
-        .mint(amount, subdenom.clone(), None, &[])
+        .mint(mint_amount, subdenom.clone(), None, &[])
         .unwrap();
     assert_eq!(mint_res.code, 0, "Token minting should succeed");
-    println!("✅ Minted {} tokens", amount);
+    println!("✅ Minted {} tokens", mint_amount);
 
-    // Step 3: Verify authority
+    // Step 3: Burn some tokens
+    println!("🔥 Step 3: Burning tokens...");
+    let burn_coin = Coin {
+        denom: denom.clone(),
+        amount: burn_amount,
+    };
+    let burn_res = osmosis_token_factory_contract.burn(&[burn_coin]).unwrap();
+    assert_eq!(burn_res.code, 0, "Token burning should succeed");
+    println!("✅ Burned {} tokens", burn_amount);
+
+    // Step 4: Verify contract is still authority
+    println!("🔍 Step 4: Verifying authority...");
     let authority = osmosis_token_factory_contract
         .token_authority(denom.clone())
         .unwrap();
     assert_eq!(authority.authority_metadata.unwrap().admin, contract_addr);
-    println!("✅ Verified contract is denom authority");
+    println!(
+        "✅ Contract {} is still the authority for {}",
+        contract_addr, denom
+    );
 
-    // Step 4: Verify denom format is correct
-    assert!(denom.starts_with(&format!("factory/{}/", contract_addr)));
-    assert!(denom.ends_with(&subdenom));
-    println!("✅ Verified denom format is correct: {}", denom);
-
-    println!("🎉 Full workflow completed successfully!");
+    println!("🎉 Simple workflow completed successfully!");
+    println!(
+        "📊 Summary: Created → Minted {} → Burned {} → Remaining {}",
+        mint_amount,
+        burn_amount,
+        mint_amount - burn_amount
+    );
 }
