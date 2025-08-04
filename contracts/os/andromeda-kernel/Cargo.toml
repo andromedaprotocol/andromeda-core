@@ -33,7 +33,7 @@ prost = { version = "0.13.5", default-features = false, features = [
   "prost-derive",
 ] }
 serde = { workspace = true }
-schemars = "0.8.22"
+schemars = "1.0.4"
 sha2 = { workspace = true }
 cw-orch = { workspace = true }
 

@@ -496,7 +496,7 @@ dependencies = [
  "cw20 2.0.0",
  "cw721",
  "rstest",
- "schemars 0.8.22",
+ "schemars 1.0.4",
  "serde",
 ]
 
@@ -625,7 +625,7 @@ dependencies = [
  "prost 0.13.5",
  "ripemd",
  "rstest",
- "schemars 0.8.22",
+ "schemars 1.0.4",
  "secp256k1 0.30.0",
  "serde",
  "serde-json-wasm 1.0.1",
@@ -766,7 +766,7 @@ dependencies = [
  "cw2 2.0.0",
  "cw20 2.0.0",
  "osmosis-std",
- "schemars 0.8.22",
+ "schemars 1.0.4",
  "serde",
  "thiserror 2.0.12",
 ]
@@ -905,7 +905,7 @@ dependencies = [
  "cw-utils 2.0.0",
  "cw2 2.0.0",
  "cw20 2.0.0",
- "schemars 0.8.22",
+ "schemars 1.0.4",
  "serde",
  "thiserror 2.0.12",
 ]
@@ -927,7 +927,7 @@ dependencies = [
  "cw2 2.0.0",
  "cw20 1.1.2",
  "osmosis-std",
- "schemars 0.8.22",
+ "schemars 1.0.4",
  "serde",
  "thiserror 2.0.12",
 ]
@@ -974,7 +974,7 @@ dependencies = [
  "prost 0.13.5",
  "regex",
  "rstest",
- "schemars 0.8.22",
+ "schemars 1.0.4",
  "semver",
  "serde",
  "serde-json-wasm 1.0.1",
