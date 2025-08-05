@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.2.0-b.10"
+version = "2.2.0-b.11"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -347,6 +347,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
+ "cw-ownable",
  "cw-storage-plus 2.0.0",
  "cw721",
  "rstest",
@@ -735,13 +736,14 @@ dependencies = [
 
 [[package]]
 name = "andromeda-non-fungible-tokens"
-version = "1.0.1-b.3"
+version = "1.0.1-b.4"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
  "cw-multi-test",
  "cw-orch",
+ "cw-ownable",
  "cw-utils 2.0.0",
  "cw20 2.0.0",
  "cw721",
