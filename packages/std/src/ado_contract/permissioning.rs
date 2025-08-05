@@ -189,10 +189,11 @@ impl ADOContract {
                 }
             }
             None => {
+                let wildcard = "*";
                 let permission = Self::get_permission(
                     deps.as_ref().storage,
                     action_string.clone(),
-                    "*".to_string(),
+                    wildcard.to_string(),
                 )?;
                 let sub_msg = if let Some(mut permission) = permission {
                     match permission {
@@ -215,10 +216,10 @@ impl ADOContract {
                                     local_permission.consume_use()?;
                                     permissions().save(
                                         deps.storage,
-                                        (action_string.clone() + "*").as_str(),
+                                        (action_string.clone() + wildcard).as_str(),
                                         &PermissionInfo {
                                             action: action_string,
-                                            actor: "*".to_string(),
+                                            actor: wildcard.to_string(),
                                             permission: permission,
                                         },
                                     )?;
@@ -230,7 +231,7 @@ impl ADOContract {
                             // Query contract that we'll be referencing the permissions from
                             let addr = contract_address.get_raw_address(&deps.as_ref())?;
                             let mut local_permission =
-                                AOSQuerier::get_permission(&deps.querier, &addr, "*")?;
+                                AOSQuerier::get_permission(&deps.querier, &addr, wildcard)?;
 
                             ensure!(
                                 local_permission.is_permissioned(&env, permissioned_action),
@@ -255,7 +256,7 @@ impl ADOContract {
                             let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                                 contract_addr: addr.to_string(),
                                 msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
-                                    actors: vec![AndrAddr::from_string("*")],
+                                    actors: vec![AndrAddr::from_string(wildcard)],
                                     permission: local_permission,
                                 })?,
                                 funds: vec![],
@@ -356,10 +357,11 @@ impl ADOContract {
                 }
             }
             None => {
+                let wildcard = "*";
                 let permission = Self::get_permission(
                     deps.as_ref().storage,
                     action_string.clone(),
-                    "*".to_string(),
+                    wildcard.to_string(),
                 )?;
                 let sub_msg = if let Some(mut permission) = permission {
                     match permission {
@@ -382,10 +384,10 @@ impl ADOContract {
                                 local_permission.consume_use()?;
                                 permissions().save(
                                     deps.storage,
-                                    (action_string.clone() + "*").as_str(),
+                                    (action_string.clone() + wildcard).as_str(),
                                     &PermissionInfo {
                                         action: action_string,
-                                        actor: "*".to_string(),
+                                        actor: wildcard.to_string(),
                                         permission: permission,
                                     },
                                 )?;
@@ -396,7 +398,7 @@ impl ADOContract {
                             // Query contract that we'll be referencing the permissions from
                             let addr = contract_address.get_raw_address(&deps.as_ref())?;
                             let mut local_permission =
-                                AOSQuerier::get_permission(&deps.querier, &addr, "*")?;
+                                AOSQuerier::get_permission(&deps.querier, &addr, wildcard)?;
 
                             ensure!(
                                 local_permission.is_permissioned(&env, true),
@@ -419,7 +421,7 @@ impl ADOContract {
                             let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                                 contract_addr: addr.to_string(),
                                 msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
-                                    actors: vec![AndrAddr::from_string("*")],
+                                    actors: vec![AndrAddr::from_string(wildcard)],
                                     permission: local_permission,
                                 })?,
                                 funds: vec![],
