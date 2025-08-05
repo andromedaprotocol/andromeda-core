@@ -1953,7 +1953,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let action = "test_action";
-        let test_actors = vec!["actor1", "actor2", "actor3"];
+        let test_actors = ["actor1", "actor2", "actor3"];
         let contract = ADOContract::default();
 
         // Set up contract owner
@@ -1976,7 +1976,7 @@ mod tests {
             .unwrap();
 
         // First two uses should succeed
-        for i in 0..2 {
+        for (i, ..) in test_actors.iter().enumerate().take(2) {
             let actor = test_actors[i];
             let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
             assert!(
