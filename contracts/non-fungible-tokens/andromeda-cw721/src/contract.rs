@@ -13,7 +13,7 @@ use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use cw721::{
     execute::{
         approve, approve_all, burn_nft, instantiate as cw721_instantiate, revoke, revoke_all,
-        send_nft, transfer_nft,
+        send_nft, transfer_nft, update_minter_ownership,
     },
     msg::{Cw721InstantiateMsg, OwnerOfResponse},
     query::{
@@ -128,6 +128,10 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         }
         ExecuteMsg::RevokeAll { operator } => {
             let res = revoke_all(ctx.deps, &ctx.env, &ctx.info, operator)?;
+            Ok(res)
+        }
+        ExecuteMsg::UpdateMinter(action) => {
+            let res = update_minter_ownership(ctx.deps, &ctx.env, &ctx.info, action)?;
             Ok(res)
         }
         _ => ADOContract::default().execute(ctx, msg),

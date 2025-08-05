@@ -27,6 +27,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw721 = { workspace = true }
+cw-ownable = { workspace = true }
 
 
 
