@@ -355,7 +355,83 @@ impl ADOContract {
                     }
                 }
             }
-            None => Err(ContractError::Unauthorized {}),
+            None => {
+                let permission = Self::get_permission(
+                    deps.as_ref().storage,
+                    action_string.clone(),
+                    "*".to_string(),
+                )?;
+                let sub_msg = if let Some(mut permission) = permission {
+                    match permission {
+                        Permission::Local(ref mut local_permission) => {
+                            ensure!(
+                                local_permission.is_permissioned(&env, true),
+                                ContractError::Unauthorized {}
+                            );
+                            // Update last used
+                            if let LocalPermission::Whitelisted { last_used, .. } = local_permission
+                            {
+                                last_used
+                                    .replace(Milliseconds::from_seconds(env.block.time.seconds()));
+                            }
+
+                            // Consume a use for a limited permission
+                            if let LocalPermission::Limited { .. } = local_permission {
+                                // Only consume a use if the action is permissioned
+
+                                local_permission.consume_use()?;
+                                permissions().save(
+                                    deps.storage,
+                                    (action_string.clone() + "*").as_str(),
+                                    &PermissionInfo {
+                                        action: action_string,
+                                        actor: "*".to_string(),
+                                        permission: permission,
+                                    },
+                                )?;
+                            }
+                            None
+                        }
+                        Permission::Contract(contract_address) => {
+                            // Query contract that we'll be referencing the permissions from
+                            let addr = contract_address.get_raw_address(&deps.as_ref())?;
+                            let mut local_permission =
+                                AOSQuerier::get_permission(&deps.querier, &addr, "*")?;
+
+                            ensure!(
+                                local_permission.is_permissioned(&env, true),
+                                ContractError::Unauthorized {}
+                            );
+                            // Update last used
+                            if let LocalPermission::Whitelisted { last_used, .. } =
+                                &mut local_permission
+                            {
+                                last_used
+                                    .replace(Milliseconds::from_seconds(env.block.time.seconds()));
+                            }
+
+                            // Limited section
+                            if let LocalPermission::Limited { .. } = local_permission {
+                                // Only consume a use if the action is permissioned
+                                local_permission.consume_use()?;
+                            }
+                            // Contsruct Sub Msg to update the permission in the address list contract
+                            let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                                contract_addr: addr.to_string(),
+                                msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
+                                    actors: vec![AndrAddr::from_string("*")],
+                                    permission: local_permission,
+                                })?,
+                                funds: vec![],
+                            }));
+                            Some(sub_msg)
+                        }
+                    }
+                } else {
+                    return Err(ContractError::Unauthorized {});
+                };
+                Ok(sub_msg)
+            }
         }
     }
 
