@@ -349,10 +349,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     attr("pool_id", pool_id.to_string()),
                 ]))
             } else {
-                return Err(ContractError::Std(StdError::generic_err(format!(
+                Err(ContractError::Std(StdError::generic_err(format!(
                     "Osmosis balancer pool creation failed with error: {:?}",
                     msg.result.unwrap_err()
-                ))));
+                ))))
             }
         }
         OSMOSIS_MSG_CREATE_STABLE_POOL_ID => {
