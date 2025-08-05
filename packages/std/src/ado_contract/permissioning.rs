@@ -124,31 +124,16 @@ impl ADOContract {
             Some(mut some_permission) => {
                 match some_permission {
                     Permission::Local(ref mut local_permission) => {
-                        ensure!(
-                            local_permission.is_permissioned(&env, permissioned_action),
-                            ContractError::Unauthorized {}
-                        );
-                        // Update last used
-                        if let LocalPermission::Whitelisted { last_used, .. } = local_permission {
-                            last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
+                        handle_local_permission(&env, local_permission, permissioned_action)?;
 
                         // Consume a use for a limited permission
-                        if let LocalPermission::Limited { .. } = local_permission {
-                            // Only consume a use if the action is permissioned
-                            if permissioned_action {
-                                local_permission.consume_use()?;
-                                permissions().save(
-                                    deps.storage,
-                                    (action_string.clone() + actor_string.as_str()).as_str(),
-                                    &PermissionInfo {
-                                        action: action_string,
-                                        actor: actor_string,
-                                        permission: some_permission,
-                                    },
-                                )?;
-                            }
-                        }
+                        consume_and_save_limited_permission(
+                            deps,
+                            local_permission,
+                            &action_string,
+                            &actor_string,
+                            permissioned_action,
+                        )?;
                         Ok(None)
                     }
                     Permission::Contract(contract_address) => {
@@ -157,16 +142,7 @@ impl ADOContract {
                         let mut local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
 
-                        ensure!(
-                            local_permission.is_permissioned(&env, permissioned_action),
-                            ContractError::Unauthorized {}
-                        );
-                        // Update last used
-                        if let LocalPermission::Whitelisted { last_used, .. } =
-                            &mut local_permission
-                        {
-                            last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
+                        handle_local_permission(&env, &mut local_permission, permissioned_action)?;
 
                         // Limited section
                         if let LocalPermission::Limited { .. } = local_permission {
@@ -176,14 +152,8 @@ impl ADOContract {
                             }
                         }
                         // Contsruct Sub Msg to update the permission in the address list contract
-                        let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: addr.to_string(),
-                            msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
-                                actors: vec![AndrAddr::from_string(&actor_string)],
-                                permission: local_permission,
-                            })?,
-                            funds: vec![],
-                        }));
+                        let sub_msg =
+                            construct_addresslist_sub_msg(&addr, &actor_string, &local_permission)?;
                         Ok(Some(sub_msg))
                     }
                 }
@@ -198,33 +168,16 @@ impl ADOContract {
                 let sub_msg = if let Some(mut permission) = permission {
                     match permission {
                         Permission::Local(ref mut local_permission) => {
-                            ensure!(
-                                local_permission.is_permissioned(&env, permissioned_action),
-                                ContractError::Unauthorized {}
-                            );
-                            // Update last used
-                            if let LocalPermission::Whitelisted { last_used, .. } = local_permission
-                            {
-                                last_used
-                                    .replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                            }
+                            handle_local_permission(&env, local_permission, permissioned_action)?;
 
                             // Consume a use for a limited permission
-                            if let LocalPermission::Limited { .. } = local_permission {
-                                // Only consume a use if the action is permissioned
-                                if permissioned_action {
-                                    local_permission.consume_use()?;
-                                    permissions().save(
-                                        deps.storage,
-                                        (action_string.clone() + wildcard).as_str(),
-                                        &PermissionInfo {
-                                            action: action_string,
-                                            actor: wildcard.to_string(),
-                                            permission: permission,
-                                        },
-                                    )?;
-                                }
-                            }
+                            consume_and_save_limited_permission(
+                                deps,
+                                local_permission,
+                                &action_string,
+                                wildcard,
+                                permissioned_action,
+                            )?;
                             None
                         }
                         Permission::Contract(contract_address) => {
@@ -233,17 +186,11 @@ impl ADOContract {
                             let mut local_permission =
                                 AOSQuerier::get_permission(&deps.querier, &addr, wildcard)?;
 
-                            ensure!(
-                                local_permission.is_permissioned(&env, permissioned_action),
-                                ContractError::Unauthorized {}
-                            );
-                            // Update last used
-                            if let LocalPermission::Whitelisted { last_used, .. } =
-                                &mut local_permission
-                            {
-                                last_used
-                                    .replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                            }
+                            handle_local_permission(
+                                &env,
+                                &mut local_permission,
+                                permissioned_action,
+                            )?;
 
                             // Limited section
                             if let LocalPermission::Limited { .. } = local_permission {
@@ -253,14 +200,8 @@ impl ADOContract {
                                 }
                             }
                             // Contsruct Sub Msg to update the permission in the address list contract
-                            let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                                contract_addr: addr.to_string(),
-                                msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
-                                    actors: vec![AndrAddr::from_string(wildcard)],
-                                    permission: local_permission,
-                                })?,
-                                funds: vec![],
-                            }));
+                            let sub_msg =
+                                construct_addresslist_sub_msg(&addr, wildcard, &local_permission)?;
                             Some(sub_msg)
                         }
                     }
@@ -299,59 +240,31 @@ impl ADOContract {
             Some(mut some_permission) => {
                 match some_permission {
                     Permission::Local(ref mut local_permission) => {
-                        ensure!(
-                            local_permission.is_permissioned(&env, true),
-                            ContractError::Unauthorized {}
-                        );
-                        // Update last used
-                        if let LocalPermission::Whitelisted { last_used, .. } = local_permission {
-                            last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
+                        handle_local_permission(&env, local_permission, true)?;
 
-                        // Consume a use for a limited permission
-                        if let LocalPermission::Limited { .. } = local_permission {
-                            // Always consume a use due to strict setting
-                            local_permission.consume_use()?;
-                            permissions().save(
-                                deps.storage,
-                                (action_string.clone() + actor_string.as_str()).as_str(),
-                                &PermissionInfo {
-                                    action: action_string,
-                                    actor: actor_string,
-                                    permission: some_permission,
-                                },
-                            )?;
-                        }
+                        consume_and_save_limited_permission(
+                            deps,
+                            local_permission,
+                            &action_string,
+                            &actor_string,
+                            true,
+                        )?;
                         Ok(None)
                     }
                     Permission::Contract(ref contract_address) => {
                         let addr = contract_address.get_raw_address(&deps.as_ref())?;
                         let mut local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
-                        ensure!(
-                            local_permission.is_permissioned(&env, true),
-                            ContractError::Unauthorized {}
-                        );
-                        // Update last used
-                        if let LocalPermission::Whitelisted { last_used, .. } =
-                            &mut local_permission
-                        {
-                            last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                        }
+                        handle_local_permission(&env, &mut local_permission, true)?;
+
                         // Limited section
                         if let LocalPermission::Limited { .. } = local_permission {
                             // Always consume a use due to strict setting
                             local_permission.consume_use()?;
                         }
                         // Contsruct Sub Msg to update the permission in the address list contract
-                        let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: addr.to_string(),
-                            msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
-                                actors: vec![AndrAddr::from_string(&actor_string)],
-                                permission: local_permission,
-                            })?,
-                            funds: vec![],
-                        }));
+                        let sub_msg =
+                            construct_addresslist_sub_msg(&addr, &actor_string, &local_permission)?;
                         Ok(Some(sub_msg))
                     }
                 }
@@ -366,32 +279,16 @@ impl ADOContract {
                 let sub_msg = if let Some(mut permission) = permission {
                     match permission {
                         Permission::Local(ref mut local_permission) => {
-                            ensure!(
-                                local_permission.is_permissioned(&env, true),
-                                ContractError::Unauthorized {}
-                            );
-                            // Update last used
-                            if let LocalPermission::Whitelisted { last_used, .. } = local_permission
-                            {
-                                last_used
-                                    .replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                            }
+                            handle_local_permission(&env, local_permission, true)?;
 
-                            // Consume a use for a limited permission
-                            if let LocalPermission::Limited { .. } = local_permission {
-                                // Only consume a use if the action is permissioned
+                            consume_and_save_limited_permission(
+                                deps,
+                                local_permission,
+                                &action_string,
+                                wildcard,
+                                true,
+                            )?;
 
-                                local_permission.consume_use()?;
-                                permissions().save(
-                                    deps.storage,
-                                    (action_string.clone() + wildcard).as_str(),
-                                    &PermissionInfo {
-                                        action: action_string,
-                                        actor: wildcard.to_string(),
-                                        permission: permission,
-                                    },
-                                )?;
-                            }
                             None
                         }
                         Permission::Contract(contract_address) => {
@@ -400,17 +297,7 @@ impl ADOContract {
                             let mut local_permission =
                                 AOSQuerier::get_permission(&deps.querier, &addr, wildcard)?;
 
-                            ensure!(
-                                local_permission.is_permissioned(&env, true),
-                                ContractError::Unauthorized {}
-                            );
-                            // Update last used
-                            if let LocalPermission::Whitelisted { last_used, .. } =
-                                &mut local_permission
-                            {
-                                last_used
-                                    .replace(Milliseconds::from_seconds(env.block.time.seconds()));
-                            }
+                            handle_local_permission(&env, &mut local_permission, true)?;
 
                             // Limited section
                             if let LocalPermission::Limited { .. } = local_permission {
@@ -418,14 +305,8 @@ impl ADOContract {
                                 local_permission.consume_use()?;
                             }
                             // Contsruct Sub Msg to update the permission in the address list contract
-                            let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                                contract_addr: addr.to_string(),
-                                msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
-                                    actors: vec![AndrAddr::from_string(wildcard)],
-                                    permission: local_permission,
-                                })?,
-                                funds: vec![],
-                            }));
+                            let sub_msg =
+                                construct_addresslist_sub_msg(&addr, wildcard, &local_permission)?;
                             Some(sub_msg)
                         }
                     }
@@ -742,6 +623,68 @@ impl ADOContract {
 
         Ok(actors)
     }
+}
+
+fn handle_local_permission(
+    env: &Env,
+    local_permission: &mut LocalPermission,
+    permissioned_action: bool,
+) -> Result<(), ContractError> {
+    ensure!(
+        local_permission.is_permissioned(&env, permissioned_action),
+        ContractError::Unauthorized {}
+    );
+    // Update last used
+    if let LocalPermission::Whitelisted { last_used, .. } = local_permission {
+        last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
+    }
+
+    Ok(())
+}
+
+fn consume_and_save_limited_permission(
+    deps: DepsMut,
+    local_permission: &mut LocalPermission,
+    action_string: &str,
+    actor_string: &str,
+    permissioned_action: bool,
+) -> Result<(), ContractError> {
+    if let LocalPermission::Limited { .. } = local_permission {
+        let mut new_local_permission = local_permission.clone();
+        // Consume a use
+        new_local_permission.consume_use()?;
+
+        if permissioned_action {
+            // Save updated permission info
+            permissions().save(
+                deps.storage,
+                &(action_string.to_string() + actor_string),
+                &PermissionInfo {
+                    action: action_string.to_string(),
+                    actor: actor_string.to_string(),
+                    permission: Permission::Local(new_local_permission),
+                },
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Contsruct Sub Msg to update the permission in the address list contract
+fn construct_addresslist_sub_msg(
+    addr: impl Into<String>,
+    actor_string: &str,
+    local_permission: &LocalPermission,
+) -> Result<SubMsg, ContractError> {
+    Ok(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: addr.into(),
+        msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
+            actors: vec![AndrAddr::from_string(actor_string.to_string())],
+            permission: local_permission.clone(),
+        })?,
+        funds: vec![],
+    })))
 }
 
 /// Checks if the provided context is authorised to perform the provided action.
