@@ -631,7 +631,7 @@ fn handle_local_permission(
     permissioned_action: bool,
 ) -> Result<(), ContractError> {
     ensure!(
-        local_permission.is_permissioned(&env, permissioned_action),
+        local_permission.is_permissioned(env, permissioned_action),
         ContractError::Unauthorized {}
     );
     // Update last used
