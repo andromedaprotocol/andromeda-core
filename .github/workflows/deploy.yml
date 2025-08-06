@@ -69,7 +69,7 @@ jobs:
           chmod +x ./scripts/install_binaryen.sh
           ./scripts/install_binaryen.sh
       - name: Download Deploy Script
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: deploy
           path: "./"
@@ -108,7 +108,7 @@ jobs:
           token: ${{ secrets.CI_PAT }}
 
       - name: Download Schemas
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: temp-schemas
           path: "packages/schema-parser/schema"
@@ -164,7 +164,7 @@ jobs:
           echo "Wait complete, proceeding with Armor workflow trigger"
 
       - name: Download version-map
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: contracts
           path: "artifacts"
