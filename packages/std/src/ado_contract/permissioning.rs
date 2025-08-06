@@ -18,6 +18,7 @@ use super::ADOContract;
 
 const MAX_QUERY_LIMIT: u32 = 50;
 const DEFAULT_QUERY_LIMIT: u32 = 25;
+const WILDCARD: &str = "*";
 
 #[cw_serde]
 // Importing this enum from the address list contract would result in a circular dependency
@@ -151,7 +152,7 @@ impl ADOContract {
                                 local_permission.consume_use()?;
                             }
                         }
-                        // Contsruct Sub Msg to update the permission in the address list contract
+                        // Construct Sub Msg to update the permission in the address list contract
                         let sub_msg =
                             construct_addresslist_sub_msg(&addr, &actor_string, &local_permission)?;
                         Ok(Some(sub_msg))
@@ -159,11 +160,10 @@ impl ADOContract {
                 }
             }
             None => {
-                let wildcard = "*";
                 let permission = Self::get_permission(
                     deps.as_ref().storage,
                     action_string.clone(),
-                    wildcard.to_string(),
+                    WILDCARD.to_string(),
                 )?;
                 let sub_msg = if let Some(mut permission) = permission {
                     match permission {
@@ -175,7 +175,7 @@ impl ADOContract {
                                 deps,
                                 local_permission,
                                 &action_string,
-                                wildcard,
+                                WILDCARD,
                                 permissioned_action,
                             )?;
                             None
@@ -184,7 +184,7 @@ impl ADOContract {
                             // Query contract that we'll be referencing the permissions from
                             let addr = contract_address.get_raw_address(&deps.as_ref())?;
                             let mut local_permission =
-                                AOSQuerier::get_permission(&deps.querier, &addr, wildcard)?;
+                                AOSQuerier::get_permission(&deps.querier, &addr, WILDCARD)?;
 
                             handle_local_permission(
                                 &env,
@@ -199,9 +199,9 @@ impl ADOContract {
                                     local_permission.consume_use()?;
                                 }
                             }
-                            // Contsruct Sub Msg to update the permission in the address list contract
+                            // Construct Sub Msg to update the permission in the address list contract
                             let sub_msg =
-                                construct_addresslist_sub_msg(&addr, wildcard, &local_permission)?;
+                                construct_addresslist_sub_msg(&addr, WILDCARD, &local_permission)?;
                             Some(sub_msg)
                         }
                     }
@@ -262,7 +262,7 @@ impl ADOContract {
                             // Always consume a use due to strict setting
                             local_permission.consume_use()?;
                         }
-                        // Contsruct Sub Msg to update the permission in the address list contract
+                        // Construct Sub Msg to update the permission in the address list contract
                         let sub_msg =
                             construct_addresslist_sub_msg(&addr, &actor_string, &local_permission)?;
                         Ok(Some(sub_msg))
@@ -270,11 +270,10 @@ impl ADOContract {
                 }
             }
             None => {
-                let wildcard = "*";
                 let permission = Self::get_permission(
                     deps.as_ref().storage,
                     action_string.clone(),
-                    wildcard.to_string(),
+                    WILDCARD.to_string(),
                 )?;
                 let sub_msg = if let Some(mut permission) = permission {
                     match permission {
@@ -285,7 +284,7 @@ impl ADOContract {
                                 deps,
                                 local_permission,
                                 &action_string,
-                                wildcard,
+                                WILDCARD,
                                 true,
                             )?;
 
@@ -295,7 +294,7 @@ impl ADOContract {
                             // Query contract that we'll be referencing the permissions from
                             let addr = contract_address.get_raw_address(&deps.as_ref())?;
                             let mut local_permission =
-                                AOSQuerier::get_permission(&deps.querier, &addr, wildcard)?;
+                                AOSQuerier::get_permission(&deps.querier, &addr, WILDCARD)?;
 
                             handle_local_permission(&env, &mut local_permission, true)?;
 
@@ -304,9 +303,9 @@ impl ADOContract {
                                 // Only consume a use if the action is permissioned
                                 local_permission.consume_use()?;
                             }
-                            // Contsruct Sub Msg to update the permission in the address list contract
+                            // Construct Sub Msg to update the permission in the address list contract
                             let sub_msg =
-                                construct_addresslist_sub_msg(&addr, wildcard, &local_permission)?;
+                                construct_addresslist_sub_msg(&addr, WILDCARD, &local_permission)?;
                             Some(sub_msg)
                         }
                     }
@@ -650,9 +649,7 @@ fn consume_and_save_limited_permission(
     permissioned_action: bool,
 ) -> Result<(), ContractError> {
     if let LocalPermission::Limited { .. } = local_permission {
-        let mut new_local_permission = local_permission.clone();
-        // Consume a use
-        new_local_permission.consume_use()?;
+        local_permission.consume_use()?;
 
         if permissioned_action {
             // Save updated permission info
@@ -662,7 +659,7 @@ fn consume_and_save_limited_permission(
                 &PermissionInfo {
                     action: action_string.to_string(),
                     actor: actor_string.to_string(),
-                    permission: Permission::Local(new_local_permission),
+                    permission: Permission::Local(local_permission.clone()),
                 },
             )?;
         }
@@ -671,7 +668,7 @@ fn consume_and_save_limited_permission(
     Ok(())
 }
 
-/// Contsruct Sub Msg to update the permission in the address list contract
+/// Construct Sub Msg to update the permission in the address list contract
 fn construct_addresslist_sub_msg(
     addr: impl Into<String>,
     actor_string: &str,
