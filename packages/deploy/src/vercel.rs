@@ -176,7 +176,7 @@ pub async fn upload_wasm_folder(folder_path: &str) -> Result<(), Box<dyn std::er
             upload_blob(&blob_path, bytes, Some("application/wasm")).await?;
             log::info!("Uploaded {} to {}", path.display(), blob_path);
         } else if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-            if file_name.eq_ignore_ascii_case("version-map.json") {
+            if file_name.eq_ignore_ascii_case("version_map.json") {
                 let blob_path = format!("{}/{}", commit_hash, file_name);
                 let bytes = fs::read(&path)?;
                 upload_blob(&blob_path, bytes, Some("application/json")).await?;
