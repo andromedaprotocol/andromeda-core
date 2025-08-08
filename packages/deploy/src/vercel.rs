@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use vercel_blob::{
@@ -9,37 +7,6 @@ use vercel_blob::{
         VercelBlobApi,
     },
 };
-// use crate::error::DeployError;
-
-/// Represents the deployment state stored in Vercel Blob
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DeploymentState {
-    pub commit_hash: String,
-    pub wasm_files: HashMap<String, WasmFileInfo>,
-    pub version_map: HashMap<String, String>,
-}
-
-/// Information about a WASM file
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WasmFileInfo {
-    pub name: String,
-    pub size: u64,
-    pub hash: String,
-}
-
-/// Represents a single WASM file
-#[derive(Debug, Clone)]
-pub struct WasmFile {
-    pub name: String,
-    pub content: Vec<u8>,
-}
-
-/// Represents a blob containing multiple WASM files
-#[derive(Debug, Clone)]
-pub struct Blob {
-    pub name: String,
-    pub content: Vec<WasmFile>,
-}
 
 /// List all blobs for the current commit by using a prefix of `<commit_hash>/`.
 pub async fn list_commit_blobs() -> Result<Vec<ListBlobResultBlob>, Box<dyn std::error::Error>> {
