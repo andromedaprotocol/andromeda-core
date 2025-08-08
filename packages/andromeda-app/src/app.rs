@@ -314,7 +314,7 @@ pub enum ExecuteMsg {
     #[attrs(restricted)]
     AddAppComponent {
         component: AppComponent,
-        chain_info: Option<Vec<ChainInfo>>,
+        chain_info: Option<ChainInfo>,
     },
     ClaimOwnership {
         name: Option<String>,

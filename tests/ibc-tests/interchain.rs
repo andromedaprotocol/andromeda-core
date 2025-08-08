@@ -10,7 +10,7 @@ use andromeda_math::counter::{
     CounterRestriction, GetCurrentAmountResponse, InstantiateMsg as CounterInstantiateMsg, State,
 };
 use andromeda_splitter::SplitterContract;
-use andromeda_std::os::ibc_registry::CROSS_CHAIN_ENABLED;
+use andromeda_std::os::kernel::CROSS_CHAIN_ENABLED;
 use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPMsgConfig},
@@ -237,7 +237,7 @@ fn test_cross_chain_init_app() {
                         instantiate_msg: to_json_binary(&counter_init_msg_juno).unwrap(),
                     }),
                 },
-                chain_info: Some(vec![chain_info.clone()]),
+                chain_info: Some(chain_info.clone()),
             },
             &[],
         )

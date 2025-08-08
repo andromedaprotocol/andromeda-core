@@ -6,7 +6,7 @@ use andromeda_app::app::{AppComponent, ChainInfo, ComponentType};
 use andromeda_std::common::{context::ExecuteContext, reply::ReplyId};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
-use andromeda_std::os::ibc_registry::CROSS_CHAIN_ENABLED;
+use andromeda_std::os::kernel::CROSS_CHAIN_ENABLED;
 use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
@@ -18,7 +18,7 @@ use cosmwasm_std::{
 pub fn handle_add_app_component(
     ctx: ExecuteContext,
     component: AppComponent,
-    chain_info: Option<Vec<ChainInfo>>,
+    chain_info: Option<ChainInfo>,
 ) -> Result<Response, ContractError> {
     let ExecuteContext {
         deps, env, info, ..
@@ -63,12 +63,14 @@ pub fn handle_add_app_component(
     let app_name = APP_NAME.load(deps.storage)?;
     let new_addr =
         component.get_new_addr(deps.api, &adodb_addr, querier, env.contract.address.clone())?;
+
+    let vec_chain_info = chain_info.clone().map(|chain_info| vec![chain_info]);
     let registration_msg = component.generate_vfs_registration(
         new_addr.clone(),
         &env.contract.address,
         &app_name,
         // TODO: Fix this in future for x-chain components
-        chain_info.clone(),
+        vec_chain_info,
         &adodb_addr,
         &vfs_addr,
     )?;
@@ -102,17 +104,15 @@ pub fn handle_add_app_component(
         ADO_ADDRESSES.save(deps.storage, &component.name, &new_addr.clone().unwrap())?;
     } else if let ComponentType::CrossChain(_) = component.component_type {
         if let Some(chain_info) = chain_info {
-            for chain in chain_info.clone() {
-                let sub_msg = create_cross_chain_message(
-                    &deps,
-                    app_name.clone(),
-                    info.sender.to_string(),
-                    vec![component.clone()],
-                    chain,
-                    chain_info.clone(),
-                )?;
-                resp = resp.add_submessage(sub_msg);
-            }
+            let sub_msg = create_cross_chain_message(
+                &deps,
+                app_name.clone(),
+                info.sender.to_string(),
+                vec![component.clone()],
+                chain_info.clone(),
+                vec![chain_info.clone()],
+            )?;
+            resp = resp.add_submessage(sub_msg);
         }
     }
 

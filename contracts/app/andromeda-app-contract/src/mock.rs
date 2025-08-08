@@ -50,7 +50,7 @@ impl MockAppContract {
         app: &mut MockApp,
         sender: Addr,
         component: AppComponent,
-        chain_info: Option<Vec<ChainInfo>>,
+        chain_info: Option<ChainInfo>,
     ) -> AnyResult<AppResponse> {
         self.execute(
             app,
@@ -106,7 +106,7 @@ pub fn mock_claim_ownership_msg(component_name: Option<String>) -> ExecuteMsg {
 
 pub fn mock_add_app_component_msg(
     component: AppComponent,
-    chain_info: Option<Vec<ChainInfo>>,
+    chain_info: Option<ChainInfo>,
 ) -> ExecuteMsg {
     ExecuteMsg::AddAppComponent {
         component,
