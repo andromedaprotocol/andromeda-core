@@ -430,11 +430,15 @@ dependencies = [
  "cw-orch-daemon 0.29.2",
  "dotenv",
  "env_logger",
+ "hex",
  "log",
  "reqwest 0.12.22",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "thiserror 2.0.12",
+ "tokio",
+ "vercel_blob",
 ]
 
 [[package]]
@@ -1930,6 +1934,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -7317,6 +7322,21 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vercel_blob"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df9eddfd07ce156c02d0a7223b1282c279126143a133c0debb98d198b212bd93"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "chrono 0.4.41",
+ "once_cell",
+ "reqwest 0.11.27",
+ "serde",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "version_check"

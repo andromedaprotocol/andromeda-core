@@ -35,6 +35,7 @@ pub enum SlackNotification {
     DeploymentStarted(String, Option<String>),
     DeploymentCompleted(String, Option<String>),
     DeploymentFailed(String, Option<String>, DeployError),
+    DeploymentSkipped(String, String),
     ADODeploymentStarted(String, Vec<String>),
     ADODeploymentCompleted(String, Vec<(String, String, u64)>),
     ADODeploymentFailed(String, DeployError),
@@ -61,6 +62,10 @@ impl std::fmt::Display for SlackNotification {
             SlackNotification::DeploymentFailed(chain, kernel_address, error) => {
                 let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
                 write!(f, "❌ *Deployment Failed*\n```\n| Chain          | {} |\n| Time           | {} |\n| Kernel Address | {} |\n| Error          | {} |```", chain, timestamp, kernel_address.as_deref().unwrap_or("Not provided"), error)
+            }
+            SlackNotification::DeploymentSkipped(chain, schema_parser_env) => {
+                let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+                write!(f, "⏭️ *Deployment Skipped*\n```\n| Chain          | {} |\n| Environment    | {} |\n| Time           | {} |\n| Reason         | No changes detected |```", chain, schema_parser_env, timestamp)
             }
             SlackNotification::ADODeploymentStarted(chain, contracts) => {
                 write!(f, "🚀 *ADO Library Deployment Started*\n```\n| Chain          | {} |\n| Contracts      | {} |```", chain, contracts.join(", "))
