@@ -86,7 +86,7 @@ pub async fn download_blobs_to_artifacts(
     Ok(())
 }
 
-pub async fn download_blob(blob_url: &String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_blob(blob_url: &str) -> Result<(), Box<dyn std::error::Error>> {
     let client = vercel_blob::client::VercelBlobClient::new();
 
     let download_options = DownloadCommandOptions { byte_range: None };
