@@ -1,18 +1,34 @@
 use crate::ado_base::permissioning::LocalPermission;
+use crate::common::Milliseconds;
 use crate::os::aos_querier::AOSQuerier;
 use crate::{
     ado_base::permissioning::{Permission, PermissionInfo, PermissioningMessage},
     amp::{messages::AMPPkt, AndrAddr},
-    common::{context::ExecuteContext, OrderBy},
+    common::{context::ExecuteContext, expiration::Expiry, schedule::Schedule, OrderBy},
     error::ContractError,
 };
-use cosmwasm_std::{ensure, Deps, DepsMut, Env, MessageInfo, Order, Response, Storage};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{
+    ensure, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    Storage, SubMsg, WasmMsg,
+};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
 use super::ADOContract;
 
 const MAX_QUERY_LIMIT: u32 = 50;
 const DEFAULT_QUERY_LIMIT: u32 = 25;
+const WILDCARD: &str = "*";
+
+#[cw_serde]
+// Importing this enum from the address list contract would result in a circular dependency
+pub enum AddressListExecuteMsg {
+    /// Adds an actor key and a permission value
+    PermissionActors {
+        actors: Vec<AndrAddr>,
+        permission: LocalPermission,
+    },
+}
 
 pub struct PermissionsIndices<'a> {
     /// PK: action + actor
@@ -59,8 +75,8 @@ impl ADOContract {
             PermissioningMessage::RemovePermission { action, actors } => {
                 self.execute_remove_permission(ctx, actors, action)
             }
-            PermissioningMessage::PermissionAction { action } => {
-                self.execute_permission_action(ctx, action)
+            PermissioningMessage::PermissionAction { action, expiration } => {
+                self.execute_permission_action(ctx, action, expiration)
             }
             PermissioningMessage::DisableActionPermissioning { action } => {
                 self.execute_disable_action_permission(ctx, action)
@@ -76,13 +92,13 @@ impl ADOContract {
         env: Env,
         action: impl Into<String>,
         actor: impl Into<String>,
-    ) -> Result<(), ContractError> {
+    ) -> Result<Option<SubMsg>, ContractError> {
         // Converted to strings for cloning
         let action_string: String = action.into();
         let actor_string: String = actor.into();
 
         if self.is_contract_owner(deps.as_ref().storage, actor_string.as_str())? {
-            return Ok(());
+            return Ok(None);
         }
 
         let permission = Self::get_permission(
@@ -92,51 +108,108 @@ impl ADOContract {
         )?;
         let permissioned_action = self
             .permissioned_actions
-            .may_load(deps.storage, action_string.clone())?
-            .unwrap_or(false);
+            .may_load(deps.storage, action_string.clone())?;
+
+        let permissioned_action = match permissioned_action {
+            Some(expiry) => match expiry {
+                // If the time is expired, it means that the permission is expired and that the action is not longer permissioned
+                Some(expiry) => !expiry.is_expired(&env.block),
+                // If no expiry is provided by the user, that means that the permission will never expire
+                None => true,
+            },
+            // If there's no entry at all for the permissioned action, that means that the action is not permissioned
+            None => false,
+        };
+
         match permission {
             Some(mut some_permission) => {
                 match some_permission {
                     Permission::Local(ref mut local_permission) => {
-                        ensure!(
-                            local_permission.is_permissioned(&env, permissioned_action),
-                            ContractError::Unauthorized {}
-                        );
+                        handle_local_permission(&env, local_permission, permissioned_action)?;
 
                         // Consume a use for a limited permission
-                        if let LocalPermission::Limited { .. } = local_permission {
-                            // Only consume a use if the action is permissioned
-                            if permissioned_action {
-                                local_permission.consume_use()?;
-                                permissions().save(
-                                    deps.storage,
-                                    (action_string.clone() + actor_string.as_str()).as_str(),
-                                    &PermissionInfo {
-                                        action: action_string,
-                                        actor: actor_string,
-                                        permission: some_permission,
-                                    },
-                                )?;
-                            }
-                        }
+                        consume_and_save_limited_permission(
+                            deps,
+                            local_permission,
+                            &action_string,
+                            &actor_string,
+                            permissioned_action,
+                        )?;
+                        Ok(None)
                     }
                     Permission::Contract(contract_address) => {
                         // Query contract that we'll be referencing the permissions from
                         let addr = contract_address.get_raw_address(&deps.as_ref())?;
-                        let local_permission =
+                        let mut local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
 
-                        ensure!(
-                            local_permission.is_permissioned(&env, permissioned_action),
-                            ContractError::Unauthorized {}
-                        );
+                        handle_local_permission(&env, &mut local_permission, permissioned_action)?;
+
+                        // Limited section
+                        if let LocalPermission::Limited { .. } = local_permission {
+                            // Only consume a use if the action is permissioned
+                            if permissioned_action {
+                                local_permission.consume_use()?;
+                            }
+                        }
+                        // Construct Sub Msg to update the permission in the address list contract
+                        let sub_msg =
+                            construct_addresslist_sub_msg(&addr, &actor_string, &local_permission)?;
+                        Ok(Some(sub_msg))
                     }
-                };
-                Ok(())
+                }
             }
             None => {
-                ensure!(!permissioned_action, ContractError::Unauthorized {});
-                Ok(())
+                let permission = Self::get_permission(
+                    deps.as_ref().storage,
+                    action_string.clone(),
+                    WILDCARD.to_string(),
+                )?;
+                let sub_msg = if let Some(mut permission) = permission {
+                    match permission {
+                        Permission::Local(ref mut local_permission) => {
+                            handle_local_permission(&env, local_permission, permissioned_action)?;
+
+                            // Consume a use for a limited permission
+                            consume_and_save_limited_permission(
+                                deps,
+                                local_permission,
+                                &action_string,
+                                WILDCARD,
+                                permissioned_action,
+                            )?;
+                            None
+                        }
+                        Permission::Contract(contract_address) => {
+                            // Query contract that we'll be referencing the permissions from
+                            let addr = contract_address.get_raw_address(&deps.as_ref())?;
+                            let mut local_permission =
+                                AOSQuerier::get_permission(&deps.querier, &addr, WILDCARD)?;
+
+                            handle_local_permission(
+                                &env,
+                                &mut local_permission,
+                                permissioned_action,
+                            )?;
+
+                            // Limited section
+                            if let LocalPermission::Limited { .. } = local_permission {
+                                // Only consume a use if the action is permissioned
+                                if permissioned_action {
+                                    local_permission.consume_use()?;
+                                }
+                            }
+                            // Construct Sub Msg to update the permission in the address list contract
+                            let sub_msg =
+                                construct_addresslist_sub_msg(&addr, WILDCARD, &local_permission)?;
+                            Some(sub_msg)
+                        }
+                    }
+                } else {
+                    ensure!(!permissioned_action, ContractError::Unauthorized {});
+                    None
+                };
+                Ok(sub_msg)
             }
         }
     }
@@ -152,13 +225,13 @@ impl ADOContract {
         env: Env,
         action: impl Into<String>,
         actor: impl Into<String>,
-    ) -> Result<(), ContractError> {
+    ) -> Result<Option<SubMsg>, ContractError> {
         // Converted to strings for cloning
         let action_string: String = action.into();
         let actor_string: String = actor.into();
 
         if self.is_contract_owner(deps.storage, actor_string.as_str())? {
-            return Ok(());
+            return Ok(None);
         }
 
         let permission =
@@ -167,39 +240,80 @@ impl ADOContract {
             Some(mut some_permission) => {
                 match some_permission {
                     Permission::Local(ref mut local_permission) => {
-                        ensure!(
-                            local_permission.is_permissioned(&env, true),
-                            ContractError::Unauthorized {}
-                        );
+                        handle_local_permission(&env, local_permission, true)?;
 
-                        // Consume a use for a limited permission
-                        if let LocalPermission::Limited { .. } = local_permission {
-                            // Always consume a use due to strict setting
-                            local_permission.consume_use()?;
-                            permissions().save(
-                                deps.storage,
-                                (action_string.clone() + actor_string.as_str()).as_str(),
-                                &PermissionInfo {
-                                    action: action_string,
-                                    actor: actor_string,
-                                    permission: some_permission,
-                                },
-                            )?;
-                        }
+                        consume_and_save_limited_permission(
+                            deps,
+                            local_permission,
+                            &action_string,
+                            &actor_string,
+                            true,
+                        )?;
+                        Ok(None)
                     }
                     Permission::Contract(ref contract_address) => {
                         let addr = contract_address.get_raw_address(&deps.as_ref())?;
-                        let local_permission =
+                        let mut local_permission =
                             AOSQuerier::get_permission(&deps.querier, &addr, &actor_string)?;
-                        ensure!(
-                            local_permission.is_permissioned(&env, true),
-                            ContractError::Unauthorized {}
-                        );
+                        handle_local_permission(&env, &mut local_permission, true)?;
+
+                        // Limited section
+                        if let LocalPermission::Limited { .. } = local_permission {
+                            // Always consume a use due to strict setting
+                            local_permission.consume_use()?;
+                        }
+                        // Construct Sub Msg to update the permission in the address list contract
+                        let sub_msg =
+                            construct_addresslist_sub_msg(&addr, &actor_string, &local_permission)?;
+                        Ok(Some(sub_msg))
                     }
                 }
-                Ok(())
             }
-            None => Err(ContractError::Unauthorized {}),
+            None => {
+                let permission = Self::get_permission(
+                    deps.as_ref().storage,
+                    action_string.clone(),
+                    WILDCARD.to_string(),
+                )?;
+                let sub_msg = if let Some(mut permission) = permission {
+                    match permission {
+                        Permission::Local(ref mut local_permission) => {
+                            handle_local_permission(&env, local_permission, true)?;
+
+                            consume_and_save_limited_permission(
+                                deps,
+                                local_permission,
+                                &action_string,
+                                WILDCARD,
+                                true,
+                            )?;
+
+                            None
+                        }
+                        Permission::Contract(contract_address) => {
+                            // Query contract that we'll be referencing the permissions from
+                            let addr = contract_address.get_raw_address(&deps.as_ref())?;
+                            let mut local_permission =
+                                AOSQuerier::get_permission(&deps.querier, &addr, WILDCARD)?;
+
+                            handle_local_permission(&env, &mut local_permission, true)?;
+
+                            // Limited section
+                            if let LocalPermission::Limited { .. } = local_permission {
+                                // Only consume a use if the action is permissioned
+                                local_permission.consume_use()?;
+                            }
+                            // Construct Sub Msg to update the permission in the address list contract
+                            let sub_msg =
+                                construct_addresslist_sub_msg(&addr, WILDCARD, &local_permission)?;
+                            Some(sub_msg)
+                        }
+                    }
+                } else {
+                    return Err(ContractError::Unauthorized {});
+                };
+                Ok(sub_msg)
+            }
         }
     }
 
@@ -269,7 +383,7 @@ impl ADOContract {
         ctx: ExecuteContext,
         actors: Vec<AndrAddr>,
         action: impl Into<String>,
-        permission: Permission,
+        mut permission: Permission,
     ) -> Result<Response, ContractError> {
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
@@ -280,12 +394,43 @@ impl ADOContract {
 
         let mut actor_addrs = Vec::new();
 
-        for actor in actors {
-            let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
-            actor_addrs.push(actor_addr);
+        // The asterisk represents a wildcard, it signifies "all addresses"
+        if actors.len() == 1 && actors[0].as_str() == "*" {
+            actor_addrs.push(Addr::unchecked("*"));
+        } else {
+            for actor in actors {
+                let actor_addr = actor.get_raw_address(&ctx.deps.as_ref())?;
+                actor_addrs.push(actor_addr);
+            }
         }
+        // Last used should always be set at None in the beginning
+        permission = match permission {
+            Permission::Local(LocalPermission::Whitelisted {
+                schedule, window, ..
+            }) => Permission::Local(LocalPermission::whitelisted(schedule, window, None)),
+            _ => permission,
+        };
 
-        permission.validate_times(&ctx.env)?;
+        let (start, end) = permission.validate_times(&ctx.env)?;
+        let verified_schedule = Schedule::new(Some(Expiry::AtTime(start)), end.map(Expiry::AtTime));
+
+        match permission {
+            Permission::Local(LocalPermission::Whitelisted {
+                window, last_used, ..
+            }) => Permission::Local(LocalPermission::whitelisted(
+                verified_schedule,
+                window,
+                last_used,
+            )),
+            Permission::Local(LocalPermission::Blacklisted { .. }) => {
+                Permission::Local(LocalPermission::blacklisted(verified_schedule))
+            }
+            Permission::Local(LocalPermission::Limited { uses, .. }) => {
+                Permission::Local(LocalPermission::limited(verified_schedule, uses))
+            }
+            Permission::Contract(ref andr_addr) => Permission::Contract(andr_addr.clone()),
+        };
+
         for actor_addr in actor_addrs.clone() {
             Self::set_permission(
                 ctx.deps.storage,
@@ -363,9 +508,10 @@ impl ADOContract {
         &self,
         store: &mut dyn Storage,
         action: impl Into<String>,
+        expiration: Option<Milliseconds>,
     ) -> Result<(), ContractError> {
         self.permissioned_actions
-            .save(store, action.into(), &true)?;
+            .save(store, action.into(), &expiration)?;
         Ok(())
     }
 
@@ -378,13 +524,15 @@ impl ADOContract {
         &self,
         ctx: ExecuteContext,
         action: impl Into<String>,
+        expiration: Option<Expiry>,
     ) -> Result<Response, ContractError> {
         let action_string: String = action.into();
         ensure!(
             Self::is_contract_owner(self, ctx.deps.storage, ctx.info.sender.as_str())?,
             ContractError::Unauthorized {}
         );
-        self.permission_action(ctx.deps.storage, action_string.clone())?;
+        let expiration = expiration.map(|expiry| expiry.get_time(&ctx.env.block));
+        self.permission_action(ctx.deps.storage, action_string.clone(), expiration)?;
         Ok(Response::default().add_attributes(vec![
             ("action", "permission_action"),
             ("action", action_string.as_str()),
@@ -476,6 +624,66 @@ impl ADOContract {
     }
 }
 
+fn handle_local_permission(
+    env: &Env,
+    local_permission: &mut LocalPermission,
+    permissioned_action: bool,
+) -> Result<(), ContractError> {
+    ensure!(
+        local_permission.is_permissioned(env, permissioned_action),
+        ContractError::Unauthorized {}
+    );
+    // Update last used
+    if let LocalPermission::Whitelisted { last_used, .. } = local_permission {
+        last_used.replace(Milliseconds::from_seconds(env.block.time.seconds()));
+    }
+
+    Ok(())
+}
+
+fn consume_and_save_limited_permission(
+    deps: DepsMut,
+    local_permission: &mut LocalPermission,
+    action_string: &str,
+    actor_string: &str,
+    permissioned_action: bool,
+) -> Result<(), ContractError> {
+    if let LocalPermission::Limited { .. } = local_permission {
+        local_permission.consume_use()?;
+
+        if permissioned_action {
+            // Save updated permission info
+            permissions().save(
+                deps.storage,
+                &(action_string.to_string() + actor_string),
+                &PermissionInfo {
+                    action: action_string.to_string(),
+                    actor: actor_string.to_string(),
+                    permission: Permission::Local(local_permission.clone()),
+                },
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Construct Sub Msg to update the permission in the address list contract
+fn construct_addresslist_sub_msg(
+    addr: impl Into<String>,
+    actor_string: &str,
+    local_permission: &LocalPermission,
+) -> Result<SubMsg, ContractError> {
+    Ok(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: addr.into(),
+        msg: to_json_binary(&AddressListExecuteMsg::PermissionActors {
+            actors: vec![AndrAddr::from_string(actor_string.to_string())],
+            permission: local_permission.clone(),
+        })?,
+        funds: vec![],
+    })))
+}
+
 /// Checks if the provided context is authorised to perform the provided action.
 ///
 /// Two scenarios exist:
@@ -487,7 +695,7 @@ pub fn is_context_permissioned(
     env: &Env,
     ctx: &Option<AMPPkt>,
     action: impl Into<String>,
-) -> Result<bool, ContractError> {
+) -> Result<(bool, Option<SubMsg>), ContractError> {
     let contract = ADOContract::default();
 
     match ctx {
@@ -499,8 +707,8 @@ pub fn is_context_permissioned(
                 action.clone(),
                 amp_ctx.ctx.get_origin().as_str(),
             );
-            if is_origin_permissioned.is_ok() {
-                return Ok(true);
+            if let Ok(submsg) = is_origin_permissioned {
+                return Ok((true, submsg));
             }
             let is_previous_sender_permissioned = contract.is_permissioned(
                 deps.branch(),
@@ -508,11 +716,25 @@ pub fn is_context_permissioned(
                 action,
                 amp_ctx.ctx.get_previous_sender().as_str(),
             );
-            Ok(is_previous_sender_permissioned.is_ok())
+            match is_previous_sender_permissioned {
+                Ok(Some(submsg)) => Ok((true, Some(submsg))),
+                Ok(None) => Ok((true, None)),
+                Err(_) => Ok((false, None)),
+            }
         }
-        None => Ok(contract
-            .is_permissioned(deps.branch(), env.clone(), action, info.sender.to_string())
-            .is_ok()),
+        None => {
+            let is_sender_permissioned = contract.is_permissioned(
+                deps.branch(),
+                env.clone(),
+                action,
+                info.sender.to_string(),
+            );
+            match is_sender_permissioned {
+                Ok(Some(submsg)) => Ok((true, Some(submsg))),
+                Ok(None) => Ok((true, None)),
+                Err(_) => Ok((false, None)),
+            }
+        }
     }
 }
 
@@ -560,7 +782,7 @@ pub mod migrate {
     use cosmwasm_schema::cw_serde;
     use cw_storage_plus::Map;
 
-    use crate::common::expiration::Expiry;
+    use crate::common::{expiration::Expiry, schedule::Schedule};
 
     use super::*;
 
@@ -626,11 +848,13 @@ pub mod migrate {
         /// Converts a v1 permission to a modern permission
         fn try_from(value: PermissionV1) -> Result<Self, Self::Error> {
             match value {
-                PermissionV1::Whitelisted(exp) => Ok(Self::whitelisted(None, exp)),
-                PermissionV1::Limited { expiration, uses } => {
-                    Ok(Self::limited(None, expiration, uses))
+                PermissionV1::Whitelisted(exp) => {
+                    Ok(Self::whitelisted(Schedule::new(None, exp), None, None))
                 }
-                PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(None, exp)),
+                PermissionV1::Limited { expiration, uses } => {
+                    Ok(Self::limited(Schedule::new(None, expiration), uses))
+                }
+                PermissionV1::Blacklisted(exp) => Ok(Self::blacklisted(Schedule::new(None, exp))),
             }
         }
     }
@@ -701,8 +925,9 @@ pub mod migrate {
                 actor: "actor4".to_string(),
                 action: "action".to_string(),
                 permission: Permission::Local(LocalPermission::Whitelisted {
-                    start: None,
-                    expiration: None,
+                    schedule: Schedule::new(None, None),
+                    window: None,
+                    last_used: None,
                 }),
             };
             // Save modern permission
@@ -751,7 +976,7 @@ mod tests {
     use crate::{
         ado_base::AndromedaMsg,
         amp::messages::AMPPkt,
-        common::{expiration::Expiry, MillisecondsExpiration},
+        common::{expiration::Expiry, schedule::Schedule, MillisecondsExpiration},
     };
 
     use super::*;
@@ -770,7 +995,7 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         // Test Whitelisting
@@ -778,8 +1003,9 @@ mod tests {
 
         assert!(res.is_err());
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
+            window: None,
+            last_used: None,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -794,8 +1020,7 @@ mod tests {
 
         assert!(res.is_err());
         let permission = Permission::Local(LocalPermission::Limited {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             uses: 1,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
@@ -817,16 +1042,14 @@ mod tests {
         ADOContract::remove_permission(deps.as_mut().storage, action, actor).unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
         // Test Blacklisted
         let permission = Permission::Local(LocalPermission::Blacklisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
-
-        let res = contract.is_permissioned(deps.as_mut(), env, action, actor);
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
 
         assert!(res.is_err());
     }
@@ -844,13 +1067,12 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         // Test Blacklisted
         let permission = Permission::Local(LocalPermission::Blacklisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -875,8 +1097,9 @@ mod tests {
         assert!(res.is_err());
 
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
+            window: None,
+            last_used: None,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -916,8 +1139,9 @@ mod tests {
             actors: vec![AndrAddr::from_string("actor")],
             action: "action".to_string(),
             permission: Permission::Local(LocalPermission::Whitelisted {
-                start: None,
-                expiration: None,
+                schedule: Schedule::new(None, None),
+                window: None,
+                last_used: None,
             }),
         });
         let attacker = deps.api.addr_make("attacker");
@@ -939,6 +1163,7 @@ mod tests {
             .unwrap();
         let msg = AndromedaMsg::Permissioning(PermissioningMessage::PermissionAction {
             action: "action".to_string(),
+            expiration: None,
         });
         let attacker = deps.api.addr_make("attacker");
         let ctx = ExecuteContext::new(deps.as_mut(), message_info(&attacker, &[]), env);
@@ -1007,7 +1232,7 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
@@ -1016,8 +1241,9 @@ mod tests {
 
         // Test Whitelist
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: Some(expiration.clone()),
+            schedule: Schedule::new(None, Some(expiration.clone())),
+            window: None,
+            last_used: None,
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -1032,8 +1258,7 @@ mod tests {
         env.block.time = MillisecondsExpiration::from_seconds(0).into();
         // Test Blacklist
         let permission = Permission::Local(LocalPermission::Blacklisted {
-            start: None,
-            expiration: Some(expiration.clone()),
+            schedule: Schedule::new(None, Some(expiration.clone())),
         });
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission).unwrap();
 
@@ -1092,18 +1317,18 @@ mod tests {
             .unwrap();
 
         ADOContract::default()
-            .permission_action(deps.as_mut().storage, action)
+            .permission_action(deps.as_mut().storage, action, None)
             .unwrap();
 
         let permission = if is_whitelisted {
             Permission::Local(LocalPermission::Whitelisted {
-                start,
-                expiration: None,
+                schedule: Schedule::new(start, None),
+                window: None,
+                last_used: None,
             })
         } else {
             Permission::Local(LocalPermission::Blacklisted {
-                start,
-                expiration: None,
+                schedule: Schedule::new(start, None),
             })
         };
 
@@ -1150,129 +1375,156 @@ mod tests {
             .save(context.deps.storage, &Addr::unchecked(OWNER))
             .unwrap();
 
-        assert!(is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         ADOContract::default()
-            .permission_action(context.deps.storage, action)
+            .permission_action(context.deps.storage, action, None)
             .unwrap();
 
-        assert!(!is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            !is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone());
         let permission = Permission::Local(LocalPermission::Whitelisted {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
+            window: None,
+            last_used: None,
         });
         ADOContract::set_permission(context.deps.storage, action, &actor, permission).unwrap();
 
-        assert!(is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let mock_actor = deps.api.addr_make("mock_actor");
         let unauth_info = message_info(&mock_actor, &[]);
         let mut context = ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone());
 
-        assert!(!is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            !is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let amp_ctx = AMPPkt::new(mock_actor.clone(), actor.as_str(), vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let amp_ctx = AMPPkt::new(&actor, mock_actor.clone(), vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let amp_ctx = AMPPkt::new(mock_actor.clone(), mock_actor.clone(), vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(!is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            !is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let amp_ctx = AMPPkt::new(OWNER.to_string(), mock_actor.clone(), vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let amp_ctx = AMPPkt::new(mock_actor.clone(), OWNER.to_string(), vec![]);
         let mut context =
             ExecuteContext::new(deps.as_mut(), unauth_info.clone(), env.clone()).with_ctx(amp_ctx);
 
-        assert!(is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let previous_sender = deps.api.addr_make("previous_sender");
         let mut context = ExecuteContext::new(deps.as_mut(), info.clone(), env.clone())
             .with_ctx(AMPPkt::new(info.sender, previous_sender.clone(), vec![]));
         let permission = Permission::Local(LocalPermission::Limited {
-            start: None,
-            expiration: None,
+            schedule: Schedule::new(None, None),
             uses: 1,
         });
         ADOContract::set_permission(context.deps.storage, action, &actor, permission.clone())
@@ -1285,14 +1537,17 @@ mod tests {
         )
         .unwrap();
 
-        assert!(is_context_permissioned(
-            &mut context.deps,
-            &context.info,
-            &context.env,
-            &context.amp_ctx,
-            action
-        )
-        .unwrap());
+        assert!(
+            is_context_permissioned(
+                &mut context.deps,
+                &context.info,
+                &context.env,
+                &context.amp_ctx,
+                action
+            )
+            .unwrap()
+            .0
+        );
 
         let actor_permission =
             ADOContract::get_permission(context.deps.storage, action, actor).unwrap();
@@ -1301,7 +1556,10 @@ mod tests {
         assert_eq!(previous_sender_permission, Some(permission));
         assert_eq!(
             actor_permission,
-            Some(Permission::Local(LocalPermission::limited(None, None, 0)))
+            Some(Permission::Local(LocalPermission::limited(
+                Schedule::new(None, None),
+                0,
+            )))
         );
     }
 
@@ -1331,7 +1589,11 @@ mod tests {
         .unwrap());
 
         let context = ExecuteContext::new(deps.as_mut(), info, env.clone());
-        let permission = Permission::Local(LocalPermission::whitelisted(None, None));
+        let permission = Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        ));
         ADOContract::set_permission(context.deps.storage, action, actor.clone(), permission)
             .unwrap();
 
@@ -1407,7 +1669,11 @@ mod tests {
 
         assert!(permissions.is_empty());
 
-        let permission = Permission::Local(LocalPermission::whitelisted(None, None));
+        let permission = Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        ));
         let action = "action";
 
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
@@ -1424,19 +1690,27 @@ mod tests {
         let multi_permissions = vec![
             (
                 "action2".to_string(),
-                Permission::Local(LocalPermission::blacklisted(None, None)),
+                Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None))),
             ),
             (
                 "action3".to_string(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             ),
             (
                 "action4".to_string(),
-                Permission::Local(LocalPermission::blacklisted(None, None)),
+                Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None))),
             ),
             (
                 "action5".to_string(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             ),
         ];
 
@@ -1470,7 +1744,7 @@ mod tests {
         assert!(actions.is_empty());
 
         ADOContract::default()
-            .execute_permission_action(ctx, "action")
+            .execute_permission_action(ctx, "action", None)
             .unwrap();
 
         let actions = ADOContract::default()
@@ -1497,7 +1771,7 @@ mod tests {
         let actor2 = "actor2";
         let action = "action";
         ADOContract::default()
-            .execute_permission_action(ctx, action)
+            .execute_permission_action(ctx, action, None)
             .unwrap();
 
         ADOContract::set_permission(
@@ -1521,5 +1795,338 @@ mod tests {
         assert_eq!(actors.len(), 2);
         assert_eq!(actors[0], actor);
         assert_eq!(actors[1], actor2);
+    }
+
+    #[rstest]
+    #[case("whitelisted", Permission::Local(LocalPermission::Whitelisted {
+        schedule: Schedule::new(None, None),
+        window: None,
+        last_used: None,
+    }), true)]
+    #[case("blacklisted", Permission::Local(LocalPermission::Blacklisted {
+        schedule: Schedule::new(None, None),
+    }), false)]
+    #[case("limited", Permission::Local(LocalPermission::Limited {
+        schedule: Schedule::new(None, None),
+        uses: 4, // Number of actors we're testing with
+    }), true)]
+    fn test_wildcard_actor_permissions(
+        #[case] permission_type: &str,
+        #[case] permission: Permission,
+        #[case] expected_success: bool,
+    ) {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "test_action";
+        let test_actors = vec!["actor1", "actor2", "actor3", "different_actor"];
+        let contract = ADOContract::default();
+
+        // Set up contract owner
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
+            .unwrap();
+
+        // Enable permissioning for the action
+        ADOContract::default()
+            .permission_action(deps.as_mut().storage, action, None)
+            .unwrap();
+
+        // Set wildcard permission
+        ADOContract::set_permission(deps.as_mut().storage, action, "*", permission.clone())
+            .unwrap();
+
+        // Test that all actors are affected by the wildcard permission
+        for actor in test_actors {
+            let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+
+            if expected_success {
+                assert!(
+                    res.is_ok(),
+                    "Actor {} should be allowed with {} wildcard permission",
+                    actor,
+                    permission_type
+                );
+            } else {
+                assert!(
+                    res.is_err(),
+                    "Actor {} should be denied with {} wildcard permission",
+                    actor,
+                    permission_type
+                );
+            }
+        }
+    }
+
+    #[rstest]
+    #[case( Permission::Local(LocalPermission::Whitelisted {
+        schedule: Schedule::new(None, None),
+        window: None,
+        last_used: None,
+    }), true)]
+    #[case( Permission::Local(LocalPermission::Blacklisted {
+        schedule: Schedule::new(None, None),
+    }), false)]
+    fn test_wildcard_vs_specific_actor_priority(
+        #[case] wildcard_permission: Permission,
+        #[case] wildcard_should_allow: bool,
+    ) {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "test_action";
+        let specific_actor = "specific_actor";
+        let other_actor = "other_actor";
+        let contract = ADOContract::default();
+
+        // Set up contract owner
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
+            .unwrap();
+
+        // Enable permissioning for the action
+        ADOContract::default()
+            .permission_action(deps.as_mut().storage, action, None)
+            .unwrap();
+
+        // Set wildcard permission first
+        ADOContract::set_permission(
+            deps.as_mut().storage,
+            action,
+            "*",
+            wildcard_permission.clone(),
+        )
+        .unwrap();
+
+        // Set specific actor permission (opposite of wildcard)
+        let specific_permission = if wildcard_should_allow {
+            Permission::Local(LocalPermission::Blacklisted {
+                schedule: Schedule::new(None, None),
+            })
+        } else {
+            Permission::Local(LocalPermission::Whitelisted {
+                schedule: Schedule::new(None, None),
+                window: None,
+                last_used: None,
+            })
+        };
+        ADOContract::set_permission(
+            deps.as_mut().storage,
+            action,
+            specific_actor,
+            specific_permission,
+        )
+        .unwrap();
+
+        // Test that specific actor permission takes precedence over wildcard
+        let specific_res =
+            contract.is_permissioned(deps.as_mut(), env.clone(), action, specific_actor);
+        let other_res = contract.is_permissioned(deps.as_mut(), env.clone(), action, other_actor);
+
+        // Specific actor should have opposite permission of wildcard
+        if wildcard_should_allow {
+            assert!(
+                specific_res.is_err(),
+                "Specific actor should be denied despite whitelisted wildcard"
+            );
+            assert!(
+                other_res.is_ok(),
+                "Other actors should be allowed by whitelisted wildcard"
+            );
+        } else {
+            assert!(
+                specific_res.is_ok(),
+                "Specific actor should be allowed despite blacklisted wildcard"
+            );
+            assert!(
+                other_res.is_err(),
+                "Other actors should be denied by blacklisted wildcard"
+            );
+        }
+    }
+
+    #[test]
+    fn test_wildcard_limited_permission_consumption() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "test_action";
+        let test_actors = ["actor1", "actor2", "actor3"];
+        let contract = ADOContract::default();
+
+        // Set up contract owner
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
+            .unwrap();
+
+        // Enable permissioning for the action
+        ADOContract::default()
+            .permission_action(deps.as_mut().storage, action, None)
+            .unwrap();
+
+        // Set wildcard limited permission with 2 uses
+        let wildcard_permission = Permission::Local(LocalPermission::Limited {
+            schedule: Schedule::new(None, None),
+            uses: 2,
+        });
+        ADOContract::set_permission(deps.as_mut().storage, action, "*", wildcard_permission)
+            .unwrap();
+
+        // First two uses should succeed
+        for (i, ..) in test_actors.iter().enumerate().take(2) {
+            let actor = test_actors[i];
+            let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, actor);
+            assert!(
+                res.is_ok(),
+                "Actor {} should be allowed for use {}",
+                actor,
+                i + 1
+            );
+        }
+
+        // Third use should fail (limited to 2 uses)
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, test_actors[2]);
+        assert!(
+            res.is_err(),
+            "Third use should be denied due to limited uses"
+        );
+    }
+
+    #[test]
+    fn test_wildcard_permission_with_no_specific_permission() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "test_action";
+        let test_actor = "test_actor";
+        let contract = ADOContract::default();
+
+        // Set up contract owner
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
+            .unwrap();
+
+        // Enable permissioning for the action
+        ADOContract::default()
+            .permission_action(deps.as_mut().storage, action, None)
+            .unwrap();
+
+        // No specific permission set, should fail
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, test_actor);
+        assert!(res.is_err(), "Should fail when no permission is set");
+
+        // Set wildcard whitelist permission
+        let wildcard_permission = Permission::Local(LocalPermission::Whitelisted {
+            schedule: Schedule::new(None, None),
+            window: None,
+            last_used: None,
+        });
+        ADOContract::set_permission(deps.as_mut().storage, action, "*", wildcard_permission)
+            .unwrap();
+
+        // Now should succeed due to wildcard permission
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, test_actor);
+        assert!(
+            res.is_ok(),
+            "Should succeed with wildcard whitelist permission"
+        );
+    }
+
+    #[test]
+    fn test_wildcard_permission_disabled_action() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "test_action";
+        let test_actor = "test_actor";
+        let contract = ADOContract::default();
+
+        // Set up contract owner
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
+            .unwrap();
+
+        // Set wildcard whitelist permission
+        let wildcard_permission = Permission::Local(LocalPermission::Whitelisted {
+            schedule: Schedule::new(None, None),
+            window: None,
+            last_used: None,
+        });
+        ADOContract::set_permission(deps.as_mut().storage, action, "*", wildcard_permission)
+            .unwrap();
+
+        // Disable action permissioning
+        ADOContract::default().disable_action_permission(action, deps.as_mut().storage);
+
+        // Should succeed even with wildcard permission when action is disabled
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, test_actor);
+        assert!(
+            res.is_ok(),
+            "Should succeed when action permissioning is disabled"
+        );
+    }
+
+    #[rstest]
+    #[case("whitelisted", Permission::Local(LocalPermission::Whitelisted {
+        schedule: Schedule::new(None, None),
+        window: None,
+        last_used: None,
+    }))]
+    #[case("blacklisted", Permission::Local(LocalPermission::Blacklisted {
+        schedule: Schedule::new(None, None),
+    }))]
+    #[case("limited", Permission::Local(LocalPermission::Limited {
+        schedule: Schedule::new(None, None),
+        uses: 5,
+    }))]
+    fn test_wildcard_permission_removal(
+        #[case] permission_type: &str,
+        #[case] permission: Permission,
+    ) {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let action = "test_action";
+        let test_actor = "test_actor";
+        let contract = ADOContract::default();
+
+        // Set up contract owner
+        contract
+            .owner
+            .save(deps.as_mut().storage, &Addr::unchecked(OWNER))
+            .unwrap();
+
+        // Enable permissioning for the action
+        ADOContract::default()
+            .permission_action(deps.as_mut().storage, action, None)
+            .unwrap();
+
+        // Set wildcard permission
+        ADOContract::set_permission(deps.as_mut().storage, action, "*", permission.clone())
+            .unwrap();
+
+        // Verify permission works
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, test_actor);
+        if permission_type == "blacklisted" {
+            assert!(
+                res.is_err(),
+                "Should be denied with blacklisted wildcard permission"
+            );
+        } else {
+            assert!(
+                res.is_ok(),
+                "Should be allowed with {} wildcard permission",
+                permission_type
+            );
+        }
+
+        // Remove wildcard permission
+        ADOContract::remove_permission(deps.as_mut().storage, action, "*").unwrap();
+
+        // Should fail now that wildcard permission is removed
+        let res = contract.is_permissioned(deps.as_mut(), env.clone(), action, test_actor);
+        assert!(
+            res.is_err(),
+            "Should fail after wildcard permission is removed"
+        );
     }
 }

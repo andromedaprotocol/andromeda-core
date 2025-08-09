@@ -112,7 +112,7 @@ fn setup(
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Campaign Tier".to_string(),
         "CT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -239,7 +239,11 @@ fn setup(
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::SetPermission {
         actors: vec![AndrAddr::from_string(crowdfund.addr().to_string())],
         action: MINT_ACTION.to_string(),
-        permission: Permission::Local(LocalPermission::whitelisted(None, None)),
+        permission: Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )),
     });
 
     cw721

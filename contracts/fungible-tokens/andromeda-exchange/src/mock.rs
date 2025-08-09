@@ -3,7 +3,7 @@
 use crate::contract::{execute, instantiate, query};
 use andromeda_fungible_tokens::cw20::ExecuteMsg as Cw20ExecuteMsg;
 use andromeda_fungible_tokens::exchange::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, RedeemResponse, SaleResponse,
+    Cw20HookMsg, ExchangeRate, ExecuteMsg, InstantiateMsg, QueryMsg, RedeemResponse, SaleResponse,
 };
 use andromeda_std::{
     amp::{AndrAddr, Recipient},
@@ -14,7 +14,7 @@ use andromeda_testing::{
     mock_ado,
     mock_contract::{MockADO, MockContract},
 };
-use cosmwasm_std::{to_json_binary, Addr, Binary, Decimal256, Empty, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Binary, Empty, Uint128};
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct MockExchange(Addr);
@@ -67,7 +67,7 @@ impl MockExchange {
         sender: Addr,
         asset: Asset,
         amount: Uint128,
-        exchange_rate: Decimal256,
+        exchange_rate: ExchangeRate,
         cw20_addr: Addr,
         schedule: Schedule,
     ) -> AppResponse {
@@ -150,22 +150,34 @@ pub fn mock_redeem_cw20_msg(recipient: Option<Recipient>) -> Cw20HookMsg {
     Cw20HookMsg::Redeem { recipient }
 }
 
-pub fn mock_replenish_redeem_cw20_msg(redeem_asset: Asset) -> Cw20HookMsg {
-    Cw20HookMsg::ReplenishRedeem { redeem_asset }
+pub fn mock_replenish_redeem_cw20_msg(
+    redeem_asset: Asset,
+    exchange_rate_type: Option<ExchangeRate>,
+) -> Cw20HookMsg {
+    Cw20HookMsg::ReplenishRedeem {
+        redeem_asset,
+        exchange_rate_type,
+    }
 }
 
 pub fn mock_redeem_native_msg(recipient: Option<Recipient>) -> ExecuteMsg {
     ExecuteMsg::Redeem { recipient }
 }
 
-pub fn mock_replenish_redeem_native_msg(redeem_asset: Asset) -> ExecuteMsg {
-    ExecuteMsg::ReplenishRedeem { redeem_asset }
+pub fn mock_replenish_redeem_native_msg(
+    redeem_asset: Asset,
+    exchange_rate_type: Option<ExchangeRate>,
+) -> ExecuteMsg {
+    ExecuteMsg::ReplenishRedeem {
+        redeem_asset,
+        exchange_rate_type,
+    }
 }
 
 pub fn mock_start_redeem_cw20_msg(
     recipient: Option<Recipient>,
     redeem_asset: Asset,
-    exchange_rate: Decimal256,
+    exchange_rate: ExchangeRate,
     schedule: Schedule,
 ) -> Cw20HookMsg {
     Cw20HookMsg::StartRedeem {
@@ -186,7 +198,7 @@ pub fn mock_cw20_send(contract: impl Into<String>, amount: Uint128, msg: Binary)
 
 pub fn mock_set_redeem_condition_native_msg(
     redeem_asset: Asset,
-    exchange_rate: Decimal256,
+    exchange_rate: ExchangeRate,
     recipient: Option<Recipient>,
     schedule: Schedule,
 ) -> ExecuteMsg {

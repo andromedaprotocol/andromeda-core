@@ -1,8 +1,8 @@
 [package]
 name = "andromeda-std"
-version = "1.5.1-b.8"
+version = "1.5.1-b.9"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 description = "The standard library for creating an Andromeda Digital Object"
 license = "MIT"
 
@@ -46,5 +46,5 @@ prost = { version = "0.13.5", default-features = false, features = [
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cw-multi-test = { workspace = true }
-rstest = "0.25.0"
+rstest = "0.26.1"
 cw-orch = { workspace = true }

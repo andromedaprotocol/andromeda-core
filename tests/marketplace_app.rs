@@ -1,32 +1,28 @@
-use andromeda_address_list::mock::{
-    mock_address_list_instantiate_msg, mock_andromeda_address_list, MockAddressList,
-};
+use andromeda_address_list::mock::*;
 use andromeda_app::app::AppComponent;
-use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
-use andromeda_cw20::mock::{mock_andromeda_cw20, mock_cw20_instantiate_msg, mock_minter, MockCW20};
-use andromeda_cw721::mock::{mock_andromeda_cw721, mock_cw721_instantiate_msg, MockCW721};
+use andromeda_app_contract::mock::*;
+use andromeda_cw20::mock::*;
+use andromeda_cw721::mock::*;
 use andromeda_finance::splitter::AddressPercent;
-use andromeda_marketplace::mock::{
-    mock_andromeda_marketplace, mock_buy_token, mock_marketplace_instantiate_msg,
-    mock_receive_packet, mock_start_sale, MockMarketplace,
-};
+use andromeda_marketplace::mock::*;
 use andromeda_non_fungible_tokens::marketplace::Cw20HookMsg;
-use andromeda_rates::mock::{mock_andromeda_rates, mock_rates_instantiate_msg, MockRates};
-use andromeda_splitter::mock::{
-    mock_andromeda_splitter, mock_splitter_instantiate_msg, mock_splitter_send_msg,
+use andromeda_rates::mock::*;
+use andromeda_splitter::mock::*;
+use andromeda_std::{
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        rates::{AllRatesResponse, LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
+    },
+    amp::{
+        messages::{AMPMsg, AMPPkt},
+        AndrAddr, Recipient,
+    },
+    common::{denom::Asset, schedule::Schedule},
+    error::ContractError,
 };
-use andromeda_std::ado_base::permissioning::{LocalPermission, Permission};
-use andromeda_std::ado_base::rates::{AllRatesResponse, LocalRate};
-use andromeda_std::ado_base::rates::{LocalRateType, LocalRateValue, PercentRate, Rate};
-use andromeda_std::amp::messages::{AMPMsg, AMPPkt};
-use andromeda_std::amp::{AndrAddr, Recipient};
-use andromeda_std::common::denom::Asset;
-use andromeda_std::common::schedule::Schedule;
-use andromeda_std::error::ContractError;
-use andromeda_testing::mock::mock_app;
-use andromeda_testing::mock_builder::MockAndromedaBuilder;
-use andromeda_testing::MockADO;
-use andromeda_testing::MockContract;
+use andromeda_testing::{
+    mock::mock_app, mock_builder::MockAndromedaBuilder, MockADO, MockContract,
+};
 use cosmwasm_std::{coin, to_json_binary, Addr, BlockInfo, Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::Executor;
@@ -56,7 +52,7 @@ fn test_marketplace_app() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -127,6 +123,15 @@ fn test_marketplace_app() {
     let address_list: MockAddressList =
         app.query_ado_by_component_name(&router, address_list_component.name);
     let rates: MockRates = app.query_ado_by_component_name(&router, rates_component.name);
+
+    // Permission the marketplace contract to call the Permission Actors action in the address list contract, because the last_used field of the whitelisted permission will have to be updated by it.
+    address_list
+        .execute_authorize_permission_actors(
+            &mut router,
+            owner.clone(),
+            vec![AndrAddr::from_string("./marketplace")],
+        )
+        .unwrap();
 
     // Set contract rate linked to the above rates contract
     marketplace
@@ -201,32 +206,13 @@ fn test_marketplace_app() {
         chain_id: block_info.chain_id,
     });
 
-    // Try adding limited permission in address list, should error
-    let err: ContractError = address_list
-        .execute_actor_permission(
-            &mut router,
-            owner.clone(),
-            vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::limited(None, None, 1),
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-
-    assert_eq!(
-        err,
-        ContractError::InvalidPermission {
-            msg: "Limited permission is not supported in address list contract".to_string(),
-        }
-    );
-
     // Blacklist buyer in address list
     address_list
         .execute_actor_permission(
             &mut router,
             owner.clone(),
             vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::blacklisted(None, None),
+            LocalPermission::blacklisted(Schedule::new(None, None)),
         )
         .unwrap();
 
@@ -260,7 +246,7 @@ fn test_marketplace_app() {
             &mut router,
             owner.clone(),
             vec![AndrAddr::from_string(buyer.clone())],
-            LocalPermission::whitelisted(None, None),
+            LocalPermission::whitelisted(Schedule::new(None, None), None, None),
         )
         .unwrap();
 
@@ -313,7 +299,7 @@ fn test_marketplace_app_recipient() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -462,7 +448,7 @@ fn test_marketplace_app_cw20_restricted() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -629,7 +615,7 @@ fn test_marketplace_app_cw20_restricted() {
                 AndrAddr::from_string(buyer.clone()),
                 AndrAddr::from_string(owner.clone()),
             ],
-            LocalPermission::whitelisted(None, None),
+            LocalPermission::whitelisted(Schedule::new(None, None), None, None),
         )
         .unwrap();
 
@@ -748,7 +734,7 @@ fn test_marketplace_app_cw20_unrestricted() {
     let cw721_init_msg = mock_cw721_instantiate_msg(
         "Test Tokens".to_string(),
         "TT".to_string(),
-        owner.to_string(),
+        AndrAddr::from_string(owner.to_string()),
         andr.kernel.addr().to_string(),
         None,
     );
@@ -914,7 +900,7 @@ fn test_marketplace_app_cw20_unrestricted() {
                 AndrAddr::from_string(buyer.clone()),
                 AndrAddr::from_string(owner.clone()),
             ],
-            LocalPermission::whitelisted(None, None),
+            LocalPermission::whitelisted(Schedule::new(None, None), None, None),
         )
         .unwrap();
 

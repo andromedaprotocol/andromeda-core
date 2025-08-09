@@ -76,6 +76,7 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             msg,
         } => execute_send_from(ctx, contract, amount, msg, action, owner),
         ExecuteMsg::Mint { recipient, amount } => execute_mint(ctx, recipient, amount),
+        ExecuteMsg::UpdateMinter { new_minter } => execute_update_minter(ctx, new_minter),
         _ => {
             let serialized = encode_binary(&msg)?;
             match from_json::<AndromedaMsg>(&serialized) {
@@ -335,6 +336,26 @@ fn execute_mint(
         env,
         info,
         Cw20ExecuteMsg::Mint { recipient, amount },
+    )?)
+}
+
+fn execute_update_minter(
+    ctx: ExecuteContext,
+    new_minter: Option<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, info, env, ..
+    } = ctx;
+
+    let new_minter = new_minter
+        .and_then(|minter| minter.get_raw_address(&deps.as_ref()).ok())
+        .map(|addr| addr.to_string());
+
+    Ok(execute_cw20(
+        deps,
+        env,
+        info,
+        Cw20ExecuteMsg::UpdateMinter { new_minter },
     )?)
 }
 

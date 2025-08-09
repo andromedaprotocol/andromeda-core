@@ -11,11 +11,12 @@ use andromeda_std::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg,
+    StdError, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
 
+use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::MsgCreateBalancerPoolResponse;
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
@@ -319,44 +320,40 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 .add_attributes(vec![attr("action", "message_forwarded_success")]))
         }
         OSMOSIS_MSG_CREATE_BALANCER_POOL_ID => {
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(format!(
+            #[allow(deprecated)]
+            if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
+                let res: MsgCreateBalancerPoolResponse = b.try_into().map_err(|_| {
+                    ContractError::Std(StdError::generic_err("Failed to parse pool ID".to_string()))
+                })?;
+
+                let pool_id = res.pool_id;
+                // This is how the lp token denom is constructed
+                let denom = format!("gamm/pool/{}", pool_id);
+
+                // Query the contract's lp token balance
+                let lp_token = deps.querier.query_balance(env.contract.address, denom)?;
+
+                let spender = SPENDER.load(deps.storage)?;
+                // Tranfer lp token to original sender
+                let msg = CosmosMsg::Bank(BankMsg::Send {
+                    to_address: spender.clone(),
+                    amount: vec![lp_token.clone()],
+                });
+
+                WITHDRAW.save(deps.storage, spender.clone(), &pool_id.to_string())?;
+                Ok(Response::default().add_message(msg).add_attributes(vec![
+                    attr("action", "balancer_pool_created"),
+                    attr("lp_token", lp_token.denom.clone()),
+                    attr("spender", spender),
+                    attr("amount", lp_token.amount.to_string()),
+                    attr("pool_id", pool_id.to_string()),
+                ]))
+            } else {
+                Err(ContractError::Std(StdError::generic_err(format!(
                     "Osmosis balancer pool creation failed with error: {:?}",
                     msg.result.unwrap_err()
-                ))));
+                ))))
             }
-            // Query this contract's balances
-            #[allow(deprecated)]
-            let balances = deps.querier.query_all_balances(env.contract.address)?;
-            // Extract the denom that contains "gamm/pool/"
-            let lp_token = balances
-                .iter()
-                .find(|coin| coin.denom.contains("gamm/pool/"))
-                .ok_or(ContractError::Std(StdError::generic_err(
-                    "LP token not found".to_string(),
-                )))?;
-
-            let spender = SPENDER.load(deps.storage)?;
-            // Tranfer lp token to original sender
-            let msg = CosmosMsg::Bank(BankMsg::Send {
-                to_address: spender.clone(),
-                amount: vec![lp_token.clone()],
-            });
-
-            let pool_id = lp_token
-                .denom
-                .rsplit('/')
-                .next()
-                .unwrap_or_default()
-                .to_string();
-
-            WITHDRAW.save(deps.storage, spender.clone(), &pool_id)?;
-            Ok(Response::default().add_message(msg).add_attributes(vec![
-                attr("action", "balancer_pool_created"),
-                attr("lp_token", lp_token.denom.clone()),
-                attr("spender", spender),
-                attr("amount", lp_token.amount.to_string()),
-            ]))
         }
         OSMOSIS_MSG_CREATE_STABLE_POOL_ID => {
             if msg.result.is_err() {

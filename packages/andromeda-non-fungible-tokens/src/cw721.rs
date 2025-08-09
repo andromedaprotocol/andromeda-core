@@ -2,6 +2,7 @@ use andromeda_std::{amp::addresses::AndrAddr, andr_exec, andr_instantiate, andr_
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Coin};
 use cw721::Expiration;
+use cw_ownable::Action;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -95,6 +96,7 @@ pub enum ExecuteMsg {
     BatchSend {
         batch: Vec<BatchSendMsg>,
     },
+    UpdateMinter(Action),
 }
 
 #[cw_serde]
@@ -154,7 +156,7 @@ pub enum QueryMsg {
     #[returns(Option<TransferAgreement>)]
     TransferAgreement { token_id: String },
     /// The current config of the contract
-    #[returns(cw721::msg::CollectionInfoAndExtensionResponse)]
+    #[returns(cw721::state::CollectionInfo)]
     ContractInfo {},
     #[returns(cw721::msg::MinterResponse)]
     Minter {},

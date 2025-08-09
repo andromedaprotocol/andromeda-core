@@ -8,7 +8,10 @@ use andromeda_modules::address_list::{
     QueryMsg,
 };
 use andromeda_std::{
-    ado_base::permissioning::LocalPermission, amp::AndrAddr, error::ContractError,
+    ado_base::permissioning::LocalPermission,
+    amp::AndrAddr,
+    common::{schedule::Schedule, Milliseconds},
+    error::ContractError,
 };
 use cosmwasm_std::{
     attr, from_json,
@@ -29,7 +32,7 @@ fn init(deps: &mut TestDeps, info: MessageInfo) {
             owner: None,
             actor_permission: Some(ActorPermission {
                 actors: vec![AndrAddr::from_string(actor.clone())],
-                permission: LocalPermission::whitelisted(None, None),
+                permission: LocalPermission::whitelisted(Schedule::new(None, None), None, None),
             }),
         },
     )
@@ -96,33 +99,32 @@ fn test_add_remove_actor() {
     let expected = Response::default().add_attributes(vec![
         attr("action", "add_actor_permission"),
         attr("actor", actor.clone()),
-        attr("permission", permission.to_string()),
+        attr(
+            "permission",
+            "whitelisted starting from:At time: 1571797419879".to_string(),
+        ),
     ]);
     assert_eq!(expected, res);
 
     // Check that the actor and permission have been saved.
     let new_permission = PERMISSIONS.load(deps.as_ref().storage, &actor).unwrap();
-    assert_eq!(new_permission, permission);
+    let expected_permission = LocalPermission::Whitelisted {
+        schedule: Schedule::new(
+            Some(andromeda_std::common::expiration::Expiry::AtTime(
+                Milliseconds(1571797419879),
+            )),
+            None,
+        ),
+        window: None,
+        last_used: None,
+    };
+    assert_eq!(new_permission, expected_permission);
 
     // Try with unauthorized address
     let anyone = deps.api.addr_make("anyone");
     let unauth_info = message_info(&anyone, &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
-
-    // // Contract permissions aren't allowed to be saved in the address list contract
-    // let contract_permission = Permission::Whitelisted(None);
-    // let msg = ExecuteMsg::PermissionActors {
-    //     actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
-    //     permission: contract_permission,
-    // };
-    // let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-    // assert_eq!(
-    //     err,
-    //     ContractError::InvalidPermission {
-    //         msg: "Contract permissions aren't allowed in the address list contract".to_string()
-    //     }
-    // );
 
     // Test remove actor
     let msg = ExecuteMsg::RemovePermissions {
@@ -172,10 +174,22 @@ fn test_add_remove_multiple_actors() {
     let expected = Response::default().add_attributes(vec![
         attr("action", "add_actor_permission"),
         attr("actor", format!("{}, {}", actor1, actor2)),
-        attr("permission", permission.to_string()),
+        attr(
+            "permission",
+            "whitelisted starting from:At time: 1571797419879".to_string(),
+        ),
     ]);
     assert_eq!(expected, res);
-
+    let expected_permission = LocalPermission::Whitelisted {
+        schedule: Schedule::new(
+            Some(andromeda_std::common::expiration::Expiry::AtTime(
+                Milliseconds(1571797419879),
+            )),
+            None,
+        ),
+        window: None,
+        last_used: None,
+    };
     // Check that the actor and permission have been saved.
     let new_permission = PERMISSIONS
         .load(
@@ -183,34 +197,21 @@ fn test_add_remove_multiple_actors() {
             &actors[0].get_raw_address(&deps.as_ref()).unwrap(),
         )
         .unwrap();
-    assert_eq!(new_permission, permission);
+    assert_eq!(new_permission, expected_permission);
     let new_permission = PERMISSIONS
         .load(
             deps.as_ref().storage,
             &actors[1].get_raw_address(&deps.as_ref()).unwrap(),
         )
         .unwrap();
-    assert_eq!(new_permission, permission);
+
+    assert_eq!(new_permission, expected_permission);
 
     // Try with unauthorized address
     let anyone = deps.api.addr_make("anyone");
     let unauth_info = message_info(&anyone, &[]);
     let res = execute(deps.as_mut(), env.clone(), unauth_info, msg).unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, res);
-
-    // // Contract permissions aren't allowed to be saved in the address list contract
-    // let contract_permission = Permission::Whitelisted(None);
-    // let msg = ExecuteMsg::PermissionActors {
-    //     actor: Addr::unchecked(MOCK_KERNEL_CONTRACT),
-    //     permission: contract_permission,
-    // };
-    // let err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
-    // assert_eq!(
-    //     err,
-    //     ContractError::InvalidPermission {
-    //         msg: "Contract permissions aren't allowed in the address list contract".to_string()
-    //     }
-    // );
 
     // Test remove actor
     let msg = ExecuteMsg::RemovePermissions {

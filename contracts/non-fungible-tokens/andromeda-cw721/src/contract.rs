@@ -13,7 +13,7 @@ use crate::state::{is_archived, ANDR_MINTER, ARCHIVED, TRANSFER_AGREEMENTS};
 use cw721::{
     execute::{
         approve, approve_all, burn_nft, instantiate as cw721_instantiate, revoke, revoke_all,
-        send_nft, transfer_nft,
+        send_nft, transfer_nft, update_minter_ownership,
     },
     msg::{Cw721InstantiateMsg, OwnerOfResponse},
     query::{
@@ -45,20 +45,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let minter = msg.minter.get_raw_address(&deps.as_ref())?.into_string();
-    let cw721_instantiate_msg = Cw721InstantiateMsg {
-        creator: msg.owner.clone(),
-        withdraw_address: None,
-        name: msg.name.clone(),
-        symbol: msg.symbol.clone(),
-        minter: Some(minter),
-    };
-    ANDR_MINTER.save(deps.storage, &msg.minter)?;
-
     let contract = ADOContract::default();
-
-    contract.permission_action(deps.storage, MINT_ACTION)?;
-
     let resp = contract.instantiate(
         deps.storage,
         env.clone(),
@@ -69,9 +56,21 @@ pub fn instantiate(
             ado_type: CONTRACT_NAME.to_string(),
             ado_version: CONTRACT_VERSION.to_string(),
             kernel_address: msg.kernel_address,
-            owner: msg.owner,
+            owner: msg.owner.clone(),
         },
     )?;
+
+    let minter = msg.minter.get_raw_address(&deps.as_ref())?.into_string();
+    let cw721_instantiate_msg = Cw721InstantiateMsg {
+        creator: msg.owner.clone(),
+        withdraw_address: None,
+        name: msg.name.clone(),
+        symbol: msg.symbol.clone(),
+        minter: Some(minter),
+    };
+    ANDR_MINTER.save(deps.storage, &msg.minter)?;
+
+    contract.permission_action(deps.storage, MINT_ACTION, None)?;
 
     let res = cw721_instantiate(deps.branch(), &env, &info, cw721_instantiate_msg)?;
 
@@ -131,6 +130,10 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             let res = revoke_all(ctx.deps, &ctx.env, &ctx.info, operator)?;
             Ok(res)
         }
+        ExecuteMsg::UpdateMinter(action) => {
+            let res = update_minter_ownership(ctx.deps, &ctx.env, &ctx.info, action)?;
+            Ok(res)
+        }
         _ => ADOContract::default().execute(ctx, msg),
     }?;
     Ok(res)
@@ -152,7 +155,8 @@ macro_rules! ensure_can_mint {
                 &$ctx.env,
                 &$ctx.amp_ctx,
                 MINT_ACTION,
-            )?;
+            )?
+            .0;
 
         ensure!(has_mint_permission, ContractError::Unauthorized {});
     };
@@ -270,7 +274,6 @@ fn execute_transfer(
     } else {
         Uint128::zero()
     };
-
     let approvals = query_approvals(deps.as_ref(), &env, token_id.clone(), true)?;
     let operators = query_operators(deps.as_ref(), &env, owner.clone(), true, None, None)?;
     check_can_send(
@@ -283,7 +286,6 @@ fn execute_transfer(
         approvals.approvals,
         operators.operators,
     )?;
-
     // If we reach here we can assume the sender is authorised to transfer the NFT
     // We mock message info to have the owner of the NFT be the sender to authorise send.
     let mut transfer_info = info.clone();
