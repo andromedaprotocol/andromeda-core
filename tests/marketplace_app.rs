@@ -578,7 +578,7 @@ fn test_marketplace_app_cw20_restricted() {
     let rates_component =
         AppComponent::new("rates", "rates", to_json_binary(&rates_init_msg).unwrap());
 
-    app.execute_add_app_component(&mut router, owner.clone(), rates_component.clone())
+    app.execute_add_app_component(&mut router, owner.clone(), rates_component.clone(), None)
         .unwrap();
 
     let rates: MockRates = app.query_ado_by_component_name(&router, rates_component.name);

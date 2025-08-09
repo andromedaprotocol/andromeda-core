@@ -9,6 +9,8 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Coin};
 use cw20::Cw20ReceiveMsg;
 
+pub const CROSS_CHAIN_ENABLED: &str = "cross_chain_enabled";
+
 #[cw_serde]
 pub struct ChannelInfo {
     pub kernel_address: String,

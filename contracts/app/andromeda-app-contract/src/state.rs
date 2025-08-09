@@ -153,7 +153,8 @@ pub fn create_cross_chain_message(
     )?;
     let mut new_components: Vec<AppComponent> = Vec::new();
     for component in components {
-        let name = component.name;
+        let name = component.name.clone();
+
         let new_component = match component.component_type {
             ComponentType::CrossChain(CrossChainComponent {
                 chain,

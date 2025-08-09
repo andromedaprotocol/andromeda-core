@@ -1,11 +1,12 @@
 use crate::state::{
-    add_app_component, generate_assign_app_message, generate_ownership_message,
-    load_component_addresses, ADO_ADDRESSES, APP_NAME,
+    add_app_component, create_cross_chain_message, generate_assign_app_message,
+    generate_ownership_message, load_component_addresses, ADO_ADDRESSES, APP_NAME,
 };
-use andromeda_app::app::{AppComponent, ComponentType};
+use andromeda_app::app::{AppComponent, ChainInfo, ComponentType};
 use andromeda_std::common::{context::ExecuteContext, reply::ReplyId};
 use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
+use andromeda_std::os::kernel::CROSS_CHAIN_ENABLED;
 use andromeda_std::os::vfs::ExecuteMsg as VFSExecuteMsg;
 use andromeda_std::{ado_contract::ADOContract, amp::AndrAddr};
 
@@ -17,12 +18,15 @@ use cosmwasm_std::{
 pub fn handle_add_app_component(
     ctx: ExecuteContext,
     component: AppComponent,
+    chain_info: Option<ChainInfo>,
 ) -> Result<Response, ContractError> {
-    let querier = &ctx.deps.querier;
-    let env = ctx.env;
-    let sender = ctx.info.sender.as_str();
+    let ExecuteContext {
+        deps, env, info, ..
+    } = ctx;
+    let querier = &deps.querier;
+    let sender = info.sender.as_str();
 
-    let maybe_app_component = ADO_ADDRESSES.may_load(ctx.deps.storage, &component.name)?;
+    let maybe_app_component = ADO_ADDRESSES.may_load(deps.storage, &component.name)?;
     ensure!(
         maybe_app_component.is_none(),
         ContractError::InvalidComponent {
@@ -30,35 +34,43 @@ pub fn handle_add_app_component(
         }
     );
 
-    ensure!(
-        !matches!(component.component_type, ComponentType::CrossChain(..)),
-        ContractError::CrossChainComponentsCurrentlyDisabled {}
-    );
+    let kernel_addr = ctx.contract.get_kernel_address(deps.storage)?;
 
-    let idx = add_app_component(ctx.deps.storage, &component)?;
+    let is_cross_chain_enabled =
+        AOSQuerier::get_env_variable::<String>(querier, &kernel_addr, CROSS_CHAIN_ENABLED)?
+            .unwrap_or("false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false);
+
+    if !is_cross_chain_enabled {
+        ensure!(
+            !matches!(component.component_type, ComponentType::CrossChain(..)),
+            ContractError::CrossChainComponentsCurrentlyDisabled {}
+        );
+    }
+
+    let idx = add_app_component(deps.storage, &component)?;
     ensure!(idx < 50, ContractError::TooManyAppComponents {});
 
-    let adodb_addr = ctx.contract.get_adodb_address(ctx.deps.storage, querier)?;
-    let vfs_addr = ctx.contract.get_vfs_address(ctx.deps.storage, querier)?;
+    let adodb_addr = ctx.contract.get_adodb_address(deps.storage, querier)?;
+    let vfs_addr = ctx.contract.get_vfs_address(deps.storage, querier)?;
 
     let mut resp = Response::new()
         .add_attribute("method", "add_app_component")
         .add_attribute("name", component.name.clone())
         .add_attribute("type", component.ado_type.clone());
 
-    let app_name = APP_NAME.load(ctx.deps.storage)?;
-    let new_addr = component.get_new_addr(
-        ctx.deps.api,
-        &adodb_addr,
-        querier,
-        env.contract.address.clone(),
-    )?;
+    let app_name = APP_NAME.load(deps.storage)?;
+    let new_addr =
+        component.get_new_addr(deps.api, &adodb_addr, querier, env.contract.address.clone())?;
+
+    let vec_chain_info = chain_info.clone().map(|chain_info| vec![chain_info]);
     let registration_msg = component.generate_vfs_registration(
         new_addr.clone(),
         &env.contract.address,
         &app_name,
         // TODO: Fix this in future for x-chain components
-        None,
+        vec_chain_info,
         &adodb_addr,
         &vfs_addr,
     )?;
@@ -80,8 +92,8 @@ pub fn handle_add_app_component(
     }
 
     if let ComponentType::Symlink(ref val) = component.component_type {
-        let component_address: Addr = val.get_raw_address(&ctx.deps.as_ref())?;
-        ADO_ADDRESSES.save(ctx.deps.storage, &component.name, &component_address)?;
+        let component_address: Addr = val.get_raw_address(&deps.as_ref())?;
+        ADO_ADDRESSES.save(deps.storage, &component.name, &component_address)?;
     } else if let ComponentType::New(_) = component.component_type {
         ensure!(
             new_addr.is_some(),
@@ -89,11 +101,19 @@ pub fn handle_add_app_component(
                 name: "Could not generate address for new component".to_string()
             }
         );
-        ADO_ADDRESSES.save(
-            ctx.deps.storage,
-            &component.name,
-            &new_addr.clone().unwrap(),
-        )?;
+        ADO_ADDRESSES.save(deps.storage, &component.name, &new_addr.clone().unwrap())?;
+    } else if let ComponentType::CrossChain(_) = component.component_type {
+        if let Some(chain_info) = chain_info {
+            let sub_msg = create_cross_chain_message(
+                &deps,
+                app_name.clone(),
+                info.sender.to_string(),
+                vec![component.clone()],
+                chain_info.clone(),
+                vec![chain_info.clone()],
+            )?;
+            resp = resp.add_submessage(sub_msg);
+        }
     }
 
     let event = component.generate_event(new_addr);

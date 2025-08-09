@@ -37,7 +37,6 @@ pub struct CrossChainComponent {
 pub enum ComponentType {
     New(Binary),
     Symlink(AndrAddr),
-    #[serde(skip)]
     CrossChain(CrossChainComponent),
 }
 
@@ -315,6 +314,7 @@ pub enum ExecuteMsg {
     #[attrs(restricted)]
     AddAppComponent {
         component: AppComponent,
+        chain_info: Option<ChainInfo>,
     },
     ClaimOwnership {
         name: Option<String>,
