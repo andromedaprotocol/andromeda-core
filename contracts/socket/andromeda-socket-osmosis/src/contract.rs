@@ -161,36 +161,34 @@ pub fn execute_create_pool(
             asset: "Osmo is required for pool creation fee".to_string(),
         }
     );
-    ensure!(
-        funds.len() == 2 || funds.len() == 3,
-        ContractError::InvalidAsset {
-            asset:
-                "If creating a pool that includes osmo, 2 coins are expected, if not, 3 are expected"
-                    .to_string(),
-        }
-    );
-
     let (denom0, amount0, denom1, amount1) = if funds.len() == 2 {
-        (
+        Ok((
             &funds[0].denom,
             &funds[0].amount,
             &funds[1].denom,
             &funds[1].amount,
-        )
-    } else {
+        ))
+    } else if funds.len() == 3 {
         // In that case, Osmo is only present for the fee, so we filter it since it's not intended to part of the pool
         let filtered_funds: Vec<&Coin> = funds
             .iter()
             .map(|coin| coin)
             .filter(|coin| coin.denom != UOSMO)
             .collect();
-        (
+        Ok((
             &filtered_funds[0].denom,
             &filtered_funds[0].amount,
             &filtered_funds[1].denom,
             &filtered_funds[1].amount,
-        )
-    };
+        ))
+    } else {
+        // Number of assets can't be other than 2 or 3
+        Err(ContractError::InvalidAsset {
+            asset:
+                "If creating a pool that includes osmo, 2 coins are expected, if not, 3 are expected"
+                    .to_string(),
+        })
+    }?;
 
     let contract_address: String = env.contract.address.into();
 
