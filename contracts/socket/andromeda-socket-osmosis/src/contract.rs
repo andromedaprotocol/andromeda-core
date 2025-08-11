@@ -201,9 +201,20 @@ pub fn execute_create_pool(
             pool_params,
             pool_assets,
         } => {
+            // Check if the pool includes uosmo
             if pool_assets
                 .iter()
-                .map(|asset| asset.token.as_ref().unwrap().denom.clone())
+                .map(|asset| {
+                    asset
+                        .token
+                        .as_ref()
+                        .ok_or(ContractError::InvalidAsset {
+                            asset: "Can't have empty token in pool asset".to_string(),
+                        }) // custom error type
+                        .map(|t| t.denom.clone())
+                })
+                .collect::<Result<Vec<_>, _>>()? // short-circuits on error
+                .into_iter()
                 .any(|denom| denom == UOSMO)
             {
                 ensure!(
