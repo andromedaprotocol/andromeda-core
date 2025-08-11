@@ -10,8 +10,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, SubMsgResponse, SubMsgResult,
+    attr, ensure, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
@@ -46,6 +46,7 @@ use crate::{
 use andromeda_socket::osmosis::{
     ExecuteMsg, InstantiateMsg, Pool, QueryMsg, Slippage, SwapAmountInRoute,
 };
+const UOSMO: &str = "uosmo";
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-osmosis";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -148,15 +149,48 @@ pub fn execute_create_pool(
         deps, env, info, ..
     } = ctx;
     let funds = info.funds.as_slice();
-    if funds.len() != 2 {
-        return Err(ContractError::InvalidAsset {
-            asset: "Expected exactly 2 coins for pool creation".to_string(),
-        });
-    }
-    let denom0 = &funds[0].denom;
-    let amount0 = &funds[0].amount;
-    let denom1 = &funds[1].denom;
-    let amount1 = &funds[1].amount;
+
+    // Osmo should always be present since it's required for the pool creation fee.
+    // If Osmo is one of the pool assets, the total would be 2, if not, the total should be 3
+    ensure!(
+        funds
+            .iter()
+            .map(|coin| &coin.denom)
+            .any(|denom| denom == UOSMO),
+        ContractError::InvalidAsset {
+            asset: "Osmo is required for pool creation fee".to_string(),
+        }
+    );
+    ensure!(
+        funds.len() == 2 || funds.len() == 3,
+        ContractError::InvalidAsset {
+            asset:
+                "If creating a pool that includes osmo, 2 coins are expected, if not, 3 are expected"
+                    .to_string(),
+        }
+    );
+
+    let (denom0, amount0, denom1, amount1) = if funds.len() == 2 {
+        (
+            &funds[0].denom,
+            &funds[0].amount,
+            &funds[1].denom,
+            &funds[1].amount,
+        )
+    } else {
+        // In that case, Osmo is only present for the fee, so we filter it since it's not intended to part of the pool
+        let filtered_funds: Vec<&Coin> = funds
+            .iter()
+            .map(|coin| coin)
+            .filter(|coin| coin.denom != UOSMO)
+            .collect();
+        (
+            &filtered_funds[0].denom,
+            &filtered_funds[0].amount,
+            &filtered_funds[1].denom,
+            &filtered_funds[1].amount,
+        )
+    };
 
     let contract_address: String = env.contract.address.into();
 
@@ -167,6 +201,25 @@ pub fn execute_create_pool(
             pool_params,
             pool_assets,
         } => {
+            if pool_assets
+                .iter()
+                .map(|asset| asset.token.as_ref().unwrap().denom.clone())
+                .any(|denom| denom == UOSMO)
+            {
+                ensure!(
+                    funds.len() == 2,
+                    ContractError::InvalidAsset {
+                        asset: "Creating a pool with Osmo requires exactly 2 assets".to_string()
+                    }
+                )
+            } else {
+                ensure!(
+                    funds.len() == 3,
+                    ContractError::InvalidAsset {
+                        asset: "Creating a pool without Osmo requires exactly 3 assets".to_string()
+                    }
+                )
+            };
             let msg = MsgCreateBalancerPool {
                 sender: contract_address.clone(),
                 pool_params,

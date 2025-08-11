@@ -16,6 +16,7 @@ struct TestCase {
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
+const OSMO_POOL_CREATION_FEE: u128 = 1_000_000;
 
 #[fixture]
 fn setup() -> TestCase {
@@ -86,13 +87,17 @@ fn test_create_pool(setup: TestCase) {
 
     // The contract itself should have those funds, I funded the contract then called this function
     // The contract receives the lp tokens and then transfers them to the user in the reply function
+    // The LP creation fee is 1,000,000uosmo
     let res = osmosis_socket_contract
         .create_pool(
             andromeda_socket::osmosis::Pool::Balancer {
                 pool_params: Some(pool_params),
                 pool_assets,
             },
-            &[coin(1000, "uion"), coin(10000, "uosmo")],
+            &[
+                coin(1000, "uion"),
+                coin(10000 + OSMO_POOL_CREATION_FEE, "uosmo"),
+            ],
         )
         .unwrap();
     println!("res: {:?}", res);
