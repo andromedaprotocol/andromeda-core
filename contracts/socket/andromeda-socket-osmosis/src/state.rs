@@ -1,5 +1,5 @@
 use andromeda_std::amp::{messages::AMPCtx, AndrAddr, Recipient};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Coin, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -28,3 +28,5 @@ pub const SPENDER: Item<String> = Item::new("spender");
 
 // pool creator to pool id
 pub const WITHDRAW: Map<String, String> = Map::new("withdraw");
+
+pub const POTENTIAL_REFUND: Map<String, Vec<Coin>> = Map::new("potential_refund");

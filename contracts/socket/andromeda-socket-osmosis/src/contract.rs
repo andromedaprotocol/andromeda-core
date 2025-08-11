@@ -34,7 +34,7 @@ use crate::osmosis::{
     OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
     OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{SPENDER, WITHDRAW};
+use crate::state::{POTENTIAL_REFUND, SPENDER, WITHDRAW};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -148,6 +148,7 @@ pub fn execute_create_pool(
     let ExecuteContext {
         deps, env, info, ..
     } = ctx;
+    POTENTIAL_REFUND.save(deps.storage, info.sender.clone().into_string(), &info.funds)?;
     let funds = info.funds.as_slice();
 
     // Osmo should always be present since it's required for the pool creation fee.
@@ -352,8 +353,8 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, Co
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
-    match msg.id {
+pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    let res = match msg.id {
         OSMOSIS_MSG_SWAP_ID => {
             let state: ForwardReplyState = FORWARD_REPLY_STATE.load(deps.storage)?;
             FORWARD_REPLY_STATE.remove(deps.storage);
@@ -364,7 +365,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))))
             } else {
-                handle_osmosis_swap_reply(deps, env, msg, state)
+                handle_osmosis_swap_reply(deps.branch(), env.clone(), msg, state)
             }
         }
         OSMOSIS_MSG_FORWARD_ID => {
@@ -389,7 +390,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 let denom = format!("gamm/pool/{}", pool_id);
 
                 // Query the contract's lp token balance
-                let lp_token = deps.querier.query_balance(env.contract.address, denom)?;
+                let lp_token = deps
+                    .querier
+                    .query_balance(env.clone().contract.address, denom)?;
 
                 let spender = SPENDER.load(deps.storage)?;
                 // Tranfer lp token to original sender
@@ -453,5 +456,29 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),
         ))),
+    };
+    let sender = SPENDER.load(deps.storage)?;
+    let funds = POTENTIAL_REFUND.load(deps.storage, sender.clone())?;
+    POTENTIAL_REFUND.remove(deps.storage, sender.clone());
+
+    let res = res?; // An error automatically takes care of the refund
+
+    // Process potential refund
+    let mut refund_msgs: Vec<CosmosMsg> = Vec::new();
+    for fund in funds {
+        // Query balance
+        let coin = deps
+            .querier
+            .query_balance(env.contract.address.clone(), fund.denom)?;
+        // The funds intended for pool creation have been placed in the pool at this point
+        if !coin.amount.is_zero() {
+            let refund_msg = CosmosMsg::Bank(BankMsg::Send {
+                to_address: sender.clone(),
+                amount: vec![coin],
+            });
+            refund_msgs.push(refund_msg);
+        }
     }
+
+    Ok(res.add_messages(refund_msgs))
 }
