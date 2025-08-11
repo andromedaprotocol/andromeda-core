@@ -170,11 +170,7 @@ pub fn execute_create_pool(
         ))
     } else if funds.len() == 3 {
         // In that case, Osmo is only present for the fee, so we filter it since it's not intended to part of the pool
-        let filtered_funds: Vec<&Coin> = funds
-            .iter()
-            .map(|coin| coin)
-            .filter(|coin| coin.denom != UOSMO)
-            .collect();
+        let filtered_funds: Vec<&Coin> = funds.iter().filter(|coin| coin.denom != UOSMO).collect();
         Ok((
             &filtered_funds[0].denom,
             &filtered_funds[0].amount,
