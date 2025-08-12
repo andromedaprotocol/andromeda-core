@@ -1,4 +1,4 @@
-use crate::state::{ADMINS, LOCKED};
+use crate::state::{authorize, ADMINS, LOCKED};
 use andromeda_socket::proxy::{
     AllLockedResponse, ExecuteMsg, InstantiateMsg, LockedInfo, LockedResponse, QueryMsg,
 };
@@ -10,10 +10,8 @@ use andromeda_std::{
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
 };
-use cosmwasm_std::{
-    ensure, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg,
-};
 use cosmwasm_std::{entry_point, CosmosMsg, WasmMsg};
+use cosmwasm_std::{Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg};
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-proxy";
@@ -55,27 +53,10 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             contract_addr,
             message,
         } => send_execute(ctx, contract_addr, message),
-        // ExecuteMsg::Receive(msg) => execute_receive(ctx, msg),
+        ExecuteMsg::ModifyAdmins { admins } => execute_modify_admins(ctx, admins),
         _ => ADOContract::default().execute(ctx, msg),
     }
 }
-
-// fn execute_receive(
-//     ctx: ExecuteContext,
-//     receive_msg: Cw20ReceiveMsg,
-// ) -> Result<Response, ContractError> {
-//     match from_json(&receive_msg.msg)? {
-//         Cw20HookMsg::Lock { recipient } => {
-//             let cw20_addr = ctx.info.sender.clone();
-//             let user_addr = ctx.deps.api.addr_validate(&receive_msg.sender)?;
-//             let amount = receive_msg.amount;
-//             let recipient = recipient
-//                 .map(|r| r.get_raw_address(&ctx.deps.as_ref()))
-//                 .transpose()?
-//                 .unwrap_or(user_addr);
-//         }
-//     }
-// }
 
 // Used for cross-chain creation of denom
 fn send_execute(
@@ -83,34 +64,31 @@ fn send_execute(
     contract_addr: AndrAddr,
     message: Binary,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, info, .. } = ctx;
-
-    // Fetch original sender of the amp packet (if available)
-    let original_sender = ctx.amp_ctx.and_then(|pkt| Some(pkt.ctx.get_origin()));
-    let admins = ADMINS.load(deps.storage)?;
-
-    let sender_to_check = match original_sender {
-        Some(sender) => sender,
-        // The user could eventually authorize his wallet address on the chain, so the message doesn't have to come from as an AMP Packet
-        None => info.sender.to_string(),
-    };
-
-    // Check authority
-    ensure!(
-        admins.contains(&sender_to_check),
-        ContractError::Unauthorized {}
-    );
+    authorize(&ctx)?;
 
     // Forward the message
     let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: contract_addr.get_raw_address(&deps.as_ref())?.into_string(),
+        contract_addr: contract_addr
+            .get_raw_address(&ctx.deps.as_ref())?
+            .into_string(),
         msg: message,
-        funds: info.funds,
+        funds: ctx.info.funds,
     }));
 
     Ok(Response::default()
         .add_submessage(sub_msg)
         .add_attribute("action", "send_execute"))
+}
+
+fn execute_modify_admins(
+    ctx: ExecuteContext,
+    admins: Vec<String>,
+) -> Result<Response, ContractError> {
+    authorize(&ctx)?;
+
+    ADMINS.save(ctx.deps.storage, &admins)?;
+
+    Ok(Response::default().add_attribute("action", "modify_admins"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

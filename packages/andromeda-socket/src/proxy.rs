@@ -5,7 +5,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, Env, QuerierWrapper, QueryRequest, Uint128, WasmQuery,
 };
-use cw20::{Cw20QueryMsg, Cw20ReceiveMsg, TokenInfoResponse};
+use cw20::{Cw20QueryMsg, TokenInfoResponse};
 
 #[andr_instantiate]
 #[cw_serde]
@@ -27,8 +27,6 @@ pub enum ExecuteMsg {
     ModifyAdmins {
         admins: Vec<String>,
     },
-
-    Receive(Cw20ReceiveMsg),
 }
 
 #[cw_serde]
