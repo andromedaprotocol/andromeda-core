@@ -71,12 +71,18 @@ pub enum ExecuteMsg {
     CreatePairAndProvideLiquidity {
         /// The pair type (exposed in [`PairType`])
         pair_type: PairType,
-        /// The assets to create the pool for
-        asset_infos: Vec<AssetInfoAstroport>,
         /// Optional binary serialised parameters for custom pool types
         init_params: Option<Binary>,
+        /// The assets used for creating pair type
+        /// AssetEntry {
+        ///     info : AssetInfo {
+        ///         Token: {contract: addr}
+        ///         NativeToken: {denom: String}
+        ///     }
+        ///     amount: Uint128
+        /// }
         /// The assets to deposit as liquidity
-        assets: Vec<AssetEntry>,
+        assets: Vec<AndromedaAssetEntry>,
         /// The slippage tolerance for the liquidity provision
         slippage_tolerance: Option<Decimal>,
         /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
@@ -282,6 +288,14 @@ pub struct AssetEntry {
     pub amount: Uint128,
 }
 
+#[cw_serde]
+pub struct AndromedaAssetEntry {
+    /// Asset info
+    pub info: AssetInfoAstroport,
+    /// Asset amount
+    pub amount: Uint128,
+}
+
 /// Astroport Pair contract execute messages
 #[cw_serde]
 pub enum PairExecuteMsg {
@@ -302,6 +316,43 @@ pub enum PairExecuteMsg {
 pub struct PairAddressResponse {
     /// The pair contract address
     pub pair_address: Option<String>,
+}
+
+pub fn transform_asset_entry_info(
+    asset_entry: &AndromedaAssetEntry,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    match &asset_entry.info {
+        AssetInfoAstroport::Token { contract_addr } => Ok(AssetInfo::Token {
+            contract_addr: contract_addr.get_raw_address(&deps.as_ref())?,
+        }),
+        AssetInfoAstroport::NativeToken { denom } => Ok(AssetInfo::NativeToken {
+            denom: denom.clone(),
+        }),
+    }
+}
+
+pub fn transform_asset_entry(
+    asset_entries: &[AndromedaAssetEntry],
+    deps: &DepsMut,
+) -> Result<Vec<AssetEntry>, ContractError> {
+    asset_entries
+        .iter()
+        .map(|entry| {
+            let info = match &entry.info {
+                AssetInfoAstroport::Token { contract_addr } => AssetInfo::Token {
+                    contract_addr: contract_addr.get_raw_address(&deps.as_ref())?,
+                },
+                AssetInfoAstroport::NativeToken { denom } => AssetInfo::NativeToken {
+                    denom: denom.clone(),
+                },
+            };
+            Ok(AssetEntry {
+                info,
+                amount: entry.amount,
+            })
+        })
+        .collect()
 }
 
 pub fn transform_asset_info(

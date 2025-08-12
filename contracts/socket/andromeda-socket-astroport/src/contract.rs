@@ -36,9 +36,9 @@ use crate::{
 };
 
 use andromeda_socket::astroport::{
-    transform_asset_info, AssetEntry, AssetInfo, AssetInfoAstroport, Cw20HookMsg, ExecuteMsg,
-    InstantiateMsg, PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse,
-    SwapOperation,
+    transform_asset_entry, transform_asset_entry_info, transform_asset_info, AndromedaAssetEntry,
+    AssetEntry, AssetInfo, AssetInfoAstroport, Cw20HookMsg, ExecuteMsg, InstantiateMsg,
+    PairExecuteMsg, PairType, QueryMsg, SimulateSwapOperationResponse, SwapOperation,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-astroport";
@@ -126,7 +126,6 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         ),
         ExecuteMsg::CreatePairAndProvideLiquidity {
             pair_type,
-            asset_infos,
             init_params,
             assets,
             slippage_tolerance,
@@ -135,7 +134,6 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
         } => create_pair_and_provide_liquidity(
             ctx,
             pair_type,
-            asset_infos,
             init_params,
             assets,
             slippage_tolerance,
@@ -399,9 +397,8 @@ fn execute_update_swap_router(
 fn create_pair_and_provide_liquidity(
     ctx: ExecuteContext,
     pair_type: PairType,
-    asset_infos: Vec<AssetInfoAstroport>,
     init_parameters: Option<Binary>,
-    assets: Vec<AssetEntry>,
+    assets: Vec<AndromedaAssetEntry>,
     slippage_tolerance: Option<Decimal>,
     auto_stake: Option<bool>,
     receiver: Option<AndrAddr>,
@@ -412,7 +409,7 @@ fn create_pair_and_provide_liquidity(
 
     // Store the liquidity provision parameters for use in the reply handler
     let liquidity_state = LiquidityProvisionState {
-        assets: assets.clone(),
+        assets: transform_asset_entry(&assets, &deps)?,
         slippage_tolerance,
         auto_stake,
         receiver,
@@ -420,9 +417,9 @@ fn create_pair_and_provide_liquidity(
     };
     LIQUIDITY_PROVISION_STATE.save(deps.storage, &liquidity_state)?;
 
-    let asset_infos: Vec<AssetInfo> = asset_infos
+    let asset_infos: Vec<AssetInfo> = assets
         .iter()
-        .map(|asset_info| transform_asset_info(asset_info, &deps))
+        .map(|asset| transform_asset_entry_info(asset, &deps))
         .collect::<Result<Vec<AssetInfo>, ContractError>>()?;
 
     let create_factory_pair_msg = AstroportFactoryExecuteMsg::CreatePair {
