@@ -183,6 +183,51 @@ fn handle_receive_cw20(
                 operations,
             )
         }
+        Cw20HookMsg::CreatePairAndProvideLiquidity {
+            pair_type,
+            asset_infos,
+            init_params,
+            mut assets,
+            slippage_tolerance,
+            auto_stake,
+            receiver,
+        } => {
+            // Ensure the CW20 amount from hook is reflected in assets for the sending token
+            // Replace or append the asset entry corresponding to `from_addr`
+            let from_cw20_addr = from_addr.get_raw_address(&ctx.deps.as_ref())?;
+            let mut found = false;
+            for a in assets.iter_mut() {
+                if let AssetInfo::Token { contract_addr } = &a.info {
+                    if contract_addr == &from_cw20_addr {
+                        a.amount = amount;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if !found {
+                assets.push(AssetEntry {
+                    info: AssetInfo::Token {
+                        contract_addr: from_cw20_addr.clone(),
+                    },
+                    amount,
+                });
+            }
+
+            // Persist state so the reply path can skip TransferFrom for this cw20
+            let liquidity_state = LiquidityProvisionState {
+                assets: assets.clone(),
+                slippage_tolerance,
+                auto_stake,
+                receiver,
+                sender: sender.clone(),
+                cw20_already_received: true,
+            };
+            LIQUIDITY_PROVISION_STATE.save(ctx.deps.storage, &liquidity_state)?;
+
+            // Kick off CreatePair; ProvideLiquidity will be executed in reply using saved state
+            create_factory_pair(ctx, pair_type, asset_infos, init_params)
+        }
     }
 }
 
@@ -417,6 +462,7 @@ fn create_pair_and_provide_liquidity(
         auto_stake,
         receiver,
         sender: info.sender.to_string(),
+        cw20_already_received: false,
     };
     LIQUIDITY_PROVISION_STATE.save(deps.storage, &liquidity_state)?;
 
@@ -627,17 +673,20 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         });
                     }
                     AssetInfo::Token { contract_addr } => {
-                        // Set allowance for the pair contract to spend CW20 tokens
-                        let response_transfer_tokens = wasm_execute(
-                            contract_addr.clone(),
-                            &Cw20ExecuteMsg::TransferFrom {
-                                owner: liquidity_state.sender.clone(),
-                                recipient: env.contract.address.to_string(),
-                                amount: asset.amount,
-                            },
-                            vec![],
-                        )?;
-                        response_msgs.push(response_transfer_tokens);
+                        // If CW20 came via hook, it's already held by this contract; skip TransferFrom
+                        if !liquidity_state.cw20_already_received {
+                            let response_transfer_tokens = wasm_execute(
+                                contract_addr.clone(),
+                                &Cw20ExecuteMsg::TransferFrom {
+                                    owner: liquidity_state.sender.clone(),
+                                    recipient: env.contract.address.to_string(),
+                                    amount: asset.amount,
+                                },
+                                vec![],
+                            )?;
+                            response_msgs.push(response_transfer_tokens);
+                        }
+                        // Set allowance for the pair contract to spend CW20 tokens owned by this socket
                         let allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
                             spender: pair_address.clone(),
                             amount: asset.amount,

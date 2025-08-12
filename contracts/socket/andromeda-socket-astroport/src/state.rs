@@ -47,6 +47,8 @@ pub struct LiquidityProvisionState {
     pub receiver: Option<AndrAddr>,
     /// The sender of the liquidity provision
     pub sender: String,
+    /// True if CW20 tokens have already been transferred to this socket via CW20 hook and should not be transfered again
+    pub cw20_already_received: bool,
 }
 
 pub const FORWARD_REPLY_STATE: Item<ForwardReplyState> = Item::new("forward_reply_state");

@@ -109,6 +109,25 @@ pub enum Cw20HookMsg {
         /// The swap operations that is supposed to be taken
         operations: Option<Vec<SwapOperation>>,
     },
+    /// Create a pair and provide liquidity in a single CW20 hook-driven flow.
+    /// Note: the CW20 amount for the sending token is taken from the hook `amount` and will override
+    /// any corresponding entry in `assets` to prevent spoofing.
+    CreatePairAndProvideLiquidity {
+        /// The pair type (exposed in [`PairType`])
+        pair_type: PairType,
+        /// The assets to create the pool for
+        asset_infos: Vec<AssetInfoAstroport>,
+        /// Optional binary serialised parameters for custom pool types
+        init_params: Option<Binary>,
+        /// The assets to deposit as liquidity (the CW20 sending token amount is overridden by hook amount)
+        assets: Vec<AssetEntry>,
+        /// The slippage tolerance for the liquidity provision
+        slippage_tolerance: Option<Decimal>,
+        /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
+        auto_stake: Option<bool>,
+        /// The receiver of LP tokens (if different from sender)
+        receiver: Option<AndrAddr>,
+    },
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::QueryFns))]
