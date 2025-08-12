@@ -803,6 +803,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "andromeda-proxy"
+version = "0.1.0"
+dependencies = [
+ "andromeda-socket",
+ "andromeda-std",
+ "andromeda-testing",
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "cw-multi-test",
+ "cw-orch",
+ "cw-orch-daemon 0.24.6",
+ "cw-storage-plus 2.0.0",
+ "cw-utils 2.0.0",
+ "cw2 2.0.0",
+ "cw20 2.0.0",
+ "osmosis-std",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "andromeda-rate-limiting-withdrawals"
 version = "2.1.1-b.4"
 dependencies = [
