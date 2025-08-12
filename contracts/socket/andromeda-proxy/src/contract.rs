@@ -84,7 +84,8 @@ fn send_execute(
     message: Binary,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, info, .. } = ctx;
-    // Check authority
+
+    // Fetch original sender of the amp packet (if available)
     let original_sender = ctx.amp_ctx.and_then(|pkt| Some(pkt.ctx.get_origin()));
     let admins = ADMINS.load(deps.storage)?;
 
@@ -94,6 +95,7 @@ fn send_execute(
         None => info.sender.to_string(),
     };
 
+    // Check authority
     ensure!(
         admins.contains(&sender_to_check),
         ContractError::Unauthorized {}
@@ -115,7 +117,6 @@ fn send_execute(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Locked { cw20_addr } => encode_binary(&query_locked(deps, cw20_addr)?),
-
         QueryMsg::AllLocked {} => encode_binary(&query_all_locked(deps)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
