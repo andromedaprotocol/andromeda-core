@@ -1,6 +1,6 @@
 use crate::state::{authorize, ADMINS, LOCKED};
 use andromeda_socket::proxy::{
-    AllLockedResponse, ExecuteMsg, InstantiateMsg, LockedInfo, LockedResponse, QueryMsg,
+    AllLockedResponse, ExecuteMsg, InitParams, InstantiateMsg, LockedInfo, LockedResponse, QueryMsg,
 };
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
@@ -49,6 +49,12 @@ pub fn instantiate(
 #[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::Instantiate {
+            init_params,
+            message,
+            admin,
+            label,
+        } => send_instantiate(ctx, init_params, message, admin, label),
         ExecuteMsg::Execute {
             contract_addr,
             message,
@@ -78,6 +84,34 @@ fn send_execute(
     Ok(Response::default()
         .add_submessage(sub_msg)
         .add_attribute("action", "send_execute"))
+}
+
+fn send_instantiate(
+    ctx: ExecuteContext,
+    init_params: InitParams,
+    message: Binary,
+    admin: Option<String>,
+    label: Option<String>,
+) -> Result<Response, ContractError> {
+    authorize(&ctx)?;
+
+    let code_id = match init_params {
+        InitParams::CodeId(code_id) => code_id,
+        InitParams::AdoVersion(adoversion) => todo!(),
+    };
+
+    // Forward the message
+    let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Instantiate {
+        admin,
+        code_id,
+        msg: message,
+        funds: ctx.info.funds,
+        label: label.unwrap_or("default".to_string()),
+    }));
+
+    Ok(Response::default()
+        .add_attribute("action", "send_instantiate")
+        .add_submessage(sub_msg))
 }
 
 fn execute_modify_admins(
