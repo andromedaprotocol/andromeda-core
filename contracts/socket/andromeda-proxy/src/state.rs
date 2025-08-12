@@ -12,10 +12,7 @@ pub const ADMINS: Item<Vec<String>> = Item::new("admins");
 /// If it's a direct message, it checks if the latest sender of the message is authorized.
 pub(crate) fn authorize(ctx: &ExecuteContext) -> Result<(), ContractError> {
     // Fetch original sender of the amp packet (if available)
-    let original_sender = ctx
-        .amp_ctx
-        .clone()
-        .and_then(|pkt| Some(pkt.ctx.get_origin()));
+    let original_sender = ctx.amp_ctx.clone().map(|pkt| pkt.ctx.get_origin());
     let admins = ADMINS.load(ctx.deps.storage)?;
 
     let sender_to_check = match original_sender {

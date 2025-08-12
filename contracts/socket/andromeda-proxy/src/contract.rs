@@ -9,6 +9,7 @@ use andromeda_std::{
     andr_execute_fn,
     common::{context::ExecuteContext, encode_binary},
     error::ContractError,
+    os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{entry_point, CosmosMsg, WasmMsg};
 use cosmwasm_std::{Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg};
@@ -97,7 +98,13 @@ fn send_instantiate(
 
     let code_id = match init_params {
         InitParams::CodeId(code_id) => code_id,
-        InitParams::AdoVersion(adoversion) => todo!(),
+        InitParams::AdoVersion(ado_version) => {
+            let adodb_addr = AOSQuerier::adodb_address_getter(
+                &ctx.deps.querier,
+                &ctx.contract.get_kernel_address(ctx.deps.storage)?,
+            )?;
+            AOSQuerier::code_id_getter(&ctx.deps.querier, &adodb_addr, ado_version.as_str())?
+        }
     };
 
     // Forward the message
