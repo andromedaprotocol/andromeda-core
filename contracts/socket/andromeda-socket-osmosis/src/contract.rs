@@ -10,8 +10,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, SubMsgResponse, SubMsgResult, Event,
+    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Reply,
+    Response, StdError, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
@@ -238,17 +238,13 @@ pub fn execute_create_pool(
         }
     };
 
-    Ok(
-        Response::default()
-            .add_submessage(msg)
-            .add_event(
-                Event::new("create_pool_requested")
-                    .add_attribute("denom0", denom0.clone())
-                    .add_attribute("amount0", amount0.to_string())
-                    .add_attribute("denom1", denom1.clone())
-                    .add_attribute("amount1", amount1.to_string()),
-            ),
-    )
+    Ok(Response::default().add_submessage(msg).add_event(
+        Event::new("create_pool_requested")
+            .add_attribute("denom0", denom0.clone())
+            .add_attribute("amount0", amount0.to_string())
+            .add_attribute("denom1", denom1.clone())
+            .add_attribute("amount1", amount1.to_string()),
+    ))
 }
 
 fn execute_withdraw_pool(
@@ -360,20 +356,22 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 });
 
                 WITHDRAW.save(deps.storage, spender.clone(), &pool_id.to_string())?;
-                Ok(Response::default().add_message(msg).add_attributes(vec![
-                    attr("action", "balancer_pool_created"),
-                    attr("lp_token", lp_token.denom.clone()),
-                    attr("spender", spender),
-                    attr("amount", lp_token.amount.to_string()),
-                    attr("pool_id", pool_id.to_string()),
-                ])
-                .add_event(
-                    Event::new("pool_created")
-                        .add_attribute("pool_type", "balancer")
-                        .add_attribute("pool_id", pool_id.to_string())
-                        .add_attribute("lp_token", lp_token.denom)
-                        .add_attribute("amount", lp_token.amount.to_string()),
-                ))
+                Ok(Response::default()
+                    .add_message(msg)
+                    .add_attributes(vec![
+                        attr("action", "balancer_pool_created"),
+                        attr("lp_token", lp_token.denom.clone()),
+                        attr("spender", spender),
+                        attr("amount", lp_token.amount.to_string()),
+                        attr("pool_id", pool_id.to_string()),
+                    ])
+                    .add_event(
+                        Event::new("pool_created")
+                            .add_attribute("pool_type", "balancer")
+                            .add_attribute("pool_id", pool_id.to_string())
+                            .add_attribute("lp_token", lp_token.denom)
+                            .add_attribute("amount", lp_token.amount.to_string()),
+                    ))
             } else {
                 Err(ContractError::Std(StdError::generic_err(format!(
                     "Osmosis balancer pool creation failed with error: {:?}",
@@ -388,11 +386,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))));
             }
-            Ok(
-                Response::default()
-                    .add_attributes(vec![attr("action", "stable_pool_created")])
-                    .add_event(Event::new("pool_created").add_attribute("pool_type", "stable")),
-            )
+            Ok(Response::default()
+                .add_attributes(vec![attr("action", "stable_pool_created")])
+                .add_event(Event::new("pool_created").add_attribute("pool_type", "stable")))
         }
         OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID => {
             if msg.result.is_err() {
@@ -401,13 +397,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))));
             }
-            Ok(
-                Response::default()
-                    .add_attributes(vec![attr("action", "concentrated_pool_created")])
-                    .add_event(
-                        Event::new("pool_created").add_attribute("pool_type", "concentrated"),
-                    ),
-            )
+            Ok(Response::default()
+                .add_attributes(vec![attr("action", "concentrated_pool_created")])
+                .add_event(Event::new("pool_created").add_attribute("pool_type", "concentrated")))
         }
         OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID => {
             if msg.result.is_err() {
@@ -416,13 +408,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))));
             }
-            Ok(
-                Response::default()
-                    .add_attributes(vec![attr("action", "cosmwasm_pool_created")])
-                    .add_event(
-                        Event::new("pool_created").add_attribute("pool_type", "cosmwasm"),
-                    ),
-            )
+            Ok(Response::default()
+                .add_attributes(vec![attr("action", "cosmwasm_pool_created")])
+                .add_event(Event::new("pool_created").add_attribute("pool_type", "cosmwasm")))
         }
         OSMOSIS_MSG_WITHDRAW_POOL_ID => {
             if msg.result.is_err() {
@@ -431,11 +419,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))));
             }
-            Ok(
-                Response::default()
-                    .add_attributes(vec![attr("action", "pool_withdrawn")])
-                    .add_event(Event::new("pool_withdrawn").add_attribute("status", "success")),
-            )
+            Ok(Response::default()
+                .add_attributes(vec![attr("action", "pool_withdrawn")])
+                .add_event(Event::new("pool_withdrawn").add_attribute("status", "success")))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),

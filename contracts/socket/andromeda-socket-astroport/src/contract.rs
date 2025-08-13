@@ -13,7 +13,7 @@ use cosmwasm_std::{
     attr, entry_point, from_json, wasm_execute, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
     Reply, Response, StdError, Uint128,
 };
-use cosmwasm_std::{CosmosMsg, SubMsg, Event};
+use cosmwasm_std::{CosmosMsg, Event, SubMsg};
 
 use cw2::set_contract_version;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -571,8 +571,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     attr("pair_address", pair_addr_attr.clone()),
                 ])
                 .add_event(
-                    Event::new("created pool")
-                        .add_attribute("pool_address", pair_addr_attr),
+                    Event::new("created pool").add_attribute("pool_address", pair_addr_attr),
                 ))
         }
         ASTROPORT_MSG_CREATE_PAIR_AND_PROVIDE_LIQUIDITY_ID => {
@@ -681,10 +680,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 .add_event(
                     Event::new("liquidity_provided")
                         .add_attribute("pair_address", pair_address)
-                        .add_attribute(
-                            "assets",
-                            format!("{:?}", liquidity_state.assets),
-                        ),
+                        .add_attribute("assets", format!("{:?}", liquidity_state.assets)),
                 ))
         }
         ASTROPORT_MSG_PROVIDE_LIQUIDITY_ID => {
@@ -766,7 +762,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     attr("action", "withdraw_liquidity_success"),
                     attr("recipient", withdrawal_state.clone()),
                 ])
-                .add_event(Event::new("liquidity_withdrawn").add_attribute("recipient", withdrawal_state)))
+                .add_event(
+                    Event::new("liquidity_withdrawn").add_attribute("recipient", withdrawal_state),
+                ))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),
