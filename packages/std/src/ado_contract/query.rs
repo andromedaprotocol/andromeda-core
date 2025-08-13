@@ -55,6 +55,9 @@ impl ADOContract {
                 AndromedaQuery::PermissionedActions {} => {
                     encode_binary(&self.query_permissioned_actions(deps)?)
                 }
+                AndromedaQuery::PermissionedActionsWithExpiration {} => {
+                    encode_binary(&self.query_permissioned_actions_with_expiration(deps)?)
+                }
                 AndromedaQuery::PermissionedActionsExpiration { action } => {
                     encode_binary(&self.query_permissioned_actions_expiration(deps, action)?)
                 }
