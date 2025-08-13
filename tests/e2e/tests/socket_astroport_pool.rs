@@ -1,7 +1,7 @@
 use andromeda_app_contract::AppContract;
 use andromeda_socket::astroport::{
-    AndromedaAssetEntry, AssetEntry, AssetInfo, AssetInfoAstroport,
-    ExecuteMsg as SocketAstroportExecuteMsg, InstantiateMsg, PairType,
+    AndromedaAssetEntry, AssetInfoAstroport, ExecuteMsg as SocketAstroportExecuteMsg,
+    InstantiateMsg, PairType,
 };
 
 use andromeda_cw20::CW20Contract;
