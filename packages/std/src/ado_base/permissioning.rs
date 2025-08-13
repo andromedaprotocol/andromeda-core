@@ -39,7 +39,7 @@ pub struct PermissionInfo {
 
 #[cw_serde]
 pub struct PermissionedActionsResponse {
-    pub actions: Vec<String>,
+    pub actions: Vec<(String, Option<Milliseconds>)>,
 }
 
 #[cw_serde]

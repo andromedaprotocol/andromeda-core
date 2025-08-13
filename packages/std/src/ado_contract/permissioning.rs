@@ -1,4 +1,4 @@
-use crate::ado_base::permissioning::LocalPermission;
+use crate::ado_base::permissioning::{LocalPermission, PermissionedActionsResponse};
 use crate::common::Milliseconds;
 use crate::os::aos_querier::AOSQuerier;
 use crate::{
@@ -581,13 +581,15 @@ impl ADOContract {
     pub fn query_permissioned_actions(
         &self,
         deps: Deps,
-    ) -> Result<Vec<(String, Option<Milliseconds>)>, ContractError> {
+    ) -> Result<PermissionedActionsResponse, ContractError> {
         let actions_expiration = self
             .permissioned_actions
             .range(deps.storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
 
-        Ok(actions_expiration)
+        Ok(PermissionedActionsResponse {
+            actions: actions_expiration,
+        })
     }
 
     pub fn query_permissioned_actors(
@@ -1740,25 +1742,27 @@ mod tests {
 
         contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
 
-        let actions = ADOContract::default()
+        let permissioned_actions_response = ADOContract::default()
             .query_permissioned_actions(ctx.deps.as_ref())
             .unwrap();
 
-        assert!(actions.is_empty());
+        assert!(permissioned_actions_response.actions.is_empty());
 
         let expiration = Some(Expiry::FromNow(Milliseconds(1)));
         ADOContract::default()
             .execute_permission_action(ctx, "action", expiration)
             .unwrap();
 
-        let actions = ADOContract::default()
+        let permissioned_actions_response = ADOContract::default()
             .query_permissioned_actions(deps.as_ref())
             .unwrap();
 
-        assert_eq!(actions.len(), 1);
+        assert_eq!(permissioned_actions_response.actions.len(), 1);
         assert_eq!(
-            actions[0],
-            ("action".to_string(), Some(Milliseconds(1571797419880)))
+            permissioned_actions_response,
+            PermissionedActionsResponse {
+                actions: vec![("action".to_string(), Some(Milliseconds(1571797419880)))]
+            }
         );
     }
 
