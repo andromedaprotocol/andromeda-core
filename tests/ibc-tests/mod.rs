@@ -9,3 +9,6 @@ mod splitter_ibc;
 
 #[cfg(test)]
 mod test_ibc;
+
+#[cfg(test)]
+mod proxy;
