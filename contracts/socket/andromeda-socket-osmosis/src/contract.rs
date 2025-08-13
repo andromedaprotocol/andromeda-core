@@ -10,8 +10,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, SubMsgResponse, SubMsgResult,
+    attr, ensure, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdError, SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
@@ -34,7 +34,7 @@ use crate::osmosis::{
     OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
     OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{SPENDER, WITHDRAW};
+use crate::state::{POTENTIAL_REFUND, SPENDER, WITHDRAW};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -46,6 +46,7 @@ use crate::{
 use andromeda_socket::osmosis::{
     ExecuteMsg, InstantiateMsg, Pool, QueryMsg, Slippage, SwapAmountInRoute,
 };
+const UOSMO: &str = "uosmo";
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-socket-osmosis";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -147,16 +148,44 @@ pub fn execute_create_pool(
     let ExecuteContext {
         deps, env, info, ..
     } = ctx;
+    POTENTIAL_REFUND.save(deps.storage, info.sender.clone().into_string(), &info.funds)?;
     let funds = info.funds.as_slice();
-    if funds.len() != 2 {
-        return Err(ContractError::InvalidAsset {
-            asset: "Expected exactly 2 coins for pool creation".to_string(),
-        });
-    }
-    let denom0 = &funds[0].denom;
-    let amount0 = &funds[0].amount;
-    let denom1 = &funds[1].denom;
-    let amount1 = &funds[1].amount;
+
+    // Osmo should always be present since it's required for the pool creation fee.
+    // If Osmo is one of the pool assets, the total would be 2, if not, the total should be 3
+    ensure!(
+        funds
+            .iter()
+            .map(|coin| &coin.denom)
+            .any(|denom| denom == UOSMO),
+        ContractError::InvalidAsset {
+            asset: "Osmo is required for pool creation fee".to_string(),
+        }
+    );
+    let (denom0, amount0, denom1, amount1) = if funds.len() == 2 {
+        Ok((
+            &funds[0].denom,
+            &funds[0].amount,
+            &funds[1].denom,
+            &funds[1].amount,
+        ))
+    } else if funds.len() == 3 {
+        // In that case, Osmo is only present for the fee, so we filter it since it's not intended to part of the pool
+        let filtered_funds: Vec<&Coin> = funds.iter().filter(|coin| coin.denom != UOSMO).collect();
+        Ok((
+            &filtered_funds[0].denom,
+            &filtered_funds[0].amount,
+            &filtered_funds[1].denom,
+            &filtered_funds[1].amount,
+        ))
+    } else {
+        // Number of assets can't be other than 2 or 3
+        Err(ContractError::InvalidAsset {
+            asset:
+                "If creating a pool that includes osmo, 2 coins are expected, if not, 3 are expected"
+                    .to_string(),
+        })
+    }?;
 
     let contract_address: String = env.contract.address.into();
 
@@ -167,6 +196,36 @@ pub fn execute_create_pool(
             pool_params,
             pool_assets,
         } => {
+            // Check if the pool includes uosmo
+            if pool_assets
+                .iter()
+                .map(|asset| {
+                    asset
+                        .token
+                        .as_ref()
+                        .ok_or(ContractError::InvalidAsset {
+                            asset: "Can't have empty token in pool asset".to_string(),
+                        }) // custom error type
+                        .map(|t| t.denom.clone())
+                })
+                .collect::<Result<Vec<_>, _>>()? // short-circuits on error
+                .into_iter()
+                .any(|denom| denom == UOSMO)
+            {
+                ensure!(
+                    funds.len() == 2,
+                    ContractError::InvalidAsset {
+                        asset: "Creating a pool with Osmo requires exactly 2 assets".to_string()
+                    }
+                )
+            } else {
+                ensure!(
+                    funds.len() == 3,
+                    ContractError::InvalidAsset {
+                        asset: "Creating a pool without Osmo requires exactly 3 assets".to_string()
+                    }
+                )
+            };
             let msg = MsgCreateBalancerPool {
                 sender: contract_address.clone(),
                 pool_params,
@@ -294,8 +353,8 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, Co
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
-    match msg.id {
+pub fn reply(mut deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    let res = match msg.id {
         OSMOSIS_MSG_SWAP_ID => {
             let state: ForwardReplyState = FORWARD_REPLY_STATE.load(deps.storage)?;
             FORWARD_REPLY_STATE.remove(deps.storage);
@@ -306,7 +365,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))))
             } else {
-                handle_osmosis_swap_reply(deps, env, msg, state)
+                handle_osmosis_swap_reply(deps.branch(), env.clone(), msg, state)
             }
         }
         OSMOSIS_MSG_FORWARD_ID => {
@@ -331,7 +390,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 let denom = format!("gamm/pool/{}", pool_id);
 
                 // Query the contract's lp token balance
-                let lp_token = deps.querier.query_balance(env.contract.address, denom)?;
+                let lp_token = deps
+                    .querier
+                    .query_balance(env.clone().contract.address, denom)?;
 
                 let spender = SPENDER.load(deps.storage)?;
                 // Tranfer lp token to original sender
@@ -395,5 +456,29 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),
         ))),
+    };
+    let sender = SPENDER.load(deps.storage)?;
+    let funds = POTENTIAL_REFUND.load(deps.storage, sender.clone())?;
+    POTENTIAL_REFUND.remove(deps.storage, sender.clone());
+
+    let res = res?; // An error automatically takes care of the refund
+
+    // Process potential refund
+    let mut refund_msgs: Vec<CosmosMsg> = Vec::new();
+    for fund in funds {
+        // Query balance
+        let coin = deps
+            .querier
+            .query_balance(env.contract.address.clone(), fund.denom)?;
+        // The funds intended for pool creation have been placed in the pool at this point
+        if !coin.amount.is_zero() {
+            let refund_msg = CosmosMsg::Bank(BankMsg::Send {
+                to_address: sender.clone(),
+                amount: vec![coin],
+            });
+            refund_msgs.push(refund_msg);
+        }
     }
+
+    Ok(res.add_messages(refund_msgs))
 }
