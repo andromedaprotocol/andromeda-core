@@ -1,4 +1,6 @@
-use crate::ado_base::permissioning::{LocalPermission, PermissionedActionsResponse};
+use crate::ado_base::permissioning::{
+    LocalPermission, PermissionedActionExpirationResponse, PermissionedActionsResponse,
+};
 use crate::common::Milliseconds;
 use crate::os::aos_querier::AOSQuerier;
 use crate::{
@@ -589,6 +591,17 @@ impl ADOContract {
 
         Ok(PermissionedActionsResponse {
             actions: actions_expiration,
+        })
+    }
+
+    pub fn query_permissioned_actions_expiration(
+        &self,
+        deps: Deps,
+        action: String,
+    ) -> Result<PermissionedActionExpirationResponse, ContractError> {
+        let actions_expiration = self.permissioned_actions.load(deps.storage, action)?;
+        Ok(PermissionedActionExpirationResponse {
+            expiration: actions_expiration,
         })
     }
 
@@ -1763,6 +1776,13 @@ mod tests {
             PermissionedActionsResponse {
                 actions: vec![("action".to_string(), Some(Milliseconds(1571797419880)))]
             }
+        );
+        let permissioned_actions_expiration_response = ADOContract::default()
+            .query_permissioned_actions_expiration(deps.as_ref(), "action".to_string())
+            .unwrap();
+        assert_eq!(
+            permissioned_actions_expiration_response.expiration,
+            Some(Milliseconds(1571797419880))
         );
     }
 

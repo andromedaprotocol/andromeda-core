@@ -75,6 +75,8 @@ pub enum AndromedaQuery {
     },
     #[returns(self::permissioning::PermissionedActionsResponse)]
     PermissionedActions {},
+    #[returns(self::permissioning::PermissionedActionExpirationResponse)]
+    PermissionedActionsExpiration { action: String },
     #[returns(self::permissioning::PermissionedActorsResponse)]
     PermissionedActors {
         action: String,
