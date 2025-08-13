@@ -318,44 +318,8 @@ pub struct PairAddressResponse {
     pub pair_address: Option<String>,
 }
 
-pub fn transform_asset_entry_info(
-    asset_entry: &AndromedaAssetEntry,
-    deps: &DepsMut,
-) -> Result<AssetInfo, ContractError> {
-    match &asset_entry.info {
-        AssetInfoAstroport::Token { contract_addr } => Ok(AssetInfo::Token {
-            contract_addr: contract_addr.get_raw_address(&deps.as_ref())?,
-        }),
-        AssetInfoAstroport::NativeToken { denom } => Ok(AssetInfo::NativeToken {
-            denom: denom.clone(),
-        }),
-    }
-}
-
-pub fn transform_asset_entry(
-    asset_entries: &[AndromedaAssetEntry],
-    deps: &DepsMut,
-) -> Result<Vec<AssetEntry>, ContractError> {
-    asset_entries
-        .iter()
-        .map(|entry| {
-            let info = match &entry.info {
-                AssetInfoAstroport::Token { contract_addr } => AssetInfo::Token {
-                    contract_addr: contract_addr.get_raw_address(&deps.as_ref())?,
-                },
-                AssetInfoAstroport::NativeToken { denom } => AssetInfo::NativeToken {
-                    denom: denom.clone(),
-                },
-            };
-            Ok(AssetEntry {
-                info,
-                amount: entry.amount,
-            })
-        })
-        .collect()
-}
-
-pub fn transform_asset_info(
+/// Core transformation function that handles the basic conversion from AssetInfoAstroport to AssetInfo
+fn transform_asset_info_core(
     asset_info: &AssetInfoAstroport,
     deps: &DepsMut,
 ) -> Result<AssetInfo, ContractError> {
@@ -367,4 +331,37 @@ pub fn transform_asset_info(
             denom: denom.clone(),
         }),
     }
+}
+
+/// Transforms a single AndromedaAssetEntry into AssetInfo
+pub fn transform_asset_entry_info(
+    asset_entry: &AndromedaAssetEntry,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    transform_asset_info_core(&asset_entry.info, deps)
+}
+
+/// Transforms a vector of AndromedaAssetEntry into a vector of AssetEntry
+pub fn transform_asset_entry(
+    asset_entries: &[AndromedaAssetEntry],
+    deps: &DepsMut,
+) -> Result<Vec<AssetEntry>, ContractError> {
+    asset_entries
+        .iter()
+        .map(|entry| {
+            let info = transform_asset_info_core(&entry.info, deps)?;
+            Ok(AssetEntry {
+                info,
+                amount: entry.amount,
+            })
+        })
+        .collect()
+}
+
+/// Transforms a single AssetInfoAstroport into AssetInfo
+pub fn transform_asset_info(
+    asset_info: &AssetInfoAstroport,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    transform_asset_info_core(asset_info, deps)
 }
