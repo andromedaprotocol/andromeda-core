@@ -753,7 +753,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-osmosis-token-factory"
-version = "0.1.1-b.3"
+version = "0.1.1-b.4"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
@@ -892,7 +892,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-socket-astroport"
-version = "0.1.8-b.5"
+version = "0.1.8-b.6"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
