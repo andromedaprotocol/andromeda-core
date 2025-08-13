@@ -10,7 +10,7 @@ use crate::{
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     ensure, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    Storage, SubMsg, WasmMsg,
+    StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
@@ -578,13 +578,16 @@ impl ADOContract {
         Ok(permissions)
     }
 
-    pub fn query_permissioned_actions(&self, deps: Deps) -> Result<Vec<String>, ContractError> {
-        let actions = self
+    pub fn query_permissioned_actions(
+        &self,
+        deps: Deps,
+    ) -> Result<Vec<(String, Option<Milliseconds>)>, ContractError> {
+        let actions_expiration = self
             .permissioned_actions
-            .keys(deps.storage, None, None, Order::Ascending)
-            .map(|p| p.unwrap())
-            .collect::<Vec<String>>();
-        Ok(actions)
+            .range(deps.storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        Ok(actions_expiration)
     }
 
     pub fn query_permissioned_actors(
@@ -1743,8 +1746,9 @@ mod tests {
 
         assert!(actions.is_empty());
 
+        let expiration = Some(Expiry::FromNow(Milliseconds(1)));
         ADOContract::default()
-            .execute_permission_action(ctx, "action", None)
+            .execute_permission_action(ctx, "action", expiration)
             .unwrap();
 
         let actions = ADOContract::default()
@@ -1752,7 +1756,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(actions.len(), 1);
-        assert_eq!(actions[0], "action");
+        assert_eq!(
+            actions[0],
+            ("action".to_string(), Some(Milliseconds(1571797419880)))
+        );
     }
 
     #[test]
