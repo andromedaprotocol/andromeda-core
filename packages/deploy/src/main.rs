@@ -10,8 +10,7 @@ use andromeda_deploy::adodb;
 use andromeda_deploy::os;
 use dotenv::dotenv;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     env_logger::init();
     dotenv().ok();
     let kernel_address = env::var("DEPLOYMENT_KERNEL_ADDRESS").ok().unwrap();
@@ -19,12 +18,19 @@ async fn main() {
     let chain = dotenv::var("DEPLOYMENT_CHAIN").expect("DEPLOYMENT_CHAIN must be set");
     let mut should_upload_after_deploy = false;
 
-    let blobs = vercel::list_commit_blobs().await;
+    let blobs = {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(andromeda_deploy::vercel::list_commit_blobs())
+    };
 
     match blobs {
         Ok(blobs) if !blobs.is_empty() => {
             log::info!("Found prebuilt artifacts on Vercel for this commit. Restoring...");
-            vercel::download_blobs_to_artifacts(&blobs).await.unwrap();
+            {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(vercel::download_blobs_to_artifacts(&blobs))
+                    .unwrap();
+            }
 
             let contracts_to_deploy = fs::read_dir("artifacts")
                 .unwrap()
@@ -129,7 +135,11 @@ async fn main() {
 
     // Upload artifacts only if we built them in this run (cache miss path)
     if should_upload_after_deploy {
-        if let Err(e) = vercel::upload_wasm_folder("artifacts").await {
+        let upload_res = {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(vercel::upload_wasm_folder("artifacts"))
+        };
+        if let Err(e) = upload_res {
             println!("Error uploading artifacts to Vercel Blob: {}", e);
             // Non-fatal
         }
