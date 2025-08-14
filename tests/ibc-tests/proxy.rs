@@ -16,7 +16,7 @@ use cw_orch_interchain::prelude::*;
 fn test_proxy_ibc() {
     let InterchainTestEnv {
         mut juno,
-        mut osmosis,
+        osmosis,
         interchain,
         ..
     } = InterchainTestEnv::new();
@@ -98,36 +98,6 @@ fn test_proxy_ibc() {
         .unwrap(),
         None,
     );
-
-    // Register username
-    osmosis
-        .aos
-        .vfs
-        .set_sender(&osmosis.aos.kernel.address().unwrap());
-
-    osmosis
-        .aos
-        .vfs
-        .execute(
-            &os::vfs::ExecuteMsg::RegisterUser {
-                username: "steve".to_string(),
-                address: Some(owner_on_osmosis),
-            },
-            &[],
-        )
-        .unwrap();
-
-    juno.aos.vfs.set_sender(&juno.aos.kernel.address().unwrap());
-    juno.aos
-        .vfs
-        .execute(
-            &os::vfs::ExecuteMsg::RegisterUser {
-                username: "steve".to_string(),
-                address: Some(owner_on_juno.clone()),
-            },
-            &[],
-        )
-        .unwrap();
 
     // Execute IBC msg from Juno
     juno.aos.kernel.set_sender(&owner_on_juno);

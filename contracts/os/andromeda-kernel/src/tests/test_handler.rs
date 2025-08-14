@@ -75,7 +75,7 @@ fn test_handle_local() {
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
-                SENDER,
+                "cosmwasm1t3hmmkn74pqs5htv9swgzpjf7np9z8zc98hgj8hx879cp5juk4eqmnwcm4",
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),
@@ -101,7 +101,7 @@ fn test_handle_local() {
             ctx: Some(AMPCtx::new("origin", MOCK_APP_CONTRACT, None)),
             expected_submessage: AMPPkt::new(
                 "origin",
-                SENDER,
+                "cosmwasm1t3hmmkn74pqs5htv9swgzpjf7np9z8zc98hgj8hx879cp5juk4eqmnwcm4",
                 vec![AMPMsg::new(
                     MOCK_APP_CONTRACT,
                     to_json_binary(&true).unwrap(),

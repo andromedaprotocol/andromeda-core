@@ -255,6 +255,10 @@ impl AMPCtx {
         self.previous_sender.clone()
     }
 
+    pub fn get_previous_hops(&self) -> Vec<CrossChainHop> {
+        self.previous_hops.clone()
+    }
+
     /// Gets the previous sender of a message
     pub fn get_id(&self) -> Option<String> {
         self.id.clone()
