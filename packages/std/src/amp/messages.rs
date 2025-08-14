@@ -240,6 +240,21 @@ impl AMPCtx {
         }
     }
 
+    pub fn new_with_hops(
+        origin: impl Into<String>,
+        previous_sender: impl Into<String>,
+        origin_username: Option<AndrAddr>,
+        previous_hops: Vec<CrossChainHop>,
+    ) -> AMPCtx {
+        AMPCtx {
+            origin: origin.into(),
+            origin_username,
+            previous_sender: previous_sender.into(),
+            id: None,
+            previous_hops,
+        }
+    }
+
     /// Gets the original sender of a message
     pub fn get_origin(&self) -> String {
         self.origin.clone()

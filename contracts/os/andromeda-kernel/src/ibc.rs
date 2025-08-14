@@ -162,12 +162,13 @@ pub fn do_ibc_packet_receive(
                     }
                 }
                 None => {
-                    let mut ctx =
-                        AMPCtx::new(env.clone().contract.address, env.contract.address, None);
-                    // Add previous hops to the context
-                    for hop in previous_hops {
-                        ctx.add_hop(hop);
-                    }
+                    let ctx = AMPCtx::new_with_hops(
+                        env.clone().contract.address,
+                        env.contract.address,
+                        None,
+                        previous_hops,
+                    );
+
                     let new_amp_packet = AMPPkt::new_with_ctx(ctx, amp_packet.messages.clone());
                     execute_env.amp_ctx = Some(new_amp_packet);
                 }
@@ -209,11 +210,12 @@ pub fn do_ibc_packet_receive(
             match username_addr {
                 Some(addr) => {
                     // Add potential username to the context
-                    let mut ctx = AMPCtx::new(addr, env.contract.address, original_sender_username);
-                    // Add previous hops to the context
-                    for hop in previous_hops {
-                        ctx.add_hop(hop);
-                    }
+                    let ctx = AMPCtx::new_with_hops(
+                        addr,
+                        env.contract.address,
+                        original_sender_username,
+                        previous_hops,
+                    );
 
                     let amp_packet = AMPPkt::new_with_ctx(ctx, vec![msg.clone()]);
                     execute_env.amp_ctx = Some(amp_packet.clone());
