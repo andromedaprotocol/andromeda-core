@@ -51,6 +51,7 @@ pub enum ExecuteMsg {
         min_raise: Option<Uint128>,
         buy_now_price: Option<Uint128>,
         recipient: Option<Recipient>,
+        whitelist_expiry: Option<Expiry>,
     },
     #[attrs(nonpayable)]
     CancelAuction {
@@ -82,6 +83,7 @@ pub enum Cw721HookMsg {
         min_raise: Option<Uint128>,
         whitelist: Option<Vec<Addr>>,
         recipient: Option<Recipient>,
+        whitelist_expiry: Option<Expiry>,
     },
 }
 #[cw_serde]

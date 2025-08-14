@@ -110,6 +110,7 @@ pub fn test_start_sale_unauthorised() {
 
     let permission_msg = ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction {
         action: "Receive".to_string(),
+        expiration: None,
     });
     execute(deps.as_mut(), env.clone(), info.clone(), permission_msg).unwrap();
 

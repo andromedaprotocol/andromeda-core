@@ -19,12 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Batch send NFTs [(#816)](https://github.com/andromedaprotocol/andromeda-core/pull/816)
 - feat: Added Permissionless attribute to relevant messages [(#825)](https://github.com/andromedaprotocol/andromeda-core/pull/825)
 - feat: Apply Serde default to previous_hops [(#829)](https://github.com/andromedaprotocol/andromeda-core/pull/829)
+- feat: Frequency in Permissioning [(#855)](https://github.com/andromedaprotocol/andromeda-core/pull/855)
 - feat: CW20 Redeem ADO [(#842)](https://github.com/andromedaprotocol/andromeda-core/pull/842)
 - feat: Update to CosmWasm 2.2 from 1.5 [(#850)](https://github.com/andromedaprotocol/andromeda-core/pull/850)
 - feat: CW20 Exchange V2, delete CW20 Redeem [(#874)](https://github.com/andromedaprotocol/andromeda-core/pull/874)
 - feat: Added Astroport socket with LP and swap functionality [(#885)](https://github.com/andromedaprotocol/andromeda-core/pull/885)
 - feat: Create pool with funds and withdraw from pool in osmosis socket [(#886)](https://github.com/andromedaprotocol/andromeda-core/pull/886)
 - feat: Osmosis Token Factory ADO [(#929)](https://github.com/andromedaprotocol/andromeda-core/pull/929)
+- feat: Wildcard in Permissions [(#949)](https://github.com/andromedaprotocol/andromeda-core/pull/949)
 
 ### Changed
 
@@ -37,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: kernel's tx id generation [(#851)](https://github.com/andromedaprotocol/andromeda-core/pull/851)
 - ref: change cw20 exchange's sale start time and end time to Milliseconds, same for auction [(#869)](https://github.com/andromedaprotocol/andromeda-core/pull/869)
 - feat: Create and apply Schedule struct [(#900)](https://github.com/andromedaprotocol/andromeda-core/pull/900)
+- feat: Enable Cross Chain Components in App [(#932)](https://github.com/andromedaprotocol/andromeda-core/pull/932)
 
 ### Fixed
 
@@ -52,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: Remove sale after Cancel Sale in Exchange  [(#913)](https://github.com/andromedaprotocol/andromeda-core/pull/913)
 - fix: Kernel Send Msg vulnerability  [(#915)](https://github.com/andromedaprotocol/andromeda-core/pull/915)
 - fix: Duplicate Redeem in Exchange  [(#919)](https://github.com/andromedaprotocol/andromeda-core/pull/919)
+- fix: LP Denom Extraction in Osmosis Socket  [(#951)](https://github.com/andromedaprotocol/andromeda-core/pull/951)
 
 
 ## Release 4

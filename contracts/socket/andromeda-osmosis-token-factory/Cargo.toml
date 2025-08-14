@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-osmosis-token-factory"
-version = "0.1.1-b.1"
+version = "0.1.1-b.3"
 edition = "2021"
 rust-version = "1.86.0"
 

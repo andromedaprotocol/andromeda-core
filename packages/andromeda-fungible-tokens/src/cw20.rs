@@ -42,7 +42,9 @@ pub enum ExecuteMsg {
         amount: Uint128,
     },
     /// Burn is a base message to destroy tokens forever
-    Burn { amount: Uint128 },
+    Burn {
+        amount: Uint128,
+    },
     /// Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
@@ -82,10 +84,16 @@ pub enum ExecuteMsg {
         msg: Binary,
     },
     /// Only with "approval" extension. Destroys tokens forever
-    BurnFrom { owner: String, amount: Uint128 },
+    BurnFrom {
+        owner: String,
+        amount: Uint128,
+    },
     /// Only with the "mintable" extension. If authorized, creates amount new tokens
     /// and adds to the recipient balance.
-    Mint { recipient: String, amount: Uint128 },
+    Mint {
+        recipient: String,
+        amount: Uint128,
+    },
     /// Only with the "marketing" extension. If authorized, updates marketing metadata.
     /// Setting None/null for any of these will leave it unchanged.
     /// Setting Some("") will clear this field on the contract storage
@@ -99,6 +107,9 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(Logo),
+    UpdateMinter {
+        new_minter: Option<AndrAddr>,
+    },
 }
 
 impl From<ExecuteMsg> for Cw20ExecuteMsg {
@@ -168,6 +179,9 @@ impl From<ExecuteMsg> for Cw20ExecuteMsg {
                 marketing,
             },
             ExecuteMsg::UploadLogo(logo) => Cw20ExecuteMsg::UploadLogo(logo),
+            ExecuteMsg::UpdateMinter { new_minter } => Cw20ExecuteMsg::UpdateMinter {
+                new_minter: new_minter.map(|minter| minter.to_string()),
+            },
             _ => panic!("Unsupported message"),
         }
     }

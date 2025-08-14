@@ -1,4 +1,5 @@
 use andromeda_std::andr_execute_fn;
+use andromeda_std::common::schedule::Schedule;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, Storage};
@@ -47,8 +48,8 @@ pub fn instantiate(
 
     if let Some(authorized_operator_addresses) = msg.authorized_operator_addresses {
         if !authorized_operator_addresses.is_empty() {
-            ADOContract::default().permission_action(deps.storage, STORE_MATRIX_ACTION)?;
-            ADOContract::default().permission_action(deps.storage, DELETE_MATRIX_ACTION)?;
+            ADOContract::default().permission_action(deps.storage, STORE_MATRIX_ACTION, None)?;
+            ADOContract::default().permission_action(deps.storage, DELETE_MATRIX_ACTION, None)?;
         }
 
         for address in authorized_operator_addresses {
@@ -57,13 +58,21 @@ pub fn instantiate(
                 deps.storage,
                 STORE_MATRIX_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             )?;
             ADOContract::set_permission(
                 deps.storage,
                 DELETE_MATRIX_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             )?;
         }
     }

@@ -120,7 +120,7 @@ fn get_cw20_contract_version() -> Result<String, Box<dyn std::error::Error>> {
     let content = fs::read_to_string("../contracts/fungible-tokens/andromeda-cw20/Cargo.toml")?;
 
     // Parse the Cargo.toml content
-    let parsed_toml = content.parse::<Value>()?;
+    let parsed_toml: Value = toml::from_str(&content)?;
 
     // Extract the version string
     if let Some(version) = parsed_toml

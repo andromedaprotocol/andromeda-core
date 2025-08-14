@@ -20,6 +20,7 @@ use andromeda_std::error::ContractError;
 use andromeda_std::os::aos_querier::AOSQuerier;
 #[cfg(not(target_arch = "wasm32"))]
 use andromeda_std::os::ibc_registry::path_to_hops;
+use andromeda_std::os::kernel::CROSS_CHAIN_ENABLED;
 use andromeda_std::os::kernel::{
     is_os_contract, ChannelInfo, Cw20HookMsg, ExecuteMsg, IbcExecuteMsg, Ics20PacketInfo,
     InternalMsg,
@@ -597,29 +598,36 @@ pub fn create(
     owner: Option<AndrAddr>,
     chain: Option<String>,
 ) -> Result<Response, ContractError> {
+    let ExecuteContext {
+        deps, env, info, ..
+    } = execute_ctx;
     // If chain is provided an owner must be provided
     ensure!(
         chain.is_none() || owner.is_some(),
         ContractError::Unauthorized {}
     );
     if let Some(chain) = chain {
-        let cross_chain_components_enabled = ENV_VARIABLES
-            .may_load(execute_ctx.deps.storage, "cross_chain_components_enabled")?
-            .unwrap_or("false".to_string());
+        let is_cross_chain_enabled = AOSQuerier::get_env_variable::<String>(
+            &deps.querier,
+            &env.contract.address,
+            CROSS_CHAIN_ENABLED,
+        )?
+        .unwrap_or("false".to_string())
+        .parse::<bool>()
+        .unwrap_or(false);
         ensure!(
-            cross_chain_components_enabled == "true",
+            is_cross_chain_enabled,
             ContractError::CrossChainComponentsCurrentlyDisabled {}
         );
 
-        let channel_info = if let Some(channel_info) =
-            CHAIN_TO_CHANNEL.may_load(execute_ctx.deps.storage, &chain)?
-        {
-            Ok::<ChannelInfo, ContractError>(channel_info)
-        } else {
-            return Err(ContractError::InvalidPacket {
-                error: Some(format!("Channel not found for chain {chain}")),
-            });
-        }?;
+        let channel_info =
+            if let Some(channel_info) = CHAIN_TO_CHANNEL.may_load(deps.storage, &chain)? {
+                Ok::<ChannelInfo, ContractError>(channel_info)
+            } else {
+                return Err(ContractError::InvalidPacket {
+                    error: Some(format!("Channel not found for chain {chain}")),
+                });
+            }?;
         let kernel_msg = IbcExecuteMsg::CreateADO {
             instantiation_msg: msg.clone(),
             owner: owner.clone().unwrap(),
@@ -628,12 +636,7 @@ pub fn create(
         let ibc_msg = IbcMsg::SendPacket {
             channel_id: channel_info.direct_channel_id.clone().unwrap(),
             data: to_json_binary(&kernel_msg)?,
-            timeout: execute_ctx
-                .env
-                .block
-                .time
-                .plus_seconds(PACKET_LIFETIME)
-                .into(),
+            timeout: env.block.time.plus_seconds(PACKET_LIFETIME).into(),
         };
         Ok(Response::default()
             .add_message(ibc_msg)
@@ -646,14 +649,12 @@ pub fn create(
                 attr("msg", msg.to_string()),
             ]))
     } else {
-        let vfs_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, VFS_KEY)?;
-        let adodb_addr = KERNEL_ADDRESSES.load(execute_ctx.deps.storage, ADO_DB_KEY)?;
+        let vfs_addr = KERNEL_ADDRESSES.load(deps.storage, VFS_KEY)?;
+        let adodb_addr = KERNEL_ADDRESSES.load(deps.storage, ADO_DB_KEY)?;
 
-        let ado_owner = owner.unwrap_or(AndrAddr::from_string(execute_ctx.info.sender.to_string()));
-        let owner_addr =
-            ado_owner.get_raw_address_from_vfs(&execute_ctx.deps.as_ref(), vfs_addr)?;
-        let code_id =
-            AOSQuerier::code_id_getter(&execute_ctx.deps.querier, &adodb_addr, &ado_type)?;
+        let ado_owner = owner.unwrap_or(AndrAddr::from_string(info.sender.to_string()));
+        let owner_addr = ado_owner.get_raw_address_from_vfs(&deps.as_ref(), vfs_addr)?;
+        let code_id = AOSQuerier::code_id_getter(&deps.querier, &adodb_addr, &ado_type)?;
         let wasm_msg = WasmMsg::Instantiate {
             admin: Some(owner_addr.to_string()),
             code_id,
@@ -663,7 +664,7 @@ pub fn create(
         };
         let sub_msg = SubMsg::reply_always(wasm_msg, ReplyId::CreateADO.repr());
 
-        ADO_OWNER.save(execute_ctx.deps.storage, &owner_addr)?;
+        ADO_OWNER.save(deps.storage, &owner_addr)?;
 
         Ok(Response::new()
             .add_submessage(sub_msg)

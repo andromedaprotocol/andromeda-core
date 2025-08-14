@@ -29,6 +29,7 @@ use andromeda_std::{
         denom::{Asset, SEND_CW20_ACTION},
         encode_binary,
         expiration::Expiry,
+        schedule::Schedule,
     },
     error::ContractError,
 };
@@ -63,12 +64,16 @@ pub fn instantiate(
     // Unless Cw20 is not identified as verified asset
     if let Asset::Cw20Token(addr) = msg.asset_info.clone() {
         let addr = addr.get_raw_address(&deps.as_ref())?;
-        ADOContract::default().permission_action(deps.storage, SEND_CW20_ACTION)?;
+        ADOContract::default().permission_action(deps.storage, SEND_CW20_ACTION, None)?;
         ADOContract::set_permission(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Local(LocalPermission::whitelisted(None, None)),
+            Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )),
         )?;
     }
 
