@@ -11,8 +11,10 @@ use andromeda_std::{
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
-use cosmwasm_std::{entry_point, CosmosMsg, WasmMsg};
-use cosmwasm_std::{Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, SubMsg};
+use cosmwasm_std::{
+    attr, entry_point, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdError, SubMsg, WasmMsg,
+};
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-proxy";
@@ -108,13 +110,16 @@ fn send_instantiate(
     };
 
     // Forward the message
-    let sub_msg = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Instantiate {
-        admin,
-        code_id,
-        msg: message,
-        funds: ctx.info.funds,
-        label: label.unwrap_or("default".to_string()),
-    }));
+    let sub_msg = SubMsg::reply_always(
+        CosmosMsg::Wasm(WasmMsg::Instantiate {
+            admin,
+            code_id,
+            msg: message,
+            funds: ctx.info.funds,
+            label: label.unwrap_or("default".to_string()),
+        }),
+        1,
+    );
 
     Ok(Response::default()
         .add_attribute("action", "send_instantiate")
@@ -147,24 +152,23 @@ pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, Co
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> Result<Response, ContractError> {
-    Ok(Response::default())
-    // match msg.id {
-    //     OSMOSIS_MSG_BURN_ID => {
-    //         // Send IBC packet to unlock the cw20
-    //         if msg.result.is_err() {
-    //             Err(ContractError::Std(StdError::generic_err(format!(
-    //                 "Osmosis swap failed with error: {:?}",
-    //                 msg.result.unwrap_err()
-    //             ))))
-    //         } else {
-    //             Ok(Response::default().add_attributes(vec![attr("action", "token_burned")]))
-    //         }
-    //     }
-    //     _ => Err(ContractError::Std(StdError::generic_err(
-    //         "Invalid Reply ID".to_string(),
-    //     ))),
-    // }
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        1 => {
+            if msg.result.is_err() {
+                Err(ContractError::Std(StdError::generic_err(format!(
+                    "Contract instantiation error: {:?}",
+                    msg.result.unwrap_err()
+                ))))
+            } else {
+                Ok(Response::default()
+                    .add_attributes(vec![attr("action", "contract_instantiated")]))
+            }
+        }
+        _ => Err(ContractError::Std(StdError::generic_err(
+            "Invalid Reply ID".to_string(),
+        ))),
+    }
 }
 
 fn query_locked(deps: Deps, cw20_addr: Addr) -> Result<LockedResponse, ContractError> {

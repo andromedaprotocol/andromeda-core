@@ -1,21 +1,22 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use andromeda_kernel::ack::make_ack_success;
+use andromeda_fixed_amount_splitter::FixedAmountSplitterContract;
 use andromeda_proxy::ProxyContract;
+use andromeda_socket::proxy::InitParams;
 use andromeda_std::{
     amp::{messages::AMPMsg, AndrAddr, Recipient},
     os,
 };
 use andromeda_testing::{interchain::ensure_packet_success, InterchainTestEnv};
 use cosmwasm_std::{to_json_binary, Coin, Uint128};
-use cw_orch::{mock::cw_multi_test::ibc::types::keccak256, prelude::*};
+use cw_orch::prelude::*;
 use cw_orch_interchain::prelude::*;
 
 #[test]
-fn test_fixed_amount_splitter_ibc() {
+fn test_proxy_ibc() {
     let InterchainTestEnv {
-        juno,
-        osmosis,
+        mut juno,
+        mut osmosis,
         interchain,
         ..
     } = InterchainTestEnv::new();
@@ -27,7 +28,11 @@ fn test_fixed_amount_splitter_ibc() {
     let proxy_osmosis = ProxyContract::new(osmosis.chain.clone());
     proxy_osmosis.upload().unwrap();
 
-    let admins = vec![owner_on_juno.to_string()];
+    // This contract will eventually be instantiated by the proxy contract
+    let splitter_osmosis = FixedAmountSplitterContract::new(osmosis.chain.clone());
+    splitter_osmosis.upload().unwrap();
+
+    let admins = vec![owner_on_juno.to_string(), owner_on_osmosis.to_string()];
     // Owner on osmosis will init the proxy on osmo, and set his juno address as admin
     proxy_osmosis
         .instantiate(
@@ -58,91 +63,85 @@ fn test_fixed_amount_splitter_ibc() {
         .unwrap();
 
     // Create IBC message
-    let osmosis_recipient = AndrAddr::from_string(format!(
+    let proxy_osmosis_recipient = AndrAddr::from_string(format!(
         "ibc://{}/{}",
         osmosis.chain_name,
         proxy_osmosis.address().unwrap()
     ));
 
+    let splitter_init_msg = andromeda_finance::fixed_amount_splitter::InstantiateMsg {
+        recipients: vec![andromeda_finance::fixed_amount_splitter::AddressAmount {
+            recipient: Recipient {
+                address: AndrAddr::from_string(owner_on_osmosis.to_string()),
+                msg: None,
+                ibc_recovery_address: None,
+            },
+            coins: vec![Coin {
+                denom: "osmo".to_string(),
+                amount: Uint128::new(100),
+            }],
+        }],
+        default_recipient: None,
+        lock_time: None,
+        kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
+        owner: None,
+    };
+
     let message = AMPMsg::new(
-        osmosis_recipient,
-        to_json_binary(
-            &andromeda_finance::fixed_amount_splitter::ExecuteMsg::Send { config: None },
-        )
+        proxy_osmosis_recipient,
+        to_json_binary(&andromeda_socket::proxy::ExecuteMsg::Instantiate {
+            init_params: InitParams::CodeId(splitter_osmosis.code_id().unwrap()),
+            message: to_json_binary(&splitter_init_msg).unwrap(),
+            admin: None,
+            label: None,
+        })
         .unwrap(),
         None,
     );
 
-    // Execute IBC transfer from Juno
+    // Register username
+    osmosis
+        .aos
+        .vfs
+        .set_sender(&osmosis.aos.kernel.address().unwrap());
+
+    osmosis
+        .aos
+        .vfs
+        .execute(
+            &os::vfs::ExecuteMsg::RegisterUser {
+                username: "steve".to_string(),
+                address: Some(owner_on_osmosis),
+            },
+            &[],
+        )
+        .unwrap();
+
+    juno.aos.vfs.set_sender(&juno.aos.kernel.address().unwrap());
+    juno.aos
+        .vfs
+        .execute(
+            &os::vfs::ExecuteMsg::RegisterUser {
+                username: "steve".to_string(),
+                address: Some(owner_on_juno.clone()),
+            },
+            &[],
+        )
+        .unwrap();
+
+    // Execute IBC msg from Juno
+    juno.aos.kernel.set_sender(&owner_on_juno);
     let kernel_juno_send_request = juno
         .aos
         .kernel
-        .execute(
-            &os::kernel::ExecuteMsg::Send { message },
-            &[Coin {
-                amount: Uint128::new(100000000),
-                denom: juno.denom.clone(),
-            }],
-        )
+        .execute(&os::kernel::ExecuteMsg::Send { message }, &[])
         .unwrap();
+
+    splitter_osmosis.addr_str().unwrap_err();
 
     // Wait for packet processing
     let packet_lifetime = interchain
         .await_packets(&juno.chain_id, kernel_juno_send_request)
         .unwrap();
     ensure_packet_success(packet_lifetime);
-
-    // Check balances
-    let balances = osmosis
-        .chain
-        .query_all_balances(&osmosis.aos.kernel.address().unwrap())
-        .unwrap();
-    assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, expected_denom.clone());
-    assert_eq!(balances[0].amount.u128(), 100000000);
-
-    // Setup trigger
-    juno.aos
-        .kernel
-        .execute(
-            &os::kernel::ExecuteMsg::UpsertKeyAddress {
-                key: "trigger_key".to_string(),
-                value: juno.chain.sender.to_string(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    let packet_ack = make_ack_success();
-    let channel_id = juno
-        .aos
-        .get_aos_channel(&osmosis.chain_name)
-        .unwrap()
-        .ics20
-        .unwrap();
-
-    // Execute trigger relay
-    let kernel_juno_splitter_request = juno
-        .aos
-        .kernel
-        .execute(
-            &os::kernel::ExecuteMsg::TriggerRelay {
-                packet_sequence: 1,
-                packet_ack,
-                channel_id,
-            },
-            &[],
-        )
-        .unwrap();
-
-    let packet_lifetime = interchain
-        .await_packets(&juno.chain_id, kernel_juno_splitter_request)
-        .unwrap();
-    ensure_packet_success(packet_lifetime);
-
-    // Verify final recipient balance
-    let balances = osmosis.chain.query_all_balances(&recipient).unwrap();
-    assert_eq!(balances.len(), 1);
-    assert_eq!(balances[0].denom, expected_denom);
-    assert_eq!(balances[0].amount.u128(), 100);
 }

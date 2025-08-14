@@ -15,7 +15,7 @@ use andromeda_testing::{
     mock_contract::{ExecuteResult, MockADO, MockContract},
 };
 use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
 
 pub struct MockProxy(Addr);
 mock_ado!(MockProxy, ExecuteMsg, QueryMsg);
@@ -25,11 +25,11 @@ impl MockProxy {
         code_id: u64,
         sender: Addr,
         app: &mut MockApp,
-
+        admins: Vec<String>,
         kernel_address: impl Into<String>,
         owner: Option<String>,
     ) -> MockProxy {
-        let msg = mock_osmosis_token_factory_instantiate_msg(kernel_address, owner);
+        let msg = mock_osmosis_token_factory_instantiate_msg(admins, kernel_address, owner);
         let addr = app
             .instantiate_contract(
                 code_id,
@@ -41,17 +41,6 @@ impl MockProxy {
             )
             .unwrap();
         MockProxy(Addr::unchecked(addr))
-    }
-
-    pub fn execute_create_denom(
-        &self,
-        app: &mut MockApp,
-        sender: Addr,
-        subdenom: String,
-    ) -> AppResponse {
-        let msg = mock_create_denom(subdenom);
-        app.execute_contract(sender, self.addr().clone(), &msg, &[])
-            .unwrap()
     }
 
     pub fn execute_add_rate(
@@ -87,17 +76,15 @@ pub fn mock_andromeda_osmosis_token_factory() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_osmosis_token_factory_instantiate_msg(
+    admins: Vec<String>,
     kernel_address: impl Into<String>,
     owner: Option<String>,
 ) -> InstantiateMsg {
     InstantiateMsg {
+        admins,
         kernel_address: kernel_address.into(),
         owner,
     }
-}
-
-pub fn mock_create_denom(subdenom: String) -> ExecuteMsg {
-    ExecuteMsg::CreateDenom { subdenom }
 }
 
 pub fn mock_set_rate_msg(action: String, rate: Rate) -> ExecuteMsg {
