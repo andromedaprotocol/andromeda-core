@@ -37,7 +37,7 @@ fn test_proxy_ibc() {
     proxy_osmosis
         .instantiate(
             &andromeda_socket::proxy::InstantiateMsg {
-                admins: admins,
+                admins,
                 kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
                 owner: None,
             },
