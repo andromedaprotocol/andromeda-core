@@ -135,6 +135,7 @@ fn main() {
 
     // Upload artifacts only if we built them in this run (cache miss path)
     if should_upload_after_deploy {
+        build::build_all_contracts();
         let upload_res = {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(vercel::upload_wasm_folder("artifacts"))
