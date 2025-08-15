@@ -5,4 +5,6 @@ use thiserror::Error;
 pub enum DeployError {
     #[error("{0}")]
     CwOrchError(#[from] CwOrchError),
+    #[error("{0}")]
+    Generic(String),
 }

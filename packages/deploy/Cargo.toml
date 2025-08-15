@@ -20,7 +20,11 @@ log = "0.4"
 dotenv = "0.15.0"
 reqwest = { version = "0.12", features = ["json", "blocking"] }
 serde_json = "1.0"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+hex = "0.4"
+sha2 = "0.10"
+tokio = { version = "1.0", features = ["rt", "fs"] }
+vercel_blob = "0.1.0"
 
 # OS Contracts
 andromeda-kernel = { path = "../../contracts/os/andromeda-kernel" }

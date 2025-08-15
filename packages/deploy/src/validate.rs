@@ -214,7 +214,7 @@ fn filter_deployed_contracts() {
         env::set_var("DEPLOYMENT_SKIP_BUILD", "true");
     } else if deployable_contracts.is_empty() {
         // If we don't have any contracts to deploy and we don't want to deploy the OS we should panic as there is nothing to do
-        panic!("No contracts to deploy - all specified contracts are already deployed");
+        log::warn!("No contracts to deploy - all specified contracts are already deployed");
     }
 
     // Check if we are deploying all contracts
