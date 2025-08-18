@@ -18,6 +18,10 @@ path = "interchain.rs"
 name = "splitter-ibc"
 path = "splitter_ibc.rs"
 
+[[test]]
+name = "proxy"
+path = "proxy.rs"
+
 
 [dev-dependencies]
 andromeda-kernel = {path = "../../contracts/os/andromeda-kernel", features = [
@@ -26,11 +30,14 @@ andromeda-kernel = {path = "../../contracts/os/andromeda-kernel", features = [
 andromeda-fixed-amount-splitter = { path = "../../contracts/finance/andromeda-fixed-amount-splitter", features = [
     "testing",
 ] }
+
 andromeda-app = { workspace = true }
 andromeda-std = { workspace = true }
 andromeda-testing = { workspace = true }
 andromeda-finance = { workspace = true }
 andromeda-math = { workspace = true }
+andromeda-socket = { workspace = true }
+
 andromeda-counter = { path = "../../contracts/math/andromeda-counter", features = [
     "testing",
 ] }
@@ -44,6 +51,9 @@ andromeda-auction = { path = "../../contracts/non-fungible-tokens/andromeda-auct
     "testing",
 ] }
 andromeda-cw721 = { path = "../../contracts/non-fungible-tokens/andromeda-cw721", features = [
+    "testing",
+] }
+andromeda-proxy = { path = "../../contracts/socket/andromeda-proxy", features = [
     "testing",
 ] }
 andromeda-non-fungible-tokens = { workspace = true }
