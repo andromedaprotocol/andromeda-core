@@ -30,8 +30,8 @@ use crate::{
         ASTROPORT_MSG_FORWARD_ID, ASTROPORT_MSG_SWAP_ID,
     },
     state::{
-        AstroportFactoryExecuteMsg, ForwardReplyState, LiquidityProvisionState, FACTORY,
-        FORWARD_REPLY_STATE, LIQUIDITY_PROVISION_STATE, SWAP_ROUTER, WITHDRAWAL_STATE,
+        AstroportFactoryExecuteMsg, ForwardReplyState, LiquidityProvisionState, WithdrawalState,
+        FACTORY, FORWARD_REPLY_STATE, LIQUIDITY_PROVISION_STATE, SWAP_ROUTER, WITHDRAWAL_STATE,
     },
 };
 
@@ -369,7 +369,7 @@ fn provide_liquidity(
     Ok(response_msgs
         .add_attributes(vec![
             attr("action", "provide_liquidity"),
-            attr("pair_address", pair_address.to_string()),
+            attr("andr_astroport_pool", pair_address.to_string()),
             attr("assets", format!("{:?}", assets)),
         ])
         .add_event(
@@ -459,8 +459,12 @@ fn withdraw_liquidity(
     let lp_pair_address_raw = pair_address.get_raw_address(&deps.as_ref())?;
     let funds = info.funds.first().unwrap();
 
-    // Save withdrawal state to track the original sender
-    WITHDRAWAL_STATE.save(deps.storage, &info.sender.to_string())?;
+    // Save withdrawal state to track the original sender and pair address
+    let withdrawal_state = WithdrawalState {
+        receiver: info.sender.to_string(),
+        pair_address: pair_address.to_string(),
+    };
+    WITHDRAWAL_STATE.save(deps.storage, &withdrawal_state)?;
 
     let msg = AstroportFactoryExecuteMsg::WithdrawLiquidity {};
 
@@ -472,7 +476,7 @@ fn withdraw_liquidity(
     Ok(Response::new()
         .add_attributes(vec![
             attr("action", "withdraw_liquidity"),
-            attr("pair_address", pair_address.to_string()),
+            attr("andr_astroport_pool", pair_address.to_string()),
             attr("sender", info.sender.clone()),
         ])
         .add_submessage(sub_message))
@@ -568,7 +572,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(Response::default()
                 .add_attributes(vec![
                     attr("action", "create_pair_success"),
-                    attr("pair_address", pair_addr_attr.clone()),
+                    attr("andr_astroport_pool", pair_address.clone()),
+                    attr(
+                        format!("andr_{}_sender", pair_addr_attr),
+                        pair_addr_attr.clone(),
+                    ),
                 ])
                 .add_event(
                     Event::new("created pool").add_attribute("pool_address", pair_addr_attr),
@@ -671,7 +679,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(response
                 .add_attributes(vec![
                     attr("action", "create_pair_and_provide_liquidity_success"),
-                    attr("pair_address", pair_address.clone()),
+                    attr(
+                        format!("andr_{}_sender", pair_address),
+                        pair_address.clone(),
+                    ),
                     attr(
                         "liquidity_assets",
                         format!("{:?}", liquidity_state.assets.clone()),
@@ -742,7 +753,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
                                         let transfer_msg = asset.transfer(
                                             &deps.as_ref(),
-                                            &withdrawal_state,
+                                            &withdrawal_state.receiver,
                                             amount.into(),
                                         )?;
                                         messages.push(transfer_msg.msg);
@@ -759,10 +770,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 .add_messages(messages)
                 .add_attributes(vec![
                     attr("action", "withdraw_liquidity_success"),
-                    attr("recipient", withdrawal_state.clone()),
+                    attr("recipient", withdrawal_state.receiver.clone()),
+                    attr(
+                        format!("andr_{}_sender", withdrawal_state.pair_address.clone()),
+                        withdrawal_state.pair_address.clone(),
+                    ),
                 ])
                 .add_event(
-                    Event::new("liquidity_withdrawn").add_attribute("recipient", withdrawal_state),
+                    Event::new("liquidity_withdrawn")
+                        .add_attribute("recipient", withdrawal_state.receiver),
                 ))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
