@@ -69,3 +69,6 @@ pub struct WithdrawalState {
 
 // Store withdrawal information during liquidity withdrawal
 pub const WITHDRAWAL_STATE: Item<WithdrawalState> = Item::new("withdrawal_state");
+
+// Store create pair sender information during pair creation
+pub const CREATE_PAIR_SENDER: Item<String> = Item::new("create_pair_sender");

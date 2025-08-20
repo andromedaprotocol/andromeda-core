@@ -31,7 +31,8 @@ use crate::{
     },
     state::{
         AstroportFactoryExecuteMsg, ForwardReplyState, LiquidityProvisionState, WithdrawalState,
-        FACTORY, FORWARD_REPLY_STATE, LIQUIDITY_PROVISION_STATE, SWAP_ROUTER, WITHDRAWAL_STATE,
+        CREATE_PAIR_SENDER, FACTORY, FORWARD_REPLY_STATE, LIQUIDITY_PROVISION_STATE, SWAP_ROUTER,
+        WITHDRAWAL_STATE,
     },
 };
 
@@ -267,7 +268,10 @@ fn create_factory_pair(
     asset_infos: Vec<AssetInfoAstroport>,
     init_parameters: Option<Binary>,
 ) -> Result<Response, ContractError> {
-    let ExecuteContext { deps, .. } = ctx;
+    let ExecuteContext { deps, info, .. } = ctx;
+
+    // Save the sender for the reply
+    CREATE_PAIR_SENDER.save(deps.storage, &info.sender.to_string())?;
 
     let factory_addr = FACTORY.load(deps.storage)?;
 
@@ -544,6 +548,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 ))));
             }
 
+            // Load and remove the create pair sender
+            let create_pair_sender = CREATE_PAIR_SENDER.load(deps.storage)?;
+            CREATE_PAIR_SENDER.remove(deps.storage);
+
             // Extract the pair address from the response
             let response = msg.result.unwrap();
 
@@ -575,7 +583,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     attr("andr_astroport_pool", pair_address.clone()),
                     attr(
                         format!("andr_{}_sender", pair_addr_attr),
-                        pair_addr_attr.clone(),
+                        create_pair_sender,
                     ),
                 ])
                 .add_event(
@@ -681,7 +689,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     attr("action", "create_pair_and_provide_liquidity_success"),
                     attr(
                         format!("andr_{}_sender", pair_address),
-                        pair_address.clone(),
+                        liquidity_state.sender.clone(),
                     ),
                     attr(
                         "liquidity_assets",
@@ -773,7 +781,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     attr("recipient", withdrawal_state.receiver.clone()),
                     attr(
                         format!("andr_{}_sender", withdrawal_state.pair_address.clone()),
-                        withdrawal_state.pair_address.clone(),
+                        withdrawal_state.receiver.clone(),
                     ),
                 ])
                 .add_event(
