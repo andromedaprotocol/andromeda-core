@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-schema"
-version = "0.1.0-a.4"
+version = "0.1.0-a.5"
 edition = "2021"
 rust-version = "1.86.0"
 
