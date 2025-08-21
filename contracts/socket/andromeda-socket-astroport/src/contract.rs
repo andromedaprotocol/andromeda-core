@@ -367,13 +367,17 @@ fn provide_liquidity(
     }
 
     // Send the provide liquidity message to the pair (native coins attached, CW20s via allowance)
-    let provide_wasm_msg = wasm_execute(pair_addr_raw, &provide_liquidity_msg, native_coins)?;
+    let provide_wasm_msg = wasm_execute(&pair_addr_raw, &provide_liquidity_msg, native_coins)?;
     response_msgs = response_msgs.add_message(provide_wasm_msg);
 
     Ok(response_msgs
         .add_attributes(vec![
             attr("action", "provide_liquidity"),
             attr("andr_astroport_pool", pair_address.to_string()),
+            attr(
+                format!("andr_{}_sender", &pair_addr_raw),
+                info.sender.clone(),
+            ),
             attr("assets", format!("{:?}", assets)),
         ])
         .add_event(
@@ -481,6 +485,10 @@ fn withdraw_liquidity(
         .add_attributes(vec![
             attr("action", "withdraw_liquidity"),
             attr("andr_astroport_pool", pair_address.to_string()),
+            attr(
+                format!("andr_{}_sender", withdrawal_state.pair_address.clone()),
+                withdrawal_state.receiver.clone(),
+            ),
             attr("sender", info.sender.clone()),
         ])
         .add_submessage(sub_message))
@@ -691,6 +699,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         format!("andr_{}_sender", pair_address),
                         liquidity_state.sender.clone(),
                     ),
+                    attr("andr_astroport_pool", pair_address.clone()),
                     attr(
                         "liquidity_assets",
                         format!("{:?}", liquidity_state.assets.clone()),
@@ -783,6 +792,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         format!("andr_{}_sender", withdrawal_state.pair_address.clone()),
                         withdrawal_state.receiver.clone(),
                     ),
+                    attr("andr_astroport_pool", withdrawal_state.pair_address.clone()),
                 ])
                 .add_event(
                     Event::new("liquidity_withdrawn")
