@@ -127,11 +127,6 @@ pub fn validate_native_denom(deps: Deps, denom: String) -> Result<(), ContractEr
     Ok(())
 }
 
-#[cw_serde]
-pub struct AuthorizedAddressesResponse {
-    pub addresses: Vec<String>,
-}
-
 pub fn authorize_addresses(
     deps: &mut DepsMut,
     action: &str,

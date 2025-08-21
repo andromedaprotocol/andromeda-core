@@ -36,7 +36,7 @@ pub fn enum_implementation(_metadata: TokenStream, input: TokenStream) -> TokenS
                     action: String,
                     start_after: Option<String>,
                     limit: Option<u32>,
-                    order_by: Option<OrderBy>,
+                    order_by: Option<andromeda_std::common::OrderBy>,
                 },
             }
         }
