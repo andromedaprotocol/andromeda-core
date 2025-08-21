@@ -1,6 +1,6 @@
 use crate::ado_base::permissioning::{
     LocalPermission, PermissionedActionExpirationResponse, PermissionedActionsResponse,
-    PermissionedActionsWithExpirationResponse,
+    PermissionedActionsWithExpirationResponse, PermissionedActorsResponse,
 };
 use crate::common::Milliseconds;
 use crate::os::aos_querier::AOSQuerier;
@@ -621,7 +621,7 @@ impl ADOContract {
         start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
-    ) -> Result<Vec<String>, ContractError> {
+    ) -> Result<PermissionedActorsResponse, ContractError> {
         let action_string: String = action.into();
         let order_by = match order_by {
             Some(OrderBy::Desc) => Order::Descending,
@@ -647,7 +647,7 @@ impl ADOContract {
             })
             .collect::<Vec<String>>();
 
-        Ok(actors)
+        Ok(PermissionedActorsResponse { actors })
     }
 }
 
@@ -1840,9 +1840,9 @@ mod tests {
             .query_permissioned_actors(deps.as_ref(), action, None, None, None)
             .unwrap();
 
-        assert_eq!(actors.len(), 2);
-        assert_eq!(actors[0], actor);
-        assert_eq!(actors[1], actor2);
+        assert_eq!(actors.actors.len(), 2);
+        assert_eq!(actors.actors[0], actor);
+        assert_eq!(actors.actors[1], actor2);
     }
 
     #[rstest]
