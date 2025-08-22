@@ -232,7 +232,11 @@ pub fn execute_create_pool(
         }
     };
 
-    Ok(Response::default().add_submessage(msg))
+    Ok(Response::default().add_submessage(msg).add_attributes(vec![
+        attr("action", "create_pool"),
+        attr("andr_osmosis_pool", "pending_creation"),
+        attr("andr_pending_creation_sender", info.sender.to_string()),
+    ]))
 }
 
 fn execute_withdraw_pool(
@@ -265,7 +269,16 @@ fn execute_withdraw_pool(
     WITHDRAW_STATE.save(ctx.deps.storage, &withdraw_state)?;
 
     let sub_msg = SubMsg::reply_always(withdraw_msg, OSMOSIS_MSG_WITHDRAW_POOL_ID);
-    Ok(Response::default().add_submessage(sub_msg))
+    Ok(Response::default()
+        .add_submessage(sub_msg)
+        .add_attributes(vec![
+            attr("action", "withdraw_pool"),
+            attr("andr_osmosis_pool", pool_id.to_string()),
+            attr(
+                format!("andr_{}_sender", pool_id),
+                ctx.info.sender.to_string(),
+            ),
+        ]))
 }
 
 fn execute_update_swap_router(
