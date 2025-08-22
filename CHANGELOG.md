@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Create pool with funds and withdraw from pool in osmosis socket [(#886)](https://github.com/andromedaprotocol/andromeda-core/pull/886)
 - feat: Osmosis Token Factory ADO [(#929)](https://github.com/andromedaprotocol/andromeda-core/pull/929)
 - feat: Wildcard in Permissions [(#949)](https://github.com/andromedaprotocol/andromeda-core/pull/949)
+- feat: Additional Permission Queries [(#960)](https://github.com/andromedaprotocol/andromeda-core/pull/960)
 
 ### Changed
 

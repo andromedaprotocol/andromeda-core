@@ -17,31 +17,49 @@ bump_version() {
 
   # Extract the current version
   VERSION=$(grep '^version =' "$FILE" | sed -E 's/version = "(.*)"/\1/')
-  
-  if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "No valid version found in $FILE"
-    return 1
+
+  # Split base version and suffix
+  BASE_VERSION=${VERSION%%-*}
+  SUFFIX=${VERSION#"$BASE_VERSION"}
+  if [[ "$SUFFIX" == "$VERSION" ]]; then
+    SUFFIX=""
   fi
 
-  IFS='.' read -r -a VERSION_PARTS <<< "$VERSION"
+  IFS='.' read -r -a VERSION_PARTS <<< "$BASE_VERSION"
 
   MAJOR=${VERSION_PARTS[0]}
   MINOR=${VERSION_PARTS[1]}
   PATCH=${VERSION_PARTS[2]}
 
-  # Bump the version based on the input
+  # Extract suffix letter and number if present (e.g. "-a.4" or "-b.7")
+  SUFFIX_LETTER=""
+  SUFFIX_NUM=""
+  if [[ $SUFFIX =~ ^-([a-zA-Z]+)\.([0-9]+)$ ]]; then
+    SUFFIX_LETTER="${BASH_REMATCH[1]}"
+    SUFFIX_NUM="${BASH_REMATCH[2]}"
+  fi
+
   case $VERSION_BUMP in
     major)
       MAJOR=$((MAJOR + 1))
       MINOR=0
       PATCH=0
+      SUFFIX="-a.1"
       ;;
     minor)
       MINOR=$((MINOR + 1))
       PATCH=0
+      SUFFIX="-a.1"
       ;;
     patch)
-      PATCH=$((PATCH + 1))
+      if [[ -n $SUFFIX_LETTER && -n $SUFFIX_NUM ]]; then
+        # bump suffix number
+        SUFFIX_NUM=$((SUFFIX_NUM + 1))
+        SUFFIX="-$SUFFIX_LETTER.$SUFFIX_NUM"
+      else
+        PATCH=$((PATCH + 1))
+        SUFFIX="" # no suffix originally, keep clean patch bump
+      fi
       ;;
     *)
       echo "Invalid version bump type. Use 'patch', 'minor', or 'major'."
@@ -49,8 +67,8 @@ bump_version() {
       ;;
   esac
 
-  NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-  
+  NEW_VERSION="$MAJOR.$MINOR.$PATCH$SUFFIX"
+
   # Update the version in the Cargo.toml file
   sed -i.bak "s/version = \"$VERSION\"/version = \"$NEW_VERSION\"/" "$FILE"
   rm "$FILE.bak"
@@ -62,4 +80,3 @@ export -f bump_version
 
 # Find all Cargo.toml files and bump their versions
 find "$DIRECTORY" -name "Cargo.toml" -exec bash -c 'bump_version "$0" "$1"' {} "$VERSION_BUMP" \;
-
