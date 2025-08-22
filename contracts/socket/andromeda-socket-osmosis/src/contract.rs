@@ -234,7 +234,6 @@ pub fn execute_create_pool(
 
     Ok(Response::default().add_submessage(msg).add_attributes(vec![
         attr("action", "create_pool"),
-        attr("andr_osmosis_pool", "pending_creation"),
         attr("andr_pending_creation_sender", info.sender.to_string()),
     ]))
 }
