@@ -18,7 +18,7 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     andr_execute_fn,
-    common::encode_binary,
+    common::{encode_binary, schedule::Schedule},
     error::ContractError,
 };
 
@@ -51,7 +51,7 @@ pub fn instantiate(
     RESTRICTION.save(deps.storage, &msg.restriction)?;
 
     if msg.restriction == BooleanRestriction::Private {
-        ADOContract::default().permission_action(deps.storage, SET_DELETE_VALUE_ACTION)?;
+        ADOContract::default().permission_action(deps.storage, SET_DELETE_VALUE_ACTION, None)?;
 
         ADOContract::set_permission(
             deps.storage,
@@ -60,7 +60,11 @@ pub fn instantiate(
                 None => info.sender,
                 Some(owner) => Addr::unchecked(owner),
             },
-            Permission::Local(LocalPermission::whitelisted(None, None)),
+            Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )),
         )?;
     }
 

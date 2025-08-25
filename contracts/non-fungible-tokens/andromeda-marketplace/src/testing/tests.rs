@@ -3,15 +3,13 @@ use andromeda_non_fungible_tokens::marketplace::{
 };
 use andromeda_std::{
     ado_base::{
-        permissioning::{LocalPermission, Permission},
+        permissioning::{LocalPermission, Permission, PermissionedActorsResponse},
         rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
     },
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::{
-        denom::{
-            Asset, AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
-        },
+        denom::{Asset, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION},
         encode_binary,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         schedule::Schedule,
@@ -225,7 +223,11 @@ fn test_instantiate_with_multiple_authorized_cw20_addresses() {
             ADOContract::get_permission(deps.as_ref().storage, SEND_CW20_ACTION, raw_addr).unwrap();
         assert_eq!(
             permission,
-            Some(Permission::Local(LocalPermission::whitelisted(None, None)))
+            Some(Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )))
         );
     }
 
@@ -1027,7 +1029,11 @@ fn test_execute_authorize_cw20_contract() {
     .unwrap();
     assert_eq!(
         permission,
-        Some(Permission::Local(LocalPermission::whitelisted(None, None)))
+        Some(Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )))
     );
 
     // Test successful authorization with expiration
@@ -1061,8 +1067,9 @@ fn test_execute_authorize_cw20_contract() {
     assert_eq!(
         permission,
         Some(Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, Some(expiration)),
             None,
-            Some(expiration),
+            None,
         )))
     );
 }
@@ -1091,7 +1098,11 @@ fn test_execute_deauthorize_cw20_contract() {
     .unwrap();
     assert_eq!(
         permission,
-        Some(Permission::Local(LocalPermission::whitelisted(None, None)))
+        Some(Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )))
     );
 
     // Now deauthorize the CW20 contract
@@ -1151,30 +1162,30 @@ fn test_query_authorized_addresses() {
     );
 
     // Query authorized addresses for CW20 action
-    let cw20_query = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendCw20,
+    let cw20_query = QueryMsg::PermissionedActors {
+        action: SEND_CW20_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let cw20_res: AuthorizedAddressesResponse =
+    let cw20_res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), cw20_query).unwrap()).unwrap();
     assert_eq!(
-        cw20_res.addresses,
+        cw20_res.actors,
         vec![cw20_contract_1.to_string(), cw20_contract_2.to_string(),]
     );
 
     // Query authorized addresses for NFT action
-    let nft_query = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendNft,
+    let nft_query = QueryMsg::PermissionedActors {
+        action: SEND_NFT_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let nft_res: AuthorizedAddressesResponse =
+    let nft_res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), nft_query).unwrap()).unwrap();
     assert_eq!(
-        nft_res.addresses,
+        nft_res.actors,
         vec![nft_contract_2.to_string(), nft_contract_1.to_string(),]
     );
 }
@@ -1217,15 +1228,15 @@ fn test_authorize_token_contract() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Query to verify authorization
-    let query_msg = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendNft,
+    let query_msg = QueryMsg::PermissionedActors {
+        action: SEND_NFT_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let res: AuthorizedAddressesResponse =
+    let res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-    assert_eq!(res.addresses, vec![nft_contract.to_string()]);
+    assert_eq!(res.actors, vec![nft_contract.to_string()]);
 }
 
 #[test]
@@ -1267,13 +1278,13 @@ fn test_deauthorize_token_contract() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Query to verify deauthorization
-    let query_msg = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendNft,
+    let query_msg = QueryMsg::PermissionedActors {
+        action: SEND_NFT_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let res: AuthorizedAddressesResponse =
+    let res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-    assert!(res.addresses.is_empty());
+    assert!(res.actors.is_empty());
 }

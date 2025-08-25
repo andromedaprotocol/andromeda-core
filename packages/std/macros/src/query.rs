@@ -31,6 +31,13 @@ pub fn enum_implementation(_metadata: TokenStream, input: TokenStream) -> TokenS
                 Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
                 #[returns(andromeda_std::ado_base::permissioning::PermissionedActionsResponse)]
                 PermissionedActions { },
+                #[returns(andromeda_std::ado_base::permissioning::PermissionedActorsResponse)]
+                PermissionedActors {
+                    action: String,
+                    start_after: Option<String>,
+                    limit: Option<u32>,
+                    order_by: Option<andromeda_std::common::OrderBy>,
+                },
             }
         }
         .into(),

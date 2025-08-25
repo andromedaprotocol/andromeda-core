@@ -68,12 +68,16 @@ pub fn instantiate(
     let tiers: Vec<Tier> = msg.tiers.into_iter().collect();
     if let Asset::Cw20Token(addr) = campaign_config.denom.clone() {
         let addr = addr.get_raw_address(&deps.as_ref())?;
-        ADOContract::default().permission_action(deps.storage, SEND_CW20_ACTION)?;
+        ADOContract::default().permission_action(deps.storage, SEND_CW20_ACTION, None)?;
         ADOContract::set_permission(
             deps.storage,
             SEND_CW20_ACTION,
             addr,
-            Permission::Local(LocalPermission::whitelisted(None, None)),
+            Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )),
         )?;
     }
 

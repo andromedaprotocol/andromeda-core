@@ -84,9 +84,10 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
             recipient,
             schedule,
         } => execute_start_redeem_native(ctx, redeem_asset, exchange_rate, recipient, schedule),
-        ExecuteMsg::ReplenishRedeem { redeem_asset } => {
-            execute_replenish_redeem_native(ctx, redeem_asset)
-        }
+        ExecuteMsg::ReplenishRedeem {
+            redeem_asset,
+            exchange_rate_type,
+        } => execute_replenish_redeem_native(ctx, redeem_asset, exchange_rate_type),
         ExecuteMsg::Redeem { recipient } => execute_redeem_native(ctx, recipient),
         ExecuteMsg::Receive(cw20_msg) => execute_receive(ctx, cw20_msg),
         _ => ADOContract::default().execute(ctx, msg),
@@ -143,9 +144,16 @@ pub fn execute_receive(
             recipient,
             schedule,
         ),
-        Cw20HookMsg::ReplenishRedeem { redeem_asset } => {
-            execute_replenish_redeem(ctx, amount_sent, asset_sent, redeem_asset)
-        }
+        Cw20HookMsg::ReplenishRedeem {
+            redeem_asset,
+            exchange_rate_type,
+        } => execute_replenish_redeem(
+            ctx,
+            amount_sent,
+            asset_sent,
+            redeem_asset,
+            exchange_rate_type,
+        ),
         Cw20HookMsg::Redeem { recipient } => {
             let recipient = Recipient::validate_or_default(recipient, &ctx, sender.as_str())?;
             execute_redeem(ctx, amount_sent, asset_sent, recipient, &sender)

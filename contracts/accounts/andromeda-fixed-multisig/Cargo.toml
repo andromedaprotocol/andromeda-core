@@ -1,8 +1,8 @@
 [package]
 name = "andromeda-fixed-multisig"
-version = "0.1.0-a.3"
+version = "0.1.0-a.5"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

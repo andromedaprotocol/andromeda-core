@@ -179,6 +179,7 @@ fn test_auction_app_modules() {
         None,
         None,
         None,
+        None,
     );
     cw721
         .execute_send_nft(
@@ -388,6 +389,7 @@ fn test_auction_app_recipient() {
         None,
         None,
         Some(Recipient::from_string("./splitter").with_msg(mock_splitter_send_msg(None))),
+        None,
     );
     cw721
         .execute_send_nft(
@@ -650,6 +652,7 @@ fn test_auction_app_cw20_restricted() {
                 None,
                 None,
                 None,
+                None,
             ),
         )
         .unwrap();
@@ -672,7 +675,7 @@ fn test_auction_app_cw20_restricted() {
     // Try to set permission with an empty vector of actors
     let actors = vec![];
     let action = "PlaceBid".to_string();
-    let permission = Permission::Local(LocalPermission::blacklisted(None, None));
+    let permission = Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None)));
     let err: ContractError = auction
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap_err()
@@ -687,7 +690,7 @@ fn test_auction_app_cw20_restricted() {
         AndrAddr::from_string(buyer_three.clone()),
     ];
     let action = "PlaceBid".to_string();
-    let permission = Permission::Local(LocalPermission::blacklisted(None, None));
+    let permission = Permission::Local(LocalPermission::blacklisted(Schedule::new(None, None)));
     auction
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
@@ -723,7 +726,11 @@ fn test_auction_app_cw20_restricted() {
     // Now whitelist bidder one
     let actors = vec![AndrAddr::from_string(buyer_one.clone())];
     let action = "PlaceBid".to_string();
-    let permission = Permission::Local(LocalPermission::whitelisted(None, None));
+    let permission = Permission::Local(LocalPermission::whitelisted(
+        Schedule::new(None, None),
+        None,
+        None,
+    ));
     auction
         .execute_set_permission(&mut router, owner.clone(), actors, action, permission)
         .unwrap();
@@ -832,6 +839,7 @@ fn test_auction_app_cw20_restricted() {
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
                 Some(Recipient::from_string(buyer_one)),
+                None,
             ),
         )
         .unwrap();
@@ -853,6 +861,7 @@ fn test_auction_app_cw20_restricted() {
         None,
         Some(vec![buyer_one.clone(), buyer_two.clone()]),
         Some(Recipient::from_string(buyer_one)),
+        None,
     );
 
     let err: ContractError = router
@@ -1143,6 +1152,7 @@ fn test_auction_app_cw20_unrestricted() {
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
                 None,
+                None,
             ),
         )
         .unwrap();
@@ -1270,6 +1280,7 @@ fn test_auction_app_cw20_unrestricted() {
                 None,
                 None,
                 Some(vec![buyer_one.clone(), buyer_two.clone()]),
+                None,
                 None,
             ),
         )

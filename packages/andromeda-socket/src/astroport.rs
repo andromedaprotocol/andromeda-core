@@ -71,12 +71,18 @@ pub enum ExecuteMsg {
     CreatePairAndProvideLiquidity {
         /// The pair type (exposed in [`PairType`])
         pair_type: PairType,
-        /// The assets to create the pool for
-        asset_infos: Vec<AssetInfoAstroport>,
         /// Optional binary serialised parameters for custom pool types
         init_params: Option<Binary>,
+        /// The assets used for creating pair type
+        /// AssetEntry {
+        ///     info : AssetInfo {
+        ///         Token: {contract: addr}
+        ///         NativeToken: {denom: String}
+        ///     }
+        ///     amount: Uint128
+        /// }
         /// The assets to deposit as liquidity
-        assets: Vec<AssetEntry>,
+        assets: Vec<AndromedaAssetEntry>,
         /// The slippage tolerance for the liquidity provision
         slippage_tolerance: Option<Decimal>,
         /// Determines whether the LP tokens minted for the user are auto staked in the Generator contract
@@ -282,6 +288,14 @@ pub struct AssetEntry {
     pub amount: Uint128,
 }
 
+#[cw_serde]
+pub struct AndromedaAssetEntry {
+    /// Asset info
+    pub info: AssetInfoAstroport,
+    /// Asset amount
+    pub amount: Uint128,
+}
+
 /// Astroport Pair contract execute messages
 #[cw_serde]
 pub enum PairExecuteMsg {
@@ -304,7 +318,8 @@ pub struct PairAddressResponse {
     pub pair_address: Option<String>,
 }
 
-pub fn transform_asset_info(
+/// Core transformation function that handles the basic conversion from AssetInfoAstroport to AssetInfo
+fn transform_asset_info_core(
     asset_info: &AssetInfoAstroport,
     deps: &DepsMut,
 ) -> Result<AssetInfo, ContractError> {
@@ -316,4 +331,37 @@ pub fn transform_asset_info(
             denom: denom.clone(),
         }),
     }
+}
+
+/// Transforms a single AndromedaAssetEntry into AssetInfo
+pub fn transform_asset_entry_info(
+    asset_entry: &AndromedaAssetEntry,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    transform_asset_info_core(&asset_entry.info, deps)
+}
+
+/// Transforms a vector of AndromedaAssetEntry into a vector of AssetEntry
+pub fn transform_asset_entry(
+    asset_entries: &[AndromedaAssetEntry],
+    deps: &DepsMut,
+) -> Result<Vec<AssetEntry>, ContractError> {
+    asset_entries
+        .iter()
+        .map(|entry| {
+            let info = transform_asset_info_core(&entry.info, deps)?;
+            Ok(AssetEntry {
+                info,
+                amount: entry.amount,
+            })
+        })
+        .collect()
+}
+
+/// Transforms a single AssetInfoAstroport into AssetInfo
+pub fn transform_asset_info(
+    asset_info: &AssetInfoAstroport,
+    deps: &DepsMut,
+) -> Result<AssetInfo, ContractError> {
+    transform_asset_info_core(asset_info, deps)
 }

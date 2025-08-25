@@ -163,7 +163,13 @@ pub fn do_ibc_packet_receive(
                     }
                 }
                 None => {
-                    execute_env.amp_ctx = None;
+                    // Added this to keep track of original sender, even if the address is invalid on the receiving chain
+                    let new_amp_packet = AMPPkt::new(
+                        amp_packet.ctx.get_origin(),
+                        env.contract.address,
+                        amp_packet.messages.clone(),
+                    );
+                    execute_env.amp_ctx = Some(new_amp_packet);
                 }
             }
 
@@ -254,18 +260,16 @@ pub fn do_ibc_packet_receive(
 }
 
 pub fn ibc_create_ado(
-    _execute_ctx: ExecuteContext,
-    _owner: AndrAddr,
-    _ado_type: String,
-    _msg: Binary,
+    execute_ctx: ExecuteContext,
+    owner: AndrAddr,
+    ado_type: String,
+    msg: Binary,
 ) -> Result<IbcReceiveResponse, ContractError> {
-    Err(ContractError::CrossChainComponentsCurrentlyDisabled {})
-    // let res = execute::create(execute_env, ado_type, msg, Some(owner), None)?;
-    // Ok(IbcReceiveResponse::new()
-    //     .add_attributes(res.attributes)
-    //     .add_events(res.events)
-    //     .add_submessages(res.messages)
-    //     .set_ack(make_ack_create_ado_success()))
+    let res = execute::create(execute_ctx, ado_type, msg, Some(owner), None)?;
+    Ok(IbcReceiveResponse::new(make_ack_success())
+        .add_attributes(res.attributes)
+        .add_events(res.events)
+        .add_submessages(res.messages))
 }
 
 pub fn ibc_register_username(

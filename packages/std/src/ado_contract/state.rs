@@ -1,5 +1,6 @@
 #[cfg(feature = "rates")]
 use crate::ado_base::rates::Rate;
+use crate::common::Milliseconds;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 
@@ -10,7 +11,7 @@ pub struct ADOContract {
     pub(crate) ado_type: Item<String>,
     pub(crate) app_contract: Item<Addr>,
     pub(crate) kernel_address: Item<Addr>,
-    pub(crate) permissioned_actions: Map<String, bool>,
+    pub(crate) permissioned_actions: Map<String, Option<Milliseconds>>,
     #[cfg(feature = "rates")]
     /// Mapping of action to rate
     pub rates: Map<String, Rate>,

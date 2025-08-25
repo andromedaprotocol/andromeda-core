@@ -397,15 +397,17 @@ macro_rules! unwrap_amp_msg {
             ctx.amp_ctx = Some(pkt);
         }
 
+        let (is_permissioned, submsg) =
+            ::andromeda_std::ado_contract::permissioning::is_context_permissioned(
+                &mut ctx.deps,
+                &ctx.info,
+                &ctx.env,
+                &ctx.amp_ctx,
+                msg.as_ref(),
+            )?;
+
         ::cosmwasm_std::ensure!(
-            msg.is_permissionless()
-                || ::andromeda_std::ado_contract::permissioning::is_context_permissioned(
-                    &mut ctx.deps,
-                    &ctx.info,
-                    &ctx.env,
-                    &ctx.amp_ctx,
-                    msg.as_ref(),
-                )?,
+            msg.is_permissionless() || is_permissioned,
             ::andromeda_std::error::ContractError::Unauthorized {}
         );
 
@@ -417,7 +419,7 @@ macro_rules! unwrap_amp_msg {
             msg.as_ref(),
         )?;
 
-        (ctx, msg, action_response)
+        (ctx, msg, action_response, submsg)
     }};
 }
 
@@ -543,7 +545,10 @@ mod tests {
 
     mod permissions_migration {
         use super::*;
-        use crate::ado_base::permissioning::{LocalPermission, Permission};
+        use crate::{
+            ado_base::permissioning::{LocalPermission, Permission},
+            common::schedule::Schedule,
+        };
 
         #[test]
         fn test_permissions_migration() {
@@ -572,8 +577,9 @@ mod tests {
 
             // Set up a test permission
             let permission = Permission::Local(LocalPermission::Whitelisted {
-                start: None,
-                expiration: None,
+                schedule: Schedule::new(None, None),
+                window: None,
+                last_used: None,
             });
 
             let actor = deps.api.addr_make("actor");

@@ -56,13 +56,18 @@ fn test_app() {
     assert_eq!(components, app_components);
 
     let owner_str = owner.to_string();
-    let cw721_parent_app_symlink =
-        format!("~{owner_str}/{0}/cw721", convert_component_name(app_name));
-
-    let cw721_component_with_symlink =
-        AppComponent::symlink("cw721-ref-2", "cw721", cw721_parent_app_symlink.clone());
-    app.execute_add_app_component(&mut router, owner.clone(), cw721_component_with_symlink)
-        .unwrap();
+    let cw721_component_with_symlink = AppComponent::symlink(
+        "cw721-ref-2",
+        "cw721",
+        format!("~{owner_str}/{0}/cw721", convert_component_name(app_name)),
+    );
+    app.execute_add_app_component(
+        &mut router,
+        owner.clone(),
+        cw721_component_with_symlink,
+        None,
+    )
+    .unwrap();
 
     let component_addresses = app.query_components(&router);
     assert_eq!(component_addresses.len(), components.len() + 1);
@@ -72,7 +77,7 @@ fn test_app() {
         "cw721".to_string(),
         to_json_binary(&cw721_init_msg).unwrap(),
     );
-    app.execute_add_app_component(&mut router, owner.clone(), cw721_component2)
+    app.execute_add_app_component(&mut router, owner.clone(), cw721_component2, None)
         .unwrap();
 
     let component_addresses = app.query_components(&router);
@@ -129,7 +134,7 @@ fn test_app() {
         to_json_binary(&inner_app_init_msg).unwrap(),
     );
 
-    app.execute_add_app_component(&mut router, owner.clone(), inner_app_component)
+    app.execute_add_app_component(&mut router, owner.clone(), inner_app_component, None)
         .unwrap();
 
     let inner_app_ado: MockAppContract = app.query_ado_by_component_name(&router, "inner-app");

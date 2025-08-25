@@ -14,12 +14,12 @@ use andromeda_std::{
         context::ExecuteContext,
         denom::{
             authorize_addresses, execute_authorize_contract, execute_deauthorize_contract, Asset,
-            AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
+            SEND_CW20_ACTION, SEND_NFT_ACTION,
         },
         encode_binary,
         rates::{get_tax_amount, get_tax_amount_cw20},
         schedule::Schedule,
-        Funds, Milliseconds, OrderBy,
+        Funds, Milliseconds,
     },
     error::ContractError,
 };
@@ -113,14 +113,13 @@ fn handle_receive_cw721(
     mut ctx: ExecuteContext,
     msg: Cw721ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    ctx.contract.is_permissioned(
+    let sub_msg = ctx.contract.is_permissioned(
         ctx.deps.branch(),
         ctx.env.clone(),
         SEND_NFT_ACTION,
         ctx.info.sender.clone(),
     )?;
-
-    match from_json(&msg.msg)? {
+    let mut res = match from_json(&msg.msg)? {
         Cw721HookMsg::StartSale {
             price,
             coin_denom,
@@ -137,7 +136,11 @@ fn handle_receive_cw721(
             coin_denom,
             recipient,
         ),
+    }?;
+    if let Some(sub_msg) = sub_msg {
+        res = res.add_submessage(sub_msg);
     }
+    Ok(res)
 }
 
 pub fn handle_receive_cw20(
@@ -764,18 +767,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             start_after,
             limit,
         )?),
-        QueryMsg::AuthorizedAddresses {
-            action,
-            start_after,
-            limit,
-            order_by,
-        } => encode_binary(&query_authorized_addresses(
-            deps,
-            action,
-            start_after,
-            limit,
-            order_by,
-        )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -837,23 +828,6 @@ fn query_owner_of(
     }))?;
 
     Ok(res)
-}
-
-fn query_authorized_addresses(
-    deps: Deps,
-    action: PermissionAction,
-    start_after: Option<String>,
-    limit: Option<u32>,
-    order_by: Option<OrderBy>,
-) -> Result<AuthorizedAddressesResponse, ContractError> {
-    let addresses = ADOContract::default().query_permissioned_actors(
-        deps,
-        action.as_str(),
-        start_after,
-        limit,
-        order_by,
-    )?;
-    Ok(AuthorizedAddressesResponse { addresses })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

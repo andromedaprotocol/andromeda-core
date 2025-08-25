@@ -2,7 +2,7 @@
 name = "andromeda-deploy"
 version = "0.0.2"
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.86.0"
 description = "The deploy tool for aOS"
 license = "MIT"
 
@@ -14,7 +14,7 @@ cosmwasm-std = { workspace = true }
 serde = { version = "1.0.219", default-features = false, features = ["derive"] }
 cw-orch = { workspace = true }
 cw-orch-daemon = "0.29.1"
-thiserror = "2.0.12"
+thiserror = "2.0.15"
 env_logger = "0.11.8"
 log = "0.4"
 dotenv = "0.15.0"
@@ -23,10 +23,10 @@ serde_json = "1.0"
 chrono = "0.4"
 
 # OS Contracts
-andromeda-kernel = { version = "1.2.1-b.7", path = "../../contracts/os/andromeda-kernel" }
-andromeda-adodb = { version = "1.1.5", path = "../../contracts/os/andromeda-adodb" }
+andromeda-kernel = { path = "../../contracts/os/andromeda-kernel" }
+andromeda-adodb = { path = "../../contracts/os/andromeda-adodb" }
 andromeda-vfs = { path = "../../contracts/os/andromeda-vfs" }
-andromeda-economics = { version = "1.2.1-b.1", path = "../../contracts/os/andromeda-economics" }
+andromeda-economics = { path = "../../contracts/os/andromeda-economics" }
 andromeda-ibc-registry = { path = "../../contracts/os/andromeda-ibc-registry" }
 
 # Finance Contracts
@@ -74,8 +74,8 @@ andromeda-graph = { path = "../../contracts/math/andromeda-graph" }
 andromeda-point = { path = "../../contracts/math/andromeda-point" }
 
 # Socket Contracts
-andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-astroport"}
-andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osmosis"}
+andromeda-socket-astroport = { path = "../../contracts/socket/andromeda-socket-astroport" }
+andromeda-socket-osmosis = { path = "../../contracts/socket/andromeda-socket-osmosis" }
 
 
 andromeda-std = { workspace = true }

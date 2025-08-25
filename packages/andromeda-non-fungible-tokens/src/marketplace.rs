@@ -5,7 +5,7 @@ use andromeda_std::{
         denom::{Asset, PermissionAction},
         expiration::Expiry,
         schedule::Schedule,
-        Milliseconds, OrderBy,
+        Milliseconds,
     },
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -142,13 +142,6 @@ pub enum QueryMsg {
         token_address: String,
         start_after: Option<String>,
         limit: Option<u64>,
-    },
-    #[returns(::andromeda_std::common::denom::AuthorizedAddressesResponse)]
-    AuthorizedAddresses {
-        action: PermissionAction,
-        start_after: Option<String>,
-        limit: Option<u32>,
-        order_by: Option<OrderBy>,
     },
 }
 

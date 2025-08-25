@@ -1,12 +1,17 @@
-use andromeda_modules::address_list::{ActorPermissionResponse, IncludesActorResponse};
+use andromeda_modules::address_list::{
+    ActorPermissionResponse, IncludesActorResponse, PERMISSION_ACTORS_ACTION,
+};
 #[cfg(not(feature = "library"))]
 use andromeda_modules::address_list::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::{
-    ado_base::{permissioning::LocalPermission, InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
+    ado_base::{
+        permissioning::{LocalPermission, Permission},
+        InstantiateMsg as BaseInstantiateMsg, MigrateMsg,
+    },
     ado_contract::ADOContract,
     amp::AndrAddr,
     andr_execute_fn,
-    common::{context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, encode_binary, expiration::Expiry, schedule::Schedule},
     error::ContractError,
 };
 
@@ -28,23 +33,45 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     // If the user provided an actor and permission, save them.
-    if let Some(actor_permission) = msg.actor_permission {
-        // Permissions of type Limited local permissions aren't allowed in the address list contract
-        if let LocalPermission::Limited { .. } = actor_permission.permission {
-            return Err(ContractError::InvalidPermission {
-                msg: "Limited permission is not supported in address list contract".to_string(),
-            });
-        }
+    if let Some(mut actor_permission) = msg.actor_permission {
         ensure!(
             !actor_permission.actors.is_empty(),
             ContractError::NoActorsProvided {}
         );
         actor_permission.permission.validate_times(&env)?;
+
+        // If the permission is a whitelist, make sure to set last used time as none
+        actor_permission.permission = if let LocalPermission::Whitelisted {
+            schedule, window, ..
+        } = actor_permission.permission
+        {
+            LocalPermission::Whitelisted {
+                schedule,
+                window,
+                last_used: None,
+            }
+        } else {
+            actor_permission.permission
+        };
+
         for actor in actor_permission.actors {
             let verified_actor = actor.get_raw_address(&deps.as_ref())?;
             add_actors_permission(deps.storage, verified_actor, &actor_permission.permission)?;
         }
     }
+
+    ADOContract::default().permission_action(deps.storage, PERMISSION_ACTORS_ACTION, None)?;
+    ADOContract::set_permission(
+        deps.storage,
+        PERMISSION_ACTORS_ACTION.to_string(),
+        info.sender.clone(),
+        Permission::Local(LocalPermission::whitelisted(
+            Schedule::new(None, None),
+            None,
+            None,
+        )),
+    )?;
+
     let inst_resp = ADOContract::default().instantiate(
         deps.storage,
         env,
@@ -65,6 +92,9 @@ pub fn instantiate(
 #[andr_execute_fn]
 pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AuthorizePermissionActorsAction { actors } => {
+            execute_authorize_permission_actors(ctx, actors)
+        }
         ExecuteMsg::PermissionActors { actors, permission } => {
             execute_permission_actors(ctx, actors, permission)
         }
@@ -73,21 +103,56 @@ pub fn execute(ctx: ExecuteContext, msg: ExecuteMsg) -> Result<Response, Contrac
     }
 }
 
+fn execute_authorize_permission_actors(
+    ctx: ExecuteContext,
+    actors: Vec<AndrAddr>,
+) -> Result<Response, ContractError> {
+    let ExecuteContext { deps, .. } = ctx;
+
+    ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
+
+    actors.iter().try_for_each(|actor| {
+        let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+        ADOContract::set_permission(
+            deps.storage,
+            PERMISSION_ACTORS_ACTION.to_string(),
+            verified_actor,
+            Permission::Local(LocalPermission::whitelisted(
+                Schedule::new(None, None),
+                None,
+                None,
+            )),
+        )
+    })?;
+
+    Ok(Response::new().add_attributes(vec![attr("action", "authorize_permission_actors")]))
+}
+
 fn execute_permission_actors(
     ctx: ExecuteContext,
     actors: Vec<AndrAddr>,
-    permission: LocalPermission,
+    mut permission: LocalPermission,
 ) -> Result<Response, ContractError> {
     let ExecuteContext { deps, env, .. } = ctx;
-    if let LocalPermission::Limited { .. } = permission {
-        return Err(ContractError::InvalidPermission {
-            msg: "Limited permission is not supported in address list contract".to_string(),
-        });
-    }
+
     ensure!(!actors.is_empty(), ContractError::NoActorsProvided {});
-    permission.validate_times(&env)?;
+    let (start, end) = permission.validate_times(&env)?;
+    let verified_schedule = Schedule::new(Some(Expiry::AtTime(start)), end.map(Expiry::AtTime));
+
     for actor in actors.clone() {
         let verified_actor = actor.get_raw_address(&deps.as_ref())?;
+        permission = match permission {
+            LocalPermission::Whitelisted {
+                window, last_used, ..
+            } => LocalPermission::whitelisted(verified_schedule.clone(), window, last_used),
+            LocalPermission::Blacklisted { .. } => {
+                LocalPermission::blacklisted(verified_schedule.clone())
+            }
+            LocalPermission::Limited { uses, .. } => {
+                LocalPermission::limited(verified_schedule.clone(), uses)
+            }
+        };
+
         add_actors_permission(deps.storage, verified_actor, &permission)?;
     }
     let actors_str = actors
