@@ -75,6 +75,10 @@ impl MockAppContract {
     ) -> C {
         C::from(self.query_component_addr(app, name))
     }
+
+    pub fn query_app_address(&self, app: &MockApp) -> Option<Addr> {
+        self.query::<Option<Addr>>(app, mock_get_app_address_msg())
+    }
 }
 
 pub fn mock_andromeda_app() -> Box<dyn Contract<Empty>> {
@@ -124,4 +128,8 @@ pub fn mock_get_adresses_with_names_msg() -> QueryMsg {
 
 pub fn mock_get_address_msg(name: impl Into<String>) -> QueryMsg {
     QueryMsg::GetAddress { name: name.into() }
+}
+
+pub fn mock_get_app_address_msg() -> QueryMsg {
+    QueryMsg::AppContract {}
 }
