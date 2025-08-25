@@ -1,9 +1,7 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 
 use crate::contract::{execute, instantiate, query};
-use andromeda_socket::proxy::{
-    AllLockedResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
-};
+use andromeda_socket::proxy::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_std::ado_base::permissioning::{Permission, PermissioningMessage};
 use andromeda_std::ado_base::rates::{Rate, RatesMessage};
 use andromeda_std::amp::messages::AMPPkt;
@@ -64,10 +62,6 @@ impl MockProxy {
         let msg = mock_set_permission(actors, action, permission);
         self.execute(app, &msg, sender, &[])
     }
-
-    pub fn query_all_locked(&self, app: &MockApp) -> AllLockedResponse {
-        self.query::<AllLockedResponse>(app, query_all_locked())
-    }
 }
 
 pub fn mock_andromeda_osmosis_token_factory() -> Box<dyn Contract<Empty>> {
@@ -103,14 +97,6 @@ pub fn mock_set_permission(
     })
 }
 
-pub fn mock_cw20_hook_msg(recipient: Option<AndrAddr>) -> Cw20HookMsg {
-    Cw20HookMsg::Lock { recipient }
-}
-
 pub fn mock_receive_packet(packet: AMPPkt) -> ExecuteMsg {
     ExecuteMsg::AMPReceive(packet)
-}
-
-pub fn query_all_locked() -> QueryMsg {
-    QueryMsg::AllLocked {}
 }

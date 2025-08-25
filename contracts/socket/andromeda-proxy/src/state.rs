@@ -1,9 +1,6 @@
 use andromeda_std::{common::context::ExecuteContext, error::ContractError};
-use cosmwasm_std::{ensure, Addr, Uint128};
-use cw_storage_plus::{Item, Map};
-
-/// Maps cw20_address -> locked_amount
-pub const LOCKED: Map<Addr, Uint128> = Map::new("locked");
+use cosmwasm_std::ensure;
+use cw_storage_plus::Item;
 
 /// List of addresses that are allowed to operate this ADO
 pub const ADMINS: Item<Vec<String>> = Item::new("admins");

@@ -1,18 +1,16 @@
-use crate::state::{authorize, ADMINS, LOCKED};
-use andromeda_socket::proxy::{
-    AllLockedResponse, ExecuteMsg, InitParams, InstantiateMsg, LockedInfo, LockedResponse, QueryMsg,
-};
+use crate::state::{authorize, ADMINS};
+use andromeda_socket::proxy::{ExecuteMsg, InitParams, InstantiateMsg, QueryMsg};
 use andromeda_std::{
     ado_base::{InstantiateMsg as BaseInstantiateMsg, MigrateMsg},
     ado_contract::ADOContract,
     amp::AndrAddr,
     andr_execute_fn,
-    common::{context::ExecuteContext, encode_binary},
+    common::context::ExecuteContext,
     error::ContractError,
     os::aos_querier::AOSQuerier,
 };
 use cosmwasm_std::{
-    attr, entry_point, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    attr, entry_point, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
     StdError, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -93,7 +91,7 @@ fn send_instantiate(
     ctx: ExecuteContext,
     init_params: InitParams,
     message: Binary,
-    admin: Option<String>,
+    admin: Option<AndrAddr>,
     label: Option<String>,
 ) -> Result<Response, ContractError> {
     authorize(&ctx)?;
@@ -109,6 +107,10 @@ fn send_instantiate(
         }
     };
 
+    let admin = match admin {
+        Some(admin) => Some(admin.get_raw_address(&ctx.deps.as_ref())?.into_string()),
+        None => None,
+    };
     // Forward the message
     let sub_msg = SubMsg::reply_always(
         CosmosMsg::Wasm(WasmMsg::Instantiate {
@@ -140,8 +142,6 @@ fn execute_modify_admins(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Locked { cw20_addr } => encode_binary(&query_locked(deps, cw20_addr)?),
-        QueryMsg::AllLocked {} => encode_binary(&query_all_locked(deps)?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -169,26 +169,4 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
             "Invalid Reply ID".to_string(),
         ))),
     }
-}
-
-fn query_locked(deps: Deps, cw20_addr: Addr) -> Result<LockedResponse, ContractError> {
-    let amount = LOCKED
-        .may_load(deps.storage, cw20_addr)?
-        .unwrap_or_default();
-    Ok(LockedResponse { amount })
-}
-
-fn query_all_locked(deps: Deps) -> Result<AllLockedResponse, ContractError> {
-    let locked: Vec<LockedInfo> = LOCKED
-        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .filter_map(|item| {
-            let (cw20_addr, amount) = item.ok()?;
-            if !amount.is_zero() {
-                Some(LockedInfo { cw20_addr, amount })
-            } else {
-                None
-            }
-        })
-        .collect();
-    Ok(AllLockedResponse { locked })
 }
