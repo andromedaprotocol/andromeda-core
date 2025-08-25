@@ -141,9 +141,7 @@ fn execute_modify_admins(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    match msg {
-        _ => ADOContract::default().query(deps, env, msg),
-    }
+    ADOContract::default().query(deps, env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
