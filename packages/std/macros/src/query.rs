@@ -27,17 +27,21 @@ pub fn enum_implementation(_metadata: TokenStream, input: TokenStream) -> TokenS
                 #[returns(andromeda_std::ado_base::version::ADOBaseVersionResponse)]
                 #[schemars(example = "andromeda_std::ado_base::version::base_crate_version")]
                 ADOBaseVersion {},
-                #[returns(andromeda_std::ado_base::permissioning::PermissionInfo)]
-                Permissions { actor: String, limit: Option<u32>, start_after: Option<String> },
+                #[returns(Vec<andromeda_std::ado_base::permissioning::PermissionInfo>)]
+                Permissions { actor: andromeda_std::amp::AndrAddr, limit: Option<u32>, start_after: Option<String> },
                 #[returns(andromeda_std::ado_base::permissioning::PermissionedActionsResponse)]
                 PermissionedActions { },
                 #[returns(andromeda_std::ado_base::permissioning::PermissionedActorsResponse)]
                 PermissionedActors {
                     action: String,
-                    start_after: Option<String>,
                     limit: Option<u32>,
+                    start_after: Option<String>,
                     order_by: Option<andromeda_std::common::OrderBy>,
                 },
+                #[returns(andromeda_std::ado_base::permissioning::PermissionedActionsWithExpirationResponse)]
+                PermissionedActionsWithExpiration {},
+                #[returns(andromeda_std::ado_base::permissioning::PermissionedActionExpirationResponse)]
+                PermissionedActionsExpiration { action: String },
             }
         }
         .into(),
