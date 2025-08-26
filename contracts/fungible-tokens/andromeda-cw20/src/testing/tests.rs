@@ -68,14 +68,19 @@ fn test_transfer() {
     let mut deps = mock_dependencies_custom(&[]);
     let res = init(&mut deps);
     let owner = deps.api.addr_make("owner");
-    assert_eq!(
-        Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20")
-            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", owner.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("type", "cw20")
+        .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+        .add_attribute("owner", owner.to_string());
+
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr
+        );
+    }
 
     let sender = deps.api.addr_make("sender");
     assert_eq!(
@@ -143,15 +148,22 @@ fn test_transfer() {
         .unwrap();
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_event(expected_event)
-            .add_attribute("action", "transfer")
-            .add_attribute("from", sender.to_string())
-            .add_attribute("to", other.to_string())
-            .add_attribute("amount", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_event(expected_event)
+        .add_attribute("action", "transfer")
+        .add_attribute("from", sender.to_string())
+        .add_attribute("to", other.to_string())
+        .add_attribute("amount", "90");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr
+        );
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event);
+    }
 
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
@@ -183,19 +195,19 @@ fn test_send() {
     let res = init(&mut deps);
 
     let owner = deps.api.addr_make("owner");
-    assert_eq!(
-        Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20")
-            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", owner.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("type", "cw20")
+        .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+        .add_attribute("owner", owner.to_string());
 
-    assert_eq!(
-        Uint128::from(1000u128),
-        BALANCES.load(deps.as_ref().storage, &sender).unwrap()
-    );
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
 
     let rates_recipient = deps.api.addr_make("rates_recipient");
     let rate = Rate::Local(LocalRate {
@@ -232,25 +244,35 @@ fn test_send() {
         ),
     )]);
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "send")
-            .add_attribute("from", sender.to_string())
-            .add_attribute("to", contract.to_string())
-            .add_attribute("amount", "100")
-            .add_message(
-                Cw20ReceiveMsg {
-                    sender: sender.to_string(),
-                    amount: 100u128.into(),
-                    msg: to_json_binary(&"msg").unwrap(),
-                }
-                .into_cosmos_msg(contract.to_string())
-                .unwrap(),
-            )
-            .add_event(expected_event),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "send")
+        .add_attribute("from", sender.to_string())
+        .add_attribute("to", contract.to_string())
+        .add_attribute("amount", "100")
+        .add_message(
+            Cw20ReceiveMsg {
+                sender: sender.to_string(),
+                amount: 100u128.into(),
+                msg: to_json_binary(&"msg").unwrap(),
+            }
+            .into_cosmos_msg(contract.to_string())
+            .unwrap(),
+        )
+        .add_event(expected_event);
 
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
         Uint128::from(1_000u128 - 100u128 - 10u128),

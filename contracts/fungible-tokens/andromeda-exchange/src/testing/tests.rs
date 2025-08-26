@@ -1480,14 +1480,23 @@ fn test_cancel_redeem() {
     assert_eq!(message, &expected_message);
 
     // Check that appropriate attributes were emitted
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("refunded_amount", redeem_amount),
-            attr("action", "cancel_redeem"),
-            attr("asset", redeem_asset.to_string()),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("refunded_amount", redeem_amount)
+        .add_attribute("action", "cancel_redeem")
+        .add_attribute("asset", redeem_asset.to_string());
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 }
 
 #[test]

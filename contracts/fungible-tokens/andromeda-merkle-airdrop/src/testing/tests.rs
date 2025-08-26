@@ -12,7 +12,7 @@ use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
     attr, from_json,
     testing::{message_info, mock_env},
-    Addr, Timestamp, Uint128,
+    Addr, Response, Timestamp, Uint128,
 };
 
 use crate::contract::{execute, instantiate, query};
@@ -82,18 +82,27 @@ fn register_merkle_root() {
     };
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "register_merkle_root"),
-            attr("stage", "1"),
-            attr(
-                "merkle_root",
-                "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
-            ),
-            attr("total_amount", "0")
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "register_merkle_root")
+        .add_attribute("stage", "1")
+        .add_attribute(
+            "merkle_root",
+            "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37",
+        )
+        .add_attribute("total_amount", "0");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_json(res).unwrap();

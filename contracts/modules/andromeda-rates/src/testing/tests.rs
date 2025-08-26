@@ -81,10 +81,20 @@ fn test_andr_receive() {
     let msg = ExecuteMsg::SetRate { action, rate };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::new().add_attributes(vec![attr("action", "set_rate")]),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "set_rate");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 }
 
 #[test]

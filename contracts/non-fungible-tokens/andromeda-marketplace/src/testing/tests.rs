@@ -1011,14 +1011,31 @@ fn test_execute_authorize_cw20_contract() {
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
-    assert_eq!(
-        result.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", MOCK_CW20_CONTRACT.to_string()),
-            attr("permission", "whitelisted"),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", MOCK_CW20_CONTRACT.to_string())
+        .add_attribute("permission", "whitelisted");
+    for attr in expected_res.attributes {
+        assert!(
+            result.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(
+            result.messages.contains(&msg),
+            "Message {:?} not found",
+            msg,
+        );
+    }
+    for event in expected_res.events {
+        assert!(
+            result.events.contains(&event),
+            "Event {:?} not found",
+            event,
+        );
+    }
 
     // Verify the permission was set correctly
     let permission = ADOContract::get_permission(
@@ -1048,14 +1065,31 @@ fn test_execute_authorize_cw20_contract() {
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
-    assert_eq!(
-        result.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", mock_cw20_contract_with_expiry.to_string()),
-            attr("permission", format!("whitelisted until:{}", expiration)),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", mock_cw20_contract_with_expiry.to_string())
+        .add_attribute("permission", format!("whitelisted until:{}", expiration));
+    for attr in expected_res.attributes {
+        assert!(
+            result.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(
+            result.messages.contains(&msg),
+            "Message {:?} not found",
+            msg,
+        );
+    }
+    for event in expected_res.events {
+        assert!(
+            result.events.contains(&event),
+            "Event {:?} not found",
+            event,
+        );
+    }
 
     // Verify the permission was set correctly with expiration
     let permission = ADOContract::get_permission(
@@ -1113,14 +1147,23 @@ fn test_execute_deauthorize_cw20_contract() {
     let res = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
     // Check the response
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "deauthorize_contract"),
-            attr("address", MOCK_CW20_CONTRACT.to_string()),
-            attr("deauthorized_action", SEND_CW20_ACTION),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "deauthorize_contract")
+        .add_attribute("address", MOCK_CW20_CONTRACT.to_string())
+        .add_attribute("deauthorized_action", SEND_CW20_ACTION);
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     // Verify the permission was removed
     let permission = ADOContract::get_permission(
@@ -1207,14 +1250,23 @@ fn test_authorize_token_contract() {
         expiration: Some(expiration.clone()),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", nft_contract.to_string()),
-            attr("permission", format!("whitelisted until:{}", expiration)),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", nft_contract.to_string())
+        .add_attribute("permission", format!("whitelisted until:{}", expiration));
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     // Test unauthorized attempt
     let non_owner = deps.api.addr_make("non_owner");
@@ -1258,14 +1310,23 @@ fn test_deauthorize_token_contract() {
         addr: token_address.clone(),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "deauthorize_contract"),
-            attr("address", MOCK_TOKEN_ADDR.to_string()),
-            attr("deauthorized_action", SEND_NFT_ACTION),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "deauthorize_contract")
+        .add_attribute("address", MOCK_TOKEN_ADDR.to_string())
+        .add_attribute("deauthorized_action", SEND_NFT_ACTION);
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     // Test unauthorized attempt
     let non_owner = deps.api.addr_make("non_owner");

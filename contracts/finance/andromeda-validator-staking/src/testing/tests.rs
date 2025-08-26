@@ -77,7 +77,7 @@ fn test_stake_with_default_validator() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let expected_res: Response = Response::new()
         .add_message(StakingMsg::Delegate {
@@ -89,7 +89,19 @@ fn test_stake_with_default_validator() {
         .add_attribute("to", DEFAULT_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
-    assert_eq!(res.unwrap(), expected_res);
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 }
 
 #[test]
@@ -105,7 +117,7 @@ fn test_stake_with_validator() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let expected_res: Response = Response::new()
         .add_message(StakingMsg::Delegate {
@@ -117,7 +129,19 @@ fn test_stake_with_validator() {
         .add_attribute("to", VALID_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
-    assert_eq!(res.unwrap(), expected_res);
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 }
 
 #[test]

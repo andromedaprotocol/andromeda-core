@@ -74,6 +74,11 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
         ) -> Result<::cosmwasm_std::Response, ContractError> {
             let (ctx, msg, resp, submsg) = ::andromeda_std::unwrap_amp_msg!(deps, info.clone(), env, msg);
 
+            let ado_type = ctx.contract.query_type(ctx.deps.as_ref())?.ado_type;
+            let ado_version = ctx.contract.query_version(ctx.deps.as_ref())?.version;
+            let msg_name = msg.as_ref().to_string();
+            let sender = ctx.info.sender.to_string();
+
             // Check if the message is restricted to the owner
             if msg.is_restricted() {
                 let is_owner = ctx.contract.is_contract_owner(ctx.deps.storage, info.sender.as_str())?;
@@ -97,7 +102,14 @@ pub(crate) fn fn_implementation(_attr: TokenStream, item: TokenStream) -> TokenS
             Ok(res
                 .add_submessages(resp.messages)
                 .add_attributes(resp.attributes)
-                .add_events(resp.events))
+                .add_events(resp.events)
+                .add_attribute("andromeda_indexed", "0.1.0") // generic indexed attribute for indexers
+                .add_attribute("andromeda_method", "execute") // generic execute attribute for indexers
+                .add_attribute("andromeda_ado_type", ado_type) // generic ado type attribute for indexers
+                .add_attribute("andromeda_ado_version", ado_version) // generic ado version attribute for indexers
+                .add_attribute("andromeda_execute_method", msg_name) // generic execute msg attribute for indexers
+                .add_attribute("andromeda_sender", sender) // generic sender attribute for indexers
+             ) // generic sender attribute for indexers
         }
 
         #vis fn execute_inner(ctx: ::andromeda_std::common::context::ExecuteContext, msg: ExecuteMsg) -> Result<::cosmwasm_std::Response, ContractError> {
