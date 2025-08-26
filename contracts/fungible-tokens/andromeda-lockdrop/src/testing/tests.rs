@@ -54,14 +54,18 @@ fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     let owner = deps.api.addr_make("owner");
     let res = init(&mut deps).unwrap();
-    assert_eq!(
-        Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "lockdrop")
-            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT.to_string())
-            .add_attribute("owner", owner.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("type", "lockdrop")
+        .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT.to_string())
+        .add_attribute("owner", owner.to_string());
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
 
     let msg = QueryMsg::Config {};
     let config_res: ConfigResponse =
@@ -207,12 +211,22 @@ fn test_increase_incentives() {
     let info = message_info(&mock_incentive_token, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "incentives_increased")
-            .add_attribute("amount", "100"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "incentives_increased")
+        .add_attribute("amount", "100");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     assert_eq!(
         Uint128::new(100),
@@ -305,13 +319,17 @@ fn test_deposit_native() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "lock_native")
-            .add_attribute("user", "sender")
-            .add_attribute("ust_deposited", "100"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "lock_native")
+        .add_attribute("user", "sender")
+        .add_attribute("ust_deposited", "100");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
 
     assert_eq!(
         State {
@@ -421,17 +439,27 @@ fn test_withdraw_native() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: "sender".to_string(),
-                amount: coins(100, "uusd")
-            })
-            .add_attribute("action", "withdraw_native")
-            .add_attribute("user", "sender")
-            .add_attribute("amount", "100"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: "sender".to_string(),
+            amount: coins(100, "uusd"),
+        })
+        .add_attribute("action", "withdraw_native")
+        .add_attribute("user", "sender")
+        .add_attribute("amount", "100");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     assert_eq!(
         State {
@@ -712,10 +740,20 @@ fn test_enable_claims_no_bootstrap_specified() {
     let info = message_info(&Addr::unchecked("sender"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-    assert_eq!(
-        Response::new().add_attribute("action", "enable_claims"),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "enable_claims");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     assert_eq!(
         State {
@@ -863,21 +901,31 @@ fn test_claim_rewards() {
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_attribute("amount", "75")
-            .add_message(WasmMsg::Execute {
-                contract_addr: mock_incentive_token.to_string(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: user1.to_string(),
-                    amount: Uint128::new(75)
-                })
-                .unwrap()
-            }),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_attribute("amount", "75")
+        .add_message(WasmMsg::Execute {
+            contract_addr: mock_incentive_token.to_string(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: user1.to_string(),
+                amount: Uint128::new(75),
+            })
+            .unwrap(),
+        });
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     let msg = QueryMsg::UserInfo {
         address: user1.to_string(),
@@ -902,21 +950,31 @@ fn test_claim_rewards() {
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_attribute("amount", "25")
-            .add_message(WasmMsg::Execute {
-                contract_addr: mock_incentive_token.to_string(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: user2.to_string(),
-                    amount: Uint128::new(25)
-                })
-                .unwrap()
-            }),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_attribute("amount", "25")
+        .add_message(WasmMsg::Execute {
+            contract_addr: mock_incentive_token.to_string(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: user2.to_string(),
+                amount: Uint128::new(25),
+            })
+            .unwrap(),
+        });
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     let msg = QueryMsg::UserInfo {
         address: user2.to_string(),

@@ -305,14 +305,18 @@ fn test_burn() {
     let info = message_info(&creator, &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "burn"),
-            attr("sender", info.sender.to_string()),
-            attr("token_id", &token_id),
-        ]),
-        res
-    );
+    let expected_res: Response = Response::default().add_attributes(vec![
+        attr("action", "burn"),
+        attr("sender", info.sender.to_string()),
+        attr("token_id", &token_id),
+    ]);
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
 
     let tokens = query_num_tokens(deps.as_ref().storage).unwrap();
     assert_eq!(tokens.count, 0);

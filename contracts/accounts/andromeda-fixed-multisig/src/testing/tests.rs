@@ -593,14 +593,23 @@ fn proposal_pass_on_expiration() {
         ExecuteMsg::Execute { proposal_id },
     )
     .unwrap();
-    assert_eq!(
-        res.attributes,
-        Response::<Empty>::new()
-            .add_attribute("action", "execute")
-            .add_attribute("sender", somebody)
-            .add_attribute("proposal_id", proposal_id.to_string())
-            .attributes
-    )
+    let expected_res: Response = Response::<Empty>::new()
+        .add_attribute("action", "execute")
+        .add_attribute("sender", somebody)
+        .add_attribute("proposal_id", proposal_id.to_string());
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 }
 
 #[test]

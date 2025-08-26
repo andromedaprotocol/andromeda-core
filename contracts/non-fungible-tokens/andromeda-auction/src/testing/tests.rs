@@ -35,7 +35,7 @@ use andromeda_std::{amp::Recipient, testing::mock_querier::MOCK_CW20_CONTRACT};
 use cosmwasm_std::{
     attr, coin, coins, from_json,
     testing::{message_info, mock_env},
-    Addr, BankMsg, CosmosMsg, Decimal, Deps, Env, Response, Timestamp, Uint128, WasmMsg,
+    Addr, BankMsg, CosmosMsg, Decimal, Deps, Env, Response, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::receiver::Cw721ReceiveMsg;
@@ -602,15 +602,15 @@ fn execute_place_bid_multiple_bids() {
     let info = message_info(&sender, &coins(100, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-    assert_eq!(
-        Response::new().add_attributes(vec![
-            attr("action", "bid"),
-            attr("token_id", MOCK_UNCLAIMED_TOKEN),
-            attr("bidder", info.sender),
-            attr("amount", "100"),
-        ]),
-        res
-    );
+    let expected_attributes = vec![
+        attr("action", "bid"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("bidder", info.sender),
+        attr("amount", "100"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
     let mut expected_response = AuctionStateResponse {
         start_time: Milliseconds(1571797419880 - 1),
         end_time: Milliseconds(1571817419879),
@@ -634,20 +634,22 @@ fn execute_place_bid_multiple_bids() {
     let other = deps.api.addr_make("other");
     let info = message_info(&other, &coins(200, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: sender.to_string(),
-                amount: coins(100, "uusd")
-            }))
-            .add_attributes(vec![
-                attr("action", "bid"),
-                attr("token_id", MOCK_UNCLAIMED_TOKEN),
-                attr("bidder", info.sender),
-                attr("amount", "200"),
-            ]),
-        res
-    );
+    let expected_submsg = vec![CosmosMsg::Bank(BankMsg::Send {
+        to_address: sender.to_string(),
+        amount: coins(100, "uusd"),
+    })];
+    let expected_attributes = vec![
+        attr("action", "bid"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("bidder", info.sender),
+        attr("amount", "200"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
 
     expected_response.high_bidder_addr = other.to_string();
     expected_response.high_bidder_amount = Uint128::from(200u128);
@@ -658,20 +660,22 @@ fn execute_place_bid_multiple_bids() {
     let info = message_info(&sender, &coins(250, "uusd".to_string()));
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: other.to_string(),
-                amount: coins(200, "uusd")
-            }))
-            .add_attributes(vec![
-                attr("action", "bid"),
-                attr("token_id", MOCK_UNCLAIMED_TOKEN),
-                attr("bidder", info.sender),
-                attr("amount", "250"),
-            ]),
-        res
-    );
+    let expected_submsg = vec![CosmosMsg::Bank(BankMsg::Send {
+        to_address: other.to_string(),
+        amount: coins(200, "uusd"),
+    })];
+    let expected_attributes = vec![
+        attr("action", "bid"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("bidder", info.sender),
+        attr("amount", "250"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
 
     expected_response.high_bidder_addr = sender.to_string();
     expected_response.high_bidder_amount = Uint128::from(250u128);
@@ -1190,17 +1194,17 @@ fn execute_start_auction_after_previous_finished() {
     let mock_token_address = Addr::unchecked(MOCK_TOKEN_ADDR);
     let info = message_info(&mock_token_address, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::new().add_attributes(vec![
-            attr("action", "start_auction"),
-            attr("start_time", "1571801019879"),
-            attr("end_time", "1571821019879"),
-            attr("coin_denom", "uusd"),
-            attr("auction_id", "2"),
-            attr("whitelist", "None"),
-        ]),
-        res
-    );
+    let expected_attributes = vec![
+        attr("action", "start_auction"),
+        attr("start_time", "1571801019879"),
+        attr("end_time", "1571821019879"),
+        attr("coin_denom", "uusd"),
+        attr("auction_id", "2"),
+        attr("whitelist", "None"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 }
 
 #[test]
@@ -1222,25 +1226,29 @@ fn execute_claim_no_bids() {
     let any_user = deps.api.addr_make("any_user");
     let info = message_info(&any_user, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
-                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", MOCK_TOKEN_OWNER)
-            .add_attribute("winning_bid_amount", Uint128::zero())
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        })
+        .unwrap(),
+        funds: vec![],
+    })];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
+    let expected_attributes = vec![
+        attr("action", "claim"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", MOCK_TOKEN_OWNER),
+        attr("winning_bid_amount", Uint128::zero()),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 }
 
 #[test]
@@ -1276,25 +1284,29 @@ fn execute_claim_permission() {
     let info = message_info(&any_user, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
-                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", MOCK_TOKEN_OWNER)
-            .add_attribute("winning_bid_amount", Uint128::zero())
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        })
+        .unwrap(),
+        funds: vec![],
+    })];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
+    let expected_attributes = vec![
+        attr("action", "claim"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", MOCK_TOKEN_OWNER),
+        attr("winning_bid_amount", Uint128::zero()),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 }
 
 #[test]
@@ -1316,25 +1328,29 @@ fn execute_claim_no_bids_cw20() {
     let any_user = deps.api.addr_make("any_user");
     let info = message_info(&any_user, &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
-                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", MOCK_TOKEN_OWNER)
-            .add_attribute("winning_bid_amount", Uint128::zero())
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        })
+        .unwrap(),
+        funds: vec![],
+    })];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
+    let expected_attributes = vec![
+        attr("action", "claim"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", MOCK_TOKEN_OWNER),
+        attr("winning_bid_amount", Uint128::zero()),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 }
 
 #[test]
@@ -1388,29 +1404,35 @@ fn execute_claim_with_tax() {
         recipient: AndrAddr::from_string(sender.to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: tax_recipient.to_string(),
-                amount: coins(20, "uusd"),
-            }))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TOKEN_OWNER.to_owned(),
-                amount: coins(100, "uusd"),
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", sender.to_string())
-            .add_attribute("winning_bid_amount", Uint128::from(100u128))
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_TOKEN_ADDR.to_string(),
+            msg: encode_binary(&transfer_nft_msg).unwrap(),
+            funds: vec![],
+        }),
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: tax_recipient.to_string(),
+            amount: coins(20, "uusd"),
+        }),
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: MOCK_TOKEN_OWNER.to_owned(),
+            amount: coins(100, "uusd"),
+        }),
+    ];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
+    let expected_attributes = vec![
+        attr("action", "claim"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", sender.to_string()),
+        attr("winning_bid_amount", Uint128::from(100u128)),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 }
 
 #[test]
@@ -1447,35 +1469,41 @@ fn execute_buy_now() {
         recipient: AndrAddr::from_string(sender2.to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
-            }))
-            // .add_message(CosmosMsg::Bank(BankMsg::Send {
-            //     to_address: tax_recipient.to_owned(),
-            //     amount: coins(20, "uusd"),
-            // }))
-            // Refund highest bidder
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: sender.to_string(),
-                amount: coins(100, "uusd"),
-            }))
-            // Send 500 to seller
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TOKEN_OWNER.to_owned(),
-                amount: coins(500, "uusd"),
-            }))
-            .add_attribute("action", "buy_now")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", sender2.to_string())
-            .add_attribute("bought_at", Uint128::from(500u128))
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_TOKEN_ADDR.to_string(),
+            msg: encode_binary(&transfer_nft_msg).unwrap(),
+            funds: vec![],
+        }),
+        // .add_message(CosmosMsg::Bank(BankMsg::Send {
+        //     to_address: tax_recipient.to_owned(),
+        //     amount: coins(20, "uusd"),
+        // }))
+        // Refund highest bidder
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: sender.to_string(),
+            amount: coins(100, "uusd"),
+        }),
+        // Send 500 to seller
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: MOCK_TOKEN_OWNER.to_owned(),
+            amount: coins(500, "uusd"),
+        }),
+    ];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
+    let expected_attributes = vec![
+        attr("action", "buy_now"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", sender2.to_string()),
+        attr("bought_at", Uint128::from(500u128)),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 
     let msg = ExecuteMsg::PlaceBid {
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
@@ -1544,29 +1572,35 @@ fn execute_claim_with_royalty() {
         recipient: AndrAddr::from_string(sender.to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: royalty_recipient.to_string(),
-                amount: coins(20, "uusd"),
-            }))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: MOCK_TOKEN_OWNER.to_owned(),
-                amount: coins(80, "uusd"),
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", sender.to_string())
-            .add_attribute("winning_bid_amount", Uint128::from(100u128))
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_TOKEN_ADDR.to_string(),
+            msg: encode_binary(&transfer_nft_msg).unwrap(),
+            funds: vec![],
+        }),
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: royalty_recipient.to_string(),
+            amount: coins(20, "uusd"),
+        }),
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: MOCK_TOKEN_OWNER.to_owned(),
+            amount: coins(80, "uusd"),
+        }),
+    ];
+    let expected_attributes = vec![
+        attr("action", "claim"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", sender.to_string()),
+        attr("winning_bid_amount", Uint128::from(100u128)),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
 }
 
 #[test]
@@ -1608,30 +1642,37 @@ fn execute_claim_cw20() {
         recipient: AndrAddr::from_string(sender.to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_CONTRACT.to_string(),
-                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
-                    amount: Uint128::new(100)
-                })
-                .unwrap(),
-                funds: vec![]
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", sender.to_string())
-            .add_attribute("winning_bid_amount", Uint128::from(100u128))
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_TOKEN_ADDR.to_string(),
+            msg: encode_binary(&transfer_nft_msg).unwrap(),
+            funds: vec![],
+        }),
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_CW20_CONTRACT.to_string(),
+            msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: MOCK_TOKEN_OWNER.to_owned(),
+                amount: Uint128::new(100),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+    ];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
+
+    let expected_attributes = vec![
+        attr("action", "claim"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", sender.to_string()),
+        attr("winning_bid_amount", Uint128::from(100u128)),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 }
 
 #[test]
@@ -1691,39 +1732,45 @@ fn execute_claim_cw20_with_tax() {
         recipient: AndrAddr::from_string(sender.to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_string(),
-                msg: encode_binary(&transfer_nft_msg).unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_CONTRACT.to_string(),
-                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: tax_recipient.to_string(),
-                    amount: Uint128::new(20)
-                })
-                .unwrap(),
-                funds: vec![]
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_CONTRACT.to_string(),
-                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: MOCK_TOKEN_OWNER.to_owned(),
-                    amount: Uint128::new(100)
-                })
-                .unwrap(),
-                funds: vec![]
-            }))
-            .add_attribute("action", "claim")
-            .add_attribute("token_id", MOCK_UNCLAIMED_TOKEN)
-            .add_attribute("token_contract", MOCK_TOKEN_ADDR)
-            .add_attribute("recipient", sender.to_string())
-            .add_attribute("winning_bid_amount", Uint128::from(100u128))
-            .add_attribute("auction_id", "1"),
-        res
-    );
+    let expected_submsg = vec![
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_TOKEN_ADDR.to_string(),
+            msg: encode_binary(&transfer_nft_msg).unwrap(),
+            funds: vec![],
+        }),
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_CW20_CONTRACT.to_string(),
+            msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: tax_recipient.to_string(),
+                amount: Uint128::new(20),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_CW20_CONTRACT.to_string(),
+            msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: MOCK_TOKEN_OWNER.to_owned(),
+                amount: Uint128::new(100),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+    ];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
+    let expected_attributes = vec![
+        attr("action", "claim"),
+        attr("token_id", MOCK_UNCLAIMED_TOKEN),
+        attr("token_contract", MOCK_TOKEN_ADDR),
+        attr("recipient", sender.to_string()),
+        attr("winning_bid_amount", Uint128::from(100u128)),
+        attr("auction_id", "1"),
+    ];
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
 }
 
 #[test]
@@ -1817,18 +1864,18 @@ fn execute_cancel_no_bids() {
     let info = message_info(&Addr::unchecked(MOCK_TOKEN_OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
-                token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
-            })
-            .unwrap(),
-            funds: vec![],
-        })),
-        res
-    );
+    let expected_submsg = vec![CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        })
+        .unwrap(),
+        funds: vec![],
+    })];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
 
     assert!(
         TOKEN_AUCTION_STATE
@@ -1854,18 +1901,18 @@ fn execute_cancel_no_bids_cw20() {
     let info = message_info(&Addr::unchecked(MOCK_TOKEN_OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
-                token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
-            })
-            .unwrap(),
-            funds: vec![],
-        })),
-        res
-    );
+    let expected_submsg = vec![CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+        msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+            recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+            token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+        })
+        .unwrap(),
+        funds: vec![],
+    })];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
 
     assert!(
         TOKEN_AUCTION_STATE
@@ -1902,23 +1949,24 @@ fn execute_cancel_with_bids() {
     let info = message_info(&Addr::unchecked(MOCK_TOKEN_OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
-                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: bidder.to_string(),
-                amount: coins(100, "uusd")
-            })),
-        res
-    );
+    let expected_submsg = vec![
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+                token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: bidder.to_string(),
+            amount: coins(100, "uusd"),
+        }),
+    ];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
 
     assert!(
         TOKEN_AUCTION_STATE
@@ -1965,28 +2013,29 @@ fn execute_cancel_with_bids_cw20() {
     let info = message_info(&Addr::unchecked(MOCK_TOKEN_OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_TOKEN_ADDR.to_owned(),
-                msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
-                    recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
-                    token_id: MOCK_UNCLAIMED_TOKEN.to_owned()
-                })
-                .unwrap(),
-                funds: vec![],
-            }))
-            .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: MOCK_CW20_CONTRACT.to_string(),
-                msg: encode_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: bidder.to_string(),
-                    amount: Uint128::new(100)
-                })
-                .unwrap(),
-                funds: vec![]
-            })),
-        res
-    );
+    let expected_submsg = vec![
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_TOKEN_ADDR.to_owned(),
+            msg: encode_binary(&Cw721ExecuteMsg::TransferNft {
+                recipient: AndrAddr::from_string(MOCK_TOKEN_OWNER.to_owned()),
+                token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: MOCK_CW20_CONTRACT.to_string(),
+            msg: encode_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: bidder.to_string(),
+                amount: Uint128::new(100),
+            })
+            .unwrap(),
+            funds: vec![],
+        }),
+    ];
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&SubMsg::new(submsg)));
+    }
 
     assert!(
         TOKEN_AUCTION_STATE

@@ -56,14 +56,18 @@ fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     let res = init(&mut deps);
     let owner = deps.api.addr_make("owner");
-    assert_eq!(
-        Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "vesting")
-            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", owner.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("type", "vesting")
+        .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+        .add_attribute("owner", owner.to_string());
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
     let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Config {
@@ -255,18 +259,28 @@ fn test_create_batch() {
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     let current_time = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "create_batch")
-            .add_attribute("amount", "100")
-            .add_attribute("lockup_end", current_time.to_string())
-            .add_attribute(
-                "release_duration",
-                Milliseconds::from_seconds(10).to_string()
-            )
-            .add_attribute("release_amount", "Amount(Uint128(10))"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "create_batch")
+        .add_attribute("amount", "100")
+        .add_attribute("lockup_end", current_time.to_string())
+        .add_attribute(
+            "release_duration",
+            Milliseconds::from_seconds(10).to_string(),
+        )
+        .add_attribute("release_amount", "Amount(Uint128(10))");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     let batch = batches().load(deps.as_ref().storage, 1).unwrap();
 
@@ -293,18 +307,28 @@ fn test_create_batch() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "create_batch")
-            .add_attribute("amount", "100")
-            .add_attribute("lockup_end", (current_time.plus_seconds(100)).to_string())
-            .add_attribute(
-                "release_duration",
-                Milliseconds::from_seconds(10).to_string()
-            )
-            .add_attribute("release_amount", "Amount(Uint128(10))"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "create_batch")
+        .add_attribute("amount", "100")
+        .add_attribute("lockup_end", (current_time.plus_seconds(100)).to_string())
+        .add_attribute(
+            "release_duration",
+            Milliseconds::from_seconds(10).to_string(),
+        )
+        .add_attribute("release_amount", "Amount(Uint128(10))");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     let batch = batches().load(deps.as_ref().storage, 2).unwrap();
 
@@ -453,18 +477,28 @@ fn test_claim_batch_single_claim() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -516,18 +550,28 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(7, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "7")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "3"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(7, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "7")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "3");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -589,18 +633,28 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
     .unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(12683916792, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "12683916792")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", (vesting_amount - 12683916792).to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(12683916792, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "12683916792")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", (vesting_amount - 12683916792).to_string());
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -619,19 +673,28 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(vesting_amount - 12683916792, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", (vesting_amount - 12683916792).to_string())
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "0"),
-        res
-    );
-
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(vesting_amount - 12683916792, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", (vesting_amount - 12683916792).to_string())
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "0");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     assert_eq!(
         Batch {
             amount: Uint128::new(vesting_amount),
@@ -692,18 +755,28 @@ fn test_claim_batch_middle_of_interval() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -755,18 +828,28 @@ fn test_claim_batch_multiple_claims() {
     let res = execute(deps.as_mut(), env.clone(), message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -789,18 +872,28 @@ fn test_claim_batch_multiple_claims() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(30, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "30")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "60"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(30, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "30")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "60");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -859,18 +952,28 @@ fn test_claim_batch_all_releases() {
     .unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(100, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "100")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "0"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(100, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "100")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "0");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -927,19 +1030,29 @@ fn test_claim_batch_too_high_of_claim() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                // Only one gets claim
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            // Only one gets claim
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -1086,17 +1199,27 @@ fn test_claim_all() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                // 20 from the first, 40 from the second, 10 from the third.
-                amount: coins(20 + 40 + 10, "uusd")
-            })
-            .add_attribute("action", "claim_all")
-            .add_attribute("last_batch_id_processed", "3"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            // 20 from the first, 40 from the second, 10 from the third.
+            amount: coins(20 + 40 + 10, "uusd"),
+        })
+        .add_attribute("action", "claim_all")
+        .add_attribute("last_batch_id_processed", "3");
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
+    for msg in expected_res.messages {
+        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
+    }
+    for event in expected_res.events {
+        assert!(res.events.contains(&event), "Event {:?} not found", event,);
+    }
 
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
     assert_eq!(

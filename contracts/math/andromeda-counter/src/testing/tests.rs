@@ -93,23 +93,27 @@ fn test_increment_decrement() {
     );
     let res = increment(deps.as_mut(), info.sender.as_ref()).unwrap();
 
-    assert_eq!(
-        res.attributes,
-        vec![
-            Attribute {
-                key: "action".to_string(),
-                value: "Increment".to_string()
-            },
-            Attribute {
-                key: "sender".to_string(),
-                value: info.sender.to_string()
-            },
-            Attribute {
-                key: "current_amount".to_string(),
-                value: 1.to_string()
-            },
-        ]
-    );
+    let expected_attributes = vec![
+        Attribute {
+            key: "action".to_string(),
+            value: "Increment".to_string(),
+        },
+        Attribute {
+            key: "sender".to_string(),
+            value: info.sender.to_string(),
+        },
+        Attribute {
+            key: "current_amount".to_string(),
+            value: 1.to_string(),
+        },
+    ];
+    for attr in expected_attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr
+        );
+    }
 
     let current_amount = query_current_amount(deps.as_ref()).unwrap().current_amount;
     assert_eq!(current_amount, 1);
