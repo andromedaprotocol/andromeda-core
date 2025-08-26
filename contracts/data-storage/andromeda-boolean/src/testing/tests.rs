@@ -2,9 +2,7 @@ use crate::contract::{execute, query};
 use andromeda_data_storage::boolean::{
     BooleanRestriction, ExecuteMsg, GetDataOwnerResponse, GetValueResponse, QueryMsg,
 };
-use cosmwasm_std::{
-    attr, coin, from_json, testing::mock_env, BankMsg, CosmosMsg, Decimal, Response, SubMsg,
-};
+use cosmwasm_std::{attr, coin, from_json, testing::mock_env, BankMsg, CosmosMsg, Decimal, SubMsg};
 
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate, RatesMessage},

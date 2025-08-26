@@ -9,7 +9,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::Addr;
 use cosmwasm_std::{
-    attr, coin, coins,
+    coin, coins,
     testing::{message_info, mock_env},
     BankMsg, CosmosMsg, Event, Response, SubMsg, WasmMsg,
 };

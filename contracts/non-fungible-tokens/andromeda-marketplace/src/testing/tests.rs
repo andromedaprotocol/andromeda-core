@@ -19,7 +19,7 @@ use andromeda_std::{
     testing::mock_querier::MOCK_CW20_CONTRACT,
 };
 use cosmwasm_std::{
-    attr, coin, coins, from_json,
+    coin, coins, from_json,
     testing::{message_info, mock_env},
     Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };

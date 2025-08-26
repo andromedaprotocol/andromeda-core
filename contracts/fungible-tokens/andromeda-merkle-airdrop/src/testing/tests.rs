@@ -10,7 +10,7 @@ use andromeda_std::{
 };
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
-    attr, from_json,
+    from_json,
     testing::{message_info, mock_env},
     Addr, Response, Timestamp, Uint128,
 };
