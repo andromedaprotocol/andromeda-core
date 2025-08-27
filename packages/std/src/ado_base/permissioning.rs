@@ -38,6 +38,11 @@ pub struct PermissionInfo {
 }
 
 #[cw_serde]
+pub struct PermissionsResponse {
+    pub permissions: Vec<PermissionInfo>,
+}
+
+#[cw_serde]
 pub struct PermissionedActionsResponse {
     pub actions: Vec<String>,
 }

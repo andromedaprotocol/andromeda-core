@@ -1,6 +1,6 @@
 use crate::ado_base::permissioning::{
     LocalPermission, PermissionedActionExpirationResponse, PermissionedActionsResponse,
-    PermissionedActionsWithExpirationResponse, PermissionedActorsResponse,
+    PermissionedActionsWithExpirationResponse, PermissionedActorsResponse, PermissionsResponse,
 };
 use crate::common::Milliseconds;
 use crate::os::aos_querier::AOSQuerier;
@@ -566,7 +566,7 @@ impl ADOContract {
         actor: impl Into<String>,
         limit: Option<u32>,
         start_after: Option<String>,
-    ) -> Result<Vec<PermissionInfo>, ContractError> {
+    ) -> Result<PermissionsResponse, ContractError> {
         let actor = actor.into();
         let min = start_after.map(Bound::inclusive);
         let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -578,7 +578,7 @@ impl ADOContract {
             .take(limit)
             .map(|p| p.unwrap().1)
             .collect::<Vec<PermissionInfo>>();
-        Ok(permissions)
+        Ok(PermissionsResponse { permissions })
     }
 
     pub fn query_permissioned_actions(
@@ -1690,11 +1690,11 @@ mod tests {
         let actor = "actor";
         let mut deps = mock_dependencies();
 
-        let permissions = ADOContract::default()
+        let permissions_response = ADOContract::default()
             .query_permissions(deps.as_ref(), actor, None, None)
             .unwrap();
 
-        assert!(permissions.is_empty());
+        assert!(permissions_response.permissions.is_empty());
 
         let permission = Permission::Local(LocalPermission::whitelisted(
             Schedule::new(None, None),
@@ -1706,13 +1706,13 @@ mod tests {
         ADOContract::set_permission(deps.as_mut().storage, action, actor, permission.clone())
             .unwrap();
 
-        let permissions = ADOContract::default()
+        let permissions_response = ADOContract::default()
             .query_permissions(deps.as_ref(), actor, None, None)
             .unwrap();
 
-        assert_eq!(permissions.len(), 1);
-        assert_eq!(permissions[0].action, action);
-        assert_eq!(permissions[0].permission, permission);
+        assert_eq!(permissions_response.permissions.len(), 1);
+        assert_eq!(permissions_response.permissions[0].action, action);
+        assert_eq!(permissions_response.permissions[0].permission, permission);
 
         let multi_permissions = vec![
             (
@@ -1745,11 +1745,11 @@ mod tests {
             ADOContract::set_permission(deps.as_mut().storage, &action, actor, permission).unwrap();
         }
 
-        let permissions = ADOContract::default()
+        let permissions_response = ADOContract::default()
             .query_permissions(deps.as_ref(), actor, None, None)
             .unwrap();
 
-        assert_eq!(permissions.len(), 5);
+        assert_eq!(permissions_response.permissions.len(), 5);
     }
 
     #[test]

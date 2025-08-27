@@ -67,7 +67,7 @@ pub enum AndromedaQuery {
     ADOBaseVersion {},
     #[returns(self::app_contract::AppContractResponse)]
     AppContract {},
-    #[returns(Vec<self::permissioning::PermissionInfo>)]
+    #[returns(self::permissioning::PermissionsResponse)]
     Permissions {
         actor: AndrAddr,
         limit: Option<u32>,

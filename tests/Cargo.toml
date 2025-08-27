@@ -249,3 +249,7 @@ path = "set_amount_splitter.rs"
 [[test]]
 name = "cw721"
 path = "cw721.rs"
+
+[[test]]
+name = "permissions"
+path = "permissions.rs"
