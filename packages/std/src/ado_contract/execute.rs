@@ -595,10 +595,10 @@ mod tests {
                 .unwrap();
 
             // Verify permission is saved
-            let saved_permissions = contract
+            let saved_permissions_response = contract
                 .query_permissions(deps.as_ref(), actor.to_string().as_str(), None, None)
                 .unwrap();
-            assert_eq!(saved_permissions.len(), 1);
+            assert_eq!(saved_permissions_response.permissions.len(), 1);
 
             // Perform migration
             contract
@@ -606,10 +606,10 @@ mod tests {
                 .unwrap();
 
             // Verify permissions were handled correctly during migration
-            let post_migration_permissions = contract
+            let post_migration_permissions_response = contract
                 .query_permissions(deps.as_ref(), actor.to_string().as_str(), None, None)
                 .unwrap();
-            assert_eq!(post_migration_permissions.len(), 1);
+            assert_eq!(post_migration_permissions_response.permissions.len(), 1);
         }
     }
 }
