@@ -58,8 +58,8 @@ fn test_create_pool(setup: TestCase) {
         ..
     } = setup;
 
-    let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
-    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+    let osmosis_socket_addr: String = osmosis_socket_contract.addr_str().unwrap();
+    println!("osmosis_socket_addr: {}", osmosis_socket_addr);
 
     let pool_assets = vec![
         PoolAsset {
@@ -105,12 +105,12 @@ fn test_withdraw_pool(setup: TestCase) {
         ..
     } = setup;
 
-    let socket_osmosis_addr: String = osmosis_socket_contract.addr_str().unwrap();
-    println!("socket_osmosis_addr: {}", socket_osmosis_addr);
+    let osmosis_socket_addr: String = osmosis_socket_contract.addr_str().unwrap();
+    println!("osmosis_socket_addr: {}", osmosis_socket_addr);
 
     let _wallet_address = "osmo18epw87zc64a6m63323l6je0nlwdhnjpghtsyq8".to_string();
     let withdraw_msg = MsgExitPool {
-        sender: socket_osmosis_addr,
+        sender: osmosis_socket_addr,
         pool_id: 940, // Don't forget to change the pool id if you created a new one
         share_in_amount: "50000000000000000000".to_string(),
         token_out_mins: vec![

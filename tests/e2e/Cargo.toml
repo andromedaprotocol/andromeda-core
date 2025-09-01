@@ -12,7 +12,7 @@ publish = false
 # name = "crowdfund"
 
 # [[test]]
-# name = "socket_osmosis"
+# name = "osmosis_socket"
 
 # [[test]]
 # name = "socket_astroport"
