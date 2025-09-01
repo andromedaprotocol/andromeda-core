@@ -40,3 +40,6 @@ pub const WITHDRAW_STATE: Item<WithdrawState> = Item::new("withdraw_state");
 
 // pool creator to pool id and the pool's parameters (keeping for backward compatibility)
 pub const WITHDRAW: Map<String, PoolIdAndParams> = Map::new("withdraw");
+
+// pool creator to pool id and the pool's parameters
+pub const POOLS_CREATED: Map<String, Vec<PoolIdAndParams>> = Map::new("pools_created");

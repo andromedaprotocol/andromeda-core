@@ -38,7 +38,7 @@ use crate::osmosis::{
     OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
     OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{WithdrawState, SPENDER_AND_PARAMS, WITHDRAW, WITHDRAW_STATE};
+use crate::state::{WithdrawState, POOLS_CREATED, SPENDER_AND_PARAMS, WITHDRAW, WITHDRAW_STATE};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -319,6 +319,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             encode_binary(&TokenfactoryQuerier::new(&deps.querier).denoms_from_creator(creator)?)
         }
         QueryMsg::PoolInfo { creator } => encode_binary(&WITHDRAW.load(deps.storage, creator)?),
+        QueryMsg::PoolsCreated { creator } => {
+            encode_binary(&POOLS_CREATED.load(deps.storage, creator)?)
+        }
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -376,14 +379,23 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     amount: vec![lp_token.clone()],
                 });
 
+                let pool_id_and_params = PoolIdAndParams {
+                    pool_id: pool_id.to_string(),
+                    params: spender_and_params.params,
+                };
+
                 WITHDRAW.save(
                     deps.storage,
                     spender_and_params.spender.clone(),
-                    &PoolIdAndParams {
-                        pool_id: pool_id.to_string(),
-                        params: spender_and_params.params,
-                    },
+                    &pool_id_and_params,
                 )?;
+
+                let mut pools = POOLS_CREATED
+                    .may_load(deps.storage, spender_and_params.spender.clone())?
+                    .unwrap_or_default();
+                pools.push(pool_id_and_params);
+                POOLS_CREATED.save(deps.storage, spender_and_params.spender.clone(), &pools)?;
+
                 Ok(Response::default().add_message(msg).add_attributes(vec![
                     attr("action", "balancer_pool_created"),
                     attr("lp_token", lp_token.denom.clone()),

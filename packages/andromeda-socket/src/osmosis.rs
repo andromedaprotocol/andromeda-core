@@ -95,10 +95,18 @@ pub enum QueryMsg {
 
     #[returns(PoolIdAndParams)]
     PoolInfo { creator: String },
+
+    #[returns(PoolsCreatedResponse)]
+    PoolsCreated { creator: String },
 }
 
 #[cw_serde]
 pub struct PoolIdResponse {}
+
+#[cw_serde]
+pub struct PoolsCreatedResponse {
+    pub pools: Vec<PoolIdAndParams>,
+}
 
 #[cw_serde]
 pub struct SpenderAndParams {
