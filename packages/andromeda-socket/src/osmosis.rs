@@ -8,7 +8,7 @@ use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
 use osmosis_std::types::osmosis::gamm::{
     poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams, v1beta1::MsgExitPool,
 };
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorResponse;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -90,8 +90,26 @@ pub enum QueryMsg {
         from_denom: String,
         to_denom: String,
     },
-    #[returns(QueryDenomAuthorityMetadataResponse)]
-    TokenAuthority { denom: String },
+    #[returns(QueryDenomsFromCreatorResponse)]
+    DenomsFromCreator { creator: String },
+
+    #[returns(PoolIdAndParams)]
+    PoolInfo { creator: String },
+}
+
+#[cw_serde]
+pub struct PoolIdResponse {}
+
+#[cw_serde]
+pub struct SpenderAndParams {
+    pub spender: String,
+    pub params: Pool,
+}
+
+#[cw_serde]
+pub struct PoolIdAndParams {
+    pub pool_id: String,
+    pub params: Pool,
 }
 
 #[cw_serde]
