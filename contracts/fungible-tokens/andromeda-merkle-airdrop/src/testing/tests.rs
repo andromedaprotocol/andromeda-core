@@ -6,7 +6,10 @@ use andromeda_std::{
     amp::AndrAddr,
     common::{denom::Asset, expiration::Expiry, Milliseconds},
     error::ContractError,
-    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT},
+    testing::{
+        mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT},
+        utils::assert_response,
+    },
 };
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
@@ -90,19 +93,7 @@ fn register_merkle_root() {
             "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37",
         )
         .add_attribute("total_amount", "0");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "register_merkle_root");
 
     let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_json(res).unwrap();

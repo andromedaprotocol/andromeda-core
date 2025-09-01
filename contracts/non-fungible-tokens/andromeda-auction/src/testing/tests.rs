@@ -41,6 +41,7 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw721::receiver::Cw721ReceiveMsg;
 
 use super::mock_querier::TestDeps;
+use andromeda_std::testing::utils::assert_response;
 
 fn init(deps: &mut TestDeps) -> Response {
     let mock_token_address = Addr::unchecked(MOCK_TOKEN_ADDR);
@@ -1572,35 +1573,31 @@ fn execute_claim_with_royalty() {
         recipient: AndrAddr::from_string(sender.to_string()),
         token_id: MOCK_UNCLAIMED_TOKEN.to_owned(),
     };
-    let expected_submsg = vec![
-        CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: MOCK_TOKEN_ADDR.to_string(),
-            msg: encode_binary(&transfer_nft_msg).unwrap(),
-            funds: vec![],
-        }),
-        CosmosMsg::Bank(BankMsg::Send {
-            to_address: royalty_recipient.to_string(),
-            amount: coins(20, "uusd"),
-        }),
-        CosmosMsg::Bank(BankMsg::Send {
-            to_address: MOCK_TOKEN_OWNER.to_owned(),
-            amount: coins(80, "uusd"),
-        }),
-    ];
-    let expected_attributes = vec![
-        attr("action", "claim"),
-        attr("token_id", MOCK_UNCLAIMED_TOKEN),
-        attr("token_contract", MOCK_TOKEN_ADDR),
-        attr("recipient", sender.to_string()),
-        attr("winning_bid_amount", Uint128::from(100u128)),
-        attr("auction_id", "1"),
-    ];
-    for attr in expected_attributes {
-        assert!(res.attributes.contains(&attr));
-    }
-    for submsg in expected_submsg {
-        assert!(res.messages.contains(&SubMsg::new(submsg)));
-    }
+    let expected_res: Response = Response::new()
+        .add_submessages(vec![
+            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: MOCK_TOKEN_ADDR.to_string(),
+                msg: encode_binary(&transfer_nft_msg).unwrap(),
+                funds: vec![],
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: royalty_recipient.to_string(),
+                amount: coins(20, "uusd"),
+            })),
+            SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: MOCK_TOKEN_OWNER.to_owned(),
+                amount: coins(80, "uusd"),
+            })),
+        ])
+        .add_attributes(vec![
+            attr("action", "claim"),
+            attr("token_id", MOCK_UNCLAIMED_TOKEN),
+            attr("token_contract", MOCK_TOKEN_ADDR),
+            attr("recipient", sender.to_string()),
+            attr("winning_bid_amount", Uint128::from(100u128)),
+            attr("auction_id", "1"),
+        ]);
+    assert_response(&res, &expected_res, "execute_claim_with_royalty");
 }
 
 #[test]

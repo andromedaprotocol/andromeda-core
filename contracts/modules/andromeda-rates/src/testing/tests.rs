@@ -1,6 +1,7 @@
 use crate::contract::{execute, instantiate, query, query_deducted_funds};
 use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_OWNER};
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
+use andromeda_std::testing::utils::assert_response;
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, RatesResponse},
     amp::{recipient::Recipient, AndrAddr},
@@ -82,19 +83,7 @@ fn test_andr_receive() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let expected_res: Response = Response::new().add_attribute("action", "set_rate");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "andr_receive");
 }
 
 #[test]

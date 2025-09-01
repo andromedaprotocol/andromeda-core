@@ -5,7 +5,7 @@ use andromeda_std::{
         Milliseconds,
     },
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
     coin, coins, from_json,
@@ -97,19 +97,7 @@ fn test_instantiate() {
         .add_attribute("type", "cw20-staking")
         .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
         .add_attribute("owner", owner.to_string());
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
+    assert_response(&res, &expected_res, "cw20_staking_instantiate");
 
     assert_eq!(
         Config {
@@ -381,13 +369,7 @@ fn test_stake_unstake_tokens() {
         .add_attribute("sender", "sender")
         .add_attribute("share", "100")
         .add_attribute("amount", "100");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(&res, &expected_res, "cw20_staking_stake_tokens");
 
     assert_eq!(
         State {
@@ -423,13 +405,11 @@ fn test_stake_unstake_tokens() {
         .add_attribute("sender", "other_sender")
         .add_attribute("share", "50")
         .add_attribute("amount", "100");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_stake_tokens_other_sender",
+    );
 
     assert_eq!(
         State {
@@ -479,16 +459,7 @@ fn test_stake_unstake_tokens() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
+    assert_response(&res, &expected_res, "cw20_staking_unstake_tokens");
 
     assert_eq!(
         State {
@@ -529,19 +500,11 @@ fn test_stake_unstake_tokens() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_unstake_tokens_other_sender",
+    );
 
     assert_eq!(
         State {
@@ -637,13 +600,7 @@ fn test_update_global_indexes() {
         .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2")
         .add_attribute("native:uandr", "0")
         .add_attribute("native:uusd", "0.4");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(&res, &expected_res, "cw20_staking_update_global_indexes");
 
     assert_eq!(
         RewardToken {
@@ -704,13 +661,7 @@ fn test_update_global_indexes() {
         .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2")
         .add_attribute("native:uandr", "0.4")
         .add_attribute("native:uusd", "0.4");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(&res, &expected_res, "cw20_staking_update_global_indexes_2");
 
     assert_eq!(
         RewardToken {
@@ -780,13 +731,11 @@ fn test_update_global_indexes_selective() {
     let expected_res: Response = Response::new()
         .add_attribute("action", "update_global_indexes")
         .add_attribute("native:uusd", "0.4");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_update_global_indexes_selective",
+    );
 
     assert_eq!(
         RewardToken {
@@ -921,13 +870,11 @@ fn test_update_global_indexes_cw20_deposit() {
     let expected_res: Response = Response::new()
         .add_attribute("action", "update_global_indexes")
         .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_update_global_indexes_cw20_deposit",
+    );
 
     assert_eq!(
         RewardToken {
@@ -1116,16 +1063,7 @@ fn test_claim_rewards() {
             to_address: "user1".to_string(),
             amount: coins(66, "uusd"),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
+    assert_response(&res, &expected_res, "cw20_staking_claim_rewards");
 
     deps.querier
         .base
@@ -1142,16 +1080,7 @@ fn test_claim_rewards() {
             to_address: "user2".to_string(),
             amount: coins(33, "uusd"),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
+    assert_response(&res, &expected_res, "cw20_staking_claim_rewards_user2");
 
     assert_eq!(
         StakerRewardInfo {
@@ -1322,19 +1251,11 @@ fn test_claim_rewards_allocated() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user1",
+    );
 
     assert_eq!(
         StakerRewardInfo {
@@ -1394,19 +1315,11 @@ fn test_claim_rewards_allocated() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user2",
+    );
 
     assert_eq!(
         StakerRewardInfo {
@@ -1535,19 +1448,11 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user1_future",
+    );
 
     assert_eq!(
         StakerRewardInfo {
@@ -1607,19 +1512,11 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user2_future",
+    );
 
     assert_eq!(
         StakerRewardInfo {
@@ -2058,19 +1955,7 @@ fn test_add_reward_token() {
     let expected_res: Response = Response::new()
         .add_attribute("action", "add_reward_token")
         .add_attribute("added_token", format!("cw20:{}", MOCK_INCENTIVE_TOKEN));
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "cw20_staking_add_reward_token");
 
     assert_eq!(
         RewardToken {
@@ -2231,19 +2116,7 @@ fn test_remove_reward_token() {
         .add_attribute("action", "remove_reward_token")
         .add_attribute("number_of_reward_tokens", "0")
         .add_attribute("removed_token", "native:uusd");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "cw20_staking_remove_reward_token");
 
     let reward_token = REWARD_TOKENS
         .load(deps.as_ref().storage, "native:uusd")
@@ -2440,19 +2313,11 @@ fn test_claim_rewards_after_remove() {
             to_address: USER1.to_string(),
             amount: coins(66, "uusd"),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_after_remove_user1",
+    );
 
     deps.querier
         .base
@@ -2477,19 +2342,11 @@ fn test_claim_rewards_after_remove() {
             to_address: user2.to_string(),
             amount: coins(33, "uusd"),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_after_remove_user2",
+    );
 
     assert_eq!(
         StakerRewardInfo {
@@ -2623,19 +2480,11 @@ fn test_claim_rewards_allocated_after_remove() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_after_remove_user1",
+    );
 
     assert_eq!(
         StakerRewardInfo {
@@ -2710,13 +2559,7 @@ fn test_replace_reward_token() {
         .add_attribute("action", "replace_reward_token")
         .add_attribute("origin_reward_token", "native:uusd")
         .add_attribute("new_reward_token", format!("cw20:{MOCK_INCENTIVE_TOKEN}"));
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(&res, &expected_res, "cw20_staking_replace_reward_token");
 
     let reward_token = REWARD_TOKENS
         .load(deps.as_ref().storage, "native:uusd")

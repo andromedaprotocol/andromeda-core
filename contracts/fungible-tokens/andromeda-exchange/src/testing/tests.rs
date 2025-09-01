@@ -12,7 +12,7 @@ use andromeda_std::{
         Milliseconds,
     },
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
@@ -1484,19 +1484,7 @@ fn test_cancel_redeem() {
         .add_attribute("refunded_amount", redeem_amount)
         .add_attribute("action", "cancel_redeem")
         .add_attribute("asset", redeem_asset.to_string());
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "cancel_redeem");
 }
 
 #[test]

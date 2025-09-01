@@ -5,6 +5,7 @@ use andromeda_std::{
     },
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
+    testing::utils::assert_response,
 };
 use cosmwasm_std::{
     attr, from_json,
@@ -196,19 +197,7 @@ fn test_execute_update_lock() {
     let expected_res: Response = Response::new()
         .add_attribute("action", "update_lock")
         .add_attribute("locked", "1571970219879".to_string());
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "update_lock");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -224,7 +213,7 @@ fn test_execute_update_recipients() {
 
     let splitter = Splitter {
         recipients: vec![],
-        lock: Milliseconds::from_seconds(0),
+        lock: Milliseconds::default(),
         default_recipient: None,
     };
 
@@ -274,19 +263,7 @@ fn test_execute_update_recipients() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let expected_res: Response = Response::new().add_attribute("action", "update_recipients");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "update_recipients");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -384,19 +361,7 @@ fn test_execute_send() {
             attr("sender", OWNER.to_string()),
         ]);
 
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "send");
 
     // Test send with config
     let msg = ExecuteMsg::Send {
@@ -436,19 +401,7 @@ fn test_execute_send() {
             attr("sender", OWNER.to_string()),
         ]);
 
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "send_config");
 
     // Test send with default recipient
     let msg = ExecuteMsg::Send { config: None };
@@ -502,19 +455,7 @@ fn test_execute_send() {
             attr("sender", OWNER.to_string()),
         ]);
 
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "send_default_recipient");
 }
 
 #[test]
@@ -595,20 +536,7 @@ fn test_execute_send_ado_recipient() {
         ])
         .add_attribute("action", "send")
         .add_attribute("sender", OWNER);
-
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "ado_send");
 }
 
 #[test]
@@ -759,19 +687,7 @@ fn test_update_app_contract() {
     let expected_res: Response = Response::new()
         .add_attribute("action", "update_app_contract")
         .add_attribute("address", app_contract.to_string());
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "update_app_contract");
 }
 
 #[test]

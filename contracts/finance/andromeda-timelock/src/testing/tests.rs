@@ -10,7 +10,7 @@ use andromeda_std::{
     amp::Recipient,
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
@@ -59,19 +59,7 @@ fn test_execute_hold_funds() {
             format!("{:?}", Some(condition.clone().to_condition(&env.block))),
         ),
     ]);
-    for attr in expected.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected, "timelock_execute_hold_funds");
 
     let query_msg = QueryMsg::GetLockedFunds {
         owner: OWNER.to_string(),
@@ -173,19 +161,7 @@ fn test_execute_release_funds_no_condition() {
         .add_message(bank_msg)
         .add_attribute("action", "release_funds")
         .add_attribute("recipient_addr", OWNER);
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "timelock_release_funds");
 }
 
 #[test]
@@ -230,19 +206,7 @@ fn test_execute_release_multiple_escrows() {
             attr("action", "release_funds"),
             attr("recipient_addr", recipient_addr.to_string()),
         ]);
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "timelock_release_multiple_escrows");
 }
 
 #[test]
@@ -276,19 +240,7 @@ fn test_execute_release_funds_time_condition() {
         .add_message(bank_msg)
         .add_attribute("action", "release_funds")
         .add_attribute("recipient_addr", OWNER);
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "timelock_release_funds_time_condition");
 }
 
 #[test]
@@ -369,19 +321,11 @@ fn test_execute_release_funds_min_funds_condition() {
         .add_message(bank_msg)
         .add_attribute("action", "release_funds")
         .add_attribute("recipient_addr", OWNER);
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_funds_min_funds_condition",
+    );
 }
 
 #[test]
@@ -425,19 +369,11 @@ fn test_execute_release_specific_funds_no_condition() {
         .add_message(bank_msg)
         .add_attribute("action", "release_funds")
         .add_attribute("recipient_addr", OWNER);
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_specific_funds_no_condition",
+    );
 }
 
 #[test]
@@ -471,19 +407,11 @@ fn test_execute_release_specific_funds_time_condition() {
         .add_message(bank_msg)
         .add_attribute("action", "release_funds")
         .add_attribute("recipient_addr", OWNER);
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_specific_funds_time_condition",
+    );
 }
 
 #[test]
@@ -537,19 +465,11 @@ fn test_execute_release_specific_funds_min_funds_condition() {
         .add_message(bank_msg)
         .add_attribute("action", "release_funds")
         .add_attribute("recipient_addr", OWNER);
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_specific_funds_min_funds_condition",
+    );
 }
 
 // #[test]

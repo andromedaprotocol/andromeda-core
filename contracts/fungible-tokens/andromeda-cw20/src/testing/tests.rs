@@ -7,6 +7,7 @@ use andromeda_std::ado_contract::ADOContract;
 use andromeda_std::amp::{AndrAddr, Recipient};
 use andromeda_std::common::context::ExecuteContext;
 use andromeda_std::common::schedule::Schedule;
+use andromeda_std::testing::utils::assert_response;
 use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
 use cosmwasm_std::{attr, Decimal, Event};
 use cosmwasm_std::{
@@ -73,14 +74,7 @@ fn test_transfer() {
         .add_attribute("type", "cw20")
         .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
         .add_attribute("owner", owner.to_string());
-
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr
-        );
-    }
+    assert_response(&res, &expected_res, "cw20_instantiate");
 
     let sender = deps.api.addr_make("sender");
     assert_eq!(
@@ -154,16 +148,7 @@ fn test_transfer() {
         .add_attribute("from", sender.to_string())
         .add_attribute("to", other.to_string())
         .add_attribute("amount", "90");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr
-        );
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event);
-    }
+    assert_response(&res, &expected_res, "cw20_transfer");
 
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
@@ -200,14 +185,7 @@ fn test_send() {
         .add_attribute("type", "cw20")
         .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
         .add_attribute("owner", owner.to_string());
-
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(&res, &expected_res, "cw20_instantiate");
 
     let rates_recipient = deps.api.addr_make("rates_recipient");
     let rate = Rate::Local(LocalRate {
@@ -260,19 +238,7 @@ fn test_send() {
         )
         .add_event(expected_event);
 
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
+    assert_response(&res, &expected_res, "cw20_send");
     // Funds deducted from the sender (100 for send, 10 for tax).
     assert_eq!(
         Uint128::from(1_000u128 - 100u128 - 10u128),

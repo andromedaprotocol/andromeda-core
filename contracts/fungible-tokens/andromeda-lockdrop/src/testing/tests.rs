@@ -14,6 +14,7 @@ use andromeda_std::{
     common::{expiration::MILLISECONDS_TO_NANOSECONDS_RATIO, Milliseconds},
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::utils::assert_response,
 };
 use cosmwasm_std::{
     coin, coins, from_json,
@@ -54,18 +55,12 @@ fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[]);
     let owner = deps.api.addr_make("owner");
     let res = init(&mut deps).unwrap();
-    let expected_res: Response = Response::new()
+    let expected_res = Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("type", "lockdrop")
         .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT.to_string())
         .add_attribute("owner", owner.to_string());
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(&res, &expected_res, "lockdrop_instantiate");
 
     let msg = QueryMsg::Config {};
     let config_res: ConfigResponse =
@@ -211,22 +206,10 @@ fn test_increase_incentives() {
     let info = message_info(&mock_incentive_token, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let expected_res: Response = Response::new()
+    let expected_res = Response::new()
         .add_attribute("action", "incentives_increased")
         .add_attribute("amount", "100");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "lockdrop_incentives_increased");
 
     assert_eq!(
         Uint128::new(100),
@@ -319,17 +302,11 @@ fn test_deposit_native() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let expected_res: Response = Response::new()
+    let expected_res = Response::new()
         .add_attribute("action", "lock_native")
         .add_attribute("user", "sender")
         .add_attribute("ust_deposited", "100");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
+    assert_response(&res, &expected_res, "lockdrop_ust_deposited");
 
     assert_eq!(
         State {
@@ -439,7 +416,7 @@ fn test_withdraw_native() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let expected_res: Response = Response::new()
+    let expected_res = Response::new()
         .add_message(BankMsg::Send {
             to_address: "sender".to_string(),
             amount: coins(100, "uusd"),
@@ -447,19 +424,7 @@ fn test_withdraw_native() {
         .add_attribute("action", "withdraw_native")
         .add_attribute("user", "sender")
         .add_attribute("amount", "100");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "lockdrop_withdraw_native");
 
     assert_eq!(
         State {
@@ -740,20 +705,8 @@ fn test_enable_claims_no_bootstrap_specified() {
     let info = message_info(&Addr::unchecked("sender"), &[]);
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-    let expected_res: Response = Response::new().add_attribute("action", "enable_claims");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    let expected_res = Response::new().add_attribute("action", "enable_claims");
+    assert_response(&res, &expected_res, "lockdrop_enable_claims");
 
     assert_eq!(
         State {
@@ -901,7 +854,7 @@ fn test_claim_rewards() {
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let expected_res: Response = Response::new()
+    let expected_res = Response::new()
         .add_attribute("action", "claim_rewards")
         .add_attribute("amount", "75")
         .add_message(WasmMsg::Execute {
@@ -913,19 +866,7 @@ fn test_claim_rewards() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "lockdrop_claim_rewards");
 
     let msg = QueryMsg::UserInfo {
         address: user1.to_string(),
@@ -950,7 +891,7 @@ fn test_claim_rewards() {
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let expected_res: Response = Response::new()
+    let expected_res = Response::new()
         .add_attribute("action", "claim_rewards")
         .add_attribute("amount", "25")
         .add_message(WasmMsg::Execute {
@@ -962,19 +903,7 @@ fn test_claim_rewards() {
             })
             .unwrap(),
         });
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "lockdrop_claim_rewards");
 
     let msg = QueryMsg::UserInfo {
         address: user2.to_string(),

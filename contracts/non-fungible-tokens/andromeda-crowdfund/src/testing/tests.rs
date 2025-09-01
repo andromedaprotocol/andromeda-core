@@ -92,10 +92,12 @@ fn get_user_orders(
 }
 #[cfg(test)]
 mod test {
+    use super::*;
     use andromeda_non_fungible_tokens::{
         crowdfund::{Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder},
         cw721::MintMsg,
     };
+    use andromeda_std::testing::utils::assert_response;
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
         common::{denom::Asset, encode_binary, schedule::Schedule, Milliseconds},
@@ -111,8 +113,6 @@ mod test {
         },
     };
 
-    use super::*;
-
     const MOCK_NATIVE_DENOM: &str = "uandr";
     const INVALID_DENOM: &str = "other";
 
@@ -121,33 +121,6 @@ mod test {
         config: CampaignConfig,
         tiers: Vec<Tier>,
         expected_res: Result<Response, ContractError>,
-    }
-
-    fn assert_response(expected_res: &Response, res: &Response, name: &str) {
-        for attr in expected_res.attributes.clone() {
-            assert!(
-                res.attributes.contains(&attr),
-                "Test case: {}. Attribute {:?} not found",
-                name,
-                attr
-            );
-        }
-        for submsg in expected_res.messages.clone() {
-            assert!(
-                res.messages.contains(&submsg),
-                "Test case: {}. Submsg {:?} not found",
-                name,
-                submsg
-            );
-        }
-        for event in expected_res.events.clone() {
-            assert!(
-                res.events.contains(&event),
-                "Test case: {}. Event {:?} not found",
-                name,
-                event
-            );
-        }
     }
 
     #[test]
@@ -233,7 +206,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -329,7 +302,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -418,7 +391,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -492,7 +465,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -669,7 +642,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -875,7 +848,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -1072,7 +1045,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -1245,7 +1218,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -1356,7 +1329,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
@@ -1520,7 +1493,7 @@ mod test {
             if test.expected_res.is_ok() && res.is_ok() {
                 let expected_res = test.expected_res.unwrap();
                 let res = res.unwrap();
-                assert_response(&expected_res, &res, &test.name);
+                assert_response(&res, &expected_res, &test.name);
             } else {
                 assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }

@@ -3,7 +3,10 @@ use crate::{
     testing::mock_querier::{mock_dependencies_custom, DEFAULT_VALIDATOR, VALID_VALIDATOR},
 };
 
-use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
+use andromeda_std::{
+    error::ContractError,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
+};
 use cosmwasm_std::{
     coin,
     testing::{message_info, mock_env},
@@ -88,20 +91,7 @@ fn test_stake_with_default_validator() {
         .add_attribute("from", OWNER.to_string())
         .add_attribute("to", DEFAULT_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
-
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "validator_staking_stake");
 }
 
 #[test]
@@ -129,19 +119,11 @@ fn test_stake_with_validator() {
         .add_attribute("to", VALID_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_res,
+        "validator_staking_stake_with_validator",
+    );
 }
 
 #[test]

@@ -7,6 +7,7 @@ use andromeda_std::{
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::utils::assert_response,
 };
 use cosmwasm_std::{
     attr,
@@ -74,19 +75,7 @@ fn test_update_app_contract() {
     let expected_res: Response = Response::new()
         .add_attribute("action", "update_app_contract")
         .add_attribute("address", app_contract.to_string());
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "update_app_contract");
 }
 
 // #[test]
@@ -196,19 +185,7 @@ fn test_execute_update_lock() {
     let expected_res: Response = Response::new()
         .add_attribute("action", "update_lock")
         .add_attribute("locked", new_lock.to_string());
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "update_lock");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -475,19 +452,7 @@ fn test_execute_remove_recipient() {
     };
     assert_eq!(expected_splitter, splitter);
     let expected_res: Response = Response::new().add_attribute("action", "removed_recipient");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "remove_recipient");
 
     // check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -772,19 +737,7 @@ fn test_update_recipient_weight() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let expected_res: Response =
         Response::new().add_attribute("action", "updated_recipient_weight");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "update_recipient_weight");
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
     let expected_splitter = Splitter {
         recipients: vec![
@@ -1100,19 +1053,7 @@ fn test_execute_add_recipient() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let expected_res: Response = Response::new().add_attribute("action", "added_recipient");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "add_recipient");
 
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
     let expected_splitter = Splitter {
@@ -1219,19 +1160,8 @@ fn test_execute_add_recipient_duplicate_recipient() {
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
     let expected_res: Response = Response::new().add_attribute("action", "added_recipient");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "add_recipient");
+
     // Add a duplicate user
     let msg = ExecuteMsg::AddRecipient {
         recipient: AddressWeight {
@@ -1472,19 +1402,7 @@ fn test_execute_update_recipients() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let expected_res: Response = Response::new().add_attribute("action", "update_recipients");
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "update_recipients");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -1737,19 +1655,7 @@ fn test_execute_send() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "weighted_distribution_splitter_send");
 
     // Test send with config
     let msg = ExecuteMsg::Send {
@@ -1770,19 +1676,7 @@ fn test_execute_send() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    for attr in expected_res.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_res.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_res.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_res, "weighted_distribution_splitter_send");
 }
 use rstest::*;
 

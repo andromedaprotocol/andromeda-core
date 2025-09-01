@@ -11,7 +11,10 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     error::ContractError,
-    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT},
+    testing::{
+        mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT},
+        utils::assert_response,
+    },
 };
 
 use super::mock::{
@@ -163,19 +166,7 @@ fn test_set_value_with_tax() {
             ("key", "key"),
         ])
         .add_attribute("value", format!("{value:?}"));
-    for attr in expected_response.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_response.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_response.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_response, "primitive_set_value_with_funds");
 
     // Sent less than amount required for tax
     let err = set_value_with_funds(
@@ -213,19 +204,7 @@ fn test_set_value_with_tax() {
             ("key", "key"),
         ])
         .add_attribute("value", format!("{value:?}"));
-    for attr in expected_response.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_response.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_response.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(&res, &expected_response, "primitive_set_value_with_funds");
 }
 
 #[test]

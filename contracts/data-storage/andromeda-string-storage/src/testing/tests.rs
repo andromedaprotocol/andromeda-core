@@ -12,6 +12,7 @@ use andromeda_std::{
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     error::ContractError,
+    testing::utils::assert_response,
 };
 
 use super::mock::{
@@ -116,19 +117,12 @@ fn test_set_value_with_tax() {
         })))
         .add_attributes(vec![("method", "set_value"), ("sender", creator.as_str())])
         .add_attribute("value", format!("{value:?}"));
-    for attr in expected_response.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_response.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_response.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_response,
+        "string_storage_set_value_with_funds",
+    );
+
     // Sent less than amount required for tax
     let err = set_value_with_funds(
         deps.as_mut(),
@@ -159,19 +153,11 @@ fn test_set_value_with_tax() {
         })))
         .add_attributes(vec![("method", "set_value"), ("sender", creator.as_str())])
         .add_attribute("value", format!("{value:?}"));
-    for attr in expected_response.attributes {
-        assert!(
-            res.attributes.contains(&attr),
-            "Attribute {:?} not found",
-            attr,
-        );
-    }
-    for msg in expected_response.messages {
-        assert!(res.messages.contains(&msg), "Message {:?} not found", msg,);
-    }
-    for event in expected_response.events {
-        assert!(res.events.contains(&event), "Event {:?} not found", event,);
-    }
+    assert_response(
+        &res,
+        &expected_response,
+        "string_storage_set_value_with_funds",
+    );
 }
 
 struct TestHandleStringStorage {
