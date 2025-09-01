@@ -8,7 +8,6 @@ use osmosis_std::types::osmosis::gamm::v1beta1::{PoolAsset, PoolParams};
 use osmosis_std::types::osmosis::gamm::{
     poolmodels::stableswap::v1beta1::PoolParams as StablePoolParams, v1beta1::MsgExitPool,
 };
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorResponse;
 
 #[andr_instantiate]
 #[cw_serde]
@@ -90,12 +89,10 @@ pub enum QueryMsg {
         from_denom: String,
         to_denom: String,
     },
-    #[returns(QueryDenomsFromCreatorResponse)]
-    DenomsFromCreator { creator: String },
-
+    /// Returns the pool info of the latest pool created by a certain address
     #[returns(PoolIdAndParams)]
     PoolInfo { creator: String },
-
+    /// Retruns all the pools that have been created by a certain address
     #[returns(PoolsCreatedResponse)]
     PoolsCreated { creator: String },
 }

@@ -16,19 +16,19 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::one_coin;
 
-use osmosis_std::types::osmosis::concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPoolResponse;
-use osmosis_std::types::osmosis::cosmwasmpool::v1beta1::MsgCreateCosmWasmPoolResponse;
-use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::MsgCreateBalancerPoolResponse;
-use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::MsgCreateStableswapPoolResponse;
-use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::TokenfactoryQuerier;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
     osmosis::{
-        concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPool,
-        cosmwasmpool::v1beta1::MsgCreateCosmWasmPool,
-        gamm::poolmodels::{
-            balancer::v1beta1::MsgCreateBalancerPool, stableswap::v1beta1::MsgCreateStableswapPool,
+        concentratedliquidity::poolmodel::concentrated::v1beta1::{
+            MsgCreateConcentratedPool, MsgCreateConcentratedPoolResponse,
+        },
+        cosmwasmpool::v1beta1::{MsgCreateCosmWasmPool, MsgCreateCosmWasmPoolResponse},
+        gamm::{
+            poolmodels::{
+                balancer::v1beta1::{MsgCreateBalancerPool, MsgCreateBalancerPoolResponse},
+                stableswap::v1beta1::{MsgCreateStableswapPool, MsgCreateStableswapPoolResponse},
+            },
+            v1beta1::MsgExitPool,
         },
     },
 };
@@ -48,8 +48,8 @@ use crate::{
 };
 
 use andromeda_socket::osmosis::{
-    ExecuteMsg, InstantiateMsg, Pool, PoolIdAndParams, QueryMsg, Slippage, SpenderAndParams,
-    SwapAmountInRoute,
+    ExecuteMsg, InstantiateMsg, Pool, PoolIdAndParams, PoolsCreatedResponse, QueryMsg, Slippage,
+    SpenderAndParams, SwapAmountInRoute,
 };
 
 const CONTRACT_NAME: &str = "crates.io:andromeda-osmosis-socket";
@@ -315,13 +315,28 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             from_denom,
             to_denom,
         } => encode_binary(&query_get_route(deps, from_denom, to_denom)?),
-        QueryMsg::DenomsFromCreator { creator } => {
-            encode_binary(&TokenfactoryQuerier::new(&deps.querier).denoms_from_creator(creator)?)
+        QueryMsg::PoolInfo { creator } => {
+            let pool_info = WITHDRAW
+                .may_load(deps.storage, creator)?
+                .ok_or(ContractError::Std(StdError::generic_err(
+                    "Pool info not found".to_string(),
+                )))?;
+            let pool_info_response = PoolIdAndParams {
+                pool_id: pool_info.pool_id,
+                params: pool_info.params,
+            };
+            encode_binary(&pool_info_response)
         }
-        QueryMsg::PoolInfo { creator } => encode_binary(&WITHDRAW.load(deps.storage, creator)?),
         QueryMsg::PoolsCreated { creator } => {
-            encode_binary(&POOLS_CREATED.load(deps.storage, creator)?)
+            let pools_created = POOLS_CREATED
+                .load(deps.storage, creator)
+                .unwrap_or_default();
+            let pools_created_response = PoolsCreatedResponse {
+                pools: pools_created,
+            };
+            encode_binary(&pools_created_response)
         }
+
         _ => ADOContract::default().query(deps, env, msg),
     }
 }

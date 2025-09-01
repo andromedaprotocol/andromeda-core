@@ -1,5 +1,5 @@
 use andromeda_osmosis_socket::OsmosisSocketContract;
-use andromeda_socket::osmosis::ExecuteMsgFns;
+use andromeda_socket::osmosis::{ExecuteMsgFns, PoolIdAndParams, PoolsCreatedResponse};
 use cosmwasm_std::coin;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
@@ -16,6 +16,8 @@ struct TestCase {
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
+const TEST_ADDRESS: &str = "osmo18epw87zc64a6m63323l6je0nlwdhnjpghtsyq8";
+const POOL_CREATION_FEE: u128 = 1_000_000; // 1 OSMO is the pool creation fee on Osmosis testnet-5
 
 #[fixture]
 fn setup() -> TestCase {
@@ -26,25 +28,25 @@ fn setup() -> TestCase {
 
     let osmosis_socket_contract = OsmosisSocketContract::new(daemon.clone());
 
-    // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
-    // Make sure to fund the contract after its instantiation
-    osmosis_socket_contract.upload().unwrap();
-    osmosis_socket_contract
-        .instantiate(
-            &andromeda_socket::osmosis::InstantiateMsg {
-                kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
-                    .to_string(),
-                owner: None,
-                swap_router: None,
-            },
-            None,
-            &[],
-        )
-        .unwrap();
-    osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
-    // osmosis_socket_contract.set_address(&Addr::unchecked(
-    //     "osmo1r2vw2g92f5mt78mj029qlllfsfhrgyh6pzc4zgacllwg7p6x40rqnxgndc".to_string(),
-    // ));
+    // // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
+    // // Make sure to fund the contract after its instantiation
+    // osmosis_socket_contract.upload().unwrap();
+    // osmosis_socket_contract
+    //     .instantiate(
+    //         &andromeda_socket::osmosis::InstantiateMsg {
+    //             kernel_address: "osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux"
+    //                 .to_string(),
+    //             owner: None,
+    //             swap_router: None,
+    //         },
+    //         None,
+    //         &[],
+    //     )
+    //     .unwrap();
+    // osmosis_socket_contract.set_address(&osmosis_socket_contract.address().unwrap());
+    osmosis_socket_contract.set_address(&Addr::unchecked(
+        "osmo1x2z28sqg5g7s3yyay8meht8k9xu9k4mrh8gkcj86546xszgxh9xs0urjaa".to_string(),
+    ));
 
     TestCase {
         osmosis_socket_contract,
@@ -84,7 +86,6 @@ fn test_create_pool(setup: TestCase) {
         smooth_weight_change_params: None,
     };
 
-    // The contract itself should have those funds, I funded the contract then called this function
     // The contract receives the lp tokens and then transfers them to the user in the reply function
     let res = osmosis_socket_contract
         .create_pool(
@@ -92,10 +93,25 @@ fn test_create_pool(setup: TestCase) {
                 pool_params: Some(pool_params),
                 pool_assets,
             },
-            &[coin(1000, "uion"), coin(10000, "uosmo")],
+            &[coin(1000, "uion"), coin(10000 + POOL_CREATION_FEE, "uosmo")],
         )
         .unwrap();
     println!("res: {:?}", res);
+
+    let pools_created: PoolsCreatedResponse = osmosis_socket_contract
+        .query(&andromeda_socket::osmosis::QueryMsg::PoolsCreated {
+            creator: TEST_ADDRESS.to_string(),
+        })
+        .unwrap();
+    println!("pools_created: {:?}", pools_created);
+
+    let pool_info: PoolIdAndParams = osmosis_socket_contract
+        .query(&andromeda_socket::osmosis::QueryMsg::PoolInfo {
+            creator: TEST_ADDRESS.to_string(),
+        })
+        .unwrap();
+
+    println!("pool info: {:?}", pool_info)
 }
 
 #[rstest]
