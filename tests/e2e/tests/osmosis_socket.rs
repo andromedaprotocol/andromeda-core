@@ -13,7 +13,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, TxSender, Wallet};
 use e2e::constants::{OSMO_5, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2};
 
-use andromeda_osmosis_socket::SocketOsmosisContract;
+use andromeda_osmosis_socket::OsmosisSocketContract;
 
 use rstest::{fixture, rstest};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -129,7 +129,7 @@ fn test_onchain_native(setup: TestCase) {
 
     let osmosis_socket_addr: String = app_contract.get_address("osmosis-socket");
 
-    let osmosis_socket_contract = SocketOsmosisContract::new(daemon.clone());
+    let osmosis_socket_contract = OsmosisSocketContract::new(daemon.clone());
     osmosis_socket_contract.set_address(&Addr::unchecked(osmosis_socket_addr));
 
     // execute swap operation

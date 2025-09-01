@@ -1,4 +1,4 @@
-use andromeda_osmosis_socket::SocketOsmosisContract;
+use andromeda_osmosis_socket::OsmosisSocketContract;
 use andromeda_socket::osmosis::ExecuteMsgFns;
 use cosmwasm_std::coin;
 use cw_orch::prelude::*;
@@ -12,7 +12,7 @@ use osmosis_std::types::{
 use rstest::{fixture, rstest};
 
 struct TestCase {
-    osmosis_socket_contract: SocketOsmosisContract<DaemonBase<Wallet>>,
+    osmosis_socket_contract: OsmosisSocketContract<DaemonBase<Wallet>>,
 }
 
 const TEST_MNEMONIC: &str = "cereal gossip fox peace youth leader engage move brass sell gas trap issue simple dance source develop black hurt pulp burst predict patient onion";
@@ -24,7 +24,7 @@ fn setup() -> TestCase {
         .build()
         .unwrap();
 
-    let osmosis_socket_contract = SocketOsmosisContract::new(daemon.clone());
+    let osmosis_socket_contract = OsmosisSocketContract::new(daemon.clone());
 
     // Uncomment this if you want to upload and instantiate a new version of osmosis socket contract
     // Make sure to fund the contract after its instantiation

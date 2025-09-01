@@ -6,4 +6,4 @@ pub mod state;
 mod interface;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use crate::interface::SocketOsmosisContract;
+pub use crate::interface::OsmosisSocketContract;

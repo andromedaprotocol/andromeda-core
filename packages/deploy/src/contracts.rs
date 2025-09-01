@@ -20,7 +20,7 @@ use andromeda_kernel::KernelContract;
 use andromeda_lockdrop::LockdropContract;
 use andromeda_marketplace::MarketplaceContract;
 use andromeda_merkle_airdrop::MerkleAirdropContract;
-use andromeda_osmosis_socket::SocketOsmosisContract;
+use andromeda_osmosis_socket::OsmosisSocketContract;
 use andromeda_point::PointContract;
 use andromeda_primitive::PrimitiveContract;
 use andromeda_rate_limiting_withdrawals::RateLimitingWithdrawalsContract;
@@ -91,7 +91,7 @@ pub fn all_contracts() -> Vec<DeployableContract> {
         deployable!(GraphContract),
         deployable!(PointContract),
         deployable!(SocketAstroportContract),
-        deployable!(SocketOsmosisContract),
+        deployable!(OsmosisSocketContract),
     ]
 }
 
