@@ -101,9 +101,6 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct PoolIdResponse {}
-
-#[cw_serde]
 pub struct PoolsCreatedResponse {
     pub pools: Vec<PoolIdAndParams>,
 }
