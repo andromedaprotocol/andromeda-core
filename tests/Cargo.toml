@@ -83,7 +83,7 @@ andromeda-validator-staking = { path = "../contracts/finance/andromeda-validator
     "testing",
 ] }
 
-andromeda-socket-osmosis = { path = "../contracts/socket/andromeda-socket-osmosis", features = [
+andromeda-osmosis-socket = { path = "../contracts/socket/andromeda-osmosis-socket", features = [
     "testing",
 ] }
 

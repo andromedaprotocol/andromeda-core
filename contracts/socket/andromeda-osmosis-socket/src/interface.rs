@@ -6,5 +6,5 @@ pub const CONTRACT_ID: &str = "socket-osmosis";
 contract_interface!(
     SocketOsmosisContract,
     CONTRACT_ID,
-    "andromeda_socket_osmosis.wasm"
+    "andromeda_osmosis_socket.wasm"
 );

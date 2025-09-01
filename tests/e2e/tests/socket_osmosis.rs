@@ -13,7 +13,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, TxSender, Wallet};
 use e2e::constants::{OSMO_5, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2};
 
-use andromeda_socket_osmosis::SocketOsmosisContract;
+use andromeda_osmosis_socket::SocketOsmosisContract;
 
 use rstest::{fixture, rstest};
 use std::time::{SystemTime, UNIX_EPOCH};

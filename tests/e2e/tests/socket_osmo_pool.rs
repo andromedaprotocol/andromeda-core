@@ -1,5 +1,5 @@
+use andromeda_osmosis_socket::SocketOsmosisContract;
 use andromeda_socket::osmosis::ExecuteMsgFns;
-use andromeda_socket_osmosis::SocketOsmosisContract;
 use cosmwasm_std::coin;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
