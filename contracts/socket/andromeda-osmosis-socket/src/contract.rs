@@ -38,7 +38,9 @@ use crate::osmosis::{
     OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
     OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{WithdrawState, POOLS_CREATED, SPENDER_AND_PARAMS, WITHDRAW, WITHDRAW_STATE};
+use crate::state::{
+    WithdrawState, POOLS_CREATED, POOL_INFO, SPENDER_AND_PARAMS, WITHDRAW, WITHDRAW_STATE,
+};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -315,17 +317,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             from_denom,
             to_denom,
         } => encode_binary(&query_get_route(deps, from_denom, to_denom)?),
-        QueryMsg::PoolInfo { creator } => {
-            let pool_info = WITHDRAW
-                .may_load(deps.storage, creator)?
-                .ok_or(ContractError::Std(StdError::generic_err(
-                    "Pool info not found".to_string(),
-                )))?;
-            let pool_info_response = PoolIdAndParams {
-                pool_id: pool_info.pool_id,
-                params: pool_info.params,
-            };
-            encode_binary(&pool_info_response)
+        QueryMsg::PoolInfo { pool_id } => {
+            let pool_info =
+                POOL_INFO
+                    .may_load(deps.storage, pool_id)?
+                    .ok_or(ContractError::Std(StdError::generic_err(
+                        "Pool info not found".to_string(),
+                    )))?;
+            encode_binary(&pool_info)
         }
         QueryMsg::PoolsCreated { creator } => {
             let pools_created = POOLS_CREATED
@@ -396,7 +395,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
                 let pool_id_and_params = PoolIdAndParams {
                     pool_id: pool_id.to_string(),
-                    params: spender_and_params.params,
+                    params: spender_and_params.params.clone(),
                 };
 
                 WITHDRAW.save(
@@ -410,6 +409,12 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     .unwrap_or_default();
                 pools.push(pool_id_and_params);
                 POOLS_CREATED.save(deps.storage, spender_and_params.spender.clone(), &pools)?;
+
+                POOL_INFO.save(
+                    deps.storage,
+                    pool_id.to_string(),
+                    &spender_and_params.params,
+                )?;
 
                 Ok(Response::default().add_message(msg).add_attributes(vec![
                     attr("action", "balancer_pool_created"),

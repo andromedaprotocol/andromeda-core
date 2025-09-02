@@ -1,5 +1,5 @@
 use andromeda_osmosis_socket::OsmosisSocketContract;
-use andromeda_socket::osmosis::{ExecuteMsgFns, PoolIdAndParams, PoolsCreatedResponse};
+use andromeda_socket::osmosis::{ExecuteMsgFns, Pool, PoolsCreatedResponse};
 use cosmwasm_std::coin;
 use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, Wallet};
@@ -104,11 +104,10 @@ fn test_create_pool(setup: TestCase) {
         })
         .unwrap();
     println!("pools_created: {:?}", pools_created);
+    let pool_id = pools_created.pools.first().unwrap().pool_id.clone();
 
-    let pool_info: PoolIdAndParams = osmosis_socket_contract
-        .query(&andromeda_socket::osmosis::QueryMsg::PoolInfo {
-            creator: TEST_ADDRESS.to_string(),
-        })
+    let pool_info: Pool = osmosis_socket_contract
+        .query(&andromeda_socket::osmosis::QueryMsg::PoolInfo { pool_id })
         .unwrap();
 
     println!("pool info: {:?}", pool_info)

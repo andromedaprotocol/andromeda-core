@@ -1,3 +1,4 @@
+use andromeda_socket::osmosis::Pool;
 use andromeda_socket::osmosis::{PoolIdAndParams, SpenderAndParams};
 use andromeda_std::amp::{messages::AMPCtx, AndrAddr, Recipient};
 use cosmwasm_schema::cw_serde;
@@ -43,3 +44,6 @@ pub const WITHDRAW: Map<String, PoolIdAndParams> = Map::new("withdraw");
 
 // pool creator to pool id and the pool's parameters
 pub const POOLS_CREATED: Map<String, Vec<PoolIdAndParams>> = Map::new("pools_created");
+
+// Pool id to pool info
+pub const POOL_INFO: Map<String, Pool> = Map::new("pool_info");

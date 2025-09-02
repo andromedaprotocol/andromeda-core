@@ -90,8 +90,8 @@ pub enum QueryMsg {
         to_denom: String,
     },
     /// Returns the pool info of the latest pool created by a certain address
-    #[returns(PoolIdAndParams)]
-    PoolInfo { creator: String },
+    #[returns(Pool)]
+    PoolInfo { pool_id: String },
     /// Retruns all the pools that have been created by a certain address
     #[returns(PoolsCreatedResponse)]
     PoolsCreated { creator: String },
