@@ -1,6 +1,6 @@
 [package]
 name = "andromeda-primitive"
-version = "2.1.1-b.3"
+version = "2.1.1-b.4"
 authors = [
   "Connor Barr <crnbarr@gmail.com>",
   "Anshudhar Kumar Singh <anshudhar2001@gmail.com>",
