@@ -185,7 +185,8 @@ fn execute_mint(mut ctx: ExecuteContext, mint_msg: MintMsg) -> Result<Response, 
     let res = Response::new()
         .add_attribute("action", "mint")
         .add_attribute("minter", ctx.info.sender.to_string())
-        .add_attribute("owner", owner)
+        .add_attribute("token_owner", owner)
+        .add_attribute("token_uri", mint_msg.token_uri.unwrap_or_default())
         .add_attribute("token_id", mint_msg.token_id);
     Ok(res)
 }
@@ -470,8 +471,10 @@ fn execute_burn(ctx: ExecuteContext, token_id: String) -> Result<Response, Contr
         !is_archived(deps.storage, &token_id)?.is_archived,
         ContractError::TokenIsArchived {}
     );
-    let res = burn_nft(deps, &env, &info, token_id)?;
-    Ok(res)
+    let res = burn_nft(deps, &env, &info, token_id.clone())?;
+    Ok(res
+        .add_attribute("action", "burn")
+        .add_attribute("token_id", token_id))
 }
 
 fn execute_send_nft(

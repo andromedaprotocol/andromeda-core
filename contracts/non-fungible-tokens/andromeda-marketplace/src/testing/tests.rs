@@ -16,10 +16,10 @@ use andromeda_std::{
         Milliseconds,
     },
     error::ContractError,
-    testing::mock_querier::MOCK_CW20_CONTRACT,
+    testing::{mock_querier::MOCK_CW20_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
-    attr, coin, coins, from_json,
+    coin, coins, from_json,
     testing::{message_info, mock_env},
     Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };
@@ -1011,14 +1011,11 @@ fn test_execute_authorize_cw20_contract() {
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
-    assert_eq!(
-        result.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", MOCK_CW20_CONTRACT.to_string()),
-            attr("permission", "whitelisted"),
-        ]
-    );
+    let expected_res = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", MOCK_CW20_CONTRACT.to_string())
+        .add_attribute("permission", "whitelisted");
+    assert_response(&result, &expected_res, "marketplace_authorize_contract");
 
     // Verify the permission was set correctly
     let permission = ADOContract::get_permission(
@@ -1048,14 +1045,11 @@ fn test_execute_authorize_cw20_contract() {
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
-    assert_eq!(
-        result.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", mock_cw20_contract_with_expiry.to_string()),
-            attr("permission", format!("whitelisted until:{}", expiration)),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", mock_cw20_contract_with_expiry.to_string())
+        .add_attribute("permission", format!("whitelisted until:{}", expiration));
+    assert_response(&result, &expected_res, "marketplace_authorize_contract");
 
     // Verify the permission was set correctly with expiration
     let permission = ADOContract::get_permission(
@@ -1113,14 +1107,11 @@ fn test_execute_deauthorize_cw20_contract() {
     let res = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
     // Check the response
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "deauthorize_contract"),
-            attr("address", MOCK_CW20_CONTRACT.to_string()),
-            attr("deauthorized_action", SEND_CW20_ACTION),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "deauthorize_contract")
+        .add_attribute("address", MOCK_CW20_CONTRACT.to_string())
+        .add_attribute("deauthorized_action", SEND_CW20_ACTION);
+    assert_response(&res, &expected_res, "marketplace_deauthorize_contract");
 
     // Verify the permission was removed
     let permission = ADOContract::get_permission(
@@ -1207,14 +1198,11 @@ fn test_authorize_token_contract() {
         expiration: Some(expiration.clone()),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", nft_contract.to_string()),
-            attr("permission", format!("whitelisted until:{}", expiration)),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", nft_contract.to_string())
+        .add_attribute("permission", format!("whitelisted until:{}", expiration));
+    assert_response(&res, &expected_res, "marketplace_authorize_contract");
 
     // Test unauthorized attempt
     let non_owner = deps.api.addr_make("non_owner");
@@ -1258,14 +1246,11 @@ fn test_deauthorize_token_contract() {
         addr: token_address.clone(),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "deauthorize_contract"),
-            attr("address", MOCK_TOKEN_ADDR.to_string()),
-            attr("deauthorized_action", SEND_NFT_ACTION),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "deauthorize_contract")
+        .add_attribute("address", MOCK_TOKEN_ADDR.to_string())
+        .add_attribute("deauthorized_action", SEND_NFT_ACTION);
+    assert_response(&res, &expected_res, "marketplace_deauthorize_contract");
 
     // Test unauthorized attempt
     let non_owner = deps.api.addr_make("non_owner");

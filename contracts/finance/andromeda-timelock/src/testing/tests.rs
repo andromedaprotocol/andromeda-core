@@ -10,7 +10,7 @@ use andromeda_std::{
     amp::Recipient,
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
@@ -59,7 +59,7 @@ fn test_execute_hold_funds() {
             format!("{:?}", Some(condition.clone().to_condition(&env.block))),
         ),
     ]);
-    assert_eq!(expected, res);
+    assert_response(&res, &expected, "timelock_execute_hold_funds");
 
     let query_msg = QueryMsg::GetLockedFunds {
         owner: OWNER.to_string(),
@@ -157,13 +157,11 @@ fn test_execute_release_funds_no_condition() {
         to_address: OWNER.into(),
         amount: info.funds,
     };
-    assert_eq!(
-        Response::new().add_message(bank_msg).add_attributes(vec![
-            attr("action", "release_funds"),
-            attr("recipient_addr", OWNER),
-        ]),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(bank_msg)
+        .add_attribute("action", "release_funds")
+        .add_attribute("recipient_addr", OWNER);
+    assert_response(&res, &expected_res, "timelock_release_funds");
 }
 
 #[test]
@@ -202,15 +200,13 @@ fn test_execute_release_multiple_escrows() {
         to_address: recipient_addr.to_string(),
         amount: coins(200, "uusd"),
     };
-    assert_eq!(
-        Response::new()
-            .add_messages(vec![bank_msg1, bank_msg2])
-            .add_attributes(vec![
-                attr("action", "release_funds"),
-                attr("recipient_addr", recipient_addr.to_string()),
-            ]),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_messages(vec![bank_msg1, bank_msg2])
+        .add_attributes(vec![
+            attr("action", "release_funds"),
+            attr("recipient_addr", recipient_addr.to_string()),
+        ]);
+    assert_response(&res, &expected_res, "timelock_release_multiple_escrows");
 }
 
 #[test]
@@ -240,13 +236,11 @@ fn test_execute_release_funds_time_condition() {
         to_address: OWNER.into(),
         amount: info.funds,
     };
-    assert_eq!(
-        Response::new().add_message(bank_msg).add_attributes(vec![
-            attr("action", "release_funds"),
-            attr("recipient_addr", OWNER),
-        ]),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(bank_msg)
+        .add_attribute("action", "release_funds")
+        .add_attribute("recipient_addr", OWNER);
+    assert_response(&res, &expected_res, "timelock_release_funds_time_condition");
 }
 
 #[test]
@@ -323,12 +317,14 @@ fn test_execute_release_funds_min_funds_condition() {
         to_address: OWNER.into(),
         amount: vec![coin(210, "uusd"), coin(120, "uluna")],
     };
-    assert_eq!(
-        Response::new().add_message(bank_msg).add_attributes(vec![
-            attr("action", "release_funds"),
-            attr("recipient_addr", OWNER),
-        ]),
-        res
+    let expected_res: Response = Response::new()
+        .add_message(bank_msg)
+        .add_attribute("action", "release_funds")
+        .add_attribute("recipient_addr", OWNER);
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_funds_min_funds_condition",
     );
 }
 
@@ -369,12 +365,14 @@ fn test_execute_release_specific_funds_no_condition() {
         to_address: OWNER.into(),
         amount: info.funds,
     };
-    assert_eq!(
-        Response::new().add_message(bank_msg).add_attributes(vec![
-            attr("action", "release_funds"),
-            attr("recipient_addr", OWNER),
-        ]),
-        res
+    let expected_res: Response = Response::new()
+        .add_message(bank_msg)
+        .add_attribute("action", "release_funds")
+        .add_attribute("recipient_addr", OWNER);
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_specific_funds_no_condition",
     );
 }
 
@@ -405,12 +403,14 @@ fn test_execute_release_specific_funds_time_condition() {
         to_address: OWNER.into(),
         amount: info.funds,
     };
-    assert_eq!(
-        Response::new().add_message(bank_msg).add_attributes(vec![
-            attr("action", "release_funds"),
-            attr("recipient_addr", OWNER),
-        ]),
-        res
+    let expected_res: Response = Response::new()
+        .add_message(bank_msg)
+        .add_attribute("action", "release_funds")
+        .add_attribute("recipient_addr", OWNER);
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_specific_funds_time_condition",
     );
 }
 
@@ -461,12 +461,14 @@ fn test_execute_release_specific_funds_min_funds_condition() {
         to_address: OWNER.into(),
         amount: vec![coin(210, "uusd"), coin(120, "uluna")],
     };
-    assert_eq!(
-        Response::new().add_message(bank_msg).add_attributes(vec![
-            attr("action", "release_funds"),
-            attr("recipient_addr", OWNER),
-        ]),
-        res
+    let expected_res: Response = Response::new()
+        .add_message(bank_msg)
+        .add_attribute("action", "release_funds")
+        .add_attribute("recipient_addr", OWNER);
+    assert_response(
+        &res,
+        &expected_res,
+        "timelock_release_specific_funds_min_funds_condition",
     );
 }
 

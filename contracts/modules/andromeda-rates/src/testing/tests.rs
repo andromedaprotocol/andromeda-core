@@ -1,6 +1,7 @@
 use crate::contract::{execute, instantiate, query, query_deducted_funds};
 use crate::testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT, MOCK_OWNER};
 use andromeda_modules::rates::{ExecuteMsg, InstantiateMsg, QueryMsg, RateResponse};
+use andromeda_std::testing::utils::assert_response;
 use andromeda_std::{
     ado_base::rates::{LocalRate, LocalRateType, LocalRateValue, RatesResponse},
     amp::{recipient::Recipient, AndrAddr},
@@ -9,7 +10,7 @@ use andromeda_std::{
 };
 use cosmwasm_std::Addr;
 use cosmwasm_std::{
-    attr, coin, coins,
+    coin, coins,
     testing::{message_info, mock_env},
     BankMsg, CosmosMsg, Event, Response, SubMsg, WasmMsg,
 };
@@ -81,10 +82,8 @@ fn test_andr_receive() {
     let msg = ExecuteMsg::SetRate { action, rate };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::new().add_attributes(vec![attr("action", "set_rate")]),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "set_rate");
+    assert_response(&res, &expected_res, "andr_receive");
 }
 
 #[test]

@@ -12,7 +12,7 @@ use andromeda_std::{
         Milliseconds,
     },
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
     attr, coin, coins, from_json,
@@ -1480,14 +1480,11 @@ fn test_cancel_redeem() {
     assert_eq!(message, &expected_message);
 
     // Check that appropriate attributes were emitted
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("refunded_amount", redeem_amount),
-            attr("action", "cancel_redeem"),
-            attr("asset", redeem_asset.to_string()),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("refunded_amount", redeem_amount)
+        .add_attribute("action", "cancel_redeem")
+        .add_attribute("asset", redeem_asset.to_string());
+    assert_response(&res, &expected_res, "cancel_redeem");
 }
 
 #[test]

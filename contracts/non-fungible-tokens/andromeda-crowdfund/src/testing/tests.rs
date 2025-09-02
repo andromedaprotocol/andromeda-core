@@ -92,10 +92,12 @@ fn get_user_orders(
 }
 #[cfg(test)]
 mod test {
+    use super::*;
     use andromeda_non_fungible_tokens::{
         crowdfund::{Cw20HookMsg, PresaleTierOrder, SimpleTierOrder, TierOrder},
         cw721::MintMsg,
     };
+    use andromeda_std::testing::utils::assert_response;
     use andromeda_std::{
         amp::{messages::AMPPkt, AndrAddr, Recipient},
         common::{denom::Asset, encode_binary, schedule::Schedule, Milliseconds},
@@ -111,8 +113,6 @@ mod test {
         },
     };
 
-    use super::*;
-
     const MOCK_NATIVE_DENOM: &str = "uandr";
     const INVALID_DENOM: &str = "other";
 
@@ -122,6 +122,7 @@ mod test {
         tiers: Vec<Tier>,
         expected_res: Result<Response, ContractError>,
     }
+
     #[test]
     fn test_instantiate() {
         let test_cases: Vec<InstantiateTestCase> = vec![
@@ -186,7 +187,6 @@ mod test {
                 kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
             };
             let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone());
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
                     get_campaign_config(&deps.storage),
@@ -201,6 +201,14 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
+            }
+
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -281,7 +289,6 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
                     test.tier,
@@ -291,6 +298,13 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
+            }
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -364,7 +378,6 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
                     test.tier,
@@ -374,6 +387,13 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
+            }
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -435,13 +455,19 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), mock_env(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert!(
                     !TIERS.has(deps.as_ref().storage, test.tier.level.into()),
                     "Test case: {}",
                     test.name
                 );
+            }
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -555,7 +581,6 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
 
             // let (start_time, end_time) = test.schedule.validate(&env.block);
 
@@ -612,6 +637,14 @@ mod test {
                         .unwrap_or(CampaignStage::READY),
                     CampaignStage::READY
                 );
+            }
+
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -775,7 +808,6 @@ mod test {
             };
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
 
             if res.is_ok() {
                 // Check current capital
@@ -811,6 +843,14 @@ mod test {
                         test.name
                     );
                 }
+            }
+
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -965,7 +1005,6 @@ mod test {
             });
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
 
             if res.is_ok() {
                 // Check current capital
@@ -1001,6 +1040,14 @@ mod test {
                         test.name
                     );
                 }
+            }
+
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -1158,7 +1205,6 @@ mod test {
             let msg = ExecuteMsg::EndCampaign {};
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
                     CAMPAIGN_STAGE
@@ -1168,6 +1214,13 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
+            }
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -1263,7 +1316,6 @@ mod test {
             let msg = ExecuteMsg::DiscardCampaign {};
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 assert_eq!(
                     CAMPAIGN_STAGE
@@ -1273,6 +1325,13 @@ mod test {
                     "Test case: {}",
                     test.name
                 );
+            }
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }
@@ -1426,11 +1485,17 @@ mod test {
             let info = message_info(&Addr::unchecked(orderer.clone()), &[]);
 
             let res = execute(deps.as_mut(), env.clone(), info, msg);
-            assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             if res.is_ok() {
                 // processed orders should be cleared
                 let orders = get_user_orders(deps.as_ref().storage, orderer.clone()).unwrap();
                 assert!(orders.is_empty(), "Test case: {}", test.name);
+            }
+            if test.expected_res.is_ok() && res.is_ok() {
+                let expected_res = test.expected_res.unwrap();
+                let res = res.unwrap();
+                assert_response(&res, &expected_res, &test.name);
+            } else {
+                assert_eq!(res, test.expected_res, "Test case: {}", test.name);
             }
         }
     }

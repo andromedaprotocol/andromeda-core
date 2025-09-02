@@ -5,7 +5,7 @@ use andromeda_std::{
         Milliseconds,
     },
     error::ContractError,
-    testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
     coin, coins, from_json,
@@ -92,14 +92,12 @@ fn test_instantiate() {
     )
     .unwrap();
     let owner = deps.api.addr_make("owner");
-    assert_eq!(
-        Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "cw20-staking")
-            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", owner.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("type", "cw20-staking")
+        .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+        .add_attribute("owner", owner.to_string());
+    assert_response(&res, &expected_res, "cw20_staking_instantiate");
 
     assert_eq!(
         Config {
@@ -366,14 +364,12 @@ fn test_stake_unstake_tokens() {
     let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "stake_tokens")
-            .add_attribute("sender", "sender")
-            .add_attribute("share", "100")
-            .add_attribute("amount", "100"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "stake_tokens")
+        .add_attribute("sender", "sender")
+        .add_attribute("share", "100")
+        .add_attribute("amount", "100");
+    assert_response(&res, &expected_res, "cw20_staking_stake_tokens");
 
     assert_eq!(
         State {
@@ -404,13 +400,15 @@ fn test_stake_unstake_tokens() {
     let info = message_info(&Addr::unchecked(MOCK_STAKING_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "stake_tokens")
-            .add_attribute("sender", "other_sender")
-            .add_attribute("share", "50")
-            .add_attribute("amount", "100"),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "stake_tokens")
+        .add_attribute("sender", "other_sender")
+        .add_attribute("share", "50")
+        .add_attribute("amount", "100");
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_stake_tokens_other_sender",
     );
 
     assert_eq!(
@@ -447,23 +445,21 @@ fn test_stake_unstake_tokens() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "unstake_tokens")
-            .add_attribute("sender", "sender")
-            .add_attribute("withdraw_amount", "200")
-            .add_attribute("withdraw_share", "100")
-            .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_STAKING_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: "sender".to_string(),
-                    amount: Uint128::new(200)
-                })
-                .unwrap()
-            }),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "unstake_tokens")
+        .add_attribute("sender", "sender")
+        .add_attribute("withdraw_amount", "200")
+        .add_attribute("withdraw_share", "100")
+        .add_message(WasmMsg::Execute {
+            contract_addr: MOCK_STAKING_TOKEN.to_owned(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "sender".to_string(),
+                amount: Uint128::new(200),
+            })
+            .unwrap(),
+        });
+    assert_response(&res, &expected_res, "cw20_staking_unstake_tokens");
 
     assert_eq!(
         State {
@@ -490,22 +486,24 @@ fn test_stake_unstake_tokens() {
     let info = message_info(&Addr::unchecked("other_sender"), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "unstake_tokens")
-            .add_attribute("sender", "other_sender")
-            .add_attribute("withdraw_amount", "100")
-            .add_attribute("withdraw_share", "50")
-            .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_STAKING_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: "other_sender".to_string(),
-                    amount: Uint128::new(100)
-                })
-                .unwrap()
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "unstake_tokens")
+        .add_attribute("sender", "other_sender")
+        .add_attribute("withdraw_amount", "100")
+        .add_attribute("withdraw_share", "50")
+        .add_message(WasmMsg::Execute {
+            contract_addr: MOCK_STAKING_TOKEN.to_owned(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "other_sender".to_string(),
+                amount: Uint128::new(100),
+            })
+            .unwrap(),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_unstake_tokens_other_sender",
     );
 
     assert_eq!(
@@ -597,14 +595,12 @@ fn test_update_global_indexes() {
     let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_global_indexes")
-            .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2")
-            .add_attribute("native:uandr", "0")
-            .add_attribute("native:uusd", "0.4"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_global_indexes")
+        .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2")
+        .add_attribute("native:uandr", "0")
+        .add_attribute("native:uusd", "0.4");
+    assert_response(&res, &expected_res, "cw20_staking_update_global_indexes");
 
     assert_eq!(
         RewardToken {
@@ -660,14 +656,12 @@ fn test_update_global_indexes() {
     new_env.block.time = new_env.block.time.plus_seconds(2);
     let res = execute(deps.as_mut(), new_env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_global_indexes")
-            .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2")
-            .add_attribute("native:uandr", "0.4")
-            .add_attribute("native:uusd", "0.4"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_global_indexes")
+        .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2")
+        .add_attribute("native:uandr", "0.4")
+        .add_attribute("native:uusd", "0.4");
+    assert_response(&res, &expected_res, "cw20_staking_update_global_indexes_2");
 
     assert_eq!(
         RewardToken {
@@ -734,11 +728,13 @@ fn test_update_global_indexes_selective() {
     let info = message_info(&owner, &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_global_indexes")
-            .add_attribute("native:uusd", "0.4"),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_global_indexes")
+        .add_attribute("native:uusd", "0.4");
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_update_global_indexes_selective",
     );
 
     assert_eq!(
@@ -871,11 +867,13 @@ fn test_update_global_indexes_cw20_deposit() {
     let info = message_info(&Addr::unchecked(MOCK_INCENTIVE_TOKEN), &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_global_indexes")
-            .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2"),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_global_indexes")
+        .add_attribute(format!("cw20:{}", MOCK_INCENTIVE_TOKEN).as_str(), "0.2");
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_update_global_indexes_cw20_deposit",
     );
 
     assert_eq!(
@@ -1032,7 +1030,7 @@ fn test_claim_rewards() {
 
     let info = message_info(&Addr::unchecked("user1"), &[]);
     let msg = ExecuteMsg::ClaimRewards {};
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     assert_eq!(
         StakerRewardInfo {
@@ -1059,15 +1057,13 @@ fn test_claim_rewards() {
             .unwrap()
     );
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(BankMsg::Send {
-                to_address: "user1".to_string(),
-                amount: coins(66, "uusd")
-            }),
-        res.unwrap()
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(BankMsg::Send {
+            to_address: "user1".to_string(),
+            amount: coins(66, "uusd"),
+        });
+    assert_response(&res, &expected_res, "cw20_staking_claim_rewards");
 
     deps.querier
         .base
@@ -1076,17 +1072,15 @@ fn test_claim_rewards() {
 
     let info = message_info(&Addr::unchecked("user2"), &[]);
     let msg = ExecuteMsg::ClaimRewards {};
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(BankMsg::Send {
-                to_address: "user2".to_string(),
-                amount: coins(33, "uusd")
-            }),
-        res.unwrap()
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(BankMsg::Send {
+            to_address: "user2".to_string(),
+            amount: coins(33, "uusd"),
+        });
+    assert_response(&res, &expected_res, "cw20_staking_claim_rewards_user2");
 
     assert_eq!(
         StakerRewardInfo {
@@ -1246,19 +1240,21 @@ fn test_claim_rewards_allocated() {
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: USER1.to_string(),
-                    amount: Uint128::new(25)
-                })
-                .unwrap(),
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(WasmMsg::Execute {
+            contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: USER1.to_string(),
+                amount: Uint128::new(25),
+            })
+            .unwrap(),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user1",
     );
 
     assert_eq!(
@@ -1308,19 +1304,21 @@ fn test_claim_rewards_allocated() {
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: user2.to_string(),
-                    amount: Uint128::new(25)
-                })
-                .unwrap(),
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(WasmMsg::Execute {
+            contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: user2.to_string(),
+                amount: Uint128::new(25),
+            })
+            .unwrap(),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user2",
     );
 
     assert_eq!(
@@ -1439,19 +1437,21 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: USER1.to_string(),
-                    amount: Uint128::new(25)
-                })
-                .unwrap(),
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(WasmMsg::Execute {
+            contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: USER1.to_string(),
+                amount: Uint128::new(25),
+            })
+            .unwrap(),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user1_future",
     );
 
     assert_eq!(
@@ -1501,19 +1501,21 @@ fn test_claim_rewards_allocated_init_timestamp_in_future() {
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: user2.to_string(),
-                    amount: Uint128::new(25)
-                })
-                .unwrap(),
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(WasmMsg::Execute {
+            contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: user2.to_string(),
+                amount: Uint128::new(25),
+            })
+            .unwrap(),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_user2_future",
     );
 
     assert_eq!(
@@ -1950,12 +1952,10 @@ fn test_add_reward_token() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "add_reward_token")
-            .add_attribute("added_token", format!("cw20:{}", MOCK_INCENTIVE_TOKEN)),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "add_reward_token")
+        .add_attribute("added_token", format!("cw20:{}", MOCK_INCENTIVE_TOKEN));
+    assert_response(&res, &expected_res, "cw20_staking_add_reward_token");
 
     assert_eq!(
         RewardToken {
@@ -2112,13 +2112,11 @@ fn test_remove_reward_token() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "remove_reward_token")
-            .add_attribute("number_of_reward_tokens", "0")
-            .add_attribute("removed_token", "native:uusd"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "remove_reward_token")
+        .add_attribute("number_of_reward_tokens", "0")
+        .add_attribute("removed_token", "native:uusd");
+    assert_response(&res, &expected_res, "cw20_staking_remove_reward_token");
 
     let reward_token = REWARD_TOKENS
         .load(deps.as_ref().storage, "native:uusd")
@@ -2309,14 +2307,16 @@ fn test_claim_rewards_after_remove() {
             .unwrap()
     );
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(BankMsg::Send {
-                to_address: USER1.to_string(),
-                amount: coins(66, "uusd")
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(BankMsg::Send {
+            to_address: USER1.to_string(),
+            amount: coins(66, "uusd"),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_after_remove_user1",
     );
 
     deps.querier
@@ -2336,14 +2336,16 @@ fn test_claim_rewards_after_remove() {
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(BankMsg::Send {
-                to_address: user2.to_string(),
-                amount: coins(33, "uusd")
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(BankMsg::Send {
+            to_address: user2.to_string(),
+            amount: coins(33, "uusd"),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_after_remove_user2",
     );
 
     assert_eq!(
@@ -2467,19 +2469,21 @@ fn test_claim_rewards_allocated_after_remove() {
     let msg = ExecuteMsg::ClaimRewards {};
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "claim_rewards")
-            .add_message(WasmMsg::Execute {
-                contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
-                funds: vec![],
-                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: USER1.to_string(),
-                    amount: Uint128::new(25)
-                })
-                .unwrap(),
-            }),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "claim_rewards")
+        .add_message(WasmMsg::Execute {
+            contract_addr: MOCK_ALLOCATED_TOKEN.to_owned(),
+            funds: vec![],
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: USER1.to_string(),
+                amount: Uint128::new(25),
+            })
+            .unwrap(),
+        });
+    assert_response(
+        &res,
+        &expected_res,
+        "cw20_staking_claim_rewards_allocated_after_remove_user1",
     );
 
     assert_eq!(
@@ -2551,13 +2555,11 @@ fn test_replace_reward_token() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "replace_reward_token")
-            .add_attribute("origin_reward_token", "native:uusd")
-            .add_attribute("new_reward_token", format!("cw20:{MOCK_INCENTIVE_TOKEN}")),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "replace_reward_token")
+        .add_attribute("origin_reward_token", "native:uusd")
+        .add_attribute("new_reward_token", format!("cw20:{MOCK_INCENTIVE_TOKEN}"));
+    assert_response(&res, &expected_res, "cw20_staking_replace_reward_token");
 
     let reward_token = REWARD_TOKENS
         .load(deps.as_ref().storage, "native:uusd")

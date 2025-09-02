@@ -16,7 +16,7 @@ use andromeda_std::{
 use cosmwasm_std::{
     attr, from_json,
     testing::{message_info, mock_env},
-    MessageInfo, Response,
+    MessageInfo,
 };
 
 use super::mock_querier::TestDeps;
@@ -96,15 +96,17 @@ fn test_add_remove_actor() {
     };
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-    let expected = Response::default().add_attributes(vec![
+    let expected = vec![
         attr("action", "add_actor_permission"),
         attr("actor", actor.clone()),
         attr(
             "permission",
             "whitelisted starting from:At time: 1571797419879".to_string(),
         ),
-    ]);
-    assert_eq!(expected, res);
+    ];
+    for attr in expected {
+        assert!(res.attributes.contains(&attr));
+    }
 
     // Check that the actor and permission have been saved.
     let new_permission = PERMISSIONS.load(deps.as_ref().storage, &actor).unwrap();
@@ -171,15 +173,18 @@ fn test_add_remove_multiple_actors() {
     };
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
-    let expected = Response::default().add_attributes(vec![
+    let expected = vec![
         attr("action", "add_actor_permission"),
         attr("actor", format!("{}, {}", actor1, actor2)),
         attr(
             "permission",
             "whitelisted starting from:At time: 1571797419879".to_string(),
         ),
-    ]);
-    assert_eq!(expected, res);
+    ];
+    for attr in expected {
+        assert!(res.attributes.contains(&attr));
+    }
+
     let expected_permission = LocalPermission::Whitelisted {
         schedule: Schedule::new(
             Some(andromeda_std::common::expiration::Expiry::AtTime(

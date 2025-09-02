@@ -3,7 +3,10 @@ use crate::{
     testing::mock_querier::{mock_dependencies_custom, DEFAULT_VALIDATOR, VALID_VALIDATOR},
 };
 
-use andromeda_std::{error::ContractError, testing::mock_querier::MOCK_KERNEL_CONTRACT};
+use andromeda_std::{
+    error::ContractError,
+    testing::{mock_querier::MOCK_KERNEL_CONTRACT, utils::assert_response},
+};
 use cosmwasm_std::{
     coin,
     testing::{message_info, mock_env},
@@ -77,7 +80,7 @@ fn test_stake_with_default_validator() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let expected_res: Response = Response::new()
         .add_message(StakingMsg::Delegate {
@@ -88,8 +91,7 @@ fn test_stake_with_default_validator() {
         .add_attribute("from", OWNER.to_string())
         .add_attribute("to", DEFAULT_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
-
-    assert_eq!(res.unwrap(), expected_res);
+    assert_response(&res, &expected_res, "validator_staking_stake");
 }
 
 #[test]
@@ -105,7 +107,7 @@ fn test_stake_with_validator() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uandr")]);
 
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let expected_res: Response = Response::new()
         .add_message(StakingMsg::Delegate {
@@ -117,7 +119,11 @@ fn test_stake_with_validator() {
         .add_attribute("to", VALID_VALIDATOR.to_string())
         .add_attribute("amount", "100".to_string());
 
-    assert_eq!(res.unwrap(), expected_res);
+    assert_response(
+        &res,
+        &expected_res,
+        "validator_staking_stake_with_validator",
+    );
 }
 
 #[test]
