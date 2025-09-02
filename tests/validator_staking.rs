@@ -1,7 +1,7 @@
 use andromeda_app::app::AppComponent;
 use andromeda_app_contract::mock::{mock_andromeda_app, MockAppContract};
 
-use andromeda_std::amp::AndrAddr;
+use andromeda_std::{amp::AndrAddr, common::schedule::Schedule};
 use andromeda_testing::mock::mock_app;
 use andromeda_testing::mock_builder::MockAndromedaBuilder;
 use andromeda_validator_staking::mock::{
@@ -261,7 +261,7 @@ fn test_restake() {
     let permissioned_actor = andr.get_wallet("permissioned_actor");
     let random_actor = andr.get_wallet("random_actor");
     validator_staking
-        .execute_permission_action(&mut router, owner.clone(), "restake".to_string())
+        .execute_permission_action(&mut router, owner.clone(), "restake".to_string(), None)
         .unwrap();
     validator_staking
         .execute_set_permission(
@@ -270,7 +270,11 @@ fn test_restake() {
             vec![AndrAddr::from_string(permissioned_actor.clone())],
             "restake".to_string(),
             andromeda_std::ado_base::permissioning::Permission::Local(
-                andromeda_std::ado_base::permissioning::LocalPermission::whitelisted(None, None),
+                andromeda_std::ado_base::permissioning::LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                ),
             ),
         )
         .unwrap();

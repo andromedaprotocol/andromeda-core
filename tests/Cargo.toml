@@ -102,7 +102,13 @@ andromeda-primitive = { path = "../contracts/data-storage/andromeda-primitive", 
     "testing",
 ] }
 
-# #OS
+# Socket
+andromeda-socket = { workspace = true }
+andromeda-osmosis-token-factory = { path = "../contracts/socket/andromeda-osmosis-token-factory", features = [
+    "testing",
+] }
+
+# OS
 
 andromeda-kernel = { path = "../contracts/os/andromeda-kernel", features = [
     "testing",
@@ -148,7 +154,7 @@ cw721 = { workspace = true }
 cw20 = { workspace = true }
 cw-asset = { workspace = true }
 cw-utils = { workspace = true }
-toml = "0.8"
+toml = "0.9"
 cw-orch = { workspace = true }
 cw-orch-interchain = "=0.8.1"
 ibc-relayer-types = "0.32.2"
@@ -175,6 +181,10 @@ path = "crowdfund_app.rs"
 [[test]]
 name = "auction_app"
 path = "auction_app.rs"
+
+[[test]]
+name = "address_list"
+path = "address_list.rs"
 
 [[test]]
 name = "marketplace_app"

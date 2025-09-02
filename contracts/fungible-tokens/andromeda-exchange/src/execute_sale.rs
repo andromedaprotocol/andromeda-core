@@ -44,10 +44,6 @@ pub fn execute_start_sale(
         !exchange_rate.is_zero(),
         ContractError::InvalidZeroAmount {}
     );
-    ensure!(
-        ctx.contract.is_contract_owner(deps.storage, &sender)?,
-        ContractError::Unauthorized {}
-    );
     // Message sender in this case should be the token address
     ensure!(
         info.sender == token_addr.get_raw_address(&deps.as_ref())?,

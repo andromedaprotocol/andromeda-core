@@ -17,7 +17,9 @@ pub struct InstantiateMsg {}
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    CreateDenom { subdenom: String },
+    CreateDenom {
+        subdenom: String,
+    },
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Mint {
@@ -29,11 +31,12 @@ pub enum ExecuteMsg {
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
     Burn {},
 
-    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Receive { msg: Cw20ReceiveMsg },
+    Receive(Cw20ReceiveMsg),
 
     #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
-    Unlock { recipient: Option<Recipient> },
+    Unlock {
+        recipient: Option<Recipient>,
+    },
 }
 
 #[cw_serde]

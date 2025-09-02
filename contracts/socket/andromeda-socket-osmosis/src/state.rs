@@ -1,4 +1,5 @@
 use andromeda_std::amp::{messages::AMPCtx, AndrAddr, Recipient};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -26,5 +27,14 @@ pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
 
 pub const SPENDER: Item<String> = Item::new("spender");
 
-// pool creator to pool id
+#[cw_serde]
+pub struct WithdrawState {
+    pub sender: String,
+    pub pool_id: String,
+}
+
+// Store withdrawal state for reply handling
+pub const WITHDRAW_STATE: Item<WithdrawState> = Item::new("withdraw_state");
+
+// pool creator to pool id (keeping for backward compatibility)
 pub const WITHDRAW: Map<String, String> = Map::new("withdraw");

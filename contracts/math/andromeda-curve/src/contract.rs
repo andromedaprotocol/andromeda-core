@@ -11,7 +11,7 @@ use andromeda_std::{
     },
     ado_contract::ADOContract,
     andr_execute_fn,
-    common::{context::ExecuteContext, encode_binary},
+    common::{context::ExecuteContext, encode_binary, schedule::Schedule},
     error::ContractError,
 };
 
@@ -50,8 +50,12 @@ pub fn instantiate(
 
     if let Some(authorized_operator_addresses) = msg.authorized_operator_addresses {
         if !authorized_operator_addresses.is_empty() {
-            ADOContract::default().permission_action(deps.storage, UPDATE_CURVE_CONFIG_ACTION)?;
-            ADOContract::default().permission_action(deps.storage, RESET_ACTION)?;
+            ADOContract::default().permission_action(
+                deps.storage,
+                UPDATE_CURVE_CONFIG_ACTION,
+                None,
+            )?;
+            ADOContract::default().permission_action(deps.storage, RESET_ACTION, None)?;
         }
 
         for address in authorized_operator_addresses {
@@ -60,13 +64,21 @@ pub fn instantiate(
                 deps.storage,
                 UPDATE_CURVE_CONFIG_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             )?;
             ADOContract::set_permission(
                 deps.storage,
                 RESET_ACTION,
                 addr.clone(),
-                Permission::Local(LocalPermission::whitelisted(None, None)),
+                Permission::Local(LocalPermission::whitelisted(
+                    Schedule::new(None, None),
+                    None,
+                    None,
+                )),
             )?;
         }
     }

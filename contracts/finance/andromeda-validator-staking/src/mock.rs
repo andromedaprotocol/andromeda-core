@@ -12,6 +12,7 @@ use cw_multi_test::{Contract, ContractWrapper};
 use andromeda_std::{
     ado_base::permissioning::{Permission, PermissioningMessage},
     amp::AndrAddr,
+    common::expiration::Expiry,
     error::ContractError,
 };
 
@@ -47,8 +48,9 @@ impl MockValidatorStaking {
         app: &mut MockApp,
         sender: Addr,
         action: String,
+        expiration: Option<Expiry>,
     ) -> ExecuteResult {
-        let msg = mock_permission_action(action);
+        let msg = mock_permission_action(action, expiration);
         self.execute(app, &msg, sender, &[])
     }
 
@@ -186,8 +188,8 @@ pub fn mock_set_permission(
         permission,
     })
 }
-pub fn mock_permission_action(action: String) -> ExecuteMsg {
-    ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction { action })
+pub fn mock_permission_action(action: String, expiration: Option<Expiry>) -> ExecuteMsg {
+    ExecuteMsg::Permissioning(PermissioningMessage::PermissionAction { action, expiration })
 }
 pub fn mock_get_staked_tokens(validator: Option<Addr>) -> QueryMsg {
     QueryMsg::StakedTokens { validator }

@@ -94,6 +94,7 @@ fn test_cw721_batch_send() {
         None,
         None,
         None,
+        None,
     );
     let receive_msg_2 = mock_start_auction(
         Schedule::new(
@@ -103,6 +104,7 @@ fn test_cw721_batch_send() {
         None,
         Asset::NativeToken("uandr".to_string()),
         Some(Uint128::one()),
+        None,
         None,
         None,
         None,
