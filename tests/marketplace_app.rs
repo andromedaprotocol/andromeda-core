@@ -310,10 +310,10 @@ fn test_marketplace_app_recipient() {
     );
 
     let splitter_init_msg = mock_splitter_instantiate_msg(
-        vec![AddressPercent::new(
+        Some(vec![AddressPercent::new(
             Recipient::from_string(receiver),
             Decimal::one(),
-        )],
+        )]),
         andr.kernel.addr(),
         None,
         None,

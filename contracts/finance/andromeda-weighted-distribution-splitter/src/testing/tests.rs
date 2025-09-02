@@ -32,7 +32,7 @@ fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        recipients: mock_recipient,
+        recipients: Some(mock_recipient),
         lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
         default_recipient: None,
     };
@@ -47,7 +47,7 @@ fn test_update_app_contract() {
     let recipient1 = deps.api.addr_make("recipient1");
     let recipient2 = deps.api.addr_make("recipient2");
     let msg = InstantiateMsg {
-        recipients: vec![
+        recipients: Some(vec![
             AddressWeight {
                 recipient: Recipient::new(recipient1, None),
                 weight: Uint128::new(50),
@@ -56,7 +56,7 @@ fn test_update_app_contract() {
                 recipient: Recipient::new(recipient2, None),
                 weight: Uint128::new(50),
             },
-        ],
+        ]),
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -122,10 +122,10 @@ fn test_instantiate() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let recipient1 = deps.api.addr_make("recipient1");
     let msg = InstantiateMsg {
-        recipients: vec![AddressWeight {
+        recipients: Some(vec![AddressWeight {
             recipient: Recipient::from_string(recipient1.to_string()),
             weight: Uint128::new(1),
-        }],
+        }]),
 
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -417,7 +417,7 @@ fn test_execute_remove_recipient() {
     let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -511,7 +511,7 @@ fn test_execute_remove_recipient_not_on_list() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -577,7 +577,7 @@ fn test_execute_remove_recipient_contract_locked() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient.clone(),
@@ -629,7 +629,7 @@ fn test_execute_remove_recipient_unauthorized() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let deps_mut = deps.as_mut();
@@ -679,7 +679,7 @@ fn test_update_recipient_weight() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -708,7 +708,7 @@ fn test_update_recipient_weight() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient.clone(),
@@ -805,7 +805,7 @@ fn test_update_recipient_weight_locked_contract() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let current_time = env.block.time.seconds();
     let splitter = Splitter {
@@ -859,7 +859,7 @@ fn test_update_recipient_weight_user_not_found() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -888,7 +888,7 @@ fn test_update_recipient_weight_user_not_found() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -935,7 +935,7 @@ fn test_update_recipient_weight_invalid_weight() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -964,7 +964,7 @@ fn test_update_recipient_weight_invalid_weight() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1029,7 +1029,7 @@ fn test_execute_add_recipient() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1136,7 +1136,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1217,7 +1217,7 @@ fn test_execute_add_recipient_invalid_weight() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1266,7 +1266,7 @@ fn test_execute_add_recipient_locked_contract() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -1326,7 +1326,7 @@ fn test_execute_add_recipient_unauthorized() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let deps_mut = deps.as_mut();
@@ -1397,7 +1397,7 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -1427,7 +1427,7 @@ fn test_execute_update_recipients_invalid_weight() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let splitter = Splitter {
@@ -1481,7 +1481,7 @@ fn test_execute_update_recipients_contract_locked() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let current_time = env.block.time.seconds();
@@ -1537,7 +1537,7 @@ fn test_execute_update_recipients_unauthorized() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let splitter = Splitter {
@@ -1698,7 +1698,7 @@ fn locked_splitter() -> (
     let addr2 = deps.api.addr_make("addr2");
     // Call instantiate with the recipients
     let msg = InstantiateMsg {
-        recipients: vec![
+        recipients: Some(vec![
             AddressWeight {
                 recipient: Recipient::from_string(addr1.to_string()),
                 weight: Uint128::new(40), // 40% weight
@@ -1707,7 +1707,7 @@ fn locked_splitter() -> (
                 recipient: Recipient::from_string(addr2.to_string()),
                 weight: Uint128::new(60), // 60% weight
             },
-        ],
+        ]),
         lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(
             lock_time.seconds(),
         ))),
@@ -1737,7 +1737,7 @@ fn unlocked_splitter() -> (
     let addr2 = deps.api.addr_make("addr2");
     // Call instantiate with the recipients
     let msg = InstantiateMsg {
-        recipients: vec![
+        recipients: Some(vec![
             AddressWeight {
                 recipient: Recipient::from_string(addr1.to_string()),
                 weight: Uint128::new(40), // 40% weight
@@ -1746,7 +1746,7 @@ fn unlocked_splitter() -> (
                 recipient: Recipient::from_string(addr2.to_string()),
                 weight: Uint128::new(60), // 60% weight
             },
-        ],
+        ]),
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

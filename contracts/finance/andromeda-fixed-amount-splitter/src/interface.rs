@@ -29,7 +29,7 @@ macro_rules! fixed_amount_splitter_instantiate {
     // Multiple recipients with array syntax
     ($env:expr, [$(($recipient:expr, $denom:expr, $amount:expr)),*]) => {
         &andromeda_finance::fixed_amount_splitter::InstantiateMsg {
-            recipients: vec![
+            recipients: Some(vec![
                 $(
                     andromeda_finance::fixed_amount_splitter::AddressAmount {
                         recipient: Recipient {
@@ -43,7 +43,7 @@ macro_rules! fixed_amount_splitter_instantiate {
                         }],
                     }
                 ),*
-            ],
+            ]),
             default_recipient: None,
             lock_time: None,
             kernel_address: $env.kernel.address().unwrap().into_string(),

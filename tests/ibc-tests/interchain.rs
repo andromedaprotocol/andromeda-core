@@ -369,14 +369,14 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     splitter_osmosis
         .instantiate(
             &andromeda_finance::splitter::InstantiateMsg {
-                recipients: vec![andromeda_finance::splitter::AddressPercent {
+                recipients: Some(vec![andromeda_finance::splitter::AddressPercent {
                     recipient: Recipient {
                         address: AndrAddr::from_string(recipient.to_string()),
                         msg: None,
                         ibc_recovery_address: None,
                     },
                     percent: Decimal::one(),
-                }],
+                }]),
                 default_recipient: None,
                 lock_time: None,
                 kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
