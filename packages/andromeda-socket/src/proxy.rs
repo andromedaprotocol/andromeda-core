@@ -16,6 +16,31 @@ pub enum InitParams {
     AdoVersion(ADOVersion),
 }
 
+#[cw_serde]
+pub struct Operation {
+    pub execution: ExecutionType,
+    pub fail_on_error: bool,
+}
+
+#[cw_serde]
+pub enum ExecutionType {
+    Instantiate {
+        init_params: InitParams,
+        message: Binary,
+        admin: Option<AndrAddr>,
+        label: Option<String>,
+    },
+    Execute {
+        contract_addr: AndrAddr,
+        message: Binary,
+    },
+    Migrate {
+        contract_addr: AndrAddr,
+        new_code_id: u64,
+        migrate_msg: Binary,
+    },
+}
+
 #[andr_exec]
 #[cw_serde]
 #[cfg_attr(not(target_arch = "wasm32"), derive(cw_orch::ExecuteFns))]
@@ -32,6 +57,11 @@ pub enum ExecuteMsg {
         contract_addr: AndrAddr,
         message: Binary,
         // Funds will be native
+    },
+
+    #[cfg_attr(not(target_arch = "wasm32"), cw_orch(payable))]
+    BatchExecute {
+        operations: Vec<Operation>,
     },
 
     ModifyAdmins {

@@ -22,3 +22,14 @@ pub(crate) fn authorize(ctx: &ExecuteContext) -> Result<(), ContractError> {
     ensure!(admins.contains(&sender), ContractError::Unauthorized {});
     Ok(())
 }
+
+pub(crate) const REPLY_ID: u64 = 1;
+pub(crate) const BATCH_REPLY_ID_FAIL_ON_ERROR: u64 = 101;
+pub(crate) const BATCH_REPLY_ID_IGNORE_ERROR: u64 = 201;
+pub(crate) fn get_reply_id(fail_on_error: Option<bool>) -> u64 {
+    match fail_on_error {
+        Some(true) => BATCH_REPLY_ID_FAIL_ON_ERROR,
+        Some(false) => BATCH_REPLY_ID_IGNORE_ERROR,
+        None => REPLY_ID,
+    }
+}
