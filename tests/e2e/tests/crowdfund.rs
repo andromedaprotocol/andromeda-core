@@ -159,7 +159,7 @@ fn setup(
 
     let kernel_address = mock_andromeda.kernel_contract.addr_str().unwrap();
     let splitter_init_msg = splitter::InstantiateMsg {
-        recipients,
+        recipients: Some(recipients),
         lock_time: None,
         kernel_address: kernel_address.clone(),
         owner: None,

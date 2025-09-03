@@ -135,6 +135,7 @@ fn test_add_app_component_unauthorized() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let err = execute(deps.as_mut(), env, unauth_info, msg).unwrap_err();
@@ -175,6 +176,7 @@ fn test_add_app_component_duplicate_name() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -204,6 +206,7 @@ fn test_add_app_component() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -399,11 +402,16 @@ fn test_claim_ownership() {
         gas_limit: None,
         payload: Binary::default(),
     };
-    let expected = Response::new()
-        .add_submessage(exec_submsg)
-        .add_attributes(vec![attr("method", "claim_ownership")]);
+    let expected_submsg = vec![exec_submsg];
+    let expected_attributes = vec![attr("method", "claim_ownership")];
 
-    assert_eq!(expected, res)
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
+
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&submsg));
+    }
 }
 
 #[test]
@@ -499,14 +507,13 @@ fn test_proxy_message() {
         gas_limit: None,
         payload: Binary::default(),
     };
-    let expected = Response::new()
-        .add_submessage(exec_submsg)
-        .add_attributes(vec![
-            attr("method", "app_message"),
-            attr("recipient", "token"),
-        ]);
+    let expected_attributes = vec![attr("method", "app_message"), attr("recipient", "token")];
 
-    assert_eq!(expected, res)
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
+
+    assert!(res.messages.contains(&exec_submsg));
 }
 
 #[test]
@@ -635,6 +642,7 @@ fn test_add_app_component_limit() {
             ado_type: "cw721".to_string(),
             component_type: ComponentType::New(to_json_binary(&true).unwrap()),
         },
+        chain_info: None,
     };
 
     let err = execute(deps.as_mut(), env, info, msg).unwrap_err();

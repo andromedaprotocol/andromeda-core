@@ -73,8 +73,12 @@ pub enum AndromedaQuery {
         limit: Option<u32>,
         start_after: Option<String>,
     },
-    #[returns(self::permissioning::PermissionedActionsResponse)]
+    #[returns(self::permissioning::PermissionedActionsWithExpirationResponse)]
     PermissionedActions {},
+    #[returns(self::permissioning::PermissionedActionsWithExpirationResponse)]
+    PermissionedActionsWithExpiration {},
+    #[returns(self::permissioning::PermissionedActionExpirationResponse)]
+    PermissionedActionsExpiration { action: String },
     #[returns(self::permissioning::PermissionedActorsResponse)]
     PermissionedActors {
         action: String,

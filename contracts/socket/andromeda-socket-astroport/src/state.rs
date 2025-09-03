@@ -61,5 +61,14 @@ pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
 pub const LIQUIDITY_PROVISION_STATE: Item<LiquidityProvisionState> =
     Item::new("liquidity_provision_state");
 
+#[cw_serde]
+pub struct WithdrawalState {
+    pub receiver: String,
+    pub pair_address: String,
+}
+
 // Store withdrawal information during liquidity withdrawal
-pub const WITHDRAWAL_STATE: Item<String> = Item::new("withdrawal_receiver");
+pub const WITHDRAWAL_STATE: Item<WithdrawalState> = Item::new("withdrawal_state");
+
+// Store create pair sender information during pair creation
+pub const CREATE_PAIR_SENDER: Item<String> = Item::new("create_pair_sender");

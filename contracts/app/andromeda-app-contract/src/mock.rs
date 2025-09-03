@@ -1,6 +1,6 @@
 #![cfg(all(not(target_arch = "wasm32"), feature = "testing"))]
 use crate::contract::{execute, instantiate, query, reply};
-use andromeda_app::app::{AppComponent, ExecuteMsg, InstantiateMsg, QueryMsg};
+use andromeda_app::app::{AppComponent, ChainInfo, ExecuteMsg, InstantiateMsg, QueryMsg};
 use andromeda_testing::{
     mock::MockApp,
     mock_ado,
@@ -50,8 +50,14 @@ impl MockAppContract {
         app: &mut MockApp,
         sender: Addr,
         component: AppComponent,
+        chain_info: Option<ChainInfo>,
     ) -> AnyResult<AppResponse> {
-        self.execute(app, &mock_add_app_component_msg(component), sender, &[])
+        self.execute(
+            app,
+            &mock_add_app_component_msg(component, chain_info),
+            sender,
+            &[],
+        )
     }
 
     pub fn query_components(&self, app: &MockApp) -> Vec<AppComponent> {
@@ -68,6 +74,10 @@ impl MockAppContract {
         name: impl Into<String>,
     ) -> C {
         C::from(self.query_component_addr(app, name))
+    }
+
+    pub fn query_app_address(&self, app: &MockApp) -> Option<Addr> {
+        self.query::<Option<Addr>>(app, mock_get_app_address_msg())
     }
 }
 
@@ -98,8 +108,14 @@ pub fn mock_claim_ownership_msg(component_name: Option<String>) -> ExecuteMsg {
     }
 }
 
-pub fn mock_add_app_component_msg(component: AppComponent) -> ExecuteMsg {
-    ExecuteMsg::AddAppComponent { component }
+pub fn mock_add_app_component_msg(
+    component: AppComponent,
+    chain_info: Option<ChainInfo>,
+) -> ExecuteMsg {
+    ExecuteMsg::AddAppComponent {
+        component,
+        chain_info,
+    }
 }
 
 pub fn mock_get_components_msg() -> QueryMsg {
@@ -112,4 +128,8 @@ pub fn mock_get_adresses_with_names_msg() -> QueryMsg {
 
 pub fn mock_get_address_msg(name: impl Into<String>) -> QueryMsg {
     QueryMsg::GetAddress { name: name.into() }
+}
+
+pub fn mock_get_app_address_msg() -> QueryMsg {
+    QueryMsg::AppContract {}
 }

@@ -1,4 +1,7 @@
-use crate::ado_base::permissioning::LocalPermission;
+use crate::ado_base::permissioning::{
+    LocalPermission, PermissionedActionExpirationResponse, PermissionedActionsResponse,
+    PermissionedActionsWithExpirationResponse, PermissionedActorsResponse,
+};
 use crate::common::Milliseconds;
 use crate::os::aos_querier::AOSQuerier;
 use crate::{
@@ -10,7 +13,7 @@ use crate::{
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     ensure, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    Storage, SubMsg, WasmMsg,
+    StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, MultiIndex};
 
@@ -578,13 +581,37 @@ impl ADOContract {
         Ok(permissions)
     }
 
-    pub fn query_permissioned_actions(&self, deps: Deps) -> Result<Vec<String>, ContractError> {
-        let actions = self
+    pub fn query_permissioned_actions(
+        &self,
+        deps: Deps,
+    ) -> Result<PermissionedActionsResponse, ContractError> {
+        let actions: Vec<String> = self
             .permissioned_actions
             .keys(deps.storage, None, None, Order::Ascending)
-            .map(|p| p.unwrap())
-            .collect::<Vec<String>>();
-        Ok(actions)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        Ok(PermissionedActionsResponse { actions })
+    }
+
+    pub fn query_permissioned_actions_with_expiration(
+        &self,
+        deps: Deps,
+    ) -> Result<PermissionedActionsWithExpirationResponse, ContractError> {
+        let actions_expiration = self
+            .permissioned_actions
+            .range(deps.storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        Ok(PermissionedActionsWithExpirationResponse { actions_expiration })
+    }
+
+    pub fn query_permissioned_actions_expiration(
+        &self,
+        deps: Deps,
+        action: String,
+    ) -> Result<PermissionedActionExpirationResponse, ContractError> {
+        let expiration = self.permissioned_actions.load(deps.storage, action)?;
+        Ok(PermissionedActionExpirationResponse { expiration })
     }
 
     pub fn query_permissioned_actors(
@@ -594,7 +621,7 @@ impl ADOContract {
         start_after: Option<String>,
         limit: Option<u32>,
         order_by: Option<OrderBy>,
-    ) -> Result<Vec<String>, ContractError> {
+    ) -> Result<PermissionedActorsResponse, ContractError> {
         let action_string: String = action.into();
         let order_by = match order_by {
             Some(OrderBy::Desc) => Order::Descending,
@@ -620,7 +647,7 @@ impl ADOContract {
             })
             .collect::<Vec<String>>();
 
-        Ok(actors)
+        Ok(PermissionedActorsResponse { actors })
     }
 }
 
@@ -1737,22 +1764,43 @@ mod tests {
 
         contract.owner.save(ctx.deps.storage, &info.sender).unwrap();
 
-        let actions = ADOContract::default()
-            .query_permissioned_actions(ctx.deps.as_ref())
+        let permissioned_actions_response = ADOContract::default()
+            .query_permissioned_actions_with_expiration(ctx.deps.as_ref())
             .unwrap();
 
-        assert!(actions.is_empty());
+        assert!(permissioned_actions_response.actions_expiration.is_empty());
 
+        let expiration = Some(Expiry::FromNow(Milliseconds(1)));
         ADOContract::default()
-            .execute_permission_action(ctx, "action", None)
+            .execute_permission_action(ctx, "action", expiration)
             .unwrap();
 
-        let actions = ADOContract::default()
+        let permissioned_actions_response = ADOContract::default()
+            .query_permissioned_actions_with_expiration(deps.as_ref())
+            .unwrap();
+
+        assert_eq!(permissioned_actions_response.actions_expiration.len(), 1);
+        assert_eq!(
+            permissioned_actions_response,
+            PermissionedActionsWithExpirationResponse {
+                actions_expiration: vec![("action".to_string(), Some(Milliseconds(1571797419880)))]
+            }
+        );
+        let permissioned_actions_expiration_response = ADOContract::default()
+            .query_permissioned_actions_expiration(deps.as_ref(), "action".to_string())
+            .unwrap();
+        assert_eq!(
+            permissioned_actions_expiration_response.expiration,
+            Some(Milliseconds(1571797419880))
+        );
+
+        let permissioned_action_response = ADOContract::default()
             .query_permissioned_actions(deps.as_ref())
             .unwrap();
-
-        assert_eq!(actions.len(), 1);
-        assert_eq!(actions[0], "action");
+        assert_eq!(
+            permissioned_action_response.actions,
+            vec!["action".to_string()]
+        )
     }
 
     #[test]
@@ -1792,9 +1840,9 @@ mod tests {
             .query_permissioned_actors(deps.as_ref(), action, None, None, None)
             .unwrap();
 
-        assert_eq!(actors.len(), 2);
-        assert_eq!(actors[0], actor);
-        assert_eq!(actors[1], actor2);
+        assert_eq!(actors.actors.len(), 2);
+        assert_eq!(actors.actors[0], actor);
+        assert_eq!(actors.actors[1], actor2);
     }
 
     #[rstest]

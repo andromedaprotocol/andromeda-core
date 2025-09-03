@@ -10,13 +10,16 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, SubMsgResponse, SubMsgResult,
+    attr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
 
+use osmosis_std::types::osmosis::concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPoolResponse;
+use osmosis_std::types::osmosis::cosmwasmpool::v1beta1::MsgCreateCosmWasmPoolResponse;
 use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::MsgCreateBalancerPoolResponse;
+use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::MsgCreateStableswapPoolResponse;
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
@@ -34,7 +37,7 @@ use crate::osmosis::{
     OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
     OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{SPENDER, WITHDRAW};
+use crate::state::{WithdrawState, SPENDER, WITHDRAW, WITHDRAW_STATE};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -229,33 +232,34 @@ pub fn execute_create_pool(
         }
     };
 
-    Ok(Response::default().add_submessage(msg))
+    Ok(Response::default().add_submessage(msg).add_attributes(vec![
+        attr("action", "create_pool"),
+        attr("andr_pending_creation_sender", info.sender.to_string()),
+    ]))
 }
 
 fn execute_withdraw_pool(
     ctx: ExecuteContext,
     withdraw_msg: MsgExitPool,
 ) -> Result<Response, ContractError> {
-    let pool_id = WITHDRAW
-        .may_load(ctx.deps.storage, ctx.info.sender.to_string())?
-        .ok_or(ContractError::Std(StdError::generic_err(
-            "Pool ID not found".to_string(),
-        )))?
-        .parse::<u64>()
-        .map_err(|e| {
-            ContractError::Std(StdError::generic_err(format!(
-                "Failed to parse pool ID: {}",
-                e
-            )))
-        })?;
-
-    ensure!(
-        pool_id == withdraw_msg.pool_id,
-        ContractError::Std(StdError::generic_err("Pool ID mismatch".to_string(),))
-    );
+    // Save withdrawal state for reply handling
+    let withdraw_state = WithdrawState {
+        sender: ctx.info.sender.to_string(),
+        pool_id: withdraw_msg.pool_id.to_string(),
+    };
+    WITHDRAW_STATE.save(ctx.deps.storage, &withdraw_state)?;
 
     let sub_msg = SubMsg::reply_always(withdraw_msg, OSMOSIS_MSG_WITHDRAW_POOL_ID);
-    Ok(Response::default().add_submessage(sub_msg))
+    Ok(Response::default()
+        .add_submessage(sub_msg)
+        .add_attributes(vec![
+            attr("action", "withdraw_pool"),
+            attr("andr_osmosis_pool", withdraw_state.pool_id.clone()),
+            attr(
+                format!("andr_{}_sender", withdraw_state.pool_id),
+                ctx.info.sender.to_string(),
+            ),
+        ]))
 }
 
 fn execute_update_swap_router(
@@ -334,6 +338,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 let lp_token = deps.querier.query_balance(env.contract.address, denom)?;
 
                 let spender = SPENDER.load(deps.storage)?;
+                SPENDER.remove(deps.storage);
                 // Tranfer lp token to original sender
                 let msg = CosmosMsg::Bank(BankMsg::Send {
                     to_address: spender.clone(),
@@ -344,9 +349,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 Ok(Response::default().add_message(msg).add_attributes(vec![
                     attr("action", "balancer_pool_created"),
                     attr("lp_token", lp_token.denom.clone()),
-                    attr("spender", spender),
+                    attr("spender", spender.clone()),
                     attr("amount", lp_token.amount.to_string()),
                     attr("pool_id", pool_id.to_string()),
+                    attr("andr_osmosis_pool", pool_id.to_string()),
+                    attr(format!("andr_{}_sender", pool_id), spender),
                 ]))
             } else {
                 Err(ContractError::Std(StdError::generic_err(format!(
@@ -356,32 +363,79 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             }
         }
         OSMOSIS_MSG_CREATE_STABLE_POOL_ID => {
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(format!(
+            #[allow(deprecated)]
+            if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
+                let res: MsgCreateStableswapPoolResponse = b.try_into().map_err(|_| {
+                    ContractError::Std(StdError::generic_err(
+                        "Failed to parse stable pool response".to_string(),
+                    ))
+                })?;
+
+                let pool_id = res.pool_id.to_string();
+                let spender = SPENDER.load(deps.storage)?;
+                SPENDER.remove(deps.storage);
+
+                Ok(Response::default().add_attributes(vec![
+                    attr("action", "stable_pool_created"),
+                    attr("andr_osmosis_pool", pool_id.clone()),
+                    attr(format!("andr_{}_sender", pool_id), spender),
+                ]))
+            } else {
+                Err(ContractError::Std(StdError::generic_err(format!(
                     "Osmosis stable pool creation failed with error: {:?}",
                     msg.result.unwrap_err()
-                ))));
+                ))))
             }
-            Ok(Response::default().add_attributes(vec![attr("action", "stable_pool_created")]))
         }
         OSMOSIS_MSG_CREATE_CONCENTRATED_POOL_ID => {
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(format!(
+            #[allow(deprecated)]
+            if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
+                let res: MsgCreateConcentratedPoolResponse = b.try_into().map_err(|_| {
+                    ContractError::Std(StdError::generic_err(
+                        "Failed to parse concentrated pool response".to_string(),
+                    ))
+                })?;
+
+                let pool_id = res.pool_id.to_string();
+                let spender = SPENDER.load(deps.storage)?;
+                SPENDER.remove(deps.storage);
+
+                Ok(Response::default().add_attributes(vec![
+                    attr("action", "concentrated_pool_created"),
+                    attr("andr_osmosis_pool", pool_id.clone()),
+                    attr(format!("andr_{}_sender", pool_id), spender),
+                ]))
+            } else {
+                Err(ContractError::Std(StdError::generic_err(format!(
                     "Osmosis concentrated pool creation failed with error: {:?}",
                     msg.result.unwrap_err()
-                ))));
+                ))))
             }
-            Ok(Response::default()
-                .add_attributes(vec![attr("action", "concentrated_pool_created")]))
         }
         OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID => {
-            if msg.result.is_err() {
-                return Err(ContractError::Std(StdError::generic_err(format!(
+            #[allow(deprecated)]
+            if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
+                let res: MsgCreateCosmWasmPoolResponse = b.try_into().map_err(|_| {
+                    ContractError::Std(StdError::generic_err(
+                        "Failed to parse cosmwasm pool response".to_string(),
+                    ))
+                })?;
+
+                let pool_id = res.pool_id.to_string();
+                let spender = SPENDER.load(deps.storage)?;
+                SPENDER.remove(deps.storage);
+
+                Ok(Response::default().add_attributes(vec![
+                    attr("action", "cosmwasm_pool_created"),
+                    attr("andr_osmosis_pool", pool_id.clone()),
+                    attr(format!("andr_{}_sender", pool_id), spender),
+                ]))
+            } else {
+                Err(ContractError::Std(StdError::generic_err(format!(
                     "Osmosis cosmwasm pool creation failed with error: {:?}",
                     msg.result.unwrap_err()
-                ))));
+                ))))
             }
-            Ok(Response::default().add_attributes(vec![attr("action", "cosmwasm_pool_created")]))
         }
         OSMOSIS_MSG_WITHDRAW_POOL_ID => {
             if msg.result.is_err() {
@@ -390,7 +444,19 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     msg.result.unwrap_err()
                 ))));
             }
-            Ok(Response::default().add_attributes(vec![attr("action", "pool_withdrawn")]))
+
+            // Load withdrawal state
+            let withdraw_state = WITHDRAW_STATE.load(deps.storage)?;
+            WITHDRAW_STATE.remove(deps.storage);
+
+            Ok(Response::default().add_attributes(vec![
+                attr("action", "pool_withdrawn"),
+                attr("andr_osmosis_pool", withdraw_state.pool_id.clone()),
+                attr(
+                    format!("andr_{}_sender", withdraw_state.pool_id),
+                    withdraw_state.sender,
+                ),
+            ]))
         }
         _ => Err(ContractError::Std(StdError::generic_err(
             "Invalid Reply ID".to_string(),

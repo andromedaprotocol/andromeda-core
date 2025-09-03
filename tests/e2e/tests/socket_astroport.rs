@@ -93,7 +93,7 @@ fn setup(
         },
     ];
     let splitter_init_msg = andromeda_finance::splitter::InstantiateMsg {
-        recipients,
+        recipients: Some(recipients),
         default_recipient: None,
         lock_time: None,
         kernel_address: kernel_address.to_string(),

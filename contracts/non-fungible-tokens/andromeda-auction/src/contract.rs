@@ -16,8 +16,7 @@ use andromeda_std::{
     common::{
         denom::{
             authorize_addresses, execute_authorize_contract, execute_deauthorize_contract,
-            validate_native_denom, Asset, AuthorizedAddressesResponse, PermissionAction,
-            SEND_CW20_ACTION,
+            validate_native_denom, Asset, SEND_CW20_ACTION,
         },
         encode_binary,
         expiration::Expiry,
@@ -1208,18 +1207,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             token_id,
             token_address,
         } => encode_binary(&query_is_closed(deps, env, token_id, token_address)?),
-        QueryMsg::AuthorizedAddresses {
-            action,
-            start_after,
-            limit,
-            order_by,
-        } => encode_binary(&query_authorized_addresses(
-            deps,
-            action,
-            start_after,
-            limit,
-            order_by,
-        )?),
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -1356,22 +1343,6 @@ fn query_owner_of(
     Ok(res)
 }
 
-fn query_authorized_addresses(
-    deps: Deps,
-    action: PermissionAction,
-    start_after: Option<String>,
-    limit: Option<u32>,
-    order_by: Option<OrderBy>,
-) -> Result<AuthorizedAddressesResponse, ContractError> {
-    let addresses = ADOContract::default().query_permissioned_actors(
-        deps,
-        action.as_str(),
-        start_after,
-        limit,
-        order_by,
-    )?;
-    Ok(AuthorizedAddressesResponse { addresses })
-}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     ADOContract::default().migrate(deps, env, CONTRACT_NAME, CONTRACT_VERSION)

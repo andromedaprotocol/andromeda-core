@@ -27,7 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Create pool with funds and withdraw from pool in osmosis socket [(#886)](https://github.com/andromedaprotocol/andromeda-core/pull/886)
 - feat: Osmosis Token Factory ADO [(#929)](https://github.com/andromedaprotocol/andromeda-core/pull/929)
 - feat: Wildcard in Permissions [(#949)](https://github.com/andromedaprotocol/andromeda-core/pull/949)
+- feat: Additional Permission Queries [(#960)](https://github.com/andromedaprotocol/andromeda-core/pull/960)
 - feat: Proxy ADO [(#961)](https://github.com/andromedaprotocol/andromeda-core/pull/961)
+- feat: Standardized events in ADOS [(#970)](https://github.com/andromedaprotocol/andromeda-core/pull/970)
 
 ### Changed
 
@@ -40,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: kernel's tx id generation [(#851)](https://github.com/andromedaprotocol/andromeda-core/pull/851)
 - ref: change cw20 exchange's sale start time and end time to Milliseconds, same for auction [(#869)](https://github.com/andromedaprotocol/andromeda-core/pull/869)
 - feat: Create and apply Schedule struct [(#900)](https://github.com/andromedaprotocol/andromeda-core/pull/900)
+- feat: Enable Cross Chain Components in App [(#932)](https://github.com/andromedaprotocol/andromeda-core/pull/932)
+- refactor: Make recipients list optional in Splitter [(#937)](https://github.com/andromedaprotocol/andromeda-core/pull/937)
+
 
 ### Fixed
 
@@ -52,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: Timelock Release Funds [(#857)](https://github.com/andromedaprotocol/andromeda-core/pull/857)
 - fix: Added missing version bumps [(#858)](https://github.com/andromedaprotocol/andromeda-core/pull/858)
 - fix: GetComponents query's schema  [(#873)](https://github.com/andromedaprotocol/andromeda-core/pull/873)
+- fix: Save App contract address during instantiation  [(#896)](https://github.com/andromedaprotocol/andromeda-core/pull/896)
 - fix: Remove sale after Cancel Sale in Exchange  [(#913)](https://github.com/andromedaprotocol/andromeda-core/pull/913)
 - fix: Kernel Send Msg vulnerability  [(#915)](https://github.com/andromedaprotocol/andromeda-core/pull/915)
 - fix: Duplicate Redeem in Exchange  [(#919)](https://github.com/andromedaprotocol/andromeda-core/pull/919)

@@ -5,6 +5,7 @@ use andromeda_std::{
     },
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
+    testing::utils::assert_response,
 };
 use cosmwasm_std::{
     attr, from_json,
@@ -197,13 +198,11 @@ fn test_execute_update_lock() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "update_lock"),
-            attr("locked", lock_time.get_time(&env.block).to_string())
-        ]),
-        res
-    );
+    let expected_res = Response::new().add_attributes(vec![
+        attr("action", "update_lock"),
+        attr("locked", lock_time.get_time(&env.block).to_string()),
+    ]);
+    assert_response(&res, &expected_res, "conditional_splitter_update_lock");
 
     // Three days in milliseconds
     let new_lock_2 = Expiry::FromNow(Milliseconds::from_seconds(259200));
@@ -314,9 +313,12 @@ fn test_execute_update_thresholds() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "update_thresholds")]),
-        res
+    let expected_attributes =
+        Response::new().add_attributes(vec![attr("action", "update_thresholds")]);
+    assert_response(
+        &res,
+        &expected_attributes,
+        "conditional_splitter_update_thresholds",
     );
 
     //check result
@@ -433,7 +435,7 @@ fn test_execute_send() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "conditional_splitter_send");
 
     // Second batch
     let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(second_batch, "uandr")]);
@@ -474,7 +476,7 @@ fn test_execute_send() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "conditional_splitter_send");
 
     // Third batch
     let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(third_batch, "uandr")]);
@@ -510,7 +512,7 @@ fn test_execute_send() {
         .add_submessage(amp_msg)
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "conditional_splitter_send");
 }
 
 #[test]
@@ -653,7 +655,7 @@ fn test_execute_send_ado_recipient() {
         .add_attribute("action", "send")
         .add_attribute("sender", OWNER);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "conditional_splitter_send");
 }
 
 #[test]
@@ -804,11 +806,14 @@ fn test_update_app_contract() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_app_contract")
-            .add_attribute("address", app_contract.to_string()),
-        res
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_app_contract")
+        .add_attribute("address", app_contract.to_string());
+
+    assert_response(
+        &res,
+        &expected_res,
+        "conditional_splitter_update_app_contract",
     );
 }
 
@@ -915,7 +920,7 @@ fn test_execute_send_with_multiple_thresholds() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "conditional_splitter_send");
 
     // Test sending 15 tokens (should use the 10 token threshold)
     let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(15_u128, "uandr")]);
@@ -956,7 +961,7 @@ fn test_execute_send_with_multiple_thresholds() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "conditional_splitter_send");
 
     // Test sending 6 tokens (should use the 5 token threshold)
     let info = message_info(&Addr::unchecked(OWNER), &[Coin::new(6_u128, "uandr")]);
@@ -997,5 +1002,5 @@ fn test_execute_send_with_multiple_thresholds() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "conditional_splitter_send");
 }

@@ -5,6 +5,7 @@ use andromeda_std::{
     },
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
+    testing::utils::assert_response,
 };
 use cosmwasm_std::{
     attr, from_json,
@@ -34,7 +35,7 @@ fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_string()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        recipients: mock_recipient,
+        recipients: Some(mock_recipient),
         lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
         default_recipient: None,
     };
@@ -69,7 +70,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -86,7 +87,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -102,10 +103,10 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![AddressPercent {
+        recipients: Some(vec![AddressPercent {
             recipient: Recipient::from_string(some_address.to_string()),
             percent: Decimal::percent(100),
-        }],
+        }]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -121,7 +122,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -136,7 +137,7 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![],
+        recipients: Some(vec![]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -151,10 +152,10 @@ fn test_different_lock_times() {
     let msg = InstantiateMsg {
         owner: Some(owner.to_string()),
         kernel_address: kernel_address.to_string(),
-        recipients: vec![AddressPercent {
+        recipients: Some(vec![AddressPercent {
             recipient: Recipient::from_string(some_address),
             percent: Decimal::percent(100),
-        }],
+        }]),
         lock_time: Some(lock_time),
         default_recipient: None,
     };
@@ -193,13 +194,10 @@ fn test_execute_update_lock() {
     let new_lock = Milliseconds(lock_time)
         .plus_seconds(current_time)
         .plus_milliseconds(Milliseconds(879));
-    assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "update_lock"),
-            attr("locked", "1571970219879".to_string())
-        ]),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_lock")
+        .add_attribute("locked", "1571970219879".to_string());
+    assert_response(&res, &expected_res, "update_lock");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -215,7 +213,7 @@ fn test_execute_update_recipients() {
 
     let splitter = Splitter {
         recipients: vec![],
-        lock: Milliseconds::from_seconds(0),
+        lock: Milliseconds::default(),
         default_recipient: None,
     };
 
@@ -234,7 +232,7 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: duplicate_recipients,
+        recipients: Some(duplicate_recipients),
     };
 
     let info = message_info(&Addr::unchecked(OWNER), &[]);
@@ -254,7 +252,7 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipients.clone(),
+        recipients: Some(recipients.clone()),
     };
 
     let incorrect_owner = deps.api.addr_make("incorrect_owner");
@@ -264,10 +262,8 @@ fn test_execute_update_recipients() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "update_recipients")]),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "update_recipients");
+    assert_response(&res, &expected_res, "update_recipients");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -365,7 +361,7 @@ fn test_execute_send() {
             attr("sender", OWNER.to_string()),
         ]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "send");
 
     // Test send with config
     let msg = ExecuteMsg::Send {
@@ -405,7 +401,7 @@ fn test_execute_send() {
             attr("sender", OWNER.to_string()),
         ]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "send_config");
 
     // Test send with default recipient
     let msg = ExecuteMsg::Send { config: None };
@@ -459,7 +455,7 @@ fn test_execute_send() {
             attr("sender", OWNER.to_string()),
         ]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "send_default_recipient");
 }
 
 #[test]
@@ -540,8 +536,7 @@ fn test_execute_send_ado_recipient() {
         ])
         .add_attribute("action", "send")
         .add_attribute("sender", OWNER);
-
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "ado_send");
 }
 
 #[test]
@@ -689,12 +684,10 @@ fn test_update_app_contract() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_app_contract")
-            .add_attribute("address", app_contract.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_app_contract")
+        .add_attribute("address", app_contract.to_string());
+    assert_response(&res, &expected_res, "update_app_contract");
 }
 
 #[test]

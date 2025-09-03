@@ -1,11 +1,16 @@
 #![cfg(not(target_arch = "wasm32"))]
+use andromeda_app::app::ChainInfo as AndrChainInfo;
+use andromeda_app::app::{
+    AppComponent, ComponentType, CrossChainComponent, InstantiateMsg as AppInstantiateMsg,
+};
+use andromeda_app_contract::AppContract;
 use andromeda_counter::CounterContract;
 use andromeda_kernel::ack::make_ack_success;
 use andromeda_math::counter::{
     CounterRestriction, GetCurrentAmountResponse, InstantiateMsg as CounterInstantiateMsg, State,
 };
-
 use andromeda_splitter::SplitterContract;
+use andromeda_std::os::kernel::CROSS_CHAIN_ENABLED;
 use andromeda_std::{
     amp::{
         messages::{AMPMsg, AMPMsgConfig},
@@ -99,6 +104,150 @@ fn test_kernel_ibc_execute_only() {
         .query(&andromeda_math::counter::QueryMsg::GetCurrentAmount {})
         .unwrap();
     assert_eq!(current_count.current_amount, 1);
+}
+
+#[test]
+fn test_cross_chain_init_app() {
+    let InterchainTestEnv {
+        juno,
+        osmosis,
+        interchain,
+        ..
+    } = InterchainTestEnv::new();
+
+    let app_contract_osmosis = AppContract::new(osmosis.chain.clone());
+
+    app_contract_osmosis.upload().unwrap();
+    osmosis
+        .aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: app_contract_osmosis.code_id().unwrap(),
+                ado_type: "app-contract".to_string(),
+                action_fees: None,
+                version: "1.2.1-b.2".to_string(),
+                publisher: None,
+            },
+            &[],
+        )
+        .unwrap();
+
+    let osmosis_counter = CounterContract::new(osmosis.chain.clone());
+    osmosis_counter.upload().unwrap();
+    osmosis
+        .aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: osmosis_counter.code_id().unwrap(),
+                ado_type: "counter".to_string(),
+                action_fees: None,
+                version: "1.0.2".to_string(),
+                publisher: None,
+            },
+            &[],
+        )
+        .unwrap();
+
+    let counter_init_msg = CounterInstantiateMsg {
+        restriction: CounterRestriction::Public,
+        initial_state: State {
+            initial_amount: None,
+            increase_amount: Some(1),
+            decrease_amount: None,
+        },
+        kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
+        owner: None,
+    };
+    let app_component = AppComponent::new(
+        "counter",
+        "counter",
+        to_json_binary(&counter_init_msg).unwrap(),
+    );
+
+    // app_contract_osmosis.set_sender(&osmosis.aos.kernel.address().unwrap());
+    let chain_info = AndrChainInfo {
+        chain_name: "juno".to_string(),
+        owner: osmosis.aos.kernel.address().unwrap().into_string(),
+    };
+
+    // Enable cross chain components
+    osmosis
+        .aos
+        .kernel
+        .execute(
+            &os::kernel::ExecuteMsg::SetEnv {
+                variable: CROSS_CHAIN_ENABLED.to_string(),
+                value: "true".to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+
+    app_contract_osmosis
+        .instantiate(
+            &AppInstantiateMsg {
+                app_components: vec![app_component],
+                name: "test_app".to_string(),
+                chain_info: Some(vec![chain_info.clone()]),
+                kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
+                owner: None,
+            },
+            None,
+            &[],
+        )
+        .unwrap();
+
+    let juno_cross_chain_componenet_counter = CounterContract::new(juno.chain.clone());
+    juno_cross_chain_componenet_counter.upload().unwrap();
+    juno.aos
+        .adodb
+        .execute(
+            &os::adodb::ExecuteMsg::Publish {
+                code_id: juno_cross_chain_componenet_counter.code_id().unwrap(),
+                ado_type: "counter".to_string(),
+                action_fees: None,
+                version: "1.0.2".to_string(),
+                publisher: None,
+            },
+            &[],
+        )
+        .unwrap();
+
+    let counter_init_msg_juno = CounterInstantiateMsg {
+        restriction: CounterRestriction::Public,
+        initial_state: State {
+            initial_amount: None,
+            increase_amount: Some(1),
+            decrease_amount: None,
+        },
+        kernel_address: juno.aos.kernel.address().unwrap().into_string(),
+        owner: None,
+    };
+
+    let request = app_contract_osmosis
+        .execute(
+            &andromeda_app::app::ExecuteMsg::AddAppComponent {
+                component: AppComponent {
+                    name: "counter2".to_string(),
+                    ado_type: "counter".to_string(),
+                    component_type: ComponentType::CrossChain(CrossChainComponent {
+                        chain: "juno".to_string(),
+                        instantiate_msg: to_json_binary(&counter_init_msg_juno).unwrap(),
+                    }),
+                },
+                chain_info: Some(chain_info.clone()),
+            },
+            &[],
+        )
+        .unwrap();
+
+    let packet_lifetime = interchain
+        .await_packets(&osmosis.chain_id, request)
+        .unwrap();
+
+    ensure_packet_success(packet_lifetime);
 }
 
 #[test]
@@ -220,14 +369,14 @@ fn test_kernel_ibc_funds_and_execute_msg() {
     splitter_osmosis
         .instantiate(
             &andromeda_finance::splitter::InstantiateMsg {
-                recipients: vec![andromeda_finance::splitter::AddressPercent {
+                recipients: Some(vec![andromeda_finance::splitter::AddressPercent {
                     recipient: Recipient {
                         address: AndrAddr::from_string(recipient.to_string()),
                         msg: None,
                         ibc_recovery_address: None,
                     },
                     percent: Decimal::one(),
-                }],
+                }]),
                 default_recipient: None,
                 lock_time: None,
                 kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),

@@ -3,25 +3,23 @@ use andromeda_non_fungible_tokens::marketplace::{
 };
 use andromeda_std::{
     ado_base::{
-        permissioning::{LocalPermission, Permission},
+        permissioning::{LocalPermission, Permission, PermissionedActorsResponse},
         rates::{LocalRate, LocalRateType, LocalRateValue, PercentRate, Rate},
     },
     ado_contract::ADOContract,
     amp::{AndrAddr, Recipient},
     common::{
-        denom::{
-            Asset, AuthorizedAddressesResponse, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION,
-        },
+        denom::{Asset, PermissionAction, SEND_CW20_ACTION, SEND_NFT_ACTION},
         encode_binary,
         expiration::{Expiry, MILLISECONDS_TO_NANOSECONDS_RATIO},
         schedule::Schedule,
         Milliseconds,
     },
     error::ContractError,
-    testing::mock_querier::MOCK_CW20_CONTRACT,
+    testing::{mock_querier::MOCK_CW20_CONTRACT, utils::assert_response},
 };
 use cosmwasm_std::{
-    attr, coin, coins, from_json,
+    coin, coins, from_json,
     testing::{message_info, mock_env},
     Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Response, SubMsg, Uint128, WasmMsg,
 };
@@ -1013,14 +1011,11 @@ fn test_execute_authorize_cw20_contract() {
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
-    assert_eq!(
-        result.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", MOCK_CW20_CONTRACT.to_string()),
-            attr("permission", "whitelisted"),
-        ]
-    );
+    let expected_res = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", MOCK_CW20_CONTRACT.to_string())
+        .add_attribute("permission", "whitelisted");
+    assert_response(&result, &expected_res, "marketplace_authorize_contract");
 
     // Verify the permission was set correctly
     let permission = ADOContract::get_permission(
@@ -1050,14 +1045,11 @@ fn test_execute_authorize_cw20_contract() {
     };
     let result = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
-    assert_eq!(
-        result.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", mock_cw20_contract_with_expiry.to_string()),
-            attr("permission", format!("whitelisted until:{}", expiration)),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", mock_cw20_contract_with_expiry.to_string())
+        .add_attribute("permission", format!("whitelisted until:{}", expiration));
+    assert_response(&result, &expected_res, "marketplace_authorize_contract");
 
     // Verify the permission was set correctly with expiration
     let permission = ADOContract::get_permission(
@@ -1115,14 +1107,11 @@ fn test_execute_deauthorize_cw20_contract() {
     let res = execute(deps.as_mut(), mock_env(), owner_info, msg).unwrap();
 
     // Check the response
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "deauthorize_contract"),
-            attr("address", MOCK_CW20_CONTRACT.to_string()),
-            attr("deauthorized_action", SEND_CW20_ACTION),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "deauthorize_contract")
+        .add_attribute("address", MOCK_CW20_CONTRACT.to_string())
+        .add_attribute("deauthorized_action", SEND_CW20_ACTION);
+    assert_response(&res, &expected_res, "marketplace_deauthorize_contract");
 
     // Verify the permission was removed
     let permission = ADOContract::get_permission(
@@ -1164,30 +1153,30 @@ fn test_query_authorized_addresses() {
     );
 
     // Query authorized addresses for CW20 action
-    let cw20_query = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendCw20,
+    let cw20_query = QueryMsg::PermissionedActors {
+        action: SEND_CW20_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let cw20_res: AuthorizedAddressesResponse =
+    let cw20_res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), cw20_query).unwrap()).unwrap();
     assert_eq!(
-        cw20_res.addresses,
+        cw20_res.actors,
         vec![cw20_contract_1.to_string(), cw20_contract_2.to_string(),]
     );
 
     // Query authorized addresses for NFT action
-    let nft_query = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendNft,
+    let nft_query = QueryMsg::PermissionedActors {
+        action: SEND_NFT_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let nft_res: AuthorizedAddressesResponse =
+    let nft_res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), nft_query).unwrap()).unwrap();
     assert_eq!(
-        nft_res.addresses,
+        nft_res.actors,
         vec![nft_contract_2.to_string(), nft_contract_1.to_string(),]
     );
 }
@@ -1209,14 +1198,11 @@ fn test_authorize_token_contract() {
         expiration: Some(expiration.clone()),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "authorize_contract"),
-            attr("address", nft_contract.to_string()),
-            attr("permission", format!("whitelisted until:{}", expiration)),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "authorize_contract")
+        .add_attribute("address", nft_contract.to_string())
+        .add_attribute("permission", format!("whitelisted until:{}", expiration));
+    assert_response(&res, &expected_res, "marketplace_authorize_contract");
 
     // Test unauthorized attempt
     let non_owner = deps.api.addr_make("non_owner");
@@ -1230,15 +1216,15 @@ fn test_authorize_token_contract() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Query to verify authorization
-    let query_msg = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendNft,
+    let query_msg = QueryMsg::PermissionedActors {
+        action: SEND_NFT_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let res: AuthorizedAddressesResponse =
+    let res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-    assert_eq!(res.addresses, vec![nft_contract.to_string()]);
+    assert_eq!(res.actors, vec![nft_contract.to_string()]);
 }
 
 #[test]
@@ -1260,14 +1246,11 @@ fn test_deauthorize_token_contract() {
         addr: token_address.clone(),
     };
     let res = execute(deps.as_mut(), mock_env(), owner_info.clone(), msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "deauthorize_contract"),
-            attr("address", MOCK_TOKEN_ADDR.to_string()),
-            attr("deauthorized_action", SEND_NFT_ACTION),
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "deauthorize_contract")
+        .add_attribute("address", MOCK_TOKEN_ADDR.to_string())
+        .add_attribute("deauthorized_action", SEND_NFT_ACTION);
+    assert_response(&res, &expected_res, "marketplace_deauthorize_contract");
 
     // Test unauthorized attempt
     let non_owner = deps.api.addr_make("non_owner");
@@ -1280,13 +1263,13 @@ fn test_deauthorize_token_contract() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     // Query to verify deauthorization
-    let query_msg = QueryMsg::AuthorizedAddresses {
-        action: PermissionAction::SendNft,
+    let query_msg = QueryMsg::PermissionedActors {
+        action: SEND_NFT_ACTION.to_string(),
         start_after: None,
         limit: None,
         order_by: None,
     };
-    let res: AuthorizedAddressesResponse =
+    let res: PermissionedActorsResponse =
         from_json(query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-    assert!(res.addresses.is_empty());
+    assert!(res.actors.is_empty());
 }
