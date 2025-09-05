@@ -176,7 +176,7 @@ jobs:
           cp version_map.json ../version_map.json
 
       - name: Trigger Armor Workflow
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.CI_PAT }}
           script: |
