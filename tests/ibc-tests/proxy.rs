@@ -80,7 +80,8 @@ fn test_proxy_ibc() {
                 denom: "osmo".to_string(),
                 amount: Uint128::new(100),
             }],
-        }],
+        }]
+        .into(),
         default_recipient: None,
         lock_time: None,
         kernel_address: osmosis.aos.kernel.address().unwrap().into_string(),
