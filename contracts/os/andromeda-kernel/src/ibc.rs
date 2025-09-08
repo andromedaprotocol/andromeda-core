@@ -18,10 +18,10 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, from_json, to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env,
-    Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
-    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, SubMsg, WasmMsg,
+    ensure, from_json, to_json_binary, Binary, Deps, DepsMut, Empty, Env, Ibc3ChannelOpenResponse,
+    IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
+    IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
+    MessageInfo, SubMsg, WasmMsg,
 };
 
 pub const PACKET_LIFETIME: u64 = 604_800u64;
@@ -138,14 +138,13 @@ pub fn do_ibc_packet_receive(
         deps.branch(),
         MessageInfo {
             funds: vec![],
-            sender: Addr::unchecked(
-                "cosmwasm122xa328nvn93rsemr980psc9m9qwh8xj8rdje4qtp68m5tyt7yusajjrpz",
-            ),
+            sender: env.clone().contract.address,
         },
         env.clone(),
     );
     match packet_msg {
         IbcExecuteMsg::SendMessage { amp_packet } => {
+            let previous_hops = amp_packet.ctx.get_previous_hops();
             // Try to pull the username's address from the packet
             match amp_packet.ctx.get_origin_username() {
                 Some(username) => {
@@ -163,12 +162,14 @@ pub fn do_ibc_packet_receive(
                     }
                 }
                 None => {
-                    // Added this to keep track of original sender, even if the address is invalid on the receiving chain
-                    let new_amp_packet = AMPPkt::new(
-                        amp_packet.ctx.get_origin(),
+                    let ctx = AMPCtx::new_with_hops(
+                        env.clone().contract.address,
                         env.contract.address,
-                        amp_packet.messages.clone(),
+                        None,
+                        previous_hops,
                     );
+
+                    let new_amp_packet = AMPPkt::new_with_ctx(ctx, amp_packet.messages.clone());
                     execute_env.amp_ctx = Some(new_amp_packet);
                 }
             }
@@ -209,11 +210,12 @@ pub fn do_ibc_packet_receive(
             match username_addr {
                 Some(addr) => {
                     // Add potential username to the context
-                    let mut ctx = AMPCtx::new(addr, env.contract.address, original_sender_username);
-                    // Add previous hops to the context
-                    for hop in previous_hops {
-                        ctx.add_hop(hop);
-                    }
+                    let ctx = AMPCtx::new_with_hops(
+                        addr,
+                        env.contract.address,
+                        original_sender_username,
+                        previous_hops,
+                    );
 
                     let amp_packet = AMPPkt::new_with_ctx(ctx, vec![msg.clone()]);
                     execute_env.amp_ctx = Some(amp_packet.clone());
