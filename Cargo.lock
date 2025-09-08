@@ -2521,9 +2521,9 @@ dependencies = [
 
 [[package]]
 name = "cw-multi-test"
-version = "2.5.0"
+version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2c39f3cfa02de3fe1c97f11c034308e5f9aae4e97e0588ac73d0d238388e2f5"
+checksum = "683c799ba3a3d01933be5ef693c10cf815855967eb71c3dd730f2987ebb9316e"
 dependencies = [
  "anyhow",
  "bech32 0.11.0",
