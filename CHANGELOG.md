@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Wildcard in Permissions [(#949)](https://github.com/andromedaprotocol/andromeda-core/pull/949)
 - feat: Additional Permission Queries [(#960)](https://github.com/andromedaprotocol/andromeda-core/pull/960)
 - feat: Standardized events in ADOS [(#970)](https://github.com/andromedaprotocol/andromeda-core/pull/970)
+- feat: Kernel queries for all chains and all channels [(#978)](https://github.com/andromedaprotocol/andromeda-core/pull/978)
 
 ### Changed
 
