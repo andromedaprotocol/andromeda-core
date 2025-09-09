@@ -10,6 +10,7 @@ use andromeda_std::{
     },
 };
 use cosmwasm_std::{Addr, Deps, Order};
+use cw_storage_plus::Bound;
 
 use crate::state::{
     CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN, ENV_VARIABLES,
@@ -106,4 +107,33 @@ pub fn get_env(deps: Deps, variable: String) -> Result<EnvResponse, ContractErro
     Ok(EnvResponse {
         value: ENV_VARIABLES.may_load(deps.storage, &variable.to_ascii_uppercase())?,
     })
+}
+
+pub fn list_all_chains(
+    deps: Deps,
+    start_after: Option<&str>,
+    limit: Option<u32>,
+) -> Result<Vec<String>, ContractError> {
+    let limit = limit.unwrap_or(50).min(100) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let chains = CHAIN_TO_CHANNEL
+        .keys(deps.storage, start, None, cosmwasm_std::Order::Ascending)
+        .take(limit)
+        .collect::<Result<Vec<String>, _>>()?;
+    Ok(chains)
+}
+
+pub fn list_all_channels(
+    deps: Deps,
+    start_after: Option<&str>,
+    limit: Option<u32>,
+) -> Result<Vec<String>, ContractError> {
+    let limit = limit.unwrap_or(50).min(100) as usize;
+    let start = start_after.map(Bound::exclusive);
+    let channels = CHANNEL_TO_CHAIN
+        .keys(deps.storage, start, None, cosmwasm_std::Order::Ascending)
+        .take(limit)
+        .collect::<Result<Vec<String>, _>>()?;
+    Ok(channels)
 }

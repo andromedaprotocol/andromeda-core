@@ -166,16 +166,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ChannelInfo { chain } => encode_binary(&query::channel_info(deps, chain)?),
         QueryMsg::Recoveries { addr } => encode_binary(&query::recoveries(deps, addr)?),
         QueryMsg::ChainName {} => encode_binary(&query::chain_name(deps)?),
-        // Base queries
-        QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
-        QueryMsg::AdoType {} => encode_binary(&ADOContract::default().query_type(deps)?),
-        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
         QueryMsg::ChainNameByChannel { channel } => {
             encode_binary(&query::chain_name_by_channel(deps, channel)?)
         }
+        QueryMsg::ListAllChains { start_after, limit } => encode_binary(&query::list_all_chains(
+            deps,
+            start_after.as_deref(),
+            limit,
+        )?),
+        QueryMsg::ListAllChannels { start_after, limit } => encode_binary(
+            &query::list_all_channels(deps, start_after.as_deref(), limit)?,
+        ),
         QueryMsg::PendingPackets { channel_id } => {
             encode_binary(&query::pending_packets(deps, channel_id)?)
         }
         QueryMsg::GetEnv { variable } => encode_binary(&query::get_env(deps, variable)?),
+
+        // Base queries
+        QueryMsg::Version {} => encode_binary(&ADOContract::default().query_version(deps)?),
+        QueryMsg::AdoType {} => encode_binary(&ADOContract::default().query_type(deps)?),
+        QueryMsg::Owner {} => encode_binary(&ADOContract::default().query_contract_owner(deps)?),
     }
 }
