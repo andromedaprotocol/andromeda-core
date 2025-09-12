@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.5-b.3"
+version = "1.2.5-b.4"
 dependencies = [
  "andromeda-std",
  "base64 0.22.1",

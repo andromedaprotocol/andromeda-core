@@ -182,6 +182,45 @@ pub enum QueryMsg {
     PendingPackets { channel_id: Option<String> },
     #[returns(EnvResponse)]
     GetEnv { variable: String },
+    #[returns(ListAllChainsResponse)]
+    ListAllChains {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(ListAllChannelsResponse)]
+    ListAllChannels {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(ListChainsWithChannelsResponse)]
+    ListChainsWithChannels {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+}
+
+#[cw_serde]
+pub struct ListAllChainsResponse {
+    pub chains: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ListAllChannelsResponse {
+    pub channels: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ChainChannelInfo {
+    pub chain: String,
+    pub ics20_channel_id: Option<String>,
+    pub direct_channel_id: Option<String>,
+    pub kernel_address: String,
+    pub supported_modules: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ListChainsWithChannelsResponse {
+    pub chain_channel_info: Vec<ChainChannelInfo>,
 }
 
 #[cw_serde]
