@@ -4,8 +4,9 @@ use andromeda_std::{
     os::{
         aos_querier::AOSQuerier,
         kernel::{
-            ChainNameResponse, ChannelInfoResponse, EnvResponse, PacketInfoAndSequence,
-            PendingPacketResponse, RecoveriesResponse, VerifyAddressResponse,
+            ChainChannelInfo, ChainNameResponse, ChannelInfoResponse, EnvResponse,
+            ListChainsWithChannelsResponse, PacketInfoAndSequence, PendingPacketResponse,
+            RecoveriesResponse, VerifyAddressResponse,
         },
     },
 };
@@ -136,4 +137,28 @@ pub fn list_all_channels(
         .take(limit)
         .collect::<Result<Vec<String>, _>>()?;
     Ok(channels)
+}
+
+pub fn list_chains_with_channels(
+    deps: Deps,
+    start_after: Option<&str>,
+    limit: Option<u32>,
+) -> Result<ListChainsWithChannelsResponse, ContractError> {
+    let limit = limit.unwrap_or(50).min(100) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let chain_channel_info: Vec<ChainChannelInfo> = CHAIN_TO_CHANNEL
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .filter_map(|item| item.ok())
+        .map(|(chain, channel_info)| ChainChannelInfo {
+            chain,
+            ics20_channel_id: channel_info.ics20_channel_id,
+            direct_channel_id: channel_info.direct_channel_id,
+            kernel_address: channel_info.kernel_address,
+            supported_modules: channel_info.supported_modules,
+        })
+        .collect();
+
+    Ok(ListChainsWithChannelsResponse { chain_channel_info })
 }
