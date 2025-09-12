@@ -7,6 +7,7 @@ use andromeda_std::{
     common::{expiration::Expiry, Milliseconds},
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::utils::assert_response,
 };
 use cosmwasm_std::{
     attr,
@@ -31,7 +32,7 @@ fn init(deps: &mut TestDeps) -> Response {
     let msg = InstantiateMsg {
         owner: Some(OWNER.to_owned()),
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
-        recipients: mock_recipient,
+        recipients: Some(mock_recipient),
         lock_time: Some(Expiry::FromNow(Milliseconds(86400000))),
         default_recipient: None,
     };
@@ -46,7 +47,7 @@ fn test_update_app_contract() {
     let recipient1 = deps.api.addr_make("recipient1");
     let recipient2 = deps.api.addr_make("recipient2");
     let msg = InstantiateMsg {
-        recipients: vec![
+        recipients: Some(vec![
             AddressWeight {
                 recipient: Recipient::new(recipient1, None),
                 weight: Uint128::new(50),
@@ -55,7 +56,7 @@ fn test_update_app_contract() {
                 recipient: Recipient::new(recipient2, None),
                 weight: Uint128::new(50),
             },
-        ],
+        ]),
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,
@@ -71,12 +72,10 @@ fn test_update_app_contract() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "update_app_contract")
-            .add_attribute("address", app_contract.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_app_contract")
+        .add_attribute("address", app_contract.to_string());
+    assert_response(&res, &expected_res, "update_app_contract");
 }
 
 // #[test]
@@ -123,10 +122,10 @@ fn test_instantiate() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let recipient1 = deps.api.addr_make("recipient1");
     let msg = InstantiateMsg {
-        recipients: vec![AddressWeight {
+        recipients: Some(vec![AddressWeight {
             recipient: Recipient::from_string(recipient1.to_string()),
             weight: Uint128::new(1),
-        }],
+        }]),
 
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
@@ -183,13 +182,10 @@ fn test_execute_update_lock() {
     let new_lock = lock_time
         .plus_seconds(current_time)
         .plus_milliseconds(Milliseconds(879));
-    assert_eq!(
-        Response::default().add_attributes(vec![
-            attr("action", "update_lock"),
-            attr("locked", new_lock.to_string())
-        ]),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "update_lock")
+        .add_attribute("locked", new_lock.to_string());
+    assert_response(&res, &expected_res, "update_lock");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -421,7 +417,7 @@ fn test_execute_remove_recipient() {
     let info = message_info(&owner, &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -455,10 +451,8 @@ fn test_execute_remove_recipient() {
         default_recipient: None,
     };
     assert_eq!(expected_splitter, splitter);
-    assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "removed_recipient")]),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "removed_recipient");
+    assert_response(&res, &expected_res, "remove_recipient");
 
     // check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -517,7 +511,7 @@ fn test_execute_remove_recipient_not_on_list() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -583,7 +577,7 @@ fn test_execute_remove_recipient_contract_locked() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient.clone(),
@@ -635,7 +629,7 @@ fn test_execute_remove_recipient_unauthorized() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let deps_mut = deps.as_mut();
@@ -685,7 +679,7 @@ fn test_update_recipient_weight() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -714,7 +708,7 @@ fn test_update_recipient_weight() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient.clone(),
@@ -741,10 +735,9 @@ fn test_update_recipient_weight() {
         },
     };
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "updated_recipient_weight")]),
-        res
-    );
+    let expected_res: Response =
+        Response::new().add_attribute("action", "updated_recipient_weight");
+    assert_response(&res, &expected_res, "update_recipient_weight");
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
     let expected_splitter = Splitter {
         recipients: vec![
@@ -812,7 +805,7 @@ fn test_update_recipient_weight_locked_contract() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let current_time = env.block.time.seconds();
     let splitter = Splitter {
@@ -866,7 +859,7 @@ fn test_update_recipient_weight_user_not_found() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -895,7 +888,7 @@ fn test_update_recipient_weight_user_not_found() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -942,7 +935,7 @@ fn test_update_recipient_weight_invalid_weight() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -971,7 +964,7 @@ fn test_update_recipient_weight_invalid_weight() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1036,7 +1029,7 @@ fn test_execute_add_recipient() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1059,10 +1052,8 @@ fn test_execute_add_recipient() {
     };
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "added_recipient")]),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "added_recipient");
+    assert_response(&res, &expected_res, "add_recipient");
 
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
     let expected_splitter = Splitter {
@@ -1145,7 +1136,7 @@ fn test_execute_add_recipient_duplicate_recipient() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1168,10 +1159,9 @@ fn test_execute_add_recipient_duplicate_recipient() {
     };
 
     let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-    assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "added_recipient")]),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "added_recipient");
+    assert_response(&res, &expected_res, "add_recipient");
+
     // Add a duplicate user
     let msg = ExecuteMsg::AddRecipient {
         recipient: AddressWeight {
@@ -1227,7 +1217,7 @@ fn test_execute_add_recipient_invalid_weight() {
     let info = message_info(&Addr::unchecked(OWNER), &[]);
 
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let splitter = Splitter {
         recipients: recipient,
@@ -1276,7 +1266,7 @@ fn test_execute_add_recipient_locked_contract() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
 
     let deps_mut = deps.as_mut();
@@ -1336,7 +1326,7 @@ fn test_execute_add_recipient_unauthorized() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let deps_mut = deps.as_mut();
@@ -1407,14 +1397,12 @@ fn test_execute_update_recipients() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient.clone(),
+        recipients: Some(recipient.clone()),
     };
     let info = message_info(&Addr::unchecked(OWNER), &[]);
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(
-        Response::default().add_attributes(vec![attr("action", "update_recipients")]),
-        res
-    );
+    let expected_res: Response = Response::new().add_attribute("action", "update_recipients");
+    assert_response(&res, &expected_res, "update_recipients");
 
     //check result
     let splitter = SPLITTER.load(deps.as_ref().storage).unwrap();
@@ -1439,7 +1427,7 @@ fn test_execute_update_recipients_invalid_weight() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let splitter = Splitter {
@@ -1493,7 +1481,7 @@ fn test_execute_update_recipients_contract_locked() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let current_time = env.block.time.seconds();
@@ -1549,7 +1537,7 @@ fn test_execute_update_recipients_unauthorized() {
         },
     ];
     let msg = ExecuteMsg::UpdateRecipients {
-        recipients: recipient,
+        recipients: Some(recipient),
     };
 
     let splitter = Splitter {
@@ -1667,7 +1655,7 @@ fn test_execute_send() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "weighted_distribution_splitter_send");
 
     // Test send with config
     let msg = ExecuteMsg::Send {
@@ -1688,7 +1676,7 @@ fn test_execute_send() {
         ])
         .add_attributes(vec![attr("action", "send"), attr("sender", OWNER)]);
 
-    assert_eq!(res, expected_res);
+    assert_response(&res, &expected_res, "weighted_distribution_splitter_send");
 }
 use rstest::*;
 
@@ -1710,7 +1698,7 @@ fn locked_splitter() -> (
     let addr2 = deps.api.addr_make("addr2");
     // Call instantiate with the recipients
     let msg = InstantiateMsg {
-        recipients: vec![
+        recipients: Some(vec![
             AddressWeight {
                 recipient: Recipient::from_string(addr1.to_string()),
                 weight: Uint128::new(40), // 40% weight
@@ -1719,7 +1707,7 @@ fn locked_splitter() -> (
                 recipient: Recipient::from_string(addr2.to_string()),
                 weight: Uint128::new(60), // 60% weight
             },
-        ],
+        ]),
         lock_time: Some(Expiry::AtTime(Milliseconds::from_seconds(
             lock_time.seconds(),
         ))),
@@ -1749,7 +1737,7 @@ fn unlocked_splitter() -> (
     let addr2 = deps.api.addr_make("addr2");
     // Call instantiate with the recipients
     let msg = InstantiateMsg {
-        recipients: vec![
+        recipients: Some(vec![
             AddressWeight {
                 recipient: Recipient::from_string(addr1.to_string()),
                 weight: Uint128::new(40), // 40% weight
@@ -1758,7 +1746,7 @@ fn unlocked_splitter() -> (
                 recipient: Recipient::from_string(addr2.to_string()),
                 weight: Uint128::new(60), // 60% weight
             },
-        ],
+        ]),
         lock_time: None,
         kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
         owner: None,

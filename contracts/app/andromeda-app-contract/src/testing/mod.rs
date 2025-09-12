@@ -402,11 +402,16 @@ fn test_claim_ownership() {
         gas_limit: None,
         payload: Binary::default(),
     };
-    let expected = Response::new()
-        .add_submessage(exec_submsg)
-        .add_attributes(vec![attr("method", "claim_ownership")]);
+    let expected_submsg = vec![exec_submsg];
+    let expected_attributes = vec![attr("method", "claim_ownership")];
 
-    assert_eq!(expected, res)
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
+
+    for submsg in expected_submsg {
+        assert!(res.messages.contains(&submsg));
+    }
 }
 
 #[test]
@@ -502,14 +507,13 @@ fn test_proxy_message() {
         gas_limit: None,
         payload: Binary::default(),
     };
-    let expected = Response::new()
-        .add_submessage(exec_submsg)
-        .add_attributes(vec![
-            attr("method", "app_message"),
-            attr("recipient", "token"),
-        ]);
+    let expected_attributes = vec![attr("method", "app_message"), attr("recipient", "token")];
 
-    assert_eq!(expected, res)
+    for attr in expected_attributes {
+        assert!(res.attributes.contains(&attr));
+    }
+
+    assert!(res.messages.contains(&exec_submsg));
 }
 
 #[test]

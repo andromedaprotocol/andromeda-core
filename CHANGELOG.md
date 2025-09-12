@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Osmosis Token Factory ADO [(#929)](https://github.com/andromedaprotocol/andromeda-core/pull/929)
 - feat: Wildcard in Permissions [(#949)](https://github.com/andromedaprotocol/andromeda-core/pull/949)
 - feat: Additional Permission Queries [(#960)](https://github.com/andromedaprotocol/andromeda-core/pull/960)
+- feat: Standardized events in ADOS [(#970)](https://github.com/andromedaprotocol/andromeda-core/pull/970)
 
 ### Changed
 
@@ -41,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ref: change cw20 exchange's sale start time and end time to Milliseconds, same for auction [(#869)](https://github.com/andromedaprotocol/andromeda-core/pull/869)
 - feat: Create and apply Schedule struct [(#900)](https://github.com/andromedaprotocol/andromeda-core/pull/900)
 - feat: Enable Cross Chain Components in App [(#932)](https://github.com/andromedaprotocol/andromeda-core/pull/932)
+- refactor: Make recipients list optional in Splitter [(#937)](https://github.com/andromedaprotocol/andromeda-core/pull/937)
+
 
 ### Fixed
 

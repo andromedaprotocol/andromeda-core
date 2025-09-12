@@ -13,6 +13,7 @@ use andromeda_std::{
     amp::AndrAddr,
     error::ContractError,
     testing::mock_querier::{mock_dependencies_custom, MOCK_KERNEL_CONTRACT},
+    testing::utils::assert_response,
 };
 
 use crate::contract::{execute, instantiate, query, CONTRACT_NAME, CONTRACT_VERSION};
@@ -593,14 +594,11 @@ fn proposal_pass_on_expiration() {
         ExecuteMsg::Execute { proposal_id },
     )
     .unwrap();
-    assert_eq!(
-        res.attributes,
-        Response::<Empty>::new()
-            .add_attribute("action", "execute")
-            .add_attribute("sender", somebody)
-            .add_attribute("proposal_id", proposal_id.to_string())
-            .attributes
-    )
+    let expected_res: Response = Response::<Empty>::new()
+        .add_attribute("action", "execute")
+        .add_attribute("sender", somebody)
+        .add_attribute("proposal_id", proposal_id.to_string());
+    assert_response(&res, &expected_res, "fixed_multisig_execute");
 }
 
 #[test]

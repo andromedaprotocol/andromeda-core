@@ -78,7 +78,7 @@ fn setup(
         },
     ];
     let splitter_init_msg = mock_fixed_amount_splitter_instantiate_msg(
-        splitter_recipients,
+        Some(splitter_recipients),
         andr.kernel.addr().clone(),
         None,
         None,
@@ -150,7 +150,7 @@ fn setup(
         ];
 
         splitter
-            .execute_update_recipients(&mut router, owner.clone(), &[], splitter_recipients)
+            .execute_update_recipients(&mut router, owner.clone(), &[], Some(splitter_recipients))
             .unwrap();
     }
     TestCase {

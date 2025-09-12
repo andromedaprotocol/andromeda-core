@@ -10,8 +10,8 @@ use andromeda_std::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, ensure, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
-    StdError, SubMsg, SubMsgResponse, SubMsgResult,
+    attr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    SubMsg, SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
 use cw_utils::one_coin;
@@ -252,29 +252,10 @@ fn execute_withdraw_pool(
     ctx: ExecuteContext,
     withdraw_msg: MsgExitPool,
 ) -> Result<Response, ContractError> {
-    let pool_id = WITHDRAW
-        .may_load(ctx.deps.storage, ctx.info.sender.to_string())?
-        .ok_or(ContractError::Std(StdError::generic_err(
-            "Pool ID not found".to_string(),
-        )))?
-        .pool_id
-        .parse::<u64>()
-        .map_err(|e| {
-            ContractError::Std(StdError::generic_err(format!(
-                "Failed to parse pool ID: {}",
-                e
-            )))
-        })?;
-
-    ensure!(
-        pool_id == withdraw_msg.pool_id,
-        ContractError::Std(StdError::generic_err("Pool ID mismatch".to_string(),))
-    );
-
     // Save withdrawal state for reply handling
     let withdraw_state = WithdrawState {
         sender: ctx.info.sender.to_string(),
-        pool_id: pool_id.to_string(),
+        pool_id: withdraw_msg.pool_id.to_string(),
     };
     WITHDRAW_STATE.save(ctx.deps.storage, &withdraw_state)?;
 
@@ -283,9 +264,9 @@ fn execute_withdraw_pool(
         .add_submessage(sub_msg)
         .add_attributes(vec![
             attr("action", "withdraw_pool"),
-            attr("andr_osmosis_pool", pool_id.to_string()),
+            attr("andr_osmosis_pool", withdraw_state.pool_id.clone()),
             attr(
-                format!("andr_{}_sender", pool_id),
+                format!("andr_{}_sender", withdraw_state.pool_id),
                 ctx.info.sender.to_string(),
             ),
         ]))

@@ -41,7 +41,7 @@ impl ADOContract {
         } else {
             &msg.ado_type
         };
-        cw2::set_contract_version(storage, ado_type, msg.ado_version)?;
+        cw2::set_contract_version(storage, ado_type, msg.ado_version.clone())?;
         let mut owner = api.addr_validate(&msg.owner.unwrap_or(info.sender.to_string()))?;
         self.original_publisher.save(storage, &info.sender)?;
         self.block_height.save(storage, &env.block.height)?;
@@ -52,6 +52,11 @@ impl ADOContract {
             attr("method", "instantiate"),
             attr("type", ado_type),
             attr("kernel_address", msg.kernel_address),
+            attr("andromeda_indexed", "0.1.0"), // generic indexed attribute for indexers
+            attr("andromeda_method", "instantiate"), // generic execute attribute for indexers
+            attr("andromeda_ado_type", ado_type), // generic ado type attribute for indexers
+            attr("andromeda_ado_version", msg.ado_version), // generic ado version attribute for indexers
+            attr("andromeda_sender", info.sender.clone()),  // generic sender attribute for indexers
         ];
 
         // We do not want to store app contracts for the kernel, exit early if current contract is kernel
@@ -429,6 +434,54 @@ mod tests {
     use crate::testing::mock_querier::MOCK_KERNEL_CONTRACT;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
+    mod instantiate {
+        use super::*;
+
+        #[test]
+        fn test_instantiate_event_attributes() {
+            let contract = ADOContract::default();
+            let mut deps = mock_dependencies();
+
+            let owner = deps.api.addr_make("owner");
+            let info = message_info(&owner, &[]);
+            let deps_mut = deps.as_mut();
+            let env = mock_env();
+            let msg = InstantiateMsg {
+                ado_type: "crates.io:andromeda-app-contract".to_string(),
+                ado_version: "0.1.0".to_string(),
+                kernel_address: MOCK_KERNEL_CONTRACT.to_string(),
+                owner: Some(owner.to_string()),
+            };
+
+            let res = contract
+                .instantiate(
+                    deps_mut.storage,
+                    env.clone(),
+                    deps_mut.api,
+                    &deps_mut.querier,
+                    info.clone(),
+                    msg,
+                )
+                .unwrap();
+
+            assert_eq!(
+                res.attributes,
+                vec![
+                    attr("method", "instantiate"),
+                    attr("type", "app-contract"),
+                    attr("kernel_address", MOCK_KERNEL_CONTRACT),
+                    attr("andromeda_indexed", "0.1.0"),
+                    attr("andromeda_method", "instantiate"),
+                    attr("andromeda_ado_type", "app-contract"),
+                    attr("andromeda_ado_version", "0.1.0"),
+                    attr("andromeda_sender", owner.clone()),
+                    attr("app_contract", env.contract.address),
+                    attr("owner", owner),
+                ]
+            );
+        }
+    }
+
     mod app_contract {
         use super::*;
 
@@ -595,10 +648,10 @@ mod tests {
                 .unwrap();
 
             // Verify permission is saved
-            let saved_permissions = contract
+            let saved_permissions_response = contract
                 .query_permissions(deps.as_ref(), actor.to_string().as_str(), None, None)
                 .unwrap();
-            assert_eq!(saved_permissions.len(), 1);
+            assert_eq!(saved_permissions_response.permissions.len(), 1);
 
             // Perform migration
             contract
@@ -606,10 +659,10 @@ mod tests {
                 .unwrap();
 
             // Verify permissions were handled correctly during migration
-            let post_migration_permissions = contract
+            let post_migration_permissions_response = contract
                 .query_permissions(deps.as_ref(), actor.to_string().as_str(), None, None)
                 .unwrap();
-            assert_eq!(post_migration_permissions.len(), 1);
+            assert_eq!(post_migration_permissions_response.permissions.len(), 1);
         }
     }
 }

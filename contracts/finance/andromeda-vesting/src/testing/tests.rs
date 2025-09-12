@@ -8,6 +8,7 @@ use andromeda_std::{
     common::{withdraw::WithdrawalType, Milliseconds},
     error::ContractError,
     testing::mock_querier::MOCK_KERNEL_CONTRACT,
+    testing::utils::assert_response,
 };
 use cosmwasm_std::{
     coin, coins, from_json,
@@ -31,7 +32,14 @@ fn init(deps: &mut TestDeps) -> Response {
 
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &[]);
-    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap()
+    let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let expected_res: Response = Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("type", "vesting")
+        .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+        .add_attribute("owner", owner.to_string());
+    assert_response(&res, &expected_res, "vesting_instantiate");
+    res
 }
 
 fn create_batch(
@@ -46,9 +54,25 @@ fn create_batch(
         release_duration,
         release_amount,
     };
+    let env = mock_env();
+    let current_time = Milliseconds::from_seconds(env.block.time.seconds());
+
+    let lockup_end = if let Some(duration) = lockup_duration {
+        current_time.plus_milliseconds(duration)
+    } else {
+        current_time
+    };
     let owner = deps.api.addr_make("owner");
     let info = message_info(&owner, &coins(100, "uusd"));
-    execute(deps.as_mut(), mock_env(), info, msg).unwrap()
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "create_batch")
+        .add_attribute("amount", "100")
+        .add_attribute("lockup_end", lockup_end.to_string())
+        .add_attribute("release_duration", release_duration.to_string())
+        .add_attribute("release_amount", "Amount(Uint128(10))");
+    assert_response(&res, &expected_res, "vesting_create_batch");
+    res
 }
 
 #[test]
@@ -56,14 +80,18 @@ fn test_instantiate() {
     let mut deps = mock_dependencies_custom(&[coin(100000, MOCK_NATIVE_DENOM)]);
     let res = init(&mut deps);
     let owner = deps.api.addr_make("owner");
-    assert_eq!(
-        Response::new()
-            .add_attribute("method", "instantiate")
-            .add_attribute("type", "vesting")
-            .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
-            .add_attribute("owner", owner.to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("type", "vesting")
+        .add_attribute("kernel_address", MOCK_KERNEL_CONTRACT)
+        .add_attribute("owner", owner.to_string());
+    for attr in expected_res.attributes {
+        assert!(
+            res.attributes.contains(&attr),
+            "Attribute {:?} not found",
+            attr,
+        );
+    }
     let recipient = deps.api.addr_make("recipient");
     assert_eq!(
         Config {
@@ -255,18 +283,16 @@ fn test_create_batch() {
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     let current_time = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "create_batch")
-            .add_attribute("amount", "100")
-            .add_attribute("lockup_end", current_time.to_string())
-            .add_attribute(
-                "release_duration",
-                Milliseconds::from_seconds(10).to_string()
-            )
-            .add_attribute("release_amount", "Amount(Uint128(10))"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "create_batch")
+        .add_attribute("amount", "100")
+        .add_attribute("lockup_end", current_time.to_string())
+        .add_attribute(
+            "release_duration",
+            Milliseconds::from_seconds(10).to_string(),
+        )
+        .add_attribute("release_amount", "Amount(Uint128(10))");
+    assert_response(&res, &expected_res, "vesting_create_batch");
 
     let batch = batches().load(deps.as_ref().storage, 1).unwrap();
 
@@ -293,18 +319,16 @@ fn test_create_batch() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    assert_eq!(
-        Response::new()
-            .add_attribute("action", "create_batch")
-            .add_attribute("amount", "100")
-            .add_attribute("lockup_end", (current_time.plus_seconds(100)).to_string())
-            .add_attribute(
-                "release_duration",
-                Milliseconds::from_seconds(10).to_string()
-            )
-            .add_attribute("release_amount", "Amount(Uint128(10))"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "create_batch")
+        .add_attribute("amount", "100")
+        .add_attribute("lockup_end", (current_time.plus_seconds(100)).to_string())
+        .add_attribute(
+            "release_duration",
+            Milliseconds::from_seconds(10).to_string(),
+        )
+        .add_attribute("release_amount", "Amount(Uint128(10))");
+    assert_response(&res, &expected_res, "vesting_create_batch");
 
     let batch = batches().load(deps.as_ref().storage, 2).unwrap();
 
@@ -453,18 +477,16 @@ fn test_claim_batch_single_claim() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -516,18 +538,16 @@ fn test_claim_batch_not_nice_numbers_single_release() {
 
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(7, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "7")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "3"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(7, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "7")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "3");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -589,18 +609,16 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
     .unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(12683916792, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "12683916792")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", (vesting_amount - 12683916792).to_string()),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(12683916792, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "12683916792")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", (vesting_amount - 12683916792).to_string());
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -619,18 +637,17 @@ fn test_claim_batch_not_nice_numbers_multiple_releases() {
 
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(vesting_amount - 12683916792, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", (vesting_amount - 12683916792).to_string())
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "0"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(vesting_amount - 12683916792, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", (vesting_amount - 12683916792).to_string())
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "0");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
+    let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
         Batch {
@@ -692,18 +709,16 @@ fn test_claim_batch_middle_of_interval() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -755,18 +770,16 @@ fn test_claim_batch_multiple_claims() {
     let res = execute(deps.as_mut(), env.clone(), message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -789,18 +802,16 @@ fn test_claim_batch_multiple_claims() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(30, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "30")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "60"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(30, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "30")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "60");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -859,18 +870,16 @@ fn test_claim_batch_all_releases() {
     .unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: coins(100, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "100")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "0"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: coins(100, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "100")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "0");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -927,19 +936,17 @@ fn test_claim_batch_too_high_of_claim() {
     let res = execute(deps.as_mut(), env, message_info(&owner, &[]), msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                // Only one gets claim
-                amount: coins(10, "uusd")
-            })
-            .add_attribute("action", "claim")
-            .add_attribute("amount", "10")
-            .add_attribute("batch_id", "1")
-            .add_attribute("amount_left", "90"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            // Only one gets claim
+            amount: coins(10, "uusd"),
+        })
+        .add_attribute("action", "claim")
+        .add_attribute("amount", "10")
+        .add_attribute("batch_id", "1")
+        .add_attribute("amount_left", "90");
+    assert_response(&res, &expected_res, "vesting_claim_batch");
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
 
     assert_eq!(
@@ -1086,17 +1093,15 @@ fn test_claim_all() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
     let recipient = deps.api.addr_make("recipient");
-    assert_eq!(
-        Response::new()
-            .add_message(BankMsg::Send {
-                to_address: recipient.to_string(),
-                // 20 from the first, 40 from the second, 10 from the third.
-                amount: coins(20 + 40 + 10, "uusd")
-            })
-            .add_attribute("action", "claim_all")
-            .add_attribute("last_batch_id_processed", "3"),
-        res
-    );
+    let expected_res: Response = Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            // 20 from the first, 40 from the second, 10 from the third.
+            amount: coins(20 + 40 + 10, "uusd"),
+        })
+        .add_attribute("action", "claim_all")
+        .add_attribute("last_batch_id_processed", "3");
+    assert_response(&res, &expected_res, "vesting_claim_all");
 
     let lockup_end = Milliseconds::from_seconds(mock_env().block.time.seconds());
     assert_eq!(

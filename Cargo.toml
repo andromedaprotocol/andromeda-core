@@ -65,7 +65,7 @@ cw-asset = "4.0.0"
 cosmwasm-schema = "^2.2"
 semver = "1.0.25"
 enum-repr = "0.2.6"
-cw-multi-test = "2.5.0"
+cw-multi-test = "2.5.1"
 serde = { version = "1.0.217" }
 test-case = { version = "3.3.1" }
 cw-orch = "0.27.0"
@@ -77,7 +77,7 @@ bech32 = "0.9.1"
 ripemd = "0.1"
 hex = "0.4"
 secp256k1 = "0.30.0"
-thiserror = { version = "2.0.15" }
+thiserror = { version = "2.0.16" }
 cw-ownable = "2.1.0"
 
 astroport = { git = "https://github.com/astroport-fi/astroport-core" } 

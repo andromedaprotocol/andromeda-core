@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-address-list"
-version = "2.1.1-b.4"
+version = "2.1.1-b.5"
 dependencies = [
  "andromeda-app",
  "andromeda-modules",
@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-adodb"
-version = "1.1.6-b.2"
+version = "1.1.6-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-app-contract"
-version = "1.2.1-b.4"
+version = "1.2.1-b.5"
 dependencies = [
  "andromeda-app",
  "andromeda-std",
@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-auction"
-version = "2.2.6-b.6"
+version = "2.2.6-b.7"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -209,7 +209,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-boolean"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -224,7 +224,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-conditional-splitter"
-version = "1.3.1-b.4"
+version = "1.3.1-b.5"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -240,7 +240,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-counter"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-crowdfund"
-version = "2.2.1-b.7"
+version = "2.2.1-b.8"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-curve"
-version = "0.2.1-b.4"
+version = "0.2.1-b.5"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -295,12 +295,12 @@ dependencies = [
  "serde",
  "serde-cw-value",
  "serde_derive",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "andromeda-cw20"
-version = "2.1.1-b.5"
+version = "2.1.1-b.6"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -319,7 +319,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw20-staking"
-version = "2.1.1-b.6"
+version = "2.1.1-b.7"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-cw721"
-version = "2.2.0-b.12"
+version = "2.2.0-b.13"
 dependencies = [
  "andromeda-non-fungible-tokens",
  "andromeda-std",
@@ -366,7 +366,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-date-time"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -434,12 +434,12 @@ dependencies = [
  "reqwest 0.12.23",
  "serde",
  "serde_json",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "andromeda-distance"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -455,7 +455,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-economics"
-version = "1.2.3-b.2"
+version = "1.2.3-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
@@ -468,7 +468,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-exchange"
-version = "3.0.0-b.7"
+version = "3.0.0-b.8"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -503,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-amount-splitter"
-version = "1.2.1-b.5"
+version = "1.2.1-b.6"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -521,7 +521,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-fixed-multisig"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-accounts",
  "andromeda-app",
@@ -539,7 +539,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-form"
-version = "0.1.0-a.4"
+version = "0.1.0-a.5"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-modules",
@@ -577,7 +577,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-graph"
-version = "0.1.1-b.4"
+version = "0.1.1-b.5"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -593,7 +593,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-ibc-registry"
-version = "1.1.3-b.2"
+version = "1.1.3-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-kernel"
-version = "1.2.5-b.2"
+version = "1.2.5-b.3"
 dependencies = [
  "andromeda-std",
  "base64 0.22.1",
@@ -635,7 +635,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-lockdrop"
-version = "2.1.1-b.5"
+version = "2.1.1-b.6"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -652,7 +652,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-macros"
-version = "1.1.0-b.3"
+version = "1.1.0-b.4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -661,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-marketplace"
-version = "2.3.1-b.6"
+version = "2.3.1-b.7"
 dependencies = [
  "andromeda-app",
  "andromeda-non-fungible-tokens",
@@ -689,7 +689,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-matrix"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -704,7 +704,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-merkle-airdrop"
-version = "2.1.1-b.5"
+version = "2.1.1-b.6"
 dependencies = [
  "andromeda-app",
  "andromeda-fungible-tokens",
@@ -770,12 +770,12 @@ dependencies = [
  "osmosis-std",
  "schemars 0.8.22",
  "serde",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "andromeda-osmosis-token-factory"
-version = "0.1.1-b.4"
+version = "0.1.1-b.5"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
@@ -792,12 +792,12 @@ dependencies = [
  "osmosis-std",
  "schemars 0.8.22",
  "serde",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "andromeda-point"
-version = "0.1.1-b.4"
+version = "0.1.1-b.5"
 dependencies = [
  "andromeda-math",
  "andromeda-std",
@@ -811,7 +811,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-primitive"
-version = "2.1.1-b.3"
+version = "2.1.1-b.4"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -826,7 +826,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-rate-limiting-withdrawals"
-version = "2.1.1-b.5"
+version = "2.1.1-b.6"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -861,7 +861,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-schema"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-app",
  "andromeda-cw-json",
@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-shunting"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-app",
  "andromeda-cw-json",
@@ -914,7 +914,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-socket-astroport"
-version = "0.1.8-b.6"
+version = "0.1.8-b.7"
 dependencies = [
  "andromeda-socket",
  "andromeda-std",
@@ -931,12 +931,12 @@ dependencies = [
  "cw20 2.0.0",
  "schemars 0.8.22",
  "serde",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "andromeda-splitter"
-version = "2.3.1-b.5"
+version = "2.3.1-b.6"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -954,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-std"
-version = "1.5.1-b.11"
+version = "1.5.1-b.12"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema 2.2.2",
@@ -982,12 +982,12 @@ dependencies = [
  "serde-json-wasm 1.0.1",
  "sha2 0.10.9",
  "strum_macros",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "andromeda-string-storage"
-version = "0.1.0-a.4"
+version = "0.1.0-a.5"
 dependencies = [
  "andromeda-data-storage",
  "andromeda-std",
@@ -1050,7 +1050,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-time-gate"
-version = "0.1.0-a.5"
+version = "0.1.0-a.6"
 dependencies = [
  "andromeda-app",
  "andromeda-math",
@@ -1066,7 +1066,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-timelock"
-version = "2.1.1-b.6"
+version = "2.1.1-b.7"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -1082,7 +1082,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-validator-staking"
-version = "1.1.1-b.6"
+version = "1.1.1-b.7"
 dependencies = [
  "andromeda-finance",
  "andromeda-std",
@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vesting"
-version = "3.1.1-b.4"
+version = "3.1.1-b.5"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -1118,7 +1118,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-vfs"
-version = "1.2.4-b.2"
+version = "1.2.4-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
@@ -1131,7 +1131,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-weighted-distribution-splitter"
-version = "2.1.1-b.4"
+version = "2.1.1-b.5"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
@@ -2516,14 +2516,14 @@ dependencies = [
  "cw-utils 3.0.0",
  "schemars 0.8.22",
  "serde",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
 name = "cw-multi-test"
-version = "2.5.0"
+version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2c39f3cfa02de3fe1c97f11c034308e5f9aae4e97e0588ac73d0d238388e2f5"
+checksum = "683c799ba3a3d01933be5ef693c10cf815855967eb71c3dd730f2987ebb9316e"
 dependencies = [
  "anyhow",
  "bech32 0.11.0",
@@ -2536,7 +2536,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "sha2 0.10.9",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
@@ -2952,7 +2952,7 @@ dependencies = [
  "cosmwasm-std 3.0.1",
  "schemars 0.8.22",
  "serde",
- "thiserror 2.0.15",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
@@ -4700,9 +4700,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.27"
+version = "0.4.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
+checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 
 [[package]]
 name = "matchit"
@@ -6766,11 +6766,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.15"
+version = "2.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80d76d3f064b981389ecb4b6b7f45a0bf9fdac1d5b9204c7bd6714fecc302850"
+checksum = "3467d614147380f2e4e374161426ff399c91084acd2363eaf549172b3d5e60c0"
 dependencies = [
- "thiserror-impl 2.0.15",
+ "thiserror-impl 2.0.16",
 ]
 
 [[package]]
@@ -6786,9 +6786,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.15"
+version = "2.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44d29feb33e986b6ea906bd9c3559a856983f92371b3eaa5e83782a351623de0"
+checksum = "6c5e1be1c48b9172ee610da68fd9cd2770e7a4056cb3fc98710ee6906f0c7960"
 dependencies = [
  "proc-macro2",
  "quote",

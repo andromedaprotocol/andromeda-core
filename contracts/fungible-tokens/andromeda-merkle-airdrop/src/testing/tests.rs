@@ -6,13 +6,16 @@ use andromeda_std::{
     amp::AndrAddr,
     common::{denom::Asset, expiration::Expiry, Milliseconds},
     error::ContractError,
-    testing::mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT},
+    testing::{
+        mock_querier::{mock_dependencies_custom, MOCK_CW20_CONTRACT, MOCK_KERNEL_CONTRACT},
+        utils::assert_response,
+    },
 };
 use cosmwasm_schema::{cw_serde, serde::Deserialize};
 use cosmwasm_std::{
-    attr, from_json,
+    from_json,
     testing::{message_info, mock_env},
-    Addr, Timestamp, Uint128,
+    Addr, Response, Timestamp, Uint128,
 };
 
 use crate::contract::{execute, instantiate, query};
@@ -82,18 +85,15 @@ fn register_merkle_root() {
     };
 
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    assert_eq!(
-        res.attributes,
-        vec![
-            attr("action", "register_merkle_root"),
-            attr("stage", "1"),
-            attr(
-                "merkle_root",
-                "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
-            ),
-            attr("total_amount", "0")
-        ]
-    );
+    let expected_res: Response = Response::new()
+        .add_attribute("action", "register_merkle_root")
+        .add_attribute("stage", "1")
+        .add_attribute(
+            "merkle_root",
+            "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37",
+        )
+        .add_attribute("total_amount", "0");
+    assert_response(&res, &expected_res, "register_merkle_root");
 
     let res = query(deps.as_ref(), env.clone(), QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_json(res).unwrap();
