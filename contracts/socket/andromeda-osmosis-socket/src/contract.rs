@@ -16,18 +16,19 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::one_coin;
 
-use osmosis_std::types::osmosis::concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPoolResponse;
-use osmosis_std::types::osmosis::cosmwasmpool::v1beta1::MsgCreateCosmWasmPoolResponse;
-use osmosis_std::types::osmosis::gamm::poolmodels::balancer::v1beta1::MsgCreateBalancerPoolResponse;
-use osmosis_std::types::osmosis::gamm::poolmodels::stableswap::v1beta1::MsgCreateStableswapPoolResponse;
-use osmosis_std::types::osmosis::gamm::v1beta1::MsgExitPool;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin as OsmosisCoin,
     osmosis::{
-        concentratedliquidity::poolmodel::concentrated::v1beta1::MsgCreateConcentratedPool,
-        cosmwasmpool::v1beta1::MsgCreateCosmWasmPool,
-        gamm::poolmodels::{
-            balancer::v1beta1::MsgCreateBalancerPool, stableswap::v1beta1::MsgCreateStableswapPool,
+        concentratedliquidity::poolmodel::concentrated::v1beta1::{
+            MsgCreateConcentratedPool, MsgCreateConcentratedPoolResponse,
+        },
+        cosmwasmpool::v1beta1::{MsgCreateCosmWasmPool, MsgCreateCosmWasmPoolResponse},
+        gamm::{
+            poolmodels::{
+                balancer::v1beta1::{MsgCreateBalancerPool, MsgCreateBalancerPoolResponse},
+                stableswap::v1beta1::{MsgCreateStableswapPool, MsgCreateStableswapPoolResponse},
+            },
+            v1beta1::MsgExitPool,
         },
     },
 };
@@ -37,7 +38,9 @@ use crate::osmosis::{
     OSMOSIS_MSG_CREATE_COSM_WASM_POOL_ID, OSMOSIS_MSG_CREATE_STABLE_POOL_ID,
     OSMOSIS_MSG_WITHDRAW_POOL_ID,
 };
-use crate::state::{WithdrawState, SPENDER, WITHDRAW, WITHDRAW_STATE};
+use crate::state::{
+    WithdrawState, POOLS_CREATED, POOL_INFO, SPENDER_AND_PARAMS, WITHDRAW, WITHDRAW_STATE,
+};
 use crate::{
     osmosis::{
         execute_swap_osmosis_msg, handle_osmosis_swap_reply, query_get_route,
@@ -47,10 +50,11 @@ use crate::{
 };
 
 use andromeda_socket::osmosis::{
-    ExecuteMsg, InstantiateMsg, Pool, QueryMsg, Slippage, SwapAmountInRoute,
+    ExecuteMsg, InstantiateMsg, Pool, PoolIdAndParams, PoolsCreatedResponse, QueryMsg, Slippage,
+    SpenderAndParams, SwapAmountInRoute,
 };
 
-const CONTRACT_NAME: &str = "crates.io:andromeda-socket-osmosis";
+const CONTRACT_NAME: &str = "crates.io:andromeda-osmosis-socket";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -163,7 +167,13 @@ pub fn execute_create_pool(
 
     let contract_address: String = env.contract.address.into();
 
-    SPENDER.save(deps.storage, &info.sender.to_string())?;
+    SPENDER_AND_PARAMS.save(
+        deps.storage,
+        &SpenderAndParams {
+            spender: info.sender.to_string(),
+            params: pool_type.clone(),
+        },
+    )?;
 
     let msg: SubMsg = match pool_type {
         Pool::Balancer {
@@ -288,6 +298,25 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             from_denom,
             to_denom,
         } => encode_binary(&query_get_route(deps, from_denom, to_denom)?),
+        QueryMsg::PoolInfo { pool_id } => {
+            let pool_info =
+                POOL_INFO
+                    .may_load(deps.storage, pool_id)?
+                    .ok_or(ContractError::Std(StdError::generic_err(
+                        "Pool info not found".to_string(),
+                    )))?;
+            encode_binary(&pool_info)
+        }
+        QueryMsg::PoolsCreated { creator } => {
+            let pools_created = POOLS_CREATED
+                .load(deps.storage, creator)
+                .unwrap_or_default();
+            let pools_created_response = PoolsCreatedResponse {
+                pools: pools_created,
+            };
+            encode_binary(&pools_created_response)
+        }
+
         _ => ADOContract::default().query(deps, env, msg),
     }
 }
@@ -337,23 +366,48 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 // Query the contract's lp token balance
                 let lp_token = deps.querier.query_balance(env.contract.address, denom)?;
 
-                let spender = SPENDER.load(deps.storage)?;
-                SPENDER.remove(deps.storage);
+                let spender_and_params = SPENDER_AND_PARAMS.load(deps.storage)?;
+                SPENDER_AND_PARAMS.remove(deps.storage);
                 // Tranfer lp token to original sender
                 let msg = CosmosMsg::Bank(BankMsg::Send {
-                    to_address: spender.clone(),
+                    to_address: spender_and_params.spender.clone(),
                     amount: vec![lp_token.clone()],
                 });
 
-                WITHDRAW.save(deps.storage, spender.clone(), &pool_id.to_string())?;
+                let pool_id_and_params = PoolIdAndParams {
+                    pool_id: pool_id.to_string(),
+                    params: spender_and_params.params.clone(),
+                };
+
+                WITHDRAW.save(
+                    deps.storage,
+                    spender_and_params.spender.clone(),
+                    &pool_id_and_params,
+                )?;
+
+                let mut pools = POOLS_CREATED
+                    .may_load(deps.storage, spender_and_params.spender.clone())?
+                    .unwrap_or_default();
+                pools.push(pool_id_and_params);
+                POOLS_CREATED.save(deps.storage, spender_and_params.spender.clone(), &pools)?;
+
+                POOL_INFO.save(
+                    deps.storage,
+                    pool_id.to_string(),
+                    &spender_and_params.params,
+                )?;
+
                 Ok(Response::default().add_message(msg).add_attributes(vec![
                     attr("action", "balancer_pool_created"),
                     attr("lp_token", lp_token.denom.clone()),
-                    attr("spender", spender.clone()),
+                    attr("spender", spender_and_params.spender.clone()),
                     attr("amount", lp_token.amount.to_string()),
                     attr("pool_id", pool_id.to_string()),
                     attr("andr_osmosis_pool", pool_id.to_string()),
-                    attr(format!("andr_{}_sender", pool_id), spender),
+                    attr(
+                        format!("andr_{}_sender", pool_id),
+                        spender_and_params.spender.clone(),
+                    ),
                 ]))
             } else {
                 Err(ContractError::Std(StdError::generic_err(format!(
@@ -372,13 +426,16 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 })?;
 
                 let pool_id = res.pool_id.to_string();
-                let spender = SPENDER.load(deps.storage)?;
-                SPENDER.remove(deps.storage);
+                let spender_and_params = SPENDER_AND_PARAMS.load(deps.storage)?;
+                SPENDER_AND_PARAMS.remove(deps.storage);
 
                 Ok(Response::default().add_attributes(vec![
                     attr("action", "stable_pool_created"),
                     attr("andr_osmosis_pool", pool_id.clone()),
-                    attr(format!("andr_{}_sender", pool_id), spender),
+                    attr(
+                        format!("andr_{}_sender", pool_id),
+                        spender_and_params.spender.clone(),
+                    ),
                 ]))
             } else {
                 Err(ContractError::Std(StdError::generic_err(format!(
@@ -397,13 +454,16 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 })?;
 
                 let pool_id = res.pool_id.to_string();
-                let spender = SPENDER.load(deps.storage)?;
-                SPENDER.remove(deps.storage);
+                let spender_and_params = SPENDER_AND_PARAMS.load(deps.storage)?;
+                SPENDER_AND_PARAMS.remove(deps.storage);
 
                 Ok(Response::default().add_attributes(vec![
                     attr("action", "concentrated_pool_created"),
                     attr("andr_osmosis_pool", pool_id.clone()),
-                    attr(format!("andr_{}_sender", pool_id), spender),
+                    attr(
+                        format!("andr_{}_sender", pool_id),
+                        spender_and_params.spender.clone(),
+                    ),
                 ]))
             } else {
                 Err(ContractError::Std(StdError::generic_err(format!(
@@ -422,13 +482,16 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 })?;
 
                 let pool_id = res.pool_id.to_string();
-                let spender = SPENDER.load(deps.storage)?;
-                SPENDER.remove(deps.storage);
+                let spender_and_params = SPENDER_AND_PARAMS.load(deps.storage)?;
+                SPENDER_AND_PARAMS.remove(deps.storage);
 
                 Ok(Response::default().add_attributes(vec![
                     attr("action", "cosmwasm_pool_created"),
                     attr("andr_osmosis_pool", pool_id.clone()),
-                    attr(format!("andr_{}_sender", pool_id), spender),
+                    attr(
+                        format!("andr_{}_sender", pool_id),
+                        spender_and_params.spender.clone(),
+                    ),
                 ]))
             } else {
                 Err(ContractError::Std(StdError::generic_err(format!(

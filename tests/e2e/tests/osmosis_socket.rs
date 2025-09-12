@@ -13,7 +13,7 @@ use cw_orch::prelude::*;
 use cw_orch_daemon::{Daemon, DaemonBase, TxSender, Wallet};
 use e2e::constants::{OSMO_5, RECIPIENT_MNEMONIC_1, RECIPIENT_MNEMONIC_2};
 
-use andromeda_socket_osmosis::SocketOsmosisContract;
+use andromeda_osmosis_socket::OsmosisSocketContract;
 
 use rstest::{fixture, rstest};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -32,8 +32,8 @@ fn setup(
     #[default("osmo17gxc6ec2cz2h6662tt8wajqaq57kwvdlzl63ceq9keeqm470ywyqrp9qux")]
     kernel_address: String,
 ) -> TestCase {
-    let socket_osmosis_type = "socket-osmosis@0.1.2-b.1";
-    let socket_osmosis_component_name = "socket-osmosis";
+    let osmosis_socket_type = "osmosis-socket@0.1.2-b.1";
+    let osmosis_socket_component_name = "osmosis-socket";
     let app_name = format!(
         "socket osmosis with recipient {}",
         SystemTime::now()
@@ -50,16 +50,16 @@ fn setup(
     app_contract.set_code_id(app_code_id);
 
     // Prepare app components
-    let socket_osmosis_init_msg = InstantiateMsg {
+    let osmosis_socket_init_msg = InstantiateMsg {
         kernel_address: kernel_address.to_string(),
         owner: None,
         swap_router: None,
     };
 
-    let socket_osmosis_component = AppComponent::new(
-        socket_osmosis_component_name,
-        socket_osmosis_type,
-        to_json_binary(&socket_osmosis_init_msg).unwrap(),
+    let osmosis_socket_component = AppComponent::new(
+        osmosis_socket_component_name,
+        osmosis_socket_type,
+        to_json_binary(&osmosis_socket_init_msg).unwrap(),
     );
 
     let recipient_1_daemon = daemon
@@ -96,7 +96,7 @@ fn setup(
         to_json_binary(&splitter_init_msg).unwrap(),
     );
 
-    let app_components = vec![splitter_component.clone(), socket_osmosis_component.clone()];
+    let app_components = vec![splitter_component.clone(), osmosis_socket_component.clone()];
 
     app_contract
         .instantiate(
@@ -127,16 +127,16 @@ fn test_onchain_native(setup: TestCase) {
     } = setup;
     let app_name_parsed = app_name.replace(' ', "_");
 
-    let socket_osmosis_addr: String = app_contract.get_address("socket-osmosis");
+    let osmosis_socket_addr: String = app_contract.get_address("osmosis-socket");
 
-    let socket_osmosis_contract = SocketOsmosisContract::new(daemon.clone());
-    socket_osmosis_contract.set_address(&Addr::unchecked(socket_osmosis_addr));
+    let osmosis_socket_contract = OsmosisSocketContract::new(daemon.clone());
+    osmosis_socket_contract.set_address(&Addr::unchecked(osmosis_socket_addr));
 
     // execute swap operation
     let slippage = Slippage::MinOutputAmount(Uint128::one());
     let atom_denom =
         "ibc/A8C2D23A1E6F95DA4E48BA349667E322BD7A6C996D8A4AAE8BA72E190F3D1477".to_string();
-    let _res = socket_osmosis_contract.get_route("uosmo", atom_denom.clone());
+    let _res = osmosis_socket_contract.get_route("uosmo", atom_denom.clone());
     let forward_msg =
         to_json_binary(&andromeda_finance::splitter::ExecuteMsg::Send { config: None }).unwrap();
     let forward_addr = Recipient::new(
@@ -149,7 +149,7 @@ fn test_onchain_native(setup: TestCase) {
         Some(forward_msg),
     );
 
-    socket_osmosis_contract
+    osmosis_socket_contract
         .swap_and_forward(
             slippage,
             atom_denom.clone(),

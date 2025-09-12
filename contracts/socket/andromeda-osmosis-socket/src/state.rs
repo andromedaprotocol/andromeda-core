@@ -1,3 +1,5 @@
+use andromeda_socket::osmosis::Pool;
+use andromeda_socket::osmosis::{PoolIdAndParams, SpenderAndParams};
 use andromeda_std::amp::{messages::AMPCtx, AndrAddr, Recipient};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
@@ -25,7 +27,8 @@ pub const SWAP_ROUTER: Item<AndrAddr> = Item::new("swap_router");
 
 pub const PREV_BALANCE: Item<Uint128> = Item::new("prev_balance");
 
-pub const SPENDER: Item<String> = Item::new("spender");
+// Spender's address and the pool's parameters
+pub const SPENDER_AND_PARAMS: Item<SpenderAndParams> = Item::new("spender_and_params");
 
 #[cw_serde]
 pub struct WithdrawState {
@@ -36,5 +39,11 @@ pub struct WithdrawState {
 // Store withdrawal state for reply handling
 pub const WITHDRAW_STATE: Item<WithdrawState> = Item::new("withdraw_state");
 
-// pool creator to pool id (keeping for backward compatibility)
-pub const WITHDRAW: Map<String, String> = Map::new("withdraw");
+// pool creator to pool id and the pool's parameters (keeping for backward compatibility)
+pub const WITHDRAW: Map<String, PoolIdAndParams> = Map::new("withdraw");
+
+// pool creator to pool id and the pool's parameters
+pub const POOLS_CREATED: Map<String, Vec<PoolIdAndParams>> = Map::new("pools_created");
+
+// Pool id to pool info
+pub const POOL_INFO: Map<String, Pool> = Map::new("pool_info");
