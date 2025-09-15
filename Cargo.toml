@@ -71,7 +71,7 @@ test-case = { version = "3.3.1" }
 cw-orch = "0.27.0"
 cw-orch-daemon = "0.29.1"
 jsonschema-valid = { version = "0.5.2" }
-serde_json = { version = "1.0.143" }
+serde_json = { version = "1.0.145" }
 rstest = "0.26.1"
 bech32 = "0.9.1"
 ripemd = "0.1"
