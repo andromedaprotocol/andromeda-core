@@ -162,7 +162,7 @@ pub enum QueryMsg {
     KeyAddress { key: String },
     #[returns(VerifyAddressResponse)]
     VerifyAddress { address: String },
-    #[returns(Option<ChannelInfoResponse>)]
+    #[returns(ChannelInfoResponse)]
     ChannelInfo { chain: String },
     #[returns(Option<String>)]
     ChainNameByChannel { channel: String },
@@ -182,31 +182,11 @@ pub enum QueryMsg {
     PendingPackets { channel_id: Option<String> },
     #[returns(EnvResponse)]
     GetEnv { variable: String },
-    #[returns(ListAllChainsResponse)]
-    ListAllChains {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-    #[returns(ListAllChannelsResponse)]
-    ListAllChannels {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
     #[returns(ListChainsWithChannelsResponse)]
     ListChainsWithChannels {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-}
-
-#[cw_serde]
-pub struct ListAllChainsResponse {
-    pub chains: Vec<String>,
-}
-
-#[cw_serde]
-pub struct ListAllChannelsResponse {
-    pub channels: Vec<String>,
 }
 
 #[cw_serde]

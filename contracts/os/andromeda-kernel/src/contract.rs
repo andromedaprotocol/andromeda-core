@@ -169,14 +169,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::ChainNameByChannel { channel } => {
             encode_binary(&query::chain_name_by_channel(deps, channel)?)
         }
-        QueryMsg::ListAllChains { start_after, limit } => encode_binary(&query::list_all_chains(
-            deps,
-            start_after.as_deref(),
-            limit,
-        )?),
-        QueryMsg::ListAllChannels { start_after, limit } => encode_binary(
-            &query::list_all_channels(deps, start_after.as_deref(), limit)?,
-        ),
         QueryMsg::ListChainsWithChannels { start_after, limit } => encode_binary(
             &query::list_chains_with_channels(deps, start_after.as_deref(), limit)?,
         ),
