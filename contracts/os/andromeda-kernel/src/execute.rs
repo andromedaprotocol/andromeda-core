@@ -117,14 +117,25 @@ pub fn handle_local(
     let sub_msg = if config.direct || ado_type.is_none() {
         amp_message.generate_sub_msg_direct(recipient_addr, ReplyId::AMPMsg.repr())
     } else {
-        let origin = ctx.map_or(info.sender.to_string(), |ctx| ctx.get_origin());
+        let origin = ctx
+            .clone()
+            .map_or(info.sender.to_string(), |ctx| ctx.get_origin());
         let previous_sender = info.sender.to_string();
-
-        AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]).to_sub_msg(
-            recipient_addr,
-            Some(funds.clone()),
-            ReplyId::AMPMsg.repr(),
-        )?
+        println!("origin: {origin}");
+        println!("prev sender: {previous_sender}");
+        if let Some(ctx) = ctx {
+            AMPPkt::new_with_ctx(ctx, vec![amp_message.clone()]).to_sub_msg(
+                recipient_addr,
+                Some(funds.clone()),
+                ReplyId::AMPMsg.repr(),
+            )?
+        } else {
+            AMPPkt::new(origin, previous_sender, vec![amp_message.clone()]).to_sub_msg(
+                recipient_addr,
+                Some(funds.clone()),
+                ReplyId::AMPMsg.repr(),
+            )?
+        }
     };
 
     Ok(Response::default()
