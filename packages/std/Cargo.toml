@@ -29,7 +29,7 @@ cw721-base = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw-asset = { workspace = true }
-thiserror = { version = "2.0.16" }
+thiserror = { version = "2.0.17" }
 lazy_static = "1"
 hex = "0.4"
 regex = { version = "1.11.2", default-features = false }
