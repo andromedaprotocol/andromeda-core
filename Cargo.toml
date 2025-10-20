@@ -81,5 +81,5 @@ thiserror = { version = "2.0.16" }
 cw-ownable = "2.1.0"
 
 astroport = { git = "https://github.com/astroport-fi/astroport-core" } 
-cosmrs = { version = "0.19.0", features = ["cosmwasm"]}
+cosmrs = { version = "0.22.0", features = ["cosmwasm"]}
 sha2 = "0.10.9"
