@@ -40,7 +40,7 @@ jobs:
       - name: Build Deploy Script
         run: cargo build -p andromeda-deploy --release
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: deploy
           path: ./target/release/andromeda-deploy
@@ -78,14 +78,14 @@ jobs:
           chmod +x ./andromeda-deploy
           ./andromeda-deploy
       - name: Upload Contract Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: contracts
           path: ./artifacts/
           if-no-files-found: error
           retention-days: 1
       - name: Upload Schema Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: temp-schemas
           path: ./schemas/
