@@ -533,7 +533,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
- "cw2 2.0.0",
+ "cw2 3.0.0",
  "cw3",
 ]
 
@@ -765,7 +765,7 @@ dependencies = [
  "cw-orch-daemon 0.24.6",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
- "cw2 2.0.0",
+ "cw2 3.0.0",
  "cw20 2.0.0",
  "osmosis-std",
  "schemars 0.8.22",
@@ -869,7 +869,7 @@ dependencies = [
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
- "cw2 2.0.0",
+ "cw2 3.0.0",
  "serde-cw-value",
  "simple-shunting",
 ]
@@ -905,7 +905,7 @@ dependencies = [
  "cw-orch-daemon 0.29.2",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
- "cw2 2.0.0",
+ "cw2 3.0.0",
  "cw20 2.0.0",
  "schemars 0.8.22",
  "serde",
@@ -926,7 +926,7 @@ dependencies = [
  "cw-orch-daemon 0.24.6",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
- "cw2 2.0.0",
+ "cw2 3.0.0",
  "cw20 1.1.2",
  "osmosis-std",
  "schemars 0.8.22",
@@ -964,7 +964,7 @@ dependencies = [
  "cw-orch",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
- "cw2 2.0.0",
+ "cw2 3.0.0",
  "cw20 2.0.0",
  "cw20-base",
  "cw721",
@@ -1094,7 +1094,7 @@ dependencies = [
  "cw-orch",
  "cw-orch-daemon 0.29.2",
  "cw-storage-plus 2.0.0",
- "cw2 2.0.0",
+ "cw2 3.0.0",
  "enum-repr",
  "serde",
 ]
@@ -3012,6 +3012,21 @@ dependencies = [
  "semver",
  "serde",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "cw2"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50582114ab739724c25a27cea1785351f2b5fea7968214302e0023ee2c0e8b39"
+dependencies = [
+ "cosmwasm-schema 3.0.1",
+ "cosmwasm-std 3.0.1",
+ "cw-storage-plus 3.0.0",
+ "schemars 0.8.22",
+ "semver",
+ "serde",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
