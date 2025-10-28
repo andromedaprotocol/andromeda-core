@@ -4,12 +4,14 @@ use andromeda_std::{
     os::{
         aos_querier::AOSQuerier,
         kernel::{
-            ChainNameResponse, ChannelInfoResponse, EnvResponse, PacketInfoAndSequence,
-            PendingPacketResponse, RecoveriesResponse, VerifyAddressResponse,
+            ChainChannelInfo, ChainNameResponse, ChannelInfoResponse, EnvResponse,
+            ListChainsWithChannelsResponse, PacketInfoAndSequence, PendingPacketResponse,
+            RecoveriesResponse, VerifyAddressResponse,
         },
     },
 };
-use cosmwasm_std::{Addr, Deps, Order};
+use cosmwasm_std::{Addr, Deps, Order, StdError};
+use cw_storage_plus::Bound;
 
 use crate::state::{
     CHAIN_TO_CHANNEL, CHANNEL_TO_CHAIN, CHANNEL_TO_EXECUTE_MSG, CURR_CHAIN, ENV_VARIABLES,
@@ -38,22 +40,19 @@ pub fn verify_address(deps: Deps, address: String) -> Result<VerifyAddressRespon
     }
 }
 
-pub fn channel_info(
-    deps: Deps,
-    chain: String,
-) -> Result<Option<ChannelInfoResponse>, ContractError> {
-    let info = CHAIN_TO_CHANNEL.may_load(deps.storage, &chain)?;
-    let resp = if let Some(info) = info {
-        Some(ChannelInfoResponse {
-            ics20: info.ics20_channel_id,
-            direct: info.direct_channel_id,
-            kernel_address: info.kernel_address,
-            supported_modules: info.supported_modules,
-        })
-    } else {
-        None
-    };
-    Ok(resp)
+pub fn channel_info(deps: Deps, chain: String) -> Result<ChannelInfoResponse, ContractError> {
+    let info = CHAIN_TO_CHANNEL
+        .may_load(deps.storage, &chain)?
+        .ok_or(ContractError::Std(StdError::generic_err(format!(
+            "Chain {} not found",
+            chain
+        ))))?;
+    Ok(ChannelInfoResponse {
+        ics20: info.ics20_channel_id,
+        direct: info.direct_channel_id,
+        kernel_address: info.kernel_address,
+        supported_modules: info.supported_modules,
+    })
 }
 
 pub fn chain_name_by_channel(deps: Deps, channel: String) -> Result<Option<String>, ContractError> {
@@ -106,4 +105,28 @@ pub fn get_env(deps: Deps, variable: String) -> Result<EnvResponse, ContractErro
     Ok(EnvResponse {
         value: ENV_VARIABLES.may_load(deps.storage, &variable.to_ascii_uppercase())?,
     })
+}
+
+pub fn list_chains_with_channels(
+    deps: Deps,
+    start_after: Option<&str>,
+    limit: Option<u32>,
+) -> Result<ListChainsWithChannelsResponse, ContractError> {
+    let limit = limit.unwrap_or(50).min(100) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    let chain_channel_info: Vec<ChainChannelInfo> = CHAIN_TO_CHANNEL
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .filter_map(|item| item.ok())
+        .map(|(chain, channel_info)| ChainChannelInfo {
+            chain,
+            ics20_channel_id: channel_info.ics20_channel_id,
+            direct_channel_id: channel_info.direct_channel_id,
+            kernel_address: channel_info.kernel_address,
+            supported_modules: channel_info.supported_modules,
+        })
+        .collect();
+
+    Ok(ListChainsWithChannelsResponse { chain_channel_info })
 }
