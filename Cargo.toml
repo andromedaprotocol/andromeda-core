@@ -50,7 +50,7 @@ andromeda-testing-e2e = { path = "./packages/andromeda-testing-e2e", version = "
 andromeda-socket = { path = "./packages/andromeda-socket", version = "0.1.0" }
 andromeda-cw-json = { path = "./packages/andromeda-cw-json", version = "0.1.1" }
 
-strum_macros = "0.24.3"
+strum_macros = "0.27.2"
 cosmwasm-std = "^2.2"
 cw-utils = "2.0.0"
 cw-storage-plus = "2.0.0"
