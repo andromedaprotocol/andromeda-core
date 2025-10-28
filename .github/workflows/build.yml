@@ -44,7 +44,7 @@ jobs:
           chmod +x "${GITHUB_WORKSPACE}/.github/file-size.sh"
           "${GITHUB_WORKSPACE}/.github/file-size.sh"
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: contracts
           path: ./artifacts/
@@ -62,7 +62,7 @@ jobs:
           chmod +x "${GITHUB_WORKSPACE}/scripts/build_schema.sh"
           make schemas
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: schema
           path: ./schemas/
