@@ -2521,22 +2521,20 @@ dependencies = [
 
 [[package]]
 name = "cw-multi-test"
-version = "2.5.1"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "683c799ba3a3d01933be5ef693c10cf815855967eb71c3dd730f2987ebb9316e"
+checksum = "cf9875e88f5b67dbaf729da99a7de4acd593d18d6d8ee83c8006e09dd865745e"
 dependencies = [
- "anyhow",
  "bech32 0.11.0",
- "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
- "cw-storage-plus 2.0.0",
- "cw-utils 2.0.0",
+ "cosmwasm-schema 3.0.1",
+ "cosmwasm-std 3.0.1",
+ "cw-storage-plus 3.0.0",
+ "cw-utils 3.0.0",
  "itertools 0.14.0",
  "prost 0.14.1",
  "schemars 0.8.22",
  "serde",
  "sha2 0.10.9",
- "thiserror 2.0.17",
 ]
 
 [[package]]
