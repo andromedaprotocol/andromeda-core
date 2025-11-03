@@ -372,7 +372,7 @@ dependencies = [
  "andromeda-math",
  "andromeda-std",
  "andromeda-testing",
- "chrono 0.4.41",
+ "chrono",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
  "cw-multi-test",
@@ -423,7 +423,7 @@ dependencies = [
  "andromeda-vesting",
  "andromeda-vfs",
  "andromeda-weighted-distribution-splitter",
- "chrono 0.4.41",
+ "chrono",
  "cosmwasm-std 2.2.2",
  "cw-multi-test",
  "cw-orch",
@@ -1087,7 +1087,7 @@ dependencies = [
  "andromeda-finance",
  "andromeda-std",
  "andromeda-testing",
- "chrono 0.3.0",
+ "chrono",
  "cosmwasm-schema 2.2.2",
  "cosmwasm-std 2.2.2",
  "cw-multi-test",
@@ -1912,16 +1912,6 @@ checksum = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268"
 
 [[package]]
 name = "chrono"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "158b0bd7d75cbb6bf9c25967a48a2e9f77da95876b858eadfabaa99cd069de6e"
-dependencies = [
- "num 0.1.43",
- "time 0.1.45",
-]
-
-[[package]]
-name = "chrono"
 version = "0.4.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c469d952047f47f91b68d1cba3f10d63c11d73e4636f24f08daf0278abf01c4d"
@@ -2622,7 +2612,7 @@ dependencies = [
  "base16",
  "base64 0.22.1",
  "bitcoin 0.30.2",
- "chrono 0.4.41",
+ "chrono",
  "cosmrs 0.15.0",
  "cosmwasm-std 1.5.11",
  "cw-orch-core 1.2.4",
@@ -2667,7 +2657,7 @@ dependencies = [
  "bech32 0.11.0",
  "bip39",
  "bitcoin 0.32.7",
- "chrono 0.4.41",
+ "chrono",
  "cosmrs 0.19.0",
  "cosmwasm-std 2.2.2",
  "cw-orch-core 2.1.4",
@@ -4249,7 +4239,7 @@ dependencies = [
  "tendermint 0.40.4",
  "tendermint-light-client-verifier",
  "tendermint-proto 0.40.4",
- "time 0.3.41",
+ "time",
  "tracing",
  "uint",
 ]
@@ -4277,7 +4267,7 @@ dependencies = [
  "tendermint 0.40.4",
  "tendermint-light-client-verifier",
  "tendermint-proto 0.40.4",
- "time 0.3.41",
+ "time",
  "tracing",
  "uint",
 ]
@@ -4761,17 +4751,6 @@ dependencies = [
 
 [[package]]
 name = "num"
-version = "0.1.43"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9bdb1fb680e609c2e0930c1866cafdd0be7e7c7a1ecf92aec71ed8d99d3e133"
-dependencies = [
- "num-integer",
- "num-iter",
- "num-traits",
-]
-
-[[package]]
-name = "num"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
@@ -4954,7 +4933,7 @@ version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c95af6df6b52986feccf7ce04765f6fb00d85a9ad6ad35303d3437c9754816e"
 dependencies = [
- "chrono 0.4.41",
+ "chrono",
  "cosmwasm-std 2.2.2",
  "osmosis-std-derive",
  "prost 0.13.5",
@@ -6224,7 +6203,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65881c9270d6157f30a09233305da51bed97eef9192d0ea21e57b1c8f05c3620"
 dependencies = [
- "num 0.4.3",
+ "num",
 ]
 
 [[package]]
@@ -6438,7 +6417,7 @@ dependencies = [
  "subtle",
  "subtle-encoding",
  "tendermint-proto 0.34.1",
- "time 0.3.41",
+ "time",
  "zeroize",
 ]
 
@@ -6468,7 +6447,7 @@ dependencies = [
  "subtle",
  "subtle-encoding",
  "tendermint-proto 0.39.1",
- "time 0.3.41",
+ "time",
  "zeroize",
 ]
 
@@ -6496,7 +6475,7 @@ dependencies = [
  "subtle",
  "subtle-encoding",
  "tendermint-proto 0.40.4",
- "time 0.3.41",
+ "time",
  "zeroize",
 ]
 
@@ -6538,7 +6517,7 @@ dependencies = [
  "flex-error",
  "serde",
  "tendermint 0.40.4",
- "time 0.3.41",
+ "time",
 ]
 
 [[package]]
@@ -6556,7 +6535,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "subtle-encoding",
- "time 0.3.41",
+ "time",
 ]
 
 [[package]]
@@ -6574,7 +6553,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "subtle-encoding",
- "time 0.3.41",
+ "time",
 ]
 
 [[package]]
@@ -6589,7 +6568,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "subtle-encoding",
- "time 0.3.41",
+ "time",
 ]
 
 [[package]]
@@ -6604,7 +6583,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "subtle-encoding",
- "time 0.3.41",
+ "time",
 ]
 
 [[package]]
@@ -6632,7 +6611,7 @@ dependencies = [
  "tendermint-config 0.34.1",
  "tendermint-proto 0.34.1",
  "thiserror 1.0.69",
- "time 0.3.41",
+ "time",
  "tokio",
  "tracing",
  "url",
@@ -6665,7 +6644,7 @@ dependencies = [
  "tendermint-config 0.39.1",
  "tendermint-proto 0.39.1",
  "thiserror 1.0.69",
- "time 0.3.41",
+ "time",
  "tokio",
  "tracing",
  "url",
@@ -6804,17 +6783,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.104",
-]
-
-[[package]]
-name = "time"
-version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi",
 ]
 
 [[package]]
@@ -7356,12 +7324,6 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
-
-[[package]]
-name = "wasi"
 version = "0.11.1+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
@@ -7457,22 +7419,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "winapi"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
-dependencies = [
- "winapi-i686-pc-windows-gnu",
- "winapi-x86_64-pc-windows-gnu",
-]
-
-[[package]]
-name = "winapi-i686-pc-windows-gnu"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
-
-[[package]]
 name = "winapi-util"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7480,12 +7426,6 @@ checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
  "windows-sys 0.59.0",
 ]
-
-[[package]]
-name = "winapi-x86_64-pc-windows-gnu"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows-core"
