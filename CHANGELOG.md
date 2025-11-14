@@ -61,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix: Kernel Send Msg vulnerability  [(#915)](https://github.com/andromedaprotocol/andromeda-core/pull/915)
 - fix: Duplicate Redeem in Exchange  [(#919)](https://github.com/andromedaprotocol/andromeda-core/pull/919)
 - fix: LP Denom Extraction in Osmosis Socket  [(#951)](https://github.com/andromedaprotocol/andromeda-core/pull/951)
+- fix: Add expiration to timelock threshold  [(#1009)](https://github.com/andromedaprotocol/andromeda-core/pull/1009)
 
 
 ## Release 4

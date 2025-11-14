@@ -12,8 +12,12 @@ use cosmwasm_std::{ensure, Api, BlockInfo, Coin};
 pub enum EscrowConditionInput {
     /// Requires a given time
     Expiration(Expiry),
-    /// Requires a minimum amount of funds to be deposited.
-    MinimumFunds(Vec<Coin>),
+    /// Requires a minimum amount of funds to be deposited before expiration.
+    /// If expiration is reached before minimum funds are met, funds are returned to senders.
+    MinimumFunds {
+        funds: Vec<Coin>,
+        expiration: Expiry,
+    },
 }
 
 impl EscrowConditionInput {
@@ -24,7 +28,12 @@ impl EscrowConditionInput {
             EscrowConditionInput::Expiration(expiry) => {
                 EscrowCondition::Expiration(expiry.get_time(block))
             }
-            EscrowConditionInput::MinimumFunds(funds) => EscrowCondition::MinimumFunds(funds),
+            EscrowConditionInput::MinimumFunds { funds, expiration } => {
+                EscrowCondition::MinimumFunds {
+                    funds,
+                    expiration: expiration.get_time(block),
+                }
+            }
         }
     }
 }
@@ -34,8 +43,12 @@ impl EscrowConditionInput {
 pub enum EscrowCondition {
     /// Requires a given time
     Expiration(MillisecondsExpiration),
-    /// Requires a minimum amount of funds to be deposited.
-    MinimumFunds(Vec<Coin>),
+    /// Requires a minimum amount of funds to be deposited before expiration.
+    /// If expiration is reached before minimum funds are met, funds are returned to senders.
+    MinimumFunds {
+        funds: Vec<Coin>,
+        expiration: MillisecondsExpiration,
+    },
 }
 
 #[cw_serde]
@@ -69,7 +82,11 @@ impl Escrow {
             ContractError::InvalidAddress {}
         );
 
-        if let Some(EscrowCondition::MinimumFunds(funds)) = &self.condition {
+        if let Some(EscrowCondition::MinimumFunds {
+            funds,
+            expiration: _,
+        }) = &self.condition
+        {
             ensure!(
                 !funds.is_empty(),
                 ContractError::InvalidFunds {
@@ -84,10 +101,7 @@ impl Escrow {
                     ContractError::DuplicateCoinDenoms {}
                 );
             }
-            // Explicitly stop here as it is alright if the Escrow is unlocked in this case, ie,
-            // the intially deposited funds are greater or equal to the minimum imposed by this
-            // condition.
-            return Ok(());
+            // Continue to expiration validation below for MinimumFunds
         }
 
         ensure!(
@@ -103,7 +117,12 @@ impl Escrow {
             None => Ok(false),
             Some(condition) => match condition {
                 EscrowCondition::Expiration(expiration) => Ok(!expiration.is_expired(block)),
-                EscrowCondition::MinimumFunds(funds) => {
+                EscrowCondition::MinimumFunds { funds, expiration } => {
+                    // If expiration is reached, funds should be unlocked (returned to senders)
+                    if expiration.is_expired(block) {
+                        return Ok(false);
+                    }
+                    // Otherwise, check if minimum funds are met
                     Ok(!self.min_funds_deposited(funds.clone()))
                 }
             },
@@ -284,10 +303,10 @@ mod tests {
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
-            condition: Some(EscrowCondition::MinimumFunds(vec![
-                coin(100, "uusd"),
-                coin(100, "uluna"),
-            ])),
+            condition: Some(EscrowCondition::MinimumFunds {
+                funds: vec![coin(100, "uusd"), coin(100, "uluna")],
+                expiration: MillisecondsExpiration::from_seconds(5000),
+            }),
             recipient_addr: OWNER.to_string(),
         };
         let block = BlockInfo {
@@ -301,7 +320,10 @@ mod tests {
         let valid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(200, "uluna")],
-            condition: Some(EscrowCondition::MinimumFunds(vec![coin(100, "uluna")])),
+            condition: Some(EscrowCondition::MinimumFunds {
+                funds: vec![coin(100, "uluna")],
+                expiration: MillisecondsExpiration::from_seconds(5000),
+            }),
             recipient_addr: OWNER.to_string(),
         };
         valid_escrow.validate(deps.as_ref().api, &block).unwrap();
@@ -310,7 +332,10 @@ mod tests {
         let invalid_escrow = Escrow {
             recipient: recipient.clone(),
             coins: vec![coin(100, "uluna")],
-            condition: Some(EscrowCondition::MinimumFunds(vec![])),
+            condition: Some(EscrowCondition::MinimumFunds {
+                funds: vec![],
+                expiration: MillisecondsExpiration::from_seconds(5000),
+            }),
             recipient_addr: OWNER.to_string(),
         };
         assert_eq!(
@@ -326,11 +351,10 @@ mod tests {
         let invalid_escrow = Escrow {
             recipient,
             coins: vec![coin(100, "uluna")],
-            condition: Some(EscrowCondition::MinimumFunds(vec![
-                coin(100, "uusd"),
-                coin(100, "uluna"),
-                coin(200, "uusd"),
-            ])),
+            condition: Some(EscrowCondition::MinimumFunds {
+                funds: vec![coin(100, "uusd"), coin(100, "uluna"), coin(200, "uusd")],
+                expiration: MillisecondsExpiration::from_seconds(5000),
+            }),
             recipient_addr: OWNER.to_string(),
         };
         assert_eq!(

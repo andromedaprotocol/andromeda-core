@@ -276,10 +276,12 @@ fn test_execute_release_funds_min_funds_condition() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowConditionInput::MinimumFunds(vec![
-            coin(200, "uusd"),
-            coin(100, "uluna"),
-        ])),
+        condition: Some(EscrowConditionInput::MinimumFunds {
+            funds: vec![coin(200, "uusd"), coin(100, "uluna")],
+            expiration: Expiry::AtTime(Milliseconds::from_seconds(
+                env.block.time.seconds() + 86400, // 1 day expiration
+            )),
+        }),
         recipient: None,
     };
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -422,10 +424,12 @@ fn test_execute_release_specific_funds_min_funds_condition() {
 
     let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
     let msg = ExecuteMsg::HoldFunds {
-        condition: Some(EscrowConditionInput::MinimumFunds(vec![
-            coin(200, "uusd"),
-            coin(100, "uluna"),
-        ])),
+        condition: Some(EscrowConditionInput::MinimumFunds {
+            funds: vec![coin(200, "uusd"), coin(100, "uluna")],
+            expiration: Expiry::AtTime(Milliseconds::from_seconds(
+                env.block.time.seconds() + 86400, // 1 day expiration
+            )),
+        }),
         recipient: None,
     };
     let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -472,29 +476,78 @@ fn test_execute_release_specific_funds_min_funds_condition() {
     );
 }
 
-// #[test]
-// fn test_execute_receive() {
-//     let mut deps = mock_dependencies_custom(&[]);
-//     let env = mock_env();
-//     let owner = "owner";
-//     let funds = vec![Coin::new(1000, "uusd")];
-//     let info = message_info(&Addr::unchecked(owner), &funds);
+#[test]
+fn test_minimum_funds_now_has_mandatory_expiration() {
+    let mut deps = mock_dependencies_custom(&[]);
+    init(&mut deps);
+    let mut env = mock_env();
 
-//     let msg_struct = ExecuteMsg::HoldFunds {
-//         condition: None,
-//         recipient: None,
-//     };
-//     let msg_string = encode_binary(&msg_struct).unwrap();
+    // User deposits 100 uusd with minimum threshold that includes mandatory expiration
+    let info = message_info(&Addr::unchecked(OWNER), &[coin(100, "uusd")]);
+    let msg = ExecuteMsg::HoldFunds {
+        condition: Some(EscrowConditionInput::MinimumFunds {
+            funds: vec![
+                coin(1000, "uusd"), // Requires 1000 uusd total
+                coin(500, "uluna"), // Requires 500 uluna total
+            ],
+            expiration: Expiry::AtTime(Milliseconds::from_seconds(
+                env.block.time.seconds() + 86400, // 1 day expiration
+            )),
+        }),
+        recipient: None,
+    };
+    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-//     let msg = ExecuteMsg::Receive(Some(msg_string));
+    // Verify funds are locked initially (expected behavior)
+    let msg = ExecuteMsg::ReleaseFunds {
+        recipient_addr: None,
+        start_after: None,
+        limit: None,
+    };
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
 
-//     let received = execute(deps.as_mut(), env, info.clone(), msg).unwrap();
-//     let expected = Response::default().add_attributes(vec![
-//         attr("action", "hold_funds"),
-//         attr("sender", info.sender.to_string()),
-//         attr("recipient", "Addr(\"owner\")"),
-//         attr("condition", "None"),
-//     ]);
+    // SOLUTION: Now MinimumFunds has mandatory expiration - no more permanent locking!
 
-//     assert_eq!(expected, received)
-// }
+    // Scenario 1: User tries to add more funds but still can't reach the threshold
+    let info_partial = message_info(&Addr::unchecked(OWNER), &[coin(400, "uusd")]);
+    let msg_partial = ExecuteMsg::HoldFunds {
+        condition: None, // No new condition, keeps original MinimumFunds condition
+        recipient: None,
+    };
+    let _res = execute(deps.as_mut(), env.clone(), info_partial, msg_partial).unwrap();
+
+    // Still locked because we only have 500 uusd total, need 1000 uusd + 500 uluna
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+    assert_eq!(ContractError::FundsAreLocked {}, res.unwrap_err());
+
+    // SOLUTION: Fast forward past expiration - funds are no longer permanently locked!
+    env.block.time = Timestamp::from_seconds(env.block.time.seconds() + 86401);
+
+    // Now funds can be released back to the original sender
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // Funds are returned to OWNER (original sender) since threshold was never met
+    let bank_msg = BankMsg::Send {
+        to_address: OWNER.into(),
+        amount: vec![coin(500, "uusd")], // 100 + 400 returned to sender
+    };
+    let expected_res: Response = Response::new()
+        .add_message(bank_msg)
+        .add_attribute("action", "release_funds")
+        .add_attribute("recipient_addr", OWNER);
+    assert_response(
+        &res,
+        &expected_res,
+        "minimum_funds_with_expiration_recovery",
+    );
+
+    // Verify the funds are no longer in escrow
+    let query_msg = QueryMsg::GetLockedFunds {
+        owner: OWNER.to_string(),
+        recipient: OWNER.to_string(),
+    };
+    let res = query(deps.as_ref(), env, query_msg).unwrap();
+    let val: GetLockedFundsResponse = from_json(res).unwrap();
+    assert!(val.funds.is_none()); // No funds locked anymore - problem solved!
+}
