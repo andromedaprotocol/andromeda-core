@@ -117,31 +117,28 @@ fn determine_release_recipient(
     block: &cosmwasm_std::BlockInfo,
     key: &[u8],
 ) -> Result<(Recipient, String), ContractError> {
-    match &escrow.condition {
-        Some(EscrowCondition::MinimumFunds { expiration, .. }) => {
-            if expiration.is_expired(block) {
-                // Expiration reached before minimum funds - return to original sender
-                // The key format is [owner.as_bytes(), recipient.as_bytes()].concat()
-                // We need to extract the owner part. Since we know the recipient address,
-                // we can find where it starts in the key.
-                let recipient_bytes = escrow.recipient_addr.as_bytes();
-                if key.len() > recipient_bytes.len() {
-                    let owner_end = key.len() - recipient_bytes.len();
-                    if &key[owner_end..] == recipient_bytes {
-                        let owner_bytes = &key[..owner_end];
-                        if let Ok(owner_str) = std::str::from_utf8(owner_bytes) {
-                            return Ok((
-                                Recipient::from_string(owner_str.to_string()),
-                                "expired_before_minimum".to_string(),
-                            ));
-                        }
+    if let Some(EscrowCondition::MinimumFunds { expiration, .. }) = &escrow.condition {
+        if expiration.is_expired(block) {
+            // Expiration reached before minimum funds - return to original sender
+            // The key format is [owner.as_bytes(), recipient.as_bytes()].concat()
+            // We need to extract the owner part. Since we know the recipient address,
+            // we can find where it starts in the key.
+            let recipient_bytes = escrow.recipient_addr.as_bytes();
+            if key.len() > recipient_bytes.len() {
+                let owner_end = key.len() - recipient_bytes.len();
+                if &key[owner_end..] == recipient_bytes {
+                    let owner_bytes = &key[..owner_end];
+                    if let Ok(owner_str) = std::str::from_utf8(owner_bytes) {
+                        return Ok((
+                            Recipient::from_string(owner_str.to_string()),
+                            "expired_before_minimum".to_string(),
+                        ));
                     }
                 }
-                // Fallback if key parsing fails - return to recipient
-                return Ok((escrow.recipient.clone(), "expired_fallback".to_string()));
             }
+            // Fallback if key parsing fails - return to recipient
+            return Ok((escrow.recipient.clone(), "expired_fallback".to_string()));
         }
-        _ => {}
     }
     // Default case: send to intended recipient
     Ok((escrow.recipient.clone(), "condition_met".to_string()))
