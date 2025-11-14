@@ -16,6 +16,7 @@ use cosmwasm_std::{
 };
 
 use crate::state::{escrows, get_key, get_keys_for_recipient};
+use andromeda_finance::timelock::EscrowCondition;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:andromeda-timelock";
@@ -110,6 +111,42 @@ fn execute_hold_funds(
     ]))
 }
 
+/// Determines who should receive the funds based on the escrow condition and current block state
+fn determine_release_recipient(
+    escrow: &Escrow,
+    block: &cosmwasm_std::BlockInfo,
+    key: &[u8],
+) -> Result<(Recipient, String), ContractError> {
+    match &escrow.condition {
+        Some(EscrowCondition::MinimumFunds { expiration, .. }) => {
+            if expiration.is_expired(block) {
+                // Expiration reached before minimum funds - return to original sender
+                // The key format is [owner.as_bytes(), recipient.as_bytes()].concat()
+                // We need to extract the owner part. Since we know the recipient address,
+                // we can find where it starts in the key.
+                let recipient_bytes = escrow.recipient_addr.as_bytes();
+                if key.len() > recipient_bytes.len() {
+                    let owner_end = key.len() - recipient_bytes.len();
+                    if &key[owner_end..] == recipient_bytes {
+                        let owner_bytes = &key[..owner_end];
+                        if let Ok(owner_str) = std::str::from_utf8(owner_bytes) {
+                            return Ok((
+                                Recipient::from_string(owner_str.to_string()),
+                                "expired_before_minimum".to_string(),
+                            ));
+                        }
+                    }
+                }
+                // Fallback if key parsing fails - return to recipient
+                return Ok((escrow.recipient.clone(), "expired_fallback".to_string()));
+            }
+        }
+        _ => {}
+    }
+    // Default case: send to intended recipient
+    Ok((escrow.recipient.clone(), "condition_met".to_string()))
+}
+
 fn execute_release_funds(
     ctx: ExecuteContext,
     recipient_addr: Option<String>,
@@ -129,9 +166,11 @@ fn execute_release_funds(
     for key in keys.iter() {
         let funds: Escrow = escrows().load(deps.storage, key.clone())?;
         if !funds.is_locked(&env.block)? {
-            let msg = funds
-                .recipient
-                .generate_direct_msg(&deps.as_ref(), funds.coins)?;
+            // Determine who should receive the funds based on the condition
+            let (recipient_for_funds, _release_reason) =
+                determine_release_recipient(&funds, &env.block, key)?;
+
+            let msg = recipient_for_funds.generate_direct_msg(&deps.as_ref(), funds.coins)?;
             msgs.push(msg);
             escrows().remove(deps.storage, key.clone())?;
         }
@@ -155,24 +194,25 @@ fn execute_release_specific_funds(
     } = ctx;
     let recipient = recipient.unwrap_or_else(|| info.sender.to_string());
     let key = get_key(&owner, &recipient);
-    let escrow = escrows().may_load(deps.storage, key.clone())?;
-    match escrow {
-        None => Err(ContractError::NoLockedFunds {}),
-        Some(escrow) => {
-            ensure!(
-                !escrow.is_locked(&env.block)?,
-                ContractError::FundsAreLocked {}
-            );
-            escrows().remove(deps.storage, key)?;
-            let msg = escrow
-                .recipient
-                .generate_direct_msg(&deps.as_ref(), escrow.coins)?;
-            Ok(Response::new().add_submessage(msg).add_attributes(vec![
-                attr("action", "release_funds"),
-                attr("recipient_addr", recipient),
-            ]))
-        }
-    }
+    let escrow = escrows()
+        .load(deps.storage, key.clone())
+        .map_err(|_err| ContractError::NoLockedFunds {})?;
+
+    ensure!(
+        !escrow.is_locked(&env.block)?,
+        ContractError::FundsAreLocked {}
+    );
+    escrows().remove(deps.storage, key.clone())?;
+
+    // Determine who should receive the funds based on the condition
+    let (recipient_for_funds, _release_reason) =
+        determine_release_recipient(&escrow, &env.block, &key)?;
+
+    let msg = recipient_for_funds.generate_direct_msg(&deps.as_ref(), escrow.coins)?;
+    Ok(Response::new().add_submessage(msg).add_attributes(vec![
+        attr("action", "release_funds"),
+        attr("recipient_addr", recipient),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

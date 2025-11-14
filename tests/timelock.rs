@@ -192,7 +192,12 @@ fn test_timelock() {
 
     // Test Case 3: Minimum Funds
 
-    let escrow_condition = EscrowConditionInput::MinimumFunds(vec![coin(1000, "uandr")]);
+    let escrow_condition = EscrowConditionInput::MinimumFunds {
+        funds: vec![coin(1000, "uandr")],
+        expiration: Expiry::AtTime(Milliseconds::from_seconds(
+            router.block_info().time.seconds() + 86400, // 1 day expiration
+        )),
+    };
     timelock
         .execute_hold_funds(
             &mut router,
@@ -218,7 +223,12 @@ fn test_timelock() {
 
     assert_eq!(err, ContractError::FundsAreLocked {});
 
-    let escrow_condition = EscrowConditionInput::MinimumFunds(vec![coin(1000, "uandr")]);
+    let escrow_condition = EscrowConditionInput::MinimumFunds {
+        funds: vec![coin(1000, "uandr")],
+        expiration: Expiry::AtTime(Milliseconds::from_seconds(
+            router.block_info().time.seconds() + 86400, // 1 day expiration
+        )),
+    };
     timelock
         .execute_hold_funds(
             &mut router,
