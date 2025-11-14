@@ -1066,7 +1066,7 @@ dependencies = [
 
 [[package]]
 name = "andromeda-timelock"
-version = "2.1.1-b.7"
+version = "2.1.1-b.8"
 dependencies = [
  "andromeda-app",
  "andromeda-finance",
