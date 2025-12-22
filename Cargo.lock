@@ -36,7 +36,7 @@ dependencies = [
  "anyhow",
  "bech32 0.11.0",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
  "cw20-ics20 2.0.0",
@@ -126,7 +126,7 @@ version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-utils 2.0.0",
  "cw3",
 ]
@@ -140,7 +140,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -153,7 +153,7 @@ version = "1.1.6-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-multi-test",
  "cw-orch",
@@ -168,7 +168,7 @@ version = "1.0.2"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "serde",
@@ -182,7 +182,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -199,7 +199,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -215,7 +215,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -231,7 +231,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -246,7 +246,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -261,7 +261,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -279,7 +279,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -291,7 +291,7 @@ name = "andromeda-cw-json"
 version = "0.1.1"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "serde",
  "serde-cw-value",
  "serde_derive",
@@ -307,7 +307,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -326,7 +326,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-multi-test",
  "cw-orch",
@@ -343,7 +343,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -359,7 +359,7 @@ version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-utils 2.0.0",
  "serde",
 ]
@@ -374,7 +374,7 @@ dependencies = [
  "andromeda-testing",
  "chrono 0.4.41",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -424,7 +424,7 @@ dependencies = [
  "andromeda-vfs",
  "andromeda-weighted-distribution-splitter",
  "chrono 0.4.41",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -446,7 +446,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -459,7 +459,7 @@ version = "1.2.3-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -475,7 +475,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -490,7 +490,7 @@ version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-utils 2.0.0",
@@ -510,7 +510,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -528,7 +528,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -546,7 +546,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -563,7 +563,7 @@ version = "1.0.1"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-controllers 3.0.0",
  "cw-multi-test",
@@ -583,7 +583,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -597,7 +597,7 @@ version = "1.1.3-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -613,7 +613,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.9.1",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -642,7 +642,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-multi-test",
  "cw-orch",
@@ -668,7 +668,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -683,7 +683,7 @@ version = "1.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-utils 2.0.0",
 ]
 
@@ -695,7 +695,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -711,7 +711,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-multi-test",
  "cw-orch",
@@ -728,7 +728,7 @@ version = "2.0.0"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-utils 2.0.0",
  "cw721",
  "serde",
@@ -740,7 +740,7 @@ version = "1.0.1-b.4"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-ownable",
@@ -759,7 +759,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.24.6",
@@ -781,7 +781,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -795,7 +795,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -811,7 +811,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -829,7 +829,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -847,7 +847,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -865,7 +865,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -880,7 +880,7 @@ version = "0.1.2"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
  "cw-utils 2.0.0",
@@ -899,7 +899,7 @@ dependencies = [
  "andromeda-testing",
  "cosmrs 0.19.0",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -920,7 +920,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.24.6",
@@ -943,7 +943,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -958,7 +958,7 @@ version = "1.5.1-b.12"
 dependencies = [
  "andromeda-macros",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-multi-test",
  "cw-orch",
@@ -993,7 +993,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -1015,7 +1015,7 @@ dependencies = [
  "andromeda-vfs",
  "anyhow",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-interchain",
@@ -1038,7 +1038,7 @@ dependencies = [
  "andromeda-vfs",
  "anyhow",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -1057,7 +1057,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -1073,7 +1073,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -1089,7 +1089,7 @@ dependencies = [
  "andromeda-testing",
  "chrono 0.3.0",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
@@ -1108,7 +1108,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-multi-test",
  "cw-orch",
@@ -1122,7 +1122,7 @@ version = "1.2.4-b.3"
 dependencies = [
  "andromeda-std",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -1138,7 +1138,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-storage-plus 2.0.0",
@@ -1704,7 +1704,7 @@ checksum = "43d193de1f7487df1914d3a568b772458861d33f9c54249612cc2893d6915054"
 dependencies = [
  "bitcoin_hashes 0.13.0",
  "rand",
- "rand_core 0.6.4",
+ "rand_core 0.5.1",
  "serde",
  "unicode-normalization",
 ]
@@ -2080,9 +2080,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-core"
-version = "2.2.2"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35b6dc17e7fd89d0a0a58f12ef33f0bbdf09a6a14c3dfb383eae665e5889250e"
+checksum = "63efd882086668c3bad621b5b897a0e058d0b5fae027c984e1a6230bf284ab85"
 
 [[package]]
 name = "cosmwasm-core"
@@ -2105,15 +2105,15 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-crypto"
-version = "2.2.2"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa2f53285517db3e33d825b3e46301efe845135778527e1295154413b2f0469e"
+checksum = "0969e6f569f867725bf89e672058ae336e130c1fcf914def4f7c6c0380b2bc83"
 dependencies = [
  "ark-bls12-381 0.4.0",
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
  "ark-serialize 0.4.2",
- "cosmwasm-core 2.2.2",
+ "cosmwasm-core 2.3.0",
  "curve25519-dalek 4.1.3",
  "digest 0.10.7",
  "ecdsa",
@@ -2163,9 +2163,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-derive"
-version = "2.2.2"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a782b93fae93e57ca8ad3e9e994e784583f5933aeaaa5c80a545c4b437be2047"
+checksum = "d0da0db99715fc86e6a5ad7be9c19d0d9e5a92179862b17cae7406b729a402c2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2280,16 +2280,16 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-std"
-version = "2.2.2"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf82335c14bd94eeb4d3c461b7aa419ecd7ea13c2efe24b97cd972bdb8044e7d"
+checksum = "a7791cf4d35da8f731ae904d5397011cb5c86ea0ef3ac0779b626baeacdb84f2"
 dependencies = [
  "base64 0.22.1",
  "bech32 0.11.0",
  "bnum 0.11.0",
- "cosmwasm-core 2.2.2",
- "cosmwasm-crypto 2.2.2",
- "cosmwasm-derive 2.2.2",
+ "cosmwasm-core 2.3.0",
+ "cosmwasm-crypto 2.3.0",
+ "cosmwasm-derive 2.3.0",
  "derive_more 1.0.0",
  "hex",
  "rand_core 0.6.4",
@@ -2457,7 +2457,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73553ee4dad5b1678977ff603e72c3fdd41518ca2b0bd9b245b21e4c72eafa9e"
 dependencies = [
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
 ]
 
 [[package]]
@@ -2467,7 +2467,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7eaa5ed63f1d767d92c7bada3b883aa6ec90ff09e3f5bf72ff4514dcbeb9c4f2"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-address-like",
  "cw-storage-plus 2.0.0",
  "cw20 2.0.0",
@@ -2496,7 +2496,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50c1804013d21060b994dea28a080f9eab78a3bcb6b617f05e7634b0600bf7b1"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
  "schemars 0.8.22",
@@ -2528,7 +2528,7 @@ dependencies = [
  "anyhow",
  "bech32 0.11.0",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
  "itertools 0.14.0",
@@ -2546,7 +2546,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8970af7113824ab8d82f0a0d12f92b41d85410f3b7651425989ffa55d517708b"
 dependencies = [
  "anyhow",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch-contract-derive",
  "cw-orch-core 2.1.4",
  "cw-orch-fns-derive",
@@ -2600,7 +2600,7 @@ dependencies = [
  "abstract-cw-multi-test 2.2.4",
  "anyhow",
  "cosmos-sdk-proto 0.24.0",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
  "dirs",
@@ -2669,7 +2669,7 @@ dependencies = [
  "bitcoin 0.32.7",
  "chrono 0.4.41",
  "cosmrs 0.19.0",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch-core 2.1.4",
  "cw-orch-networks 0.24.11",
  "cw-orch-traits 0.25.0",
@@ -2719,7 +2719,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f43184d2458fe1677a642270f34381defbe01205e897e113b60c3f2998bac7"
 dependencies = [
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch-interchain-core",
  "cw-orch-interchain-mock",
  "cw1",
@@ -2736,7 +2736,7 @@ checksum = "77df30fe2f18aec67c3a3e845138ca4f61fc8537f17055675dca14f6efccb1e1"
 dependencies = [
  "base64 0.22.1",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch-core 2.1.4",
  "cw-orch-mock",
  "futures",
@@ -2758,7 +2758,7 @@ checksum = "fc064aa62087460a5e21a18f187c339304f58c3658a5e8c9be7fec387777da0a"
 dependencies = [
  "anyhow",
  "cosmrs 0.19.0",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch-core 2.1.4",
  "cw-orch-interchain-core",
  "cw-orch-mock",
@@ -2777,7 +2777,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce639c909e59fc1505f56772b9a37057a54d3c5a20f7a4c197cd518a27ce9770"
 dependencies = [
  "abstract-cw-multi-test 2.2.4",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch-core 2.1.4",
  "cw-utils 2.0.0",
  "log",
@@ -2833,7 +2833,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2f8ee96ac5342c795a0610410998fc075a95af8c796b6d16479cdffd2471f1"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-address-like",
  "cw-ownable-derive",
  "cw-storage-plus 2.0.0",
@@ -2898,7 +2898,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f13360e9007f51998d42b1bc6b7fa0141f74feae61ed5fd1e5b0a89eec7b5de1"
 dependencies = [
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "schemars 0.8.22",
  "serde",
 ]
@@ -2936,7 +2936,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07dfee7f12f802431a856984a32bce1cb7da1e6c006b5409e3981035ce562dec"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "schemars 0.8.22",
  "serde",
  "thiserror 1.0.69",
@@ -2962,7 +2962,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82e8f2be6706b3460d2b3f4d3ef5177926000ac2dc21187a9dfaac85bd2459cb"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "schemars 0.8.22",
  "serde",
 ]
@@ -2974,7 +2974,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c51ef0628aaedd7153015e99ed6d030b99ebe635173011eb4e1554f866be30b"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
  "cw1",
@@ -3006,7 +3006,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b04852cd38f044c0751259d5f78255d07590d136b8a86d4e09efdd7666bd6d27"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-storage-plus 2.0.0",
  "schemars 0.8.22",
  "semver",
@@ -3034,7 +3034,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a42212b6bf29bbdda693743697c621894723f35d3db0d5df930be22903d0e27c"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-utils 2.0.0",
  "schemars 0.8.22",
  "serde",
@@ -3047,7 +3047,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6de8c32e100f1fca306972d86b617234a5e6b00594ea2b48716fd6804d4d95d"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-storage-plus 2.0.0",
  "cw2 2.0.0",
  "cw20 2.0.0",
@@ -3083,7 +3083,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80a9e377dbbd1ffb3b6a8a2dbf9128609a6458a3292f88f99e0b6840a7e9762e"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-controllers 2.0.0",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
@@ -3102,7 +3102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5e53c2057526c65d9c88be8b2a564729ebad7a3d87ee97b97665a71446f913a"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-utils 2.0.0",
  "cw20 2.0.0",
  "schemars 0.8.22",
@@ -3116,7 +3116,7 @@ version = "0.20.0"
 source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#38a71c3ba241502b7be6ac6e22d0b2f3bc79b4f7"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-ownable",
  "cw-storage-plus 2.0.0",
  "cw-utils 2.0.0",
@@ -3133,7 +3133,7 @@ version = "0.20.0"
 source = "git+https://github.com/andromedaprotocol/cw721-2.2?branch=removeExtension#38a71c3ba241502b7be6ac6e22d0b2f3bc79b4f7"
 dependencies = [
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-ownable",
  "cw2 2.0.0",
  "cw721",
@@ -3344,7 +3344,7 @@ dependencies = [
  "andromeda-std",
  "andromeda-testing-e2e",
  "andromeda-validator-staking",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-orch",
  "cw-orch-daemon 0.29.2",
  "cw20 2.0.0",
@@ -4299,7 +4299,7 @@ dependencies = [
  "andromeda-splitter",
  "andromeda-std",
  "andromeda-testing",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-multi-test",
  "cw-orch",
  "cw-orch-interchain",
@@ -4955,7 +4955,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c95af6df6b52986feccf7ce04765f6fb00d85a9ad6ad35303d3437c9754816e"
 dependencies = [
  "chrono 0.4.41",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "osmosis-std-derive",
  "prost 0.13.5",
  "prost-types 0.13.5",
@@ -6751,7 +6751,7 @@ dependencies = [
  "andromeda-vesting",
  "andromeda-vfs",
  "cosmwasm-schema 2.2.2",
- "cosmwasm-std 2.2.2",
+ "cosmwasm-std 2.3.0",
  "cw-asset",
  "cw-multi-test",
  "cw-orch",
